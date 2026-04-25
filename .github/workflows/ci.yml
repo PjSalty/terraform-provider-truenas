@@ -20,7 +20,7 @@ jobs:
       - run: gofmt -l . | tee /tmp/fmt.out && test ! -s /tmp/fmt.out
       - run: go vet ./...
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.11.4
 
