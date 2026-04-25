@@ -1485,7 +1485,7 @@ func TestErrorBranches_Certificate(t *testing.T) {
 		"name":             str("c1"),
 		"create_type":      str("CERTIFICATE_CREATE_IMPORTED"),
 		"certificate":      str("-----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----\n"),
-		"privatekey":       str("-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"),
+		"privatekey":       str("PRIVATE_KEY_PLACEHOLDER"),
 		"key_type":         str("RSA"),
 		"key_length":       num(2048),
 		"digest_algorithm": str("SHA256"),

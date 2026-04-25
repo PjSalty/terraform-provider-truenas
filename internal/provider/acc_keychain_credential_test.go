@@ -1,6 +1,9 @@
 package provider
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"strconv"
@@ -8,21 +11,30 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"golang.org/x/crypto/ssh"
 )
 
-// kcTestPrivateKey is a real ed25519 keypair committed as a test fixture.
-// NOT a real credential — generated specifically for this test suite.
-// TrueNAS parses the key via libcrypto at create time, so it must parse.
-const kcTestPrivateKey = `-----BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
-QyNTUxOQAAACDvbMyo62trUjPgD0PFbJnKhDov46BSt6tNE/WTBHqALAAAAJDClmPJwpZj
-yQAAAAtzc2gtZWQyNTUxOQAAACDvbMyo62trUjPgD0PFbJnKhDov46BSt6tNE/WTBHqALA
-AAAEBxDeIwDmOHlQkv00Y+xoGfnFaFBh4KG5aLylu4QHsf/e9szKjra2tSM+APQ8VsmcqE
-Oi/joFK3q00T9ZMEeoAsAAAAB2FjY3Rlc3QBAgMEBQY=
------END OPENSSH PRIVATE KEY-----
-`
-
-const kcTestPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO9szKjra2tSM+APQ8VsmcqEOi/joFK3q00T9ZMEeoAs acctest"
+// kcGenTestKeyPair generates a fresh ed25519 OpenSSH keypair at runtime.
+// Generated rather than committed so secret scanners (GitHub Push Protection,
+// gitleaks) do not flag the source tree. TrueNAS does not validate that the
+// public and private halves match; it only requires a parseable OpenSSH-format
+// private key and authorized_keys-format public key.
+func kcGenTestKeyPair(t *testing.T) (privateKey, publicKey string) {
+	t.Helper()
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("ed25519.GenerateKey: %v", err)
+	}
+	block, err := ssh.MarshalPrivateKey(priv, "acctest")
+	if err != nil {
+		t.Fatalf("ssh.MarshalPrivateKey: %v", err)
+	}
+	sshPub, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		t.Fatalf("ssh.NewPublicKey: %v", err)
+	}
+	return string(pem.EncodeToMemory(block)), string(ssh.MarshalAuthorizedKey(sshPub))
+}
 
 // TestAccKeychainCredentialResource_basic creates a synthetic SSH_KEY_PAIR
 // credential. TrueNAS accepts any plausibly-formed OpenSSH key pair; it
@@ -33,6 +45,7 @@ func TestAccKeychainCredentialResource_basic(t *testing.T) {
 		t.Skip(skipMsg)
 	}
 	name := randomName("acctest-kc")
+	priv, pub := kcGenTestKeyPair(t)
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -47,7 +60,7 @@ resource "truenas_keychain_credential" "test" {
     public_key  = %q
   }
 }
-`, name, kcTestPrivateKey, kcTestPublicKey),
+`, name, priv, pub),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_keychain_credential.test", "name", name),
 					resource.TestCheckResourceAttr("truenas_keychain_credential.test", "type", "SSH_KEY_PAIR"),
@@ -72,6 +85,7 @@ func TestAccKeychainCredentialResource_update(t *testing.T) {
 	}
 	name1 := randomName("acctest-kc-v1")
 	name2 := randomName("acctest-kc-v2")
+	priv, pub := kcGenTestKeyPair(t)
 	cfg := func(n string) string {
 		return fmt.Sprintf(`
 resource "truenas_keychain_credential" "test" {
@@ -82,7 +96,7 @@ resource "truenas_keychain_credential" "test" {
     public_key  = %q
   }
 }
-`, n, kcTestPrivateKey, kcTestPublicKey)
+`, n, priv, pub)
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -107,6 +121,7 @@ func TestAccKeychainCredentialResource_disappears(t *testing.T) {
 		t.Skip(skipMsg)
 	}
 	name := randomName("acctest-kc-gone")
+	priv, pub := kcGenTestKeyPair(t)
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -121,7 +136,7 @@ resource "truenas_keychain_credential" "test" {
     public_key  = %q
   }
 }
-`, name, kcTestPrivateKey, kcTestPublicKey),
+`, name, priv, pub),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("truenas_keychain_credential.test", "id"),
 					func(s *terraform.State) error {

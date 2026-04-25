@@ -71,7 +71,7 @@ func TestRedactJSONBody_NestedObject(t *testing.T) {
 			}
 		},
 		"extra": [
-			{"field": "privatekey", "value": "-----BEGIN PRIVATE KEY-----..."},
+			{"field": "privatekey", "value": "PRIVATE_KEY_PLACEHOLDER"},
 			{"field": "ok", "value": "ok"}
 		]
 	}`)
@@ -81,7 +81,7 @@ func TestRedactJSONBody_NestedObject(t *testing.T) {
 		t.Fatalf("nested dhchap_key value leaked: %s", out)
 	}
 	// The "value" field inside the extra array is NOT a sensitive key name,
-	// so its content ("-----BEGIN PRIVATE KEY-----...") would normally pass
+	// so its content ("PRIVATE_KEY_PLACEHOLDER") would normally pass
 	// through. Confirm that's the current behavior — documented caveat:
 	// redaction is by *key name*, not value content. This is an intentional
 	// trade-off; see the Phase G CHANGELOG note.

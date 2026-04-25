@@ -11,7 +11,7 @@ func TestCertificate_ModifyPlan_ImportedMissingCert(t *testing.T) {
 	resp := callModifyPlan(t, r, map[string]tftypes.Value{
 		"name":        str("c1"),
 		"create_type": str("CERTIFICATE_CREATE_IMPORTED"),
-		"privatekey":  str("-----BEGIN PRIVATE KEY-----..."),
+		"privatekey":  str("PRIVATE_KEY_PLACEHOLDER"),
 	})
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
@@ -75,7 +75,7 @@ func TestCertificate_ModifyPlan_ImportedValid(t *testing.T) {
 		"name":        str("c1"),
 		"create_type": str("CERTIFICATE_CREATE_IMPORTED"),
 		"certificate": str("-----BEGIN CERTIFICATE-----..."),
-		"privatekey":  str("-----BEGIN PRIVATE KEY-----..."),
+		"privatekey":  str("PRIVATE_KEY_PLACEHOLDER"),
 	})
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected: %v", resp.Diagnostics)

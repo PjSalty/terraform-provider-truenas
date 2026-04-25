@@ -19,7 +19,9 @@ credential leakage, incorrect TLS verification, privilege escalation via the
 TrueNAS API, unsafe handling of sensitive attributes, or a dependency
 vulnerability not yet covered by `govulncheck`), please report it privately:
 
-- GitHub: use [private vulnerability reporting](https://github.com/PjSalty/terraform-provider-truenas/security/advisories/new)
+- GitLab: open a confidential issue at
+  <https://github.com/PjSalty/terraform-provider-truenas/security/advisories/new>
+  with the "confidential" flag set
 - Email: security@saltstice.com
 
 Include in your report:

@@ -77,10 +77,11 @@ terraform-provider-truenas/
 │   └── fuzz/                      # Go native fuzz corpus
 ├── tools/
 │   └── tools.go                   # Dev-only tooling pins (build tag: tools)
-├── .changelog/                    # changie per-PR changelog entries
-├── .github/                       # GitHub Actions, issue + PR templates, CODEOWNERS
+├── .changelog/                    # changie per-MR changelog entries
+├── .gitlab/                       # GitLab issue + MR templates, CODEOWNERS
 ├── .goreleaser.yml                # Multi-platform release config
-├── .golangci.yml                  # Linter config
+├── .golangci.yml                  # 13-linter config
+├── .gitlab-ci.yml                 # CI pipeline
 ├── .pre-commit-config.yaml        # Local pre-commit hooks
 ├── Makefile                       # Build/test/lint targets
 └── renovate.json                  # Dependency automation
@@ -97,7 +98,7 @@ terraform-provider-truenas/
    - `test(vm): cover bootloader UEFI cross-attribute constraint`
 4. **Run all gates locally** before pushing (see below).
 5. **Add a `.changelog/unreleased/` entry** via `changie new`.
-6. **Open a pull request** against `main`, fill out the PR template.
+6. **Open a merge request** against `main`, fill out the MR template.
 7. CI must be green before review. **No exceptions, no `allow_failure: true`
    shortcuts.**
 
@@ -251,7 +252,7 @@ that conflict with your changes — always regenerate after schema edits.
 
 ## Changelog entries
 
-We use [changie](https://changie.dev/) for per-PR changelog entries:
+We use [changie](https://changie.dev/) for per-MR changelog entries:
 
 ```sh
 go install github.com/miniscruff/changie@latest
