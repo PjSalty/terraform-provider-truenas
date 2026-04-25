@@ -1,0 +1,43 @@
+# gitleaks configuration for terraform-provider-truenas.
+#
+# Uses the default rule set (via `useDefault = true`) but excludes paths
+# that contain cryptographic test vectors from upstream modules. These
+# aren't real secrets, but the default `generic-api-key` rule flags them
+# on high entropy alone.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global path excludes and example/test fixtures"
+paths = [
+  # Go module cache: upstream modules contain crypto test vectors
+  # (HPKE, ECDSA, RSA, etc.) that look like API keys to entropy-based
+  # detection. We are not responsible for upstream test data.
+  '''\.go/.*''',
+  '''^\.go/.*''',
+  # Vendored dependencies if they ever land
+  '''^vendor/.*''',
+  # Build artifacts
+  '''^dist/.*''',
+  # Our own fuzz corpus
+  '''^testdata/fuzz/.*''',
+  # Release metadata
+  '''\.terraform-registry-manifest\.json$''',
+  # Example HCL intentionally contains placeholder passwords like
+  # "rotated-by-terraform", "restic-repo-password", etc. so users
+  # can see where real credentials belong. These are documentation
+  # fixtures, not real secrets.
+  '''^examples/.*\.(tf|hcl)$''',
+  # Test files contain throwaway credentials: synthetic DHCHAP keys,
+  # self-signed private keys generated for acceptance test fixtures,
+  # UUID-shaped test tokens. Never real production material.
+  '''_test\.go$''',
+  '''^internal/provider/acc_.*_test\.go$''',
+  '''^internal/resources/.*_test\.go$''',
+]
+
+# Default hashicorp-tf-password / private-key / generic-api-key rules
+# still apply outside the allowlisted paths above. We deliberately do
+# NOT override them — real credentials in non-example, non-test source
+# files remain blocked.

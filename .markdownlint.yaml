@@ -1,0 +1,35 @@
+# markdownlint-cli2 config for terraform-provider-truenas.
+#
+# Keeps docs consistent with hand-written AWS provider docs. Run:
+#   npx markdownlint-cli2 '**/*.md' '!node_modules'
+# or via pre-commit (see .pre-commit-config.yaml).
+#
+# Reference: https://github.com/DavidAnson/markdownlint
+
+default: true
+
+# Line length — terraform-plugin-docs writes long wrapped attribute descriptions,
+# so we relax the default 80-char cap and allow links/tables to exceed.
+MD013:
+  line_length: 160
+  code_blocks: false
+  tables: false
+  headings: false
+
+# Multiple consecutive blank lines allowed in CHANGELOG and docs to separate
+# entries visually.
+MD012:
+  maximum: 2
+
+# Fenced code block style — always use ``` (not ~~~).
+MD048:
+  style: backtick
+
+# Allow bare URLs — autolinks are fine.
+MD034: false
+
+# Allow inline HTML in docs pages (frontmatter + collapsible sections etc.)
+MD033: false
+
+# Allow first line to not be a heading — tfplugindocs frontmatter comes first.
+MD041: false

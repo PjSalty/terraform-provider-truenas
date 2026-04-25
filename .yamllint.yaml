@@ -1,0 +1,30 @@
+# yamllint config for terraform-provider-truenas.
+#
+# Run: yamllint -c .yamllint.yaml .
+# or via pre-commit (see .pre-commit-config.yaml).
+
+extends: default
+
+rules:
+  line-length:
+    max: 160
+    level: warning
+  document-start: disable
+  comments-indentation: disable
+  truthy:
+    level: warning
+    allowed-values: ["true", "false", "on", "off"]
+  braces:
+    max-spaces-inside: 1
+  brackets:
+    max-spaces-inside: 1
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+ignore: |
+  dist/
+  .go/
+  node_modules/
+  vendor/

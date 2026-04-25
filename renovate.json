@@ -1,0 +1,66 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":gitSignOff",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    "group:monorepos",
+    "group:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "labels": ["dependencies", "renovate"],
+  "assignees": [],
+  "reviewers": [],
+  "schedule": ["before 6am on monday"],
+  "timezone": "Etc/UTC",
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "rangeStrategy": "pin",
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodUpdateImportPaths"
+  ],
+  "packageRules": [
+    {
+      "description": "Group all non-major Go module updates",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "go modules (non-major)"
+    },
+    {
+      "description": "Separate major Go module updates",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "go modules (major)",
+      "labels": ["dependencies", "renovate", "major"]
+    },
+    {
+      "description": "Terraform plugin framework ecosystem needs careful review",
+      "matchManagers": ["gomod"],
+      "matchPackagePatterns": [
+        "^github.com/hashicorp/terraform-plugin-framework",
+        "^github.com/hashicorp/terraform-plugin-testing",
+        "^github.com/hashicorp/terraform-plugin-go",
+        "^github.com/hashicorp/terraform-plugin-docs",
+        "^github.com/hashicorp/terraform-plugin-log"
+      ],
+      "groupName": "terraform-plugin-framework",
+      "labels": ["dependencies", "renovate", "plugin-framework"],
+      "reviewers": []
+    },
+    {
+      "description": "Security updates land immediately",
+      "matchUpdateTypes": ["patch"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": false,
+      "labels": ["dependencies", "renovate", "security"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["dependencies", "renovate", "security"],
+    "schedule": ["at any time"]
+  },
+  "osvVulnerabilityAlerts": true
+}

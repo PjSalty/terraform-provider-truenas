@@ -1,0 +1,113 @@
+name: Bug report
+description: Report a defect in the provider
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please fill out the sections below so we can reproduce and fix the issue.
+
+        For **security vulnerabilities**, do NOT open a public issue. See [SECURITY.md](../blob/main/SECURITY.md).
+
+  - type: input
+    id: provider_version
+    attributes:
+      label: Provider version
+      placeholder: "1.10.1"
+    validations:
+      required: true
+
+  - type: input
+    id: terraform_version
+    attributes:
+      label: Terraform version
+      placeholder: "1.13.0"
+    validations:
+      required: true
+
+  - type: input
+    id: truenas_version
+    attributes:
+      label: TrueNAS SCALE version
+      placeholder: "25.04.2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os_arch
+    attributes:
+      label: OS / architecture
+      options:
+        - linux/amd64
+        - linux/arm64
+        - darwin/amd64
+        - darwin/arm64
+        - windows/amd64
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description
+      description: A clear, concise description of what's broken.
+    validations:
+      required: true
+
+  - type: textarea
+    id: terraform_config
+    attributes:
+      label: Terraform configuration
+      description: Minimal reproduction. Trim to the smallest config that exhibits the bug.
+      render: hcl
+      placeholder: |
+        terraform {
+          required_providers {
+            truenas = {
+              source  = "PjSalty/truenas"
+              version = "~> 1.10"
+            }
+          }
+        }
+
+        resource "truenas_dataset" "example" {
+          # ...
+        }
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include full error output.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. `terraform init`
+        2. `terraform plan`
+        3. `terraform apply`
+        4. Observe error / drift / etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Links to logs, screenshots, upstream TrueNAS tickets, etc.

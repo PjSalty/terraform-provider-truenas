@@ -1,0 +1,55 @@
+name: Feature request
+description: Propose a new resource, data source, or attribute
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: What are you trying to accomplish? Why can't the current provider do it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What new resource, data source, attribute, or behavior are you proposing?
+    validations:
+      required: true
+
+  - type: textarea
+    id: schema_sketch
+    attributes:
+      label: Schema sketch
+      description: If proposing a new resource, sketch the HCL.
+      render: hcl
+      placeholder: |
+        resource "truenas_new_thing" "example" {
+          name     = "x"
+          some_arg = "y"
+        }
+
+  - type: input
+    id: api_endpoint
+    attributes:
+      label: TrueNAS SCALE API endpoint
+      description: Link to https://www.truenas.com/docs/scale/scaleapireference/ or specify the endpoint.
+      placeholder: "POST /api/v2.0/..."
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Are you willing to submit a PR?
+      options:
+        - "Yes, I'll implement this"
+        - "I need help but I'm willing to collaborate"
+        - "No, I'm just requesting"
+    validations:
+      required: true

@@ -1,0 +1,50 @@
+# Pre-commit hooks for terraform-provider-truenas.
+#
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+#
+# These hooks are a superset of the CI lint job — they catch the common
+# formatting + vuln issues before you push, so CI stays green.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.(ppm|png|jpg|jpeg|gif|webp|ico|svg)$
+      - id: end-of-file-fixer
+        exclude: \.(ppm|png|jpg|jpeg|gif|webp|ico|svg)$
+      - id: check-yaml
+        args: ["--unsafe"]  # allow Go templates in CI yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-imports
+        args: ["-local", "github.com/PjSalty/terraform-provider-truenas"]
+      - id: go-vet-mod
+      - id: go-mod-tidy
+
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.11.4
+    hooks:
+      - id: golangci-lint
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: ["-d", "{extends: default, rules: {line-length: {max: 160}, document-start: disable, comments-indentation: disable}}"]
