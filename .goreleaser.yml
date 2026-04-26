@@ -1,0 +1,129 @@
+version: 2
+
+project_name: terraform-provider-truenas
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: default
+    env:
+      - CGO_ENABLED=0
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    ldflags:
+      - "-s -w -X main.version={{ .Version }} -X main.commit={{ .Commit }}"
+    # Target matrix trimmed to the Terraform Registry mandatory + high-demand
+    # set. The original matrix (14 targets inc. freebsd, linux/386, arm/6, arm/7,
+    # windows/386) tripled cross-compile time on the CI k8s runner and the
+    # release job hit the 1h job timeout mid-build on pipeline 6742. For a
+    # TrueNAS provider the operator environment is almost always linux/amd64
+    # or darwin/arm64; the remaining targets cover CI runners and dev loops.
+    goos:
+      - linux
+      - darwin
+      - windows
+      - freebsd
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    binary: "{{ .ProjectName }}_v{{ .Version }}"
+
+archives:
+  - formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_SHA256SUMS"
+  algorithm: sha256
+  # Restrict to archive artifacts (id=default). SBOM artifacts (id=sbom) are
+  # excluded so the Terraform Registry publish API doesn't expect them in its
+  # request body. SBOMs are still attached to the GitHub release as separate
+  # downloadable artifacts.
+  ids:
+    - default
+  extra_files:
+    - glob: "terraform-registry-manifest.json"
+      name_template: "{{ .ProjectName }}_{{ .Version }}_manifest.json"
+
+# Signing stanza is skipped unless GPG_FINGERPRINT is set. When running
+# locally without a signing key, use `goreleaser release --snapshot --skip=sign`.
+signs:
+  - id: signed-checksums
+    cmd: gpg
+    args:
+      - --batch
+      - --local-user
+      - "{{ .Env.GPG_FINGERPRINT }}"
+      - --output
+      - "${signature}"
+      - --detach-sign
+      - "${artifact}"
+    artifacts: checksum
+    signature: "${artifact}.sig"
+
+# SBOM generation via syft — requires syft to be on PATH at release time.
+# id=sbom (not "default") so checksum.ids can exclude these artifacts; the
+# Terraform Registry rejects releases whose SHA256SUMS lists files outside
+# the archive set.
+sboms:
+  - id: sbom
+    artifacts: archive
+    documents:
+      - "{{ .ArtifactName }}.spdx.sbom.json"
+    cmd: syft
+    args:
+      - "$artifact"
+      - --output
+      - "spdx-json=$document"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: git
+  groups:
+    - title: "Features"
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: "Bug fixes"
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: "Performance"
+      regexp: "^.*perf[(\\w)]*:+.*$"
+      order: 2
+    - title: "Dependencies"
+      regexp: "^.*(deps|build)[(\\w)]*:+.*$"
+      order: 3
+    - title: "Other"
+      order: 999
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+      - "^style:"
+      - "^refactor:"
+      - "Merge branch"
+
+release:
+  github:
+    owner: PjSalty
+    name: terraform-provider-truenas
+  draft: false
+  prerelease: auto
+  mode: replace
+  extra_files:
+    # Rename on upload so the file on the release matches what SHA256SUMS
+    # references. Terraform Registry verifies the manifest by name.
+    - glob: "terraform-registry-manifest.json"
+      name_template: "{{ .ProjectName }}_{{ .Version }}_manifest.json"

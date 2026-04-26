@@ -1,0 +1,134 @@
+version: "2"
+run:
+  modules-download-mode: readonly
+  tests: true
+output:
+  formats:
+    text:
+      path: stdout
+      print-linter-name: true
+      print-issued-lines: true
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - contextcheck
+    - copyloopvar
+    - errcheck
+    - errorlint
+    - gocritic
+    - godot
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
+    - nilerr
+    - prealloc
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+      exclude-functions:
+        - (io.Closer).Close
+        - (net/http.ResponseWriter).Write
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Fprint
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+        - singleCaseSwitch
+        - commentedOutCode
+        - hugeParam
+        - rangeValCopy
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+    godot:
+      scope: declarations
+      capital: false
+      period: true
+    govet:
+      disable:
+        - fieldalignment
+        - shadow
+      enable-all: true
+    misspell:
+      locale: US
+    unparam:
+      check-exported: false
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - errcheck
+          - gocritic
+          - godot
+          - prealloc
+          - unparam
+          # Phase H: gosec in tests is dominated by false positives —
+          # G304 (os.ReadFile with a glob-sourced variable), G306
+          # (0644 file perms on scratch test files), G117 (test
+          # fixtures with "privatekey" JSON fields), G101 (fake
+          # credential patterns), G704 (test helper error-ignore).
+          # None of these reach production. Security-relevant gosec
+          # rules still apply to non-test files.
+          - gosec
+          # Phase H: usestdlibvars in tests is cosmetic — the status
+          # codes (422, 500, 404) are self-documenting in the context
+          # of an HTTP test server assertion. Enforcing stdlib name
+          # replacement everywhere would churn 22+ test files without
+          # improving correctness.
+          - usestdlibvars
+        path: _test\.go
+      - linters:
+          - unused
+        path: tools\.go
+      - linters:
+          - lll
+          - misspell
+        source: 'MarkdownDescription:'
+      - linters:
+          - misspell
+        path: internal/resources/service\.go
+        text: '`dynamicdns`'
+      - linters:
+          - misspell
+        path: _test\.go
+    paths:
+      - ^tools\.go$
+      - tools
+      - live-test
+      - dist
+      - examples
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/PjSalty/terraform-provider-truenas
+  exclusions:
+    generated: lax
+    paths:
+      - ^tools\.go$
+      - tools
+      - live-test
+      - dist
+      - examples
+      - third_party$
+      - builtin$
+      - examples$
