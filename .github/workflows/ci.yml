@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Weekly govulncheck rerun against the current main so a CVE landing
+  # mid-week against an unchanged dependency tree still gets caught.
+  schedule:
+    - cron: '0 6 * * 1'
 
 permissions:
   contents: read
