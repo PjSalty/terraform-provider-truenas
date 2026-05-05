@@ -17,8 +17,23 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// systemUpdateClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+// Defining the interface in the consumer package follows the Go convention:
+// "accept the interface you need where you need it." Other resources that
+// migrate later define their own resource-local interfaces, keeping each
+// resource's blast radius bounded.
+type systemUpdateClient interface {
+	GetUpdateAutoDownload(ctx context.Context) (bool, error)
+	SetUpdateAutoDownload(ctx context.Context, enabled bool) error
+	GetUpdateTrains(ctx context.Context) (*tnstypes.UpdateTrains, error)
+	SetUpdateTrain(ctx context.Context, train string) error
+	CheckUpdateAvailable(ctx context.Context) (*tnstypes.UpdateCheckResult, error)
+	GetSystemInfo(ctx context.Context) (*tnstypes.SystemInfo, error)
+}
 
 // systemUpdateSingletonID is the fixed identifier used for the
 // truenas_system_update resource. TrueNAS has exactly one update
@@ -36,7 +51,7 @@ var (
 // not apply updates; it only governs how the system behaves when an update
 // becomes available. Applying an update remains a manual action.
 type SystemUpdateResource struct {
-	client *client.Client
+	client systemUpdateClient
 }
 
 // SystemUpdateResourceModel describes the resource data model.
@@ -152,11 +167,11 @@ func (r *SystemUpdateResource) Configure(_ context.Context, req resource.Configu
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(systemUpdateClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected systemUpdateClient implementation (*client.Client or *wsclient.Client), got: %T", req.ProviderData),
 		)
 		return
 	}
