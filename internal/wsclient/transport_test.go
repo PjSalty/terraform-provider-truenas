@@ -85,6 +85,38 @@ func TestSendFrame_nilConn(t *testing.T) {
 	}
 }
 
+func TestWrapWriteErr(t *testing.T) {
+	cases := []struct {
+		name     string
+		in       error
+		wantBare error // non-nil if errors.Is(out, wantBare) must be true
+		wantWrap bool  // true if out should wrap ErrConnectionLost
+		wantNil  bool
+	}{
+		{"nil", nil, nil, false, true},
+		{"context.Canceled", context.Canceled, context.Canceled, false, false},
+		{"context.DeadlineExceeded", context.DeadlineExceeded, context.DeadlineExceeded, false, false},
+		{"random error", errors.New("broken pipe"), nil, true, false},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			out := wrapWriteErr(tt.in)
+			if tt.wantNil {
+				if out != nil {
+					t.Errorf("expected nil, got %v", out)
+				}
+				return
+			}
+			if tt.wantBare != nil && !errors.Is(out, tt.wantBare) {
+				t.Errorf("errors.Is(out, %v) = false; out = %v", tt.wantBare, out)
+			}
+			if tt.wantWrap && !errors.Is(out, ErrConnectionLost) {
+				t.Errorf("expected ErrConnectionLost wrap, got %v", out)
+			}
+		})
+	}
+}
+
 func TestIsClosing(t *testing.T) {
 	c := &Client{closed: make(chan struct{})}
 	if c.isClosing() {

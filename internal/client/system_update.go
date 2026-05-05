@@ -6,41 +6,19 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// UpdateTrains represents the response from /update/get_trains — the map of
-// available release trains plus the currently booted train and the train
-// selected for update tracking. The `selected` field is what the provider
-// reconciles against when the user sets `train` on truenas_system_update;
-// `current` is what the box is actually booted on and is surfaced as a
-// read-only computed attribute for drift visibility.
-type UpdateTrains struct {
-	Trains   map[string]UpdateTrainInfo `json:"trains"`
-	Current  string                     `json:"current"`
-	Selected string                     `json:"selected"`
-}
-
-// UpdateTrainInfo is the per-train metadata returned inside UpdateTrains.Trains.
-type UpdateTrainInfo struct {
-	Description string `json:"description"`
-}
-
-// UpdateCheckResult is the response from POST /update/check_available.
-// Status values documented in the TrueNAS OpenAPI spec:
-//   - AVAILABLE: an update is available
-//   - UNAVAILABLE: no update available
-//   - REBOOT_REQUIRED: an update has already been applied, waiting for reboot
-//   - HA_UNAVAILABLE: HA is non-functional
-//
-// Changes is left as raw JSON because the exact shape is non-stable across
-// TrueNAS releases and the resource does not expose it to users — it is
-// only surfaced indirectly via the computed `available_version` field.
-type UpdateCheckResult struct {
-	Status  string          `json:"status"`
-	Version string          `json:"version,omitempty"`
-	Changes json.RawMessage `json:"changes,omitempty"`
-	Notes   string          `json:"notes,omitempty"`
-}
+// UpdateTrains, UpdateTrainInfo, UpdateCheckResult moved to
+// internal/types/system_update.go in the v2.0 transport-migration prep.
+// Re-exported here as aliases so existing test files and resources that
+// import from internal/client/ still compile unchanged.
+type (
+	UpdateTrains      = types.UpdateTrains
+	UpdateTrainInfo   = types.UpdateTrainInfo
+	UpdateCheckResult = types.UpdateCheckResult
+)
 
 // GetUpdateAutoDownload returns whether auto-download of updates is enabled.
 // The TrueNAS endpoint returns a bare JSON boolean, not an object.
@@ -76,7 +54,7 @@ func (c *Client) SetUpdateAutoDownload(ctx context.Context, enabled bool) error 
 
 // GetUpdateTrains returns the list of available release trains plus the
 // currently booted and currently selected train names.
-func (c *Client) GetUpdateTrains(ctx context.Context) (*UpdateTrains, error) {
+func (c *Client) GetUpdateTrains(ctx context.Context) (*types.UpdateTrains, error) {
 	tflog.Trace(ctx, "GetUpdateTrains start")
 
 	resp, err := c.Get(ctx, "/update/get_trains")
@@ -84,7 +62,7 @@ func (c *Client) GetUpdateTrains(ctx context.Context) (*UpdateTrains, error) {
 		return nil, fmt.Errorf("getting update trains: %w", err)
 	}
 
-	var trains UpdateTrains
+	var trains types.UpdateTrains
 	if err := json.Unmarshal(resp, &trains); err != nil {
 		return nil, fmt.Errorf("parsing update trains response: %w", err)
 	}
@@ -116,9 +94,9 @@ type checkAvailableRequest struct {
 }
 
 // CheckUpdateAvailable queries the update server for a pending update. The
-// response is shaped as UpdateCheckResult; status UNAVAILABLE is the common
-// case and must not be treated as an error by callers.
-func (c *Client) CheckUpdateAvailable(ctx context.Context) (*UpdateCheckResult, error) {
+// response is shaped as types.UpdateCheckResult; status UNAVAILABLE is the
+// common case and must not be treated as an error by callers.
+func (c *Client) CheckUpdateAvailable(ctx context.Context) (*types.UpdateCheckResult, error) {
 	tflog.Trace(ctx, "CheckUpdateAvailable start")
 
 	resp, err := c.Post(ctx, "/update/check_available", checkAvailableRequest{})
@@ -126,7 +104,7 @@ func (c *Client) CheckUpdateAvailable(ctx context.Context) (*UpdateCheckResult, 
 		return nil, fmt.Errorf("checking update availability: %w", err)
 	}
 
-	var result UpdateCheckResult
+	var result types.UpdateCheckResult
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("parsing update check_available response: %w", err)
 	}
