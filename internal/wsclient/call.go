@@ -83,8 +83,13 @@ func (c *Client) Call(ctx context.Context, method string, params []interface{}, 
 		lastErr = err
 
 		// Only ErrConnectionLost is retried; well-formed RPCErrors and
-		// context cancellation surface immediately.
+		// context cancellation surface immediately. Before retrying,
+		// trigger a reconnect so the next callOnce dials a fresh
+		// transport rather than re-using a dead conn.
 		if errors.Is(err, ErrConnectionLost) {
+			if rerr := c.reconnectIfNeeded(ctx); rerr != nil {
+				return nil, rerr
+			}
 			continue
 		}
 		return nil, err
