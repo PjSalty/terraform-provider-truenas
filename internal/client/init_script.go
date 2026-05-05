@@ -6,43 +6,20 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- Init/Startup Script API ---
 
-// InitScript represents an init/startup script in TrueNAS.
-type InitScript struct {
-	ID      int    `json:"id"`
-	Type    string `json:"type"`
-	Command string `json:"command,omitempty"`
-	Script  string `json:"script,omitempty"`
-	When    string `json:"when"`
-	Enabled bool   `json:"enabled"`
-	Timeout int    `json:"timeout"`
-	Comment string `json:"comment,omitempty"`
-}
-
-// InitScriptCreateRequest represents the request to create an init/startup script.
-type InitScriptCreateRequest struct {
-	Type    string `json:"type"`
-	Command string `json:"command,omitempty"`
-	Script  string `json:"script,omitempty"`
-	When    string `json:"when"`
-	Enabled bool   `json:"enabled"`
-	Timeout int    `json:"timeout,omitempty"`
-	Comment string `json:"comment,omitempty"`
-}
-
-// InitScriptUpdateRequest represents the request to update an init/startup script.
-type InitScriptUpdateRequest struct {
-	Type    string `json:"type,omitempty"`
-	Command string `json:"command,omitempty"`
-	Script  string `json:"script,omitempty"`
-	When    string `json:"when,omitempty"`
-	Enabled *bool  `json:"enabled,omitempty"`
-	Timeout int    `json:"timeout,omitempty"`
-	Comment string `json:"comment,omitempty"`
-}
+// InitScript, InitScriptCreateRequest, InitScriptUpdateRequest moved to
+// internal/types/init_script.go in the v2.0 transport-migration prep.
+// Aliased here so existing imports keep compiling.
+type (
+	InitScript              = types.InitScript
+	InitScriptCreateRequest = types.InitScriptCreateRequest
+	InitScriptUpdateRequest = types.InitScriptUpdateRequest
+)
 
 // initScriptBasePath is the API path for init/startup scripts.
 const initScriptBasePath = "/initshutdownscript"

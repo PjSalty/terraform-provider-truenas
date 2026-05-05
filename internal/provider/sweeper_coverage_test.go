@@ -86,6 +86,18 @@ func TestSweeperCoverage(t *testing.T) {
 		if strings.HasSuffix(base, "_test.go") {
 			continue
 		}
+		// Skip files that do not declare a resource type — package-
+		// level helpers under internal/resources/ are not resources
+		// and have no state to sweep.
+		src, err := os.ReadFile(m)
+		if err != nil {
+			t.Fatalf("read %s: %v", m, err)
+		}
+		text := string(src)
+		if !strings.Contains(text, "Resource struct") &&
+			!strings.Contains(text, "Resource interface") {
+			continue
+		}
 		resourceSet[strings.TrimSuffix(base, ".go")] = struct{}{}
 	}
 	if len(resourceSet) == 0 {
