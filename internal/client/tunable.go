@@ -6,35 +6,20 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- Tunable API ---
 
-// Tunable represents a kernel tunable in TrueNAS.
-type Tunable struct {
-	ID      int    `json:"id"`
-	Type    string `json:"type"`
-	Var     string `json:"var"`
-	Value   string `json:"value"`
-	Comment string `json:"comment"`
-	Enabled bool   `json:"enabled"`
-}
-
-// TunableCreateRequest represents the request to create a tunable.
-type TunableCreateRequest struct {
-	Type    string `json:"type"`
-	Var     string `json:"var"`
-	Value   string `json:"value"`
-	Comment string `json:"comment,omitempty"`
-	Enabled bool   `json:"enabled"`
-}
-
-// TunableUpdateRequest represents the request to update a tunable.
-type TunableUpdateRequest struct {
-	Value   string `json:"value,omitempty"`
-	Comment string `json:"comment,omitempty"`
-	Enabled *bool  `json:"enabled,omitempty"`
-}
+// Tunable, TunableCreateRequest, TunableUpdateRequest moved to
+// internal/types/tunable.go in the v2.0 transport-migration prep.
+// Aliased here so existing imports keep compiling.
+type (
+	Tunable              = types.Tunable
+	TunableCreateRequest = types.TunableCreateRequest
+	TunableUpdateRequest = types.TunableUpdateRequest
+)
 
 // GetTunable retrieves a tunable by ID.
 func (c *Client) GetTunable(ctx context.Context, id int) (*Tunable, error) {
