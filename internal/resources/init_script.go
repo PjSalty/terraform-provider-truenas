@@ -20,9 +20,18 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// initScriptClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type initScriptClient interface {
+	GetInitScript(ctx context.Context, id int) (*tnstypes.InitScript, error)
+	CreateInitScript(ctx context.Context, req *tnstypes.InitScriptCreateRequest) (*tnstypes.InitScript, error)
+	UpdateInitScript(ctx context.Context, id int, req *tnstypes.InitScriptUpdateRequest) (*tnstypes.InitScript, error)
+	DeleteInitScript(ctx context.Context, id int) error
+}
 
 var (
 	_ resource.Resource                = &InitScriptResource{}
@@ -32,7 +41,7 @@ var (
 
 // InitScriptResource manages a TrueNAS init/startup script.
 type InitScriptResource struct {
-	client *client.Client
+	client initScriptClient
 }
 
 // InitScriptResourceModel describes the resource data model.
@@ -136,11 +145,11 @@ func (r *InitScriptResource) Configure(_ context.Context, req resource.Configure
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(initScriptClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected initScriptClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -157,7 +166,7 @@ func (r *InitScriptResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	createReq := &client.InitScriptCreateRequest{
+	createReq := &tnstypes.InitScriptCreateRequest{
 		Type:    plan.Type.ValueString(),
 		When:    plan.When.ValueString(),
 		Enabled: plan.Enabled.ValueBool(),
@@ -213,7 +222,7 @@ func (r *InitScriptResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	script, err := r.client.GetInitScript(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -255,7 +264,7 @@ func (r *InitScriptResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	enabled := plan.Enabled.ValueBool()
-	updateReq := &client.InitScriptUpdateRequest{
+	updateReq := &tnstypes.InitScriptUpdateRequest{
 		Type:    plan.Type.ValueString(),
 		When:    plan.When.ValueString(),
 		Enabled: &enabled,
@@ -308,7 +317,7 @@ func (r *InitScriptResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 	err = r.client.DeleteInitScript(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			tflog.Warn(ctx, "Init/shutdown script already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -337,7 +346,7 @@ func (r *InitScriptResource) ImportState(ctx context.Context, req resource.Impor
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *InitScriptResource) mapResponseToModel(script *client.InitScript, model *InitScriptResourceModel) {
+func (r *InitScriptResource) mapResponseToModel(script *tnstypes.InitScript, model *InitScriptResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(script.ID))
 	model.Type = types.StringValue(script.Type)
 	model.Command = types.StringValue(script.Command)
