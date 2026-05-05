@@ -165,13 +165,22 @@ func (c *Client) sendFrame(ctx context.Context, req rpcRequest) error {
 		return ErrConnectionLost
 	}
 
-	if err := conn.Write(ctx, websocket.MessageText, data); err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return err
-		}
-		return fmt.Errorf("%w: %w", ErrConnectionLost, err)
+	return wrapWriteErr(conn.Write(ctx, websocket.MessageText, data))
+}
+
+// wrapWriteErr classifies a conn.Write error: context cancellation
+// passes through unmodified so callers can errors.Is() against the
+// context sentinels; everything else is wrapped as ErrConnectionLost.
+// Extracted so the rare ctx-error branch is unit-testable without
+// staging a race against the kernel buffer.
+func wrapWriteErr(err error) error {
+	if err == nil {
+		return nil
 	}
-	return nil
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return fmt.Errorf("%w: %w", ErrConnectionLost, err)
 }
 
 // backoffDelay returns the delay before retry attempt n. Lifted from
