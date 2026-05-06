@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,45 +10,44 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// MailConfig, MailConfigUpdateRequest moved to internal/types/mail_config.go
-// in the v2.0 transport-migration prep.
-type (
-	MailConfig              = types.MailConfig
-	MailConfigUpdateRequest = types.MailConfigUpdateRequest
-)
+// JSON-RPC method namespace for mail service: mail.{config,update}.
 
 // GetMailConfig retrieves the mail configuration.
 func (c *Client) GetMailConfig(ctx context.Context) (*types.MailConfig, error) {
-	tflog.Trace(ctx, "GetMailConfig start")
+	tflog.Trace(ctx, "GetMailConfig (ws) start")
 
-	resp, err := c.Get(ctx, "/mail")
+	result, err := c.Call(ctx, "mail.config", nil, CallOptions{
+		Read:       true,
+		Idempotent: true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("getting mail config: %w", err)
 	}
 
 	var config types.MailConfig
-	if err := json.Unmarshal(resp, &config); err != nil {
+	if err := json.Unmarshal(result, &config); err != nil {
 		return nil, fmt.Errorf("parsing mail config response: %w", err)
 	}
 
-	tflog.Trace(ctx, "GetMailConfig success")
+	tflog.Trace(ctx, "GetMailConfig (ws) success")
 	return &config, nil
 }
 
 // UpdateMailConfig updates the mail configuration.
 func (c *Client) UpdateMailConfig(ctx context.Context, req *types.MailConfigUpdateRequest) (*types.MailConfig, error) {
-	tflog.Trace(ctx, "UpdateMailConfig start")
+	tflog.Trace(ctx, "UpdateMailConfig (ws) start")
 
-	resp, err := c.Put(ctx, "/mail", req)
+	result, err := c.Call(ctx, "mail.update",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating mail config: %w", err)
 	}
 
 	var config types.MailConfig
-	if err := json.Unmarshal(resp, &config); err != nil {
+	if err := json.Unmarshal(result, &config); err != nil {
 		return nil, fmt.Errorf("parsing mail config update response: %w", err)
 	}
 
-	tflog.Trace(ctx, "UpdateMailConfig success")
+	tflog.Trace(ctx, "UpdateMailConfig (ws) success")
 	return &config, nil
 }
