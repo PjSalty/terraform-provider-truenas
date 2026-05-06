@@ -6,35 +6,19 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// SSHConfig represents the SSH service configuration.
-type SSHConfig struct {
-	ID              int      `json:"id"`
-	TCPPort         int      `json:"tcpport"`
-	PasswordAuth    bool     `json:"passwordauth"`
-	KerberosAuth    bool     `json:"kerberosauth"`
-	TCPFwd          bool     `json:"tcpfwd"`
-	Compression     bool     `json:"compression"`
-	SFTPLogLevel    string   `json:"sftp_log_level"`
-	SFTPLogFacility string   `json:"sftp_log_facility"`
-	WeakCiphers     []string `json:"weak_ciphers"`
-}
-
-// SSHConfigUpdateRequest represents the request to update SSH configuration.
-type SSHConfigUpdateRequest struct {
-	TCPPort         *int      `json:"tcpport,omitempty"`
-	PasswordAuth    *bool     `json:"passwordauth,omitempty"`
-	KerberosAuth    *bool     `json:"kerberosauth,omitempty"`
-	TCPFwd          *bool     `json:"tcpfwd,omitempty"`
-	Compression     *bool     `json:"compression,omitempty"`
-	SFTPLogLevel    *string   `json:"sftp_log_level,omitempty"`
-	SFTPLogFacility *string   `json:"sftp_log_facility,omitempty"`
-	WeakCiphers     *[]string `json:"weak_ciphers,omitempty"`
-}
+// SSHConfig, SSHConfigUpdateRequest moved to internal/types/ssh_config.go
+// in the v2.0 transport-migration prep.
+type (
+	SSHConfig              = types.SSHConfig
+	SSHConfigUpdateRequest = types.SSHConfigUpdateRequest
+)
 
 // GetSSHConfig retrieves the SSH service configuration.
-func (c *Client) GetSSHConfig(ctx context.Context) (*SSHConfig, error) {
+func (c *Client) GetSSHConfig(ctx context.Context) (*types.SSHConfig, error) {
 	tflog.Trace(ctx, "GetSSHConfig start")
 
 	resp, err := c.Get(ctx, "/ssh")
@@ -42,7 +26,7 @@ func (c *Client) GetSSHConfig(ctx context.Context) (*SSHConfig, error) {
 		return nil, fmt.Errorf("getting SSH config: %w", err)
 	}
 
-	var config SSHConfig
+	var config types.SSHConfig
 	if err := json.Unmarshal(resp, &config); err != nil {
 		return nil, fmt.Errorf("parsing SSH config response: %w", err)
 	}
@@ -52,7 +36,7 @@ func (c *Client) GetSSHConfig(ctx context.Context) (*SSHConfig, error) {
 }
 
 // UpdateSSHConfig updates the SSH service configuration.
-func (c *Client) UpdateSSHConfig(ctx context.Context, req *SSHConfigUpdateRequest) (*SSHConfig, error) {
+func (c *Client) UpdateSSHConfig(ctx context.Context, req *types.SSHConfigUpdateRequest) (*types.SSHConfig, error) {
 	tflog.Trace(ctx, "UpdateSSHConfig start")
 
 	resp, err := c.Put(ctx, "/ssh", req)
@@ -60,7 +44,7 @@ func (c *Client) UpdateSSHConfig(ctx context.Context, req *SSHConfigUpdateReques
 		return nil, fmt.Errorf("updating SSH config: %w", err)
 	}
 
-	var config SSHConfig
+	var config types.SSHConfig
 	if err := json.Unmarshal(resp, &config); err != nil {
 		return nil, fmt.Errorf("parsing SSH config update response: %w", err)
 	}

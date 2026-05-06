@@ -25,8 +25,15 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// nfsConfigClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type nfsConfigClient interface {
+	GetNFSConfig(ctx context.Context) (*tnstypes.NFSConfig, error)
+	UpdateNFSConfig(ctx context.Context, req *tnstypes.NFSConfigUpdateRequest) (*tnstypes.NFSConfig, error)
+}
 
 var (
 	_ resource.Resource                = &NFSConfigResource{}
@@ -35,7 +42,7 @@ var (
 
 // NFSConfigResource manages the TrueNAS NFS service configuration.
 type NFSConfigResource struct {
-	client *client.Client
+	client nfsConfigClient
 }
 
 // NFSConfigResourceModel describes the resource data model.
@@ -160,11 +167,11 @@ func (r *NFSConfigResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(nfsConfigClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected nfsConfigClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -270,7 +277,7 @@ func (r *NFSConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest
 	v4Krb := false
 	v4Domain := ""
 
-	_, err := r.client.UpdateNFSConfig(ctx, &client.NFSConfigUpdateRequest{
+	_, err := r.client.UpdateNFSConfig(ctx, &tnstypes.NFSConfigUpdateRequest{
 		Servers:      &servers,
 		AllowNonroot: &allowNonroot,
 		Protocols:    []string{"NFSV3", "NFSV4"},
@@ -292,8 +299,8 @@ func (r *NFSConfigResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NFSConfigResource) buildUpdateRequest(ctx context.Context, plan *NFSConfigResourceModel, d *diag.Diagnostics) *client.NFSConfigUpdateRequest {
-	updateReq := &client.NFSConfigUpdateRequest{}
+func (r *NFSConfigResource) buildUpdateRequest(ctx context.Context, plan *NFSConfigResourceModel, d *diag.Diagnostics) *tnstypes.NFSConfigUpdateRequest {
+	updateReq := &tnstypes.NFSConfigUpdateRequest{}
 
 	if !plan.Servers.IsNull() && !plan.Servers.IsUnknown() {
 		v := int(plan.Servers.ValueInt64())
@@ -342,7 +349,7 @@ func (r *NFSConfigResource) buildUpdateRequest(ctx context.Context, plan *NFSCon
 	return updateReq
 }
 
-func (r *NFSConfigResource) mapResponseToModel(ctx context.Context, config *client.NFSConfig, model *NFSConfigResourceModel) {
+func (r *NFSConfigResource) mapResponseToModel(ctx context.Context, config *tnstypes.NFSConfig, model *NFSConfigResourceModel) {
 	model.ID = types.StringValue("1")
 	model.Servers = types.Int64Value(int64(config.Servers))
 	model.AllowNonroot = types.BoolValue(config.AllowNonroot)

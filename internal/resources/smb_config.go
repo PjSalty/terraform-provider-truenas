@@ -18,8 +18,15 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// smbConfigClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type smbConfigClient interface {
+	GetSMBConfig(ctx context.Context) (*tnstypes.SMBConfig, error)
+	UpdateSMBConfig(ctx context.Context, req *tnstypes.SMBConfigUpdateRequest) (*tnstypes.SMBConfig, error)
+}
 
 var (
 	_ resource.Resource                = &SMBConfigResource{}
@@ -28,7 +35,7 @@ var (
 
 // SMBConfigResource manages the TrueNAS SMB service configuration.
 type SMBConfigResource struct {
-	client *client.Client
+	client smbConfigClient
 }
 
 // SMBConfigResourceModel describes the resource data model.
@@ -142,11 +149,11 @@ func (r *SMBConfigResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(smbConfigClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected smbConfigClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -252,7 +259,7 @@ func (r *SMBConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest
 	filemask := "DEFAULT"
 	dirmask := "DEFAULT"
 
-	_, err := r.client.UpdateSMBConfig(ctx, &client.SMBConfigUpdateRequest{
+	_, err := r.client.UpdateSMBConfig(ctx, &tnstypes.SMBConfigUpdateRequest{
 		NetbiosName:    &netbiosname,
 		Workgroup:      &workgroup,
 		Description:    &description,
@@ -277,8 +284,8 @@ func (r *SMBConfigResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *SMBConfigResource) buildUpdateRequest(plan *SMBConfigResourceModel) *client.SMBConfigUpdateRequest {
-	updateReq := &client.SMBConfigUpdateRequest{}
+func (r *SMBConfigResource) buildUpdateRequest(plan *SMBConfigResourceModel) *tnstypes.SMBConfigUpdateRequest {
+	updateReq := &tnstypes.SMBConfigUpdateRequest{}
 
 	if !plan.NetbiosName.IsNull() && !plan.NetbiosName.IsUnknown() {
 		v := plan.NetbiosName.ValueString()
@@ -320,7 +327,7 @@ func (r *SMBConfigResource) buildUpdateRequest(plan *SMBConfigResourceModel) *cl
 	return updateReq
 }
 
-func (r *SMBConfigResource) mapResponseToModel(config *client.SMBConfig, model *SMBConfigResourceModel) {
+func (r *SMBConfigResource) mapResponseToModel(config *tnstypes.SMBConfig, model *SMBConfigResourceModel) {
 	model.ID = types.StringValue("1")
 	model.NetbiosName = types.StringValue(config.NetbiosName)
 	model.Workgroup = types.StringValue(config.Workgroup)
