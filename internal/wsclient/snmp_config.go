@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,45 +10,44 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// SNMPConfig, SNMPConfigUpdateRequest moved to internal/types/snmp_config.go
-// in the v2.0 transport-migration prep.
-type (
-	SNMPConfig              = types.SNMPConfig
-	SNMPConfigUpdateRequest = types.SNMPConfigUpdateRequest
-)
+// JSON-RPC method namespace for SNMP service: snmp.{config,update}.
 
-// GetSNMPConfig retrieves the SNMP configuration.
+// GetSNMPConfig retrieves the SNMP service configuration.
 func (c *Client) GetSNMPConfig(ctx context.Context) (*types.SNMPConfig, error) {
-	tflog.Trace(ctx, "GetSNMPConfig start")
+	tflog.Trace(ctx, "GetSNMPConfig (ws) start")
 
-	resp, err := c.Get(ctx, "/snmp")
+	result, err := c.Call(ctx, "snmp.config", nil, CallOptions{
+		Read:       true,
+		Idempotent: true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("getting SNMP config: %w", err)
 	}
 
 	var config types.SNMPConfig
-	if err := json.Unmarshal(resp, &config); err != nil {
+	if err := json.Unmarshal(result, &config); err != nil {
 		return nil, fmt.Errorf("parsing SNMP config response: %w", err)
 	}
 
-	tflog.Trace(ctx, "GetSNMPConfig success")
+	tflog.Trace(ctx, "GetSNMPConfig (ws) success")
 	return &config, nil
 }
 
-// UpdateSNMPConfig updates the SNMP configuration.
+// UpdateSNMPConfig updates the SNMP service configuration.
 func (c *Client) UpdateSNMPConfig(ctx context.Context, req *types.SNMPConfigUpdateRequest) (*types.SNMPConfig, error) {
-	tflog.Trace(ctx, "UpdateSNMPConfig start")
+	tflog.Trace(ctx, "UpdateSNMPConfig (ws) start")
 
-	resp, err := c.Put(ctx, "/snmp", req)
+	result, err := c.Call(ctx, "snmp.update",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating SNMP config: %w", err)
 	}
 
 	var config types.SNMPConfig
-	if err := json.Unmarshal(resp, &config); err != nil {
+	if err := json.Unmarshal(result, &config); err != nil {
 		return nil, fmt.Errorf("parsing SNMP config update response: %w", err)
 	}
 
-	tflog.Trace(ctx, "UpdateSNMPConfig success")
+	tflog.Trace(ctx, "UpdateSNMPConfig (ws) success")
 	return &config, nil
 }
