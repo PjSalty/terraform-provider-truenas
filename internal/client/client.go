@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // newRequestID returns a fresh 16-char lowercase hex ID; one per logical
@@ -529,14 +531,9 @@ type PropertyRawVal struct {
 
 // --- Snapshot Task API ---
 
-// Schedule represents a cron-like schedule.
-type Schedule struct {
-	Minute string `json:"minute"`
-	Hour   string `json:"hour"`
-	Dom    string `json:"dom"`
-	Month  string `json:"month"`
-	Dow    string `json:"dow"`
-}
+// Schedule moved to internal/types/schedule.go in the v2.0
+// transport-migration prep.
+type Schedule = types.Schedule
 
 // --- iSCSI Target API ---
 
