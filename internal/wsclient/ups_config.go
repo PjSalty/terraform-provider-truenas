@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,45 +10,44 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// UPSConfig, UPSConfigUpdateRequest moved to internal/types/ups_config.go
-// in the v2.0 transport-migration prep.
-type (
-	UPSConfig              = types.UPSConfig
-	UPSConfigUpdateRequest = types.UPSConfigUpdateRequest
-)
+// JSON-RPC method namespace for UPS service: ups.{config,update}.
 
-// GetUPSConfig retrieves the UPS configuration.
+// GetUPSConfig retrieves the UPS service configuration.
 func (c *Client) GetUPSConfig(ctx context.Context) (*types.UPSConfig, error) {
-	tflog.Trace(ctx, "GetUPSConfig start")
+	tflog.Trace(ctx, "GetUPSConfig (ws) start")
 
-	resp, err := c.Get(ctx, "/ups")
+	result, err := c.Call(ctx, "ups.config", nil, CallOptions{
+		Read:       true,
+		Idempotent: true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("getting UPS config: %w", err)
 	}
 
 	var config types.UPSConfig
-	if err := json.Unmarshal(resp, &config); err != nil {
+	if err := json.Unmarshal(result, &config); err != nil {
 		return nil, fmt.Errorf("parsing UPS config response: %w", err)
 	}
 
-	tflog.Trace(ctx, "GetUPSConfig success")
+	tflog.Trace(ctx, "GetUPSConfig (ws) success")
 	return &config, nil
 }
 
-// UpdateUPSConfig updates the UPS configuration.
+// UpdateUPSConfig updates the UPS service configuration.
 func (c *Client) UpdateUPSConfig(ctx context.Context, req *types.UPSConfigUpdateRequest) (*types.UPSConfig, error) {
-	tflog.Trace(ctx, "UpdateUPSConfig start")
+	tflog.Trace(ctx, "UpdateUPSConfig (ws) start")
 
-	resp, err := c.Put(ctx, "/ups", req)
+	result, err := c.Call(ctx, "ups.update",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating UPS config: %w", err)
 	}
 
 	var config types.UPSConfig
-	if err := json.Unmarshal(resp, &config); err != nil {
+	if err := json.Unmarshal(result, &config); err != nil {
 		return nil, fmt.Errorf("parsing UPS config update response: %w", err)
 	}
 
-	tflog.Trace(ctx, "UpdateUPSConfig success")
+	tflog.Trace(ctx, "UpdateUPSConfig (ws) success")
 	return &config, nil
 }
