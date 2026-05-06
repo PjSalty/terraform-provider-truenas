@@ -24,9 +24,16 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	tnvalidators "github.com/PjSalty/terraform-provider-truenas/internal/validators"
 )
+
+// networkConfigClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type networkConfigClient interface {
+	GetFullNetworkConfig(ctx context.Context) (*tnstypes.FullNetworkConfig, error)
+	UpdateFullNetworkConfig(ctx context.Context, req *tnstypes.FullNetworkConfigUpdateRequest) (*tnstypes.FullNetworkConfig, error)
+}
 
 var (
 	_ resource.Resource                = &NetworkConfigResource{}
@@ -35,7 +42,7 @@ var (
 
 // NetworkConfigResource manages the full network configuration on TrueNAS.
 type NetworkConfigResource struct {
-	client *client.Client
+	client networkConfigClient
 }
 
 // NetworkConfigResourceModel describes the resource data model.
@@ -161,11 +168,11 @@ func (r *NetworkConfigResource) Configure(_ context.Context, req resource.Config
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(networkConfigClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected networkConfigClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -269,7 +276,7 @@ func (r *NetworkConfigResource) Delete(ctx context.Context, _ resource.DeleteReq
 	domain := "local"
 	empty := ""
 
-	_, err := r.client.UpdateFullNetworkConfig(ctx, &client.FullNetworkConfigUpdateRequest{
+	_, err := r.client.UpdateFullNetworkConfig(ctx, &tnstypes.FullNetworkConfigUpdateRequest{
 		Hostname:    &hostname,
 		Domain:      &domain,
 		IPv4Gateway: &empty,
@@ -294,8 +301,8 @@ func (r *NetworkConfigResource) ImportState(ctx context.Context, req resource.Im
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NetworkConfigResource) buildUpdateRequest(ctx context.Context, plan *NetworkConfigResourceModel, d *diag.Diagnostics) *client.FullNetworkConfigUpdateRequest {
-	updateReq := &client.FullNetworkConfigUpdateRequest{}
+func (r *NetworkConfigResource) buildUpdateRequest(ctx context.Context, plan *NetworkConfigResourceModel, d *diag.Diagnostics) *tnstypes.FullNetworkConfigUpdateRequest {
+	updateReq := &tnstypes.FullNetworkConfigUpdateRequest{}
 
 	if !plan.Hostname.IsNull() && !plan.Hostname.IsUnknown() {
 		v := plan.Hostname.ValueString()
@@ -339,7 +346,7 @@ func (r *NetworkConfigResource) buildUpdateRequest(ctx context.Context, plan *Ne
 	return updateReq
 }
 
-func (r *NetworkConfigResource) mapResponseToModel(ctx context.Context, config *client.FullNetworkConfig, model *NetworkConfigResourceModel) {
+func (r *NetworkConfigResource) mapResponseToModel(ctx context.Context, config *tnstypes.FullNetworkConfig, model *NetworkConfigResourceModel) {
 	model.ID = types.StringValue("1")
 	model.Hostname = types.StringValue(config.Hostname)
 	model.Domain = types.StringValue(config.Domain)
