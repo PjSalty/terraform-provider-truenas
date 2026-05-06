@@ -20,8 +20,16 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// alertServiceClient is the transport-agnostic surface this resource needs.
+type alertServiceClient interface {
+	GetAlertService(ctx context.Context, id int) (*tnstypes.AlertService, error)
+	CreateAlertService(ctx context.Context, req *tnstypes.AlertServiceCreateRequest) (*tnstypes.AlertService, error)
+	UpdateAlertService(ctx context.Context, id int, req *tnstypes.AlertServiceUpdateRequest) (*tnstypes.AlertService, error)
+	DeleteAlertService(ctx context.Context, id int) error
+}
 
 var (
 	_ resource.Resource                = &AlertServiceResource{}
@@ -30,7 +38,7 @@ var (
 
 // AlertServiceResource manages a TrueNAS alert service.
 type AlertServiceResource struct {
-	client *client.Client
+	client alertServiceClient
 }
 
 // AlertServiceResourceModel describes the resource data model.
@@ -109,11 +117,11 @@ func (r *AlertServiceResource) Configure(_ context.Context, req resource.Configu
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(alertServiceClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected alertServiceClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -142,7 +150,7 @@ func (r *AlertServiceResource) Create(ctx context.Context, req resource.CreateRe
 	// The TrueNAS API expects the type inside the attributes map.
 	settings["type"] = plan.Type.ValueString()
 
-	createReq := &client.AlertServiceCreateRequest{
+	createReq := &tnstypes.AlertServiceCreateRequest{
 		Name:     plan.Name.ValueString(),
 		Enabled:  plan.Enabled.ValueBool(),
 		Level:    plan.Level.ValueString(),
@@ -188,7 +196,7 @@ func (r *AlertServiceResource) Read(ctx context.Context, req resource.ReadReques
 
 	svc, err := r.client.GetAlertService(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -243,7 +251,7 @@ func (r *AlertServiceResource) Update(ctx context.Context, req resource.UpdateRe
 	// The TrueNAS API expects the type inside the attributes map.
 	settings["type"] = plan.Type.ValueString()
 
-	updateReq := &client.AlertServiceUpdateRequest{
+	updateReq := &tnstypes.AlertServiceUpdateRequest{
 		Name:     plan.Name.ValueString(),
 		Enabled:  &enabled,
 		Level:    plan.Level.ValueString(),
@@ -286,7 +294,7 @@ func (r *AlertServiceResource) Delete(ctx context.Context, req resource.DeleteRe
 
 	err = r.client.DeleteAlertService(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			tflog.Warn(ctx, "Alert service already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -307,7 +315,7 @@ func (r *AlertServiceResource) ImportState(ctx context.Context, req resource.Imp
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *AlertServiceResource) mapResponseToModel(svc *client.AlertService, model *AlertServiceResourceModel) {
+func (r *AlertServiceResource) mapResponseToModel(svc *tnstypes.AlertService, model *AlertServiceResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(svc.ID))
 	model.Name = types.StringValue(svc.Name)
 	model.Type = types.StringValue(svc.GetType())
