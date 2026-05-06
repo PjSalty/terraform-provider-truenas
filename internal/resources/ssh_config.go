@@ -23,8 +23,15 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// sshConfigClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type sshConfigClient interface {
+	GetSSHConfig(ctx context.Context) (*tnstypes.SSHConfig, error)
+	UpdateSSHConfig(ctx context.Context, req *tnstypes.SSHConfigUpdateRequest) (*tnstypes.SSHConfig, error)
+}
 
 var (
 	_ resource.Resource                = &SSHConfigResource{}
@@ -33,7 +40,7 @@ var (
 
 // SSHConfigResource manages the TrueNAS SSH service configuration.
 type SSHConfigResource struct {
-	client *client.Client
+	client sshConfigClient
 }
 
 // SSHConfigResourceModel describes the resource data model.
@@ -135,11 +142,11 @@ func (r *SSHConfigResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(sshConfigClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected sshConfigClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -247,7 +254,7 @@ func (r *SSHConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest
 	sftpLogLevel := ""
 	sftpLogFacility := ""
 
-	_, err := r.client.UpdateSSHConfig(ctx, &client.SSHConfigUpdateRequest{
+	_, err := r.client.UpdateSSHConfig(ctx, &tnstypes.SSHConfigUpdateRequest{
 		TCPPort:         &tcpport,
 		PasswordAuth:    &passwordauth,
 		KerberosAuth:    &kerberosauth,
@@ -271,8 +278,8 @@ func (r *SSHConfigResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *SSHConfigResource) buildUpdateRequest(ctx context.Context, plan *SSHConfigResourceModel, d *diag.Diagnostics) *client.SSHConfigUpdateRequest {
-	updateReq := &client.SSHConfigUpdateRequest{}
+func (r *SSHConfigResource) buildUpdateRequest(ctx context.Context, plan *SSHConfigResourceModel, d *diag.Diagnostics) *tnstypes.SSHConfigUpdateRequest {
+	updateReq := &tnstypes.SSHConfigUpdateRequest{}
 
 	if !plan.TCPPort.IsNull() && !plan.TCPPort.IsUnknown() {
 		v := int(plan.TCPPort.ValueInt64())
@@ -313,7 +320,7 @@ func (r *SSHConfigResource) buildUpdateRequest(ctx context.Context, plan *SSHCon
 	return updateReq
 }
 
-func (r *SSHConfigResource) mapResponseToModel(ctx context.Context, config *client.SSHConfig, model *SSHConfigResourceModel) {
+func (r *SSHConfigResource) mapResponseToModel(ctx context.Context, config *tnstypes.SSHConfig, model *SSHConfigResourceModel) {
 	model.ID = types.StringValue("1")
 	model.TCPPort = types.Int64Value(int64(config.TCPPort))
 	model.PasswordAuth = types.BoolValue(config.PasswordAuth)
