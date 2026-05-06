@@ -6,28 +6,20 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// AlertClassEntry is the per-class configuration.
-type AlertClassEntry struct {
-	Level            string `json:"level,omitempty"`
-	Policy           string `json:"policy,omitempty"`
-	ProactiveSupport *bool  `json:"proactive_support,omitempty"`
-}
-
-// AlertClassesConfig is the singleton alert classes configuration.
-type AlertClassesConfig struct {
-	ID      int                        `json:"id"`
-	Classes map[string]AlertClassEntry `json:"classes"`
-}
-
-// AlertClassesUpdateRequest is the update payload.
-type AlertClassesUpdateRequest struct {
-	Classes map[string]AlertClassEntry `json:"classes"`
-}
+// AlertClassEntry, AlertClassesConfig, AlertClassesUpdateRequest moved to
+// internal/types/alertclasses.go in the v2.0 transport-migration prep.
+type (
+	AlertClassEntry           = types.AlertClassEntry
+	AlertClassesConfig        = types.AlertClassesConfig
+	AlertClassesUpdateRequest = types.AlertClassesUpdateRequest
+)
 
 // GetAlertClassesConfig retrieves the alert classes configuration.
-func (c *Client) GetAlertClassesConfig(ctx context.Context) (*AlertClassesConfig, error) {
+func (c *Client) GetAlertClassesConfig(ctx context.Context) (*types.AlertClassesConfig, error) {
 	tflog.Trace(ctx, "GetAlertClassesConfig start")
 
 	resp, err := c.Get(ctx, "/alertclasses")
@@ -35,13 +27,13 @@ func (c *Client) GetAlertClassesConfig(ctx context.Context) (*AlertClassesConfig
 		return nil, fmt.Errorf("getting alert classes config: %w", err)
 	}
 
-	var cfg AlertClassesConfig
+	var cfg types.AlertClassesConfig
 	if err := json.Unmarshal(resp, &cfg); err != nil {
 		return nil, fmt.Errorf("parsing alert classes config response: %w", err)
 	}
 
 	if cfg.Classes == nil {
-		cfg.Classes = map[string]AlertClassEntry{}
+		cfg.Classes = map[string]types.AlertClassEntry{}
 	}
 
 	tflog.Trace(ctx, "GetAlertClassesConfig success")
@@ -49,7 +41,7 @@ func (c *Client) GetAlertClassesConfig(ctx context.Context) (*AlertClassesConfig
 }
 
 // UpdateAlertClassesConfig updates the alert classes configuration via PUT.
-func (c *Client) UpdateAlertClassesConfig(ctx context.Context, req *AlertClassesUpdateRequest) (*AlertClassesConfig, error) {
+func (c *Client) UpdateAlertClassesConfig(ctx context.Context, req *types.AlertClassesUpdateRequest) (*types.AlertClassesConfig, error) {
 	tflog.Trace(ctx, "UpdateAlertClassesConfig start")
 
 	resp, err := c.Put(ctx, "/alertclasses", req)
@@ -57,13 +49,13 @@ func (c *Client) UpdateAlertClassesConfig(ctx context.Context, req *AlertClasses
 		return nil, fmt.Errorf("updating alert classes config: %w", err)
 	}
 
-	var cfg AlertClassesConfig
+	var cfg types.AlertClassesConfig
 	if err := json.Unmarshal(resp, &cfg); err != nil {
 		return nil, fmt.Errorf("parsing alert classes update response: %w", err)
 	}
 
 	if cfg.Classes == nil {
-		cfg.Classes = map[string]AlertClassEntry{}
+		cfg.Classes = map[string]types.AlertClassEntry{}
 	}
 
 	tflog.Trace(ctx, "UpdateAlertClassesConfig success")
