@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,45 +10,44 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// SMBConfig, SMBConfigUpdateRequest moved to internal/types/smb_config.go
-// in the v2.0 transport-migration prep.
-type (
-	SMBConfig              = types.SMBConfig
-	SMBConfigUpdateRequest = types.SMBConfigUpdateRequest
-)
+// JSON-RPC method namespace for SMB service: smb.{config,update}.
 
 // GetSMBConfig retrieves the SMB service configuration.
 func (c *Client) GetSMBConfig(ctx context.Context) (*types.SMBConfig, error) {
-	tflog.Trace(ctx, "GetSMBConfig start")
+	tflog.Trace(ctx, "GetSMBConfig (ws) start")
 
-	resp, err := c.Get(ctx, "/smb")
+	result, err := c.Call(ctx, "smb.config", nil, CallOptions{
+		Read:       true,
+		Idempotent: true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("getting SMB config: %w", err)
 	}
 
 	var config types.SMBConfig
-	if err := json.Unmarshal(resp, &config); err != nil {
+	if err := json.Unmarshal(result, &config); err != nil {
 		return nil, fmt.Errorf("parsing SMB config response: %w", err)
 	}
 
-	tflog.Trace(ctx, "GetSMBConfig success")
+	tflog.Trace(ctx, "GetSMBConfig (ws) success")
 	return &config, nil
 }
 
 // UpdateSMBConfig updates the SMB service configuration.
 func (c *Client) UpdateSMBConfig(ctx context.Context, req *types.SMBConfigUpdateRequest) (*types.SMBConfig, error) {
-	tflog.Trace(ctx, "UpdateSMBConfig start")
+	tflog.Trace(ctx, "UpdateSMBConfig (ws) start")
 
-	resp, err := c.Put(ctx, "/smb", req)
+	result, err := c.Call(ctx, "smb.update",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating SMB config: %w", err)
 	}
 
 	var config types.SMBConfig
-	if err := json.Unmarshal(resp, &config); err != nil {
+	if err := json.Unmarshal(result, &config); err != nil {
 		return nil, fmt.Errorf("parsing SMB config update response: %w", err)
 	}
 
-	tflog.Trace(ctx, "UpdateSMBConfig success")
+	tflog.Trace(ctx, "UpdateSMBConfig (ws) success")
 	return &config, nil
 }
