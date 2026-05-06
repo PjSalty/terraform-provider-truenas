@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,25 +10,23 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// AlertClassEntry, AlertClassesConfig, AlertClassesUpdateRequest moved to
-// internal/types/alertclasses.go in the v2.0 transport-migration prep.
-type (
-	AlertClassEntry           = types.AlertClassEntry
-	AlertClassesConfig        = types.AlertClassesConfig
-	AlertClassesUpdateRequest = types.AlertClassesUpdateRequest
-)
+// alertclasses is a singleton config; methods follow the TrueNAS
+// JSON-RPC convention for singletons: alertclasses.config / .update.
 
 // GetAlertClassesConfig retrieves the alert classes configuration.
 func (c *Client) GetAlertClassesConfig(ctx context.Context) (*types.AlertClassesConfig, error) {
-	tflog.Trace(ctx, "GetAlertClassesConfig start")
+	tflog.Trace(ctx, "GetAlertClassesConfig (ws) start")
 
-	resp, err := c.Get(ctx, "/alertclasses")
+	result, err := c.Call(ctx, "alertclasses.config", nil, CallOptions{
+		Read:       true,
+		Idempotent: true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("getting alert classes config: %w", err)
 	}
 
 	var cfg types.AlertClassesConfig
-	if err := json.Unmarshal(resp, &cfg); err != nil {
+	if err := json.Unmarshal(result, &cfg); err != nil {
 		return nil, fmt.Errorf("parsing alert classes config response: %w", err)
 	}
 
@@ -36,21 +34,23 @@ func (c *Client) GetAlertClassesConfig(ctx context.Context) (*types.AlertClasses
 		cfg.Classes = map[string]types.AlertClassEntry{}
 	}
 
-	tflog.Trace(ctx, "GetAlertClassesConfig success")
+	tflog.Trace(ctx, "GetAlertClassesConfig (ws) success")
 	return &cfg, nil
 }
 
-// UpdateAlertClassesConfig updates the alert classes configuration via PUT.
+// UpdateAlertClassesConfig updates the alert classes configuration via
+// alertclasses.update with a single object param.
 func (c *Client) UpdateAlertClassesConfig(ctx context.Context, req *types.AlertClassesUpdateRequest) (*types.AlertClassesConfig, error) {
-	tflog.Trace(ctx, "UpdateAlertClassesConfig start")
+	tflog.Trace(ctx, "UpdateAlertClassesConfig (ws) start")
 
-	resp, err := c.Put(ctx, "/alertclasses", req)
+	result, err := c.Call(ctx, "alertclasses.update",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating alert classes config: %w", err)
 	}
 
 	var cfg types.AlertClassesConfig
-	if err := json.Unmarshal(resp, &cfg); err != nil {
+	if err := json.Unmarshal(result, &cfg); err != nil {
 		return nil, fmt.Errorf("parsing alert classes update response: %w", err)
 	}
 
@@ -58,6 +58,6 @@ func (c *Client) UpdateAlertClassesConfig(ctx context.Context, req *types.AlertC
 		cfg.Classes = map[string]types.AlertClassEntry{}
 	}
 
-	tflog.Trace(ctx, "UpdateAlertClassesConfig success")
+	tflog.Trace(ctx, "UpdateAlertClassesConfig (ws) success")
 	return &cfg, nil
 }
