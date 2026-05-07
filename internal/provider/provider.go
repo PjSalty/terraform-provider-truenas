@@ -118,21 +118,17 @@ func (p *TrueNASProvider) Schema(_ context.Context, _ provider.SchemaRequest, re
 			},
 			"transport": schema.StringAttribute{
 				Description: "Which transport to use when talking to the TrueNAS API. " +
-					"\"rest\" (default in v1.x) uses the legacy REST API at /api/v2.0. " +
-					"\"websocket\" uses the JSON-RPC 2.0 over WebSocket API at /api/current. " +
-					"The REST API is deprecated and scheduled for removal in TrueNAS SCALE 26.04; " +
-					"v2.0 of this provider will flip the default to \"websocket\". " +
-					"During v1.x, \"websocket\" is opt-in alpha — only resources that have been " +
-					"migrated will work over it; the rest will surface a clear configure-time " +
-					"error. Can also be set via the TRUENAS_TRANSPORT environment variable.",
+					"\"websocket\" (default in v2.0+) uses the JSON-RPC 2.0 over WebSocket API at /api/current. " +
+					"\"rest\" uses the legacy REST API at /api/v2.0. " +
+					"The REST API is deprecated and scheduled for removal in TrueNAS SCALE 26.04. " +
+					"\"rest\" remains supported in v2.x as a rollback path; v2.1 deletes it. " +
+					"Can also be set via the TRUENAS_TRANSPORT environment variable.",
 				MarkdownDescription: "Which transport to use when talking to the TrueNAS API. " +
-					"`\"rest\"` (default in v1.x) uses the legacy REST API at `/api/v2.0`. " +
-					"`\"websocket\"` uses the JSON-RPC 2.0 over WebSocket API at `/api/current`. " +
-					"The REST API is deprecated and scheduled for removal in TrueNAS SCALE 26.04; " +
-					"v2.0 of this provider will flip the default to `\"websocket\"`. " +
-					"During v1.x, `\"websocket\"` is opt-in alpha — only resources that have been " +
-					"migrated will work over it; the rest will surface a clear configure-time " +
-					"error. Can also be set via the `TRUENAS_TRANSPORT` environment variable.",
+					"`\"websocket\"` (default in v2.0+) uses the JSON-RPC 2.0 over WebSocket API at `/api/current`. " +
+					"`\"rest\"` uses the legacy REST API at `/api/v2.0`. " +
+					"The REST API is deprecated and scheduled for removal in TrueNAS SCALE 26.04. " +
+					"`\"rest\"` remains supported in v2.x as a rollback path; v2.1 deletes it. " +
+					"Can also be set via the `TRUENAS_TRANSPORT` environment variable.",
 				Optional: true,
 				Validators: []validator.String{
 					stringvalidator.OneOf("rest", "websocket"),
@@ -189,13 +185,16 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 		insecureSkipVerify = config.InsecureSkipVerify.ValueBool()
 	}
 
-	// Resolve transport from config or environment. Default "rest" for v1.x.
-	// v2.0 will flip the default to "websocket". The schema validator already
-	// gates HCL values to {"rest", "websocket"} so any invalid value here came
-	// in via the env var path; reject it explicitly.
+	// Resolve transport from config or environment. Default is now
+	// "websocket" (Phase 4 cutover, v2.0+). "rest" remains supported as a
+	// rollback path through v2.x and is removed in v2.1.
+	//
+	// The schema validator already gates HCL values to {"rest",
+	// "websocket"} so any invalid value here came in via the env var
+	// path; reject it explicitly.
 	transport := os.Getenv("TRUENAS_TRANSPORT")
 	if transport == "" {
-		transport = "rest"
+		transport = "websocket"
 	}
 	if !config.Transport.IsNull() {
 		transport = config.Transport.ValueString()
