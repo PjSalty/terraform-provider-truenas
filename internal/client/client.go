@@ -510,20 +510,12 @@ func (c *Client) DeleteWithBody(ctx context.Context, path string, body interface
 
 // --- Dataset API ---
 
-// PropertyValue represents a ZFS property with a value field.
-type PropertyValue struct {
-	Value  string      `json:"value"`
-	Source string      `json:"source"`
-	Parsed interface{} `json:"parsed"`
-}
-
-// PropertyRawVal represents a ZFS property with a rawvalue field.
-type PropertyRawVal struct {
-	Value    string      `json:"value"`
-	Rawvalue string      `json:"rawvalue"`
-	Source   string      `json:"source"`
-	Parsed   interface{} `json:"parsed"`
-}
+// PropertyValue and PropertyRawVal moved to internal/types/property.go in
+// the v2.0 transport-migration prep.
+type (
+	PropertyValue  = types.PropertyValue
+	PropertyRawVal = types.PropertyRawVal
+)
 
 // --- NFS Share API ---
 
