@@ -12,7 +12,11 @@ stages:
   - build
 
 variables:
-  GO_IMAGE: harbor.example.com/dockerhub-proxy/library/golang:1.26
+  # Pinned to 1.26.3 (not the floating 1.26 tag) to pick up
+  # GO-2026-4980, GO-2026-4971, and GO-2026-4918 stdlib fixes that
+  # govulncheck started flagging on 2026-05-07. Bump explicitly when
+  # rolling forward to a newer Go release.
+  GO_IMAGE: harbor.example.com/dockerhub-proxy/library/golang:1.26.3
   GOLANGCI_VERSION: v2.11.4
   GOFLAGS: "-mod=readonly"
 
