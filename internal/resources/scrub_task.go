@@ -21,9 +21,18 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// scrubTaskClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type scrubTaskClient interface {
+	GetScrubTask(ctx context.Context, id int) (*tnstypes.ScrubTask, error)
+	CreateScrubTask(ctx context.Context, req *tnstypes.ScrubTaskCreateRequest) (*tnstypes.ScrubTask, error)
+	UpdateScrubTask(ctx context.Context, id int, req *tnstypes.ScrubTaskUpdateRequest) (*tnstypes.ScrubTask, error)
+	DeleteScrubTask(ctx context.Context, id int) error
+}
 
 var (
 	_ resource.Resource                = &ScrubTaskResource{}
@@ -33,7 +42,7 @@ var (
 
 // ScrubTaskResource manages a ZFS pool scrub task.
 type ScrubTaskResource struct {
-	client *client.Client
+	client scrubTaskClient
 }
 
 // ScrubTaskResourceModel describes the resource data model.
@@ -143,11 +152,11 @@ func (r *ScrubTaskResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(scrubTaskClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected scrubTaskClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -164,12 +173,12 @@ func (r *ScrubTaskResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	createReq := &client.ScrubTaskCreateRequest{
+	createReq := &tnstypes.ScrubTaskCreateRequest{
 		Pool:        int(plan.Pool.ValueInt64()),
 		Threshold:   int(plan.Threshold.ValueInt64()),
 		Description: plan.Description.ValueString(),
 		Enabled:     plan.Enabled.ValueBool(),
-		Schedule: client.Schedule{
+		Schedule: tnstypes.Schedule{
 			Minute: plan.Minute.ValueString(),
 			Hour:   plan.Hour.ValueString(),
 			Dom:    plan.Dom.ValueString(),
@@ -216,7 +225,7 @@ func (r *ScrubTaskResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	task, err := r.client.GetScrubTask(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -258,7 +267,7 @@ func (r *ScrubTaskResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	enabled := plan.Enabled.ValueBool()
-	schedule := &client.Schedule{
+	schedule := &tnstypes.Schedule{
 		Minute: plan.Minute.ValueString(),
 		Hour:   plan.Hour.ValueString(),
 		Dom:    plan.Dom.ValueString(),
@@ -266,7 +275,7 @@ func (r *ScrubTaskResource) Update(ctx context.Context, req resource.UpdateReque
 		Dow:    plan.Dow.ValueString(),
 	}
 
-	updateReq := &client.ScrubTaskUpdateRequest{
+	updateReq := &tnstypes.ScrubTaskUpdateRequest{
 		Pool:        int(plan.Pool.ValueInt64()),
 		Threshold:   int(plan.Threshold.ValueInt64()),
 		Description: plan.Description.ValueString(),
@@ -310,7 +319,7 @@ func (r *ScrubTaskResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	err = r.client.DeleteScrubTask(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			tflog.Warn(ctx, "Scrub task already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -339,7 +348,7 @@ func (r *ScrubTaskResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ScrubTaskResource) mapResponseToModel(task *client.ScrubTask, model *ScrubTaskResourceModel) {
+func (r *ScrubTaskResource) mapResponseToModel(task *tnstypes.ScrubTask, model *ScrubTaskResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(task.ID))
 	model.Pool = types.Int64Value(int64(task.Pool))
 	model.PoolName = types.StringValue(task.PoolName)
