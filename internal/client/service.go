@@ -6,26 +6,17 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// Service represents a TrueNAS service.
-type Service struct {
-	ID      int    `json:"id"`
-	Service string `json:"service"`
-	Enable  bool   `json:"enable"`
-	State   string `json:"state"`
-	Pids    []int  `json:"pids"`
-}
-
-// ServiceUpdateRequest represents the request to update a service.
-type ServiceUpdateRequest struct {
-	Enable bool `json:"enable"`
-}
-
-// ServiceStartStopRequest represents the request to start or stop a service.
-type ServiceStartStopRequest struct {
-	Service string `json:"service"`
-}
+// Service, ServiceUpdateRequest, ServiceStartStopRequest moved to
+// internal/types/service.go in the v2.0 transport-migration prep.
+type (
+	Service                 = types.Service
+	ServiceUpdateRequest    = types.ServiceUpdateRequest
+	ServiceStartStopRequest = types.ServiceStartStopRequest
+)
 
 // ListServices retrieves all services.
 func (c *Client) ListServices(ctx context.Context) ([]Service, error) {
