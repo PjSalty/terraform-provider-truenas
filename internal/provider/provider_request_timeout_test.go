@@ -18,6 +18,7 @@ func TestProvider_Configure_RequestTimeoutEnvVar(t *testing.T) {
 	t.Setenv("TRUENAS_API_KEY", "k")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
 	t.Setenv("TRUENAS_READONLY", "")
+	t.Setenv("TRUENAS_TRANSPORT", "rest")
 	t.Setenv("TRUENAS_REQUEST_TIMEOUT", "3m")
 
 	p := New("test")()
@@ -43,6 +44,7 @@ func TestProvider_Configure_RequestTimeoutHCL(t *testing.T) {
 	t.Setenv("TRUENAS_API_KEY", "k")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
 	t.Setenv("TRUENAS_READONLY", "")
+	t.Setenv("TRUENAS_TRANSPORT", "rest")
 	t.Setenv("TRUENAS_REQUEST_TIMEOUT", "")
 
 	p := New("test")()
@@ -69,6 +71,7 @@ func TestProvider_Configure_RequestTimeoutHCLOverridesEnv(t *testing.T) {
 	t.Setenv("TRUENAS_API_KEY", "k")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
 	t.Setenv("TRUENAS_READONLY", "")
+	t.Setenv("TRUENAS_TRANSPORT", "rest")
 	t.Setenv("TRUENAS_REQUEST_TIMEOUT", "90s")
 
 	p := New("test")()
@@ -97,6 +100,7 @@ func TestProvider_Configure_RequestTimeoutInvalidDuration(t *testing.T) {
 	t.Setenv("TRUENAS_API_KEY", "k")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
 	t.Setenv("TRUENAS_READONLY", "")
+	t.Setenv("TRUENAS_TRANSPORT", "rest")
 	t.Setenv("TRUENAS_REQUEST_TIMEOUT", "")
 
 	p := New("test")()
@@ -120,6 +124,7 @@ func TestProvider_Configure_RequestTimeoutDefault(t *testing.T) {
 	t.Setenv("TRUENAS_API_KEY", "k")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
 	t.Setenv("TRUENAS_READONLY", "")
+	t.Setenv("TRUENAS_TRANSPORT", "rest")
 	t.Setenv("TRUENAS_REQUEST_TIMEOUT", "")
 
 	p := New("test")()
