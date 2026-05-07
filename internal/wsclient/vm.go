@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,129 +10,123 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// VM, VMStatus, VMCreateRequest, VMUpdateRequest, VMDeleteOptions, VMDevice,
-// VMDeviceCreateRequest, VMDeviceUpdateRequest moved to internal/types/vm.go
-// in the v2.0 transport-migration prep.
-type (
-	VM                    = types.VM
-	VMStatus              = types.VMStatus
-	VMCreateRequest       = types.VMCreateRequest
-	VMUpdateRequest       = types.VMUpdateRequest
-	VMDeleteOptions       = types.VMDeleteOptions
-	VMDevice              = types.VMDevice
-	VMDeviceCreateRequest = types.VMDeviceCreateRequest
-	VMDeviceUpdateRequest = types.VMDeviceUpdateRequest
-)
+// JSON-RPC method namespaces:
+//   vm.{query,get_instance,create,update,delete,start,stop}
+//   vm.device.{get_instance,create,update,delete}
 
 // ListVMs retrieves all VMs.
 func (c *Client) ListVMs(ctx context.Context) ([]types.VM, error) {
-	tflog.Trace(ctx, "ListVMs start")
+	tflog.Trace(ctx, "ListVMs (ws) start")
 
-	resp, err := c.Get(ctx, "/vm")
+	result, err := c.Call(ctx, "vm.query", nil,
+		CallOptions{Read: true, Idempotent: true})
 	if err != nil {
 		return nil, fmt.Errorf("listing VMs: %w", err)
 	}
 
 	var vms []types.VM
-	if err := json.Unmarshal(resp, &vms); err != nil {
+	if err := json.Unmarshal(result, &vms); err != nil {
 		return nil, fmt.Errorf("parsing VM list response: %w", err)
 	}
-	tflog.Trace(ctx, "ListVMs success")
+	tflog.Trace(ctx, "ListVMs (ws) success")
 	return vms, nil
 }
 
 // GetVM retrieves a VM by its numeric ID.
 func (c *Client) GetVM(ctx context.Context, id int) (*types.VM, error) {
-	tflog.Trace(ctx, "GetVM start")
+	tflog.Trace(ctx, "GetVM (ws) start")
 
-	resp, err := c.Get(ctx, fmt.Sprintf("/vm/id/%d", id))
+	result, err := c.Call(ctx, "vm.get_instance",
+		[]interface{}{id}, CallOptions{Read: true, Idempotent: true})
 	if err != nil {
 		return nil, fmt.Errorf("getting VM %d: %w", id, err)
 	}
 
 	var vm types.VM
-	if err := json.Unmarshal(resp, &vm); err != nil {
+	if err := json.Unmarshal(result, &vm); err != nil {
 		return nil, fmt.Errorf("parsing VM response: %w", err)
 	}
-	tflog.Trace(ctx, "GetVM success")
+	tflog.Trace(ctx, "GetVM (ws) success")
 	return &vm, nil
 }
 
 // CreateVM creates a new VM.
 func (c *Client) CreateVM(ctx context.Context, req *types.VMCreateRequest) (*types.VM, error) {
-	tflog.Trace(ctx, "CreateVM start")
+	tflog.Trace(ctx, "CreateVM (ws) start")
 
-	resp, err := c.Post(ctx, "/vm", req)
+	result, err := c.Call(ctx, "vm.create",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("creating VM %q: %w", req.Name, err)
 	}
 
 	var vm types.VM
-	if err := json.Unmarshal(resp, &vm); err != nil {
+	if err := json.Unmarshal(result, &vm); err != nil {
 		return nil, fmt.Errorf("parsing VM create response: %w", err)
 	}
-	tflog.Trace(ctx, "CreateVM success")
+	tflog.Trace(ctx, "CreateVM (ws) success")
 	return &vm, nil
 }
 
 // UpdateVM updates an existing VM.
 func (c *Client) UpdateVM(ctx context.Context, id int, req *types.VMUpdateRequest) (*types.VM, error) {
-	tflog.Trace(ctx, "UpdateVM start")
+	tflog.Trace(ctx, "UpdateVM (ws) start")
 
-	resp, err := c.Put(ctx, fmt.Sprintf("/vm/id/%d", id), req)
+	result, err := c.Call(ctx, "vm.update",
+		[]interface{}{id, req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating VM %d: %w", id, err)
 	}
 
 	var vm types.VM
-	if err := json.Unmarshal(resp, &vm); err != nil {
+	if err := json.Unmarshal(result, &vm); err != nil {
 		return nil, fmt.Errorf("parsing VM update response: %w", err)
 	}
-	tflog.Trace(ctx, "UpdateVM success")
+	tflog.Trace(ctx, "UpdateVM (ws) success")
 	return &vm, nil
 }
 
-// DeleteVM deletes a VM. The body controls whether associated zvols are also removed
-// and whether a running VM is forcibly stopped.
+// DeleteVM deletes a VM. Pass options to control whether associated zvols
+// are removed and whether a running VM is forcibly stopped.
 func (c *Client) DeleteVM(ctx context.Context, id int, opts *types.VMDeleteOptions) error {
-	tflog.Trace(ctx, "DeleteVM start")
+	tflog.Trace(ctx, "DeleteVM (ws) start")
 
 	if opts == nil {
 		opts = &types.VMDeleteOptions{Force: true, Zvols: false}
 	}
-	_, err := c.DeleteWithBody(ctx, fmt.Sprintf("/vm/id/%d", id), opts)
-	if err != nil {
+	if _, err := c.Call(ctx, "vm.delete",
+		[]interface{}{id, opts}, CallOptions{}); err != nil {
 		return fmt.Errorf("deleting VM %d: %w", id, err)
 	}
-	tflog.Trace(ctx, "DeleteVM success")
+	tflog.Trace(ctx, "DeleteVM (ws) success")
 	return nil
 }
 
 // StartVM powers on a VM.
 func (c *Client) StartVM(ctx context.Context, id int) error {
-	tflog.Trace(ctx, "StartVM start")
+	tflog.Trace(ctx, "StartVM (ws) start")
 
-	_, err := c.Post(ctx, fmt.Sprintf("/vm/id/%d/start", id), map[string]interface{}{})
-	if err != nil {
+	if _, err := c.Call(ctx, "vm.start",
+		[]interface{}{id, map[string]interface{}{}}, CallOptions{}); err != nil {
 		return fmt.Errorf("starting VM %d: %w", id, err)
 	}
-	tflog.Trace(ctx, "StartVM success")
+	tflog.Trace(ctx, "StartVM (ws) success")
 	return nil
 }
 
 // StopVM powers off a VM.
 func (c *Client) StopVM(ctx context.Context, id int, force bool) error {
-	tflog.Trace(ctx, "StopVM start")
+	tflog.Trace(ctx, "StopVM (ws) start")
 
 	body := map[string]interface{}{
 		"force":               force,
 		"force_after_timeout": force,
 	}
-	_, err := c.Post(ctx, fmt.Sprintf("/vm/id/%d/stop", id), body)
-	if err != nil {
+	if _, err := c.Call(ctx, "vm.stop",
+		[]interface{}{id, body}, CallOptions{}); err != nil {
 		return fmt.Errorf("stopping VM %d: %w", id, err)
 	}
-	tflog.Trace(ctx, "StopVM success")
+	tflog.Trace(ctx, "StopVM (ws) success")
 	return nil
 }
 
@@ -140,63 +134,66 @@ func (c *Client) StopVM(ctx context.Context, id int, force bool) error {
 
 // GetVMDevice retrieves a VM device by its numeric ID.
 func (c *Client) GetVMDevice(ctx context.Context, id int) (*types.VMDevice, error) {
-	tflog.Trace(ctx, "GetVMDevice start")
+	tflog.Trace(ctx, "GetVMDevice (ws) start")
 
-	resp, err := c.Get(ctx, fmt.Sprintf("/vm/device/id/%d", id))
+	result, err := c.Call(ctx, "vm.device.get_instance",
+		[]interface{}{id}, CallOptions{Read: true, Idempotent: true})
 	if err != nil {
 		return nil, fmt.Errorf("getting VM device %d: %w", id, err)
 	}
 
 	var dev types.VMDevice
-	if err := json.Unmarshal(resp, &dev); err != nil {
+	if err := json.Unmarshal(result, &dev); err != nil {
 		return nil, fmt.Errorf("parsing VM device response: %w", err)
 	}
-	tflog.Trace(ctx, "GetVMDevice success")
+	tflog.Trace(ctx, "GetVMDevice (ws) success")
 	return &dev, nil
 }
 
 // CreateVMDevice creates a new VM device.
 func (c *Client) CreateVMDevice(ctx context.Context, req *types.VMDeviceCreateRequest) (*types.VMDevice, error) {
-	tflog.Trace(ctx, "CreateVMDevice start")
+	tflog.Trace(ctx, "CreateVMDevice (ws) start")
 
-	resp, err := c.Post(ctx, "/vm/device", req)
+	result, err := c.Call(ctx, "vm.device.create",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("creating VM device on VM %d: %w", req.VM, err)
 	}
 
 	var dev types.VMDevice
-	if err := json.Unmarshal(resp, &dev); err != nil {
+	if err := json.Unmarshal(result, &dev); err != nil {
 		return nil, fmt.Errorf("parsing VM device create response: %w", err)
 	}
-	tflog.Trace(ctx, "CreateVMDevice success")
+	tflog.Trace(ctx, "CreateVMDevice (ws) success")
 	return &dev, nil
 }
 
 // UpdateVMDevice updates an existing VM device.
 func (c *Client) UpdateVMDevice(ctx context.Context, id int, req *types.VMDeviceUpdateRequest) (*types.VMDevice, error) {
-	tflog.Trace(ctx, "UpdateVMDevice start")
+	tflog.Trace(ctx, "UpdateVMDevice (ws) start")
 
-	resp, err := c.Put(ctx, fmt.Sprintf("/vm/device/id/%d", id), req)
+	result, err := c.Call(ctx, "vm.device.update",
+		[]interface{}{id, req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating VM device %d: %w", id, err)
 	}
 
 	var dev types.VMDevice
-	if err := json.Unmarshal(resp, &dev); err != nil {
+	if err := json.Unmarshal(result, &dev); err != nil {
 		return nil, fmt.Errorf("parsing VM device update response: %w", err)
 	}
-	tflog.Trace(ctx, "UpdateVMDevice success")
+	tflog.Trace(ctx, "UpdateVMDevice (ws) success")
 	return &dev, nil
 }
 
 // DeleteVMDevice deletes a VM device.
 func (c *Client) DeleteVMDevice(ctx context.Context, id int) error {
-	tflog.Trace(ctx, "DeleteVMDevice start")
+	tflog.Trace(ctx, "DeleteVMDevice (ws) start")
 
-	_, err := c.Delete(ctx, fmt.Sprintf("/vm/device/id/%d", id))
-	if err != nil {
+	if _, err := c.Call(ctx, "vm.device.delete",
+		[]interface{}{id}, CallOptions{}); err != nil {
 		return fmt.Errorf("deleting VM device %d: %w", id, err)
 	}
-	tflog.Trace(ctx, "DeleteVMDevice success")
+	tflog.Trace(ctx, "DeleteVMDevice (ws) success")
 	return nil
 }
