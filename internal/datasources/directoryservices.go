@@ -9,14 +9,20 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// directoryServicesLookupClient is the read-only surface used by the
+// directoryservices datasource.
+type directoryServicesLookupClient interface {
+	GetDirectoryServicesConfig(ctx context.Context) (*tnstypes.DirectoryServicesConfig, error)
+}
 
 var _ datasource.DataSource = &DirectoryServicesDataSource{}
 
 // DirectoryServicesDataSource provides the singleton directory services config.
 type DirectoryServicesDataSource struct {
-	client *client.Client
+	client directoryServicesLookupClient
 }
 
 // DirectoryServicesDataSourceModel describes the data source model.
@@ -92,11 +98,11 @@ func (d *DirectoryServicesDataSource) Configure(_ context.Context, req datasourc
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(directoryServicesLookupClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected DataSource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected directoryServicesLookupClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}

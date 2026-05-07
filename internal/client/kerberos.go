@@ -6,35 +6,18 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// KerberosRealm represents a Kerberos realm on TrueNAS.
-type KerberosRealm struct {
-	ID            int      `json:"id"`
-	Realm         string   `json:"realm"`
-	PrimaryKDC    *string  `json:"primary_kdc,omitempty"`
-	KDC           []string `json:"kdc"`
-	AdminServer   []string `json:"admin_server"`
-	KPasswdServer []string `json:"kpasswd_server"`
-}
-
-// KerberosRealmCreateRequest is the body for POST /kerberos/realm.
-type KerberosRealmCreateRequest struct {
-	Realm         string   `json:"realm"`
-	PrimaryKDC    *string  `json:"primary_kdc,omitempty"`
-	KDC           []string `json:"kdc"`
-	AdminServer   []string `json:"admin_server"`
-	KPasswdServer []string `json:"kpasswd_server"`
-}
-
-// KerberosRealmUpdateRequest is the body for PUT /kerberos/realm/id/{id}.
-type KerberosRealmUpdateRequest struct {
-	Realm         *string   `json:"realm,omitempty"`
-	PrimaryKDC    *string   `json:"primary_kdc,omitempty"`
-	KDC           *[]string `json:"kdc,omitempty"`
-	AdminServer   *[]string `json:"admin_server,omitempty"`
-	KPasswdServer *[]string `json:"kpasswd_server,omitempty"`
-}
+// KerberosRealm, KerberosRealmCreateRequest, KerberosRealmUpdateRequest
+// moved to internal/types/kerberos.go in the v2.0 transport-migration
+// prep.
+type (
+	KerberosRealm              = types.KerberosRealm
+	KerberosRealmCreateRequest = types.KerberosRealmCreateRequest
+	KerberosRealmUpdateRequest = types.KerberosRealmUpdateRequest
+)
 
 // ListKerberosRealms retrieves all kerberos realms.
 func (c *Client) ListKerberosRealms(ctx context.Context) ([]KerberosRealm, error) {
@@ -116,24 +99,13 @@ func (c *Client) DeleteKerberosRealm(ctx context.Context, id int) error {
 	return nil
 }
 
-// KerberosKeytab represents a Kerberos keytab entry.
-type KerberosKeytab struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-	File string `json:"file"` // base64-encoded keytab bytes
-}
-
-// KerberosKeytabCreateRequest is the body for POST /kerberos/keytab.
-type KerberosKeytabCreateRequest struct {
-	Name string `json:"name"`
-	File string `json:"file"`
-}
-
-// KerberosKeytabUpdateRequest is the body for PUT /kerberos/keytab/id/{id}.
-type KerberosKeytabUpdateRequest struct {
-	Name *string `json:"name,omitempty"`
-	File *string `json:"file,omitempty"`
-}
+// KerberosKeytab, KerberosKeytabCreateRequest, KerberosKeytab
+// UpdateRequest moved to internal/types/kerberos.go.
+type (
+	KerberosKeytab              = types.KerberosKeytab
+	KerberosKeytabCreateRequest = types.KerberosKeytabCreateRequest
+	KerberosKeytabUpdateRequest = types.KerberosKeytabUpdateRequest
+)
 
 // GetKerberosKeytab retrieves a kerberos keytab by ID.
 func (c *Client) GetKerberosKeytab(ctx context.Context, id int) (*KerberosKeytab, error) {
