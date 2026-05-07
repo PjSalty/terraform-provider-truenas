@@ -17,8 +17,16 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// nvmetPortSubsysClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type nvmetPortSubsysClient interface {
+	GetNVMetPortSubsys(ctx context.Context, id int) (*tnstypes.NVMetPortSubsys, error)
+	CreateNVMetPortSubsys(ctx context.Context, req *tnstypes.NVMetPortSubsysCreateRequest) (*tnstypes.NVMetPortSubsys, error)
+	DeleteNVMetPortSubsys(ctx context.Context, id int) error
+}
 
 var (
 	_ resource.Resource                = &NVMetPortSubsysResource{}
@@ -27,7 +35,7 @@ var (
 
 // NVMetPortSubsysResource manages an NVMe-oF port-to-subsystem association.
 type NVMetPortSubsysResource struct {
-	client *client.Client
+	client nvmetPortSubsysClient
 }
 
 // NVMetPortSubsysResourceModel describes the resource data model.
@@ -95,11 +103,11 @@ func (r *NVMetPortSubsysResource) Configure(_ context.Context, req resource.Conf
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(nvmetPortSubsysClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected nvmetPortSubsysClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -116,7 +124,7 @@ func (r *NVMetPortSubsysResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	createReq := &client.NVMetPortSubsysCreateRequest{
+	createReq := &tnstypes.NVMetPortSubsysCreateRequest{
 		PortID:   int(plan.PortID.ValueInt64()),
 		SubsysID: int(plan.SubsysID.ValueInt64()),
 	}
@@ -160,7 +168,7 @@ func (r *NVMetPortSubsysResource) Read(ctx context.Context, req resource.ReadReq
 
 	ps, err := r.client.GetNVMetPortSubsys(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -212,7 +220,7 @@ func (r *NVMetPortSubsysResource) Delete(ctx context.Context, req resource.Delet
 	tflog.Debug(ctx, "Deleting nvmet_port_subsys", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteNVMetPortSubsys(ctx, id); err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			tflog.Warn(ctx, "NVMe-oF port-subsys association already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -233,7 +241,7 @@ func (r *NVMetPortSubsysResource) ImportState(ctx context.Context, req resource.
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NVMetPortSubsysResource) mapResponseToModel(ps *client.NVMetPortSubsys, model *NVMetPortSubsysResourceModel) {
+func (r *NVMetPortSubsysResource) mapResponseToModel(ps *tnstypes.NVMetPortSubsys, model *NVMetPortSubsysResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(ps.ID))
 	model.PortID = types.Int64Value(int64(ps.EffectivePortID()))
 	model.SubsysID = types.Int64Value(int64(ps.EffectiveSubsysID()))
