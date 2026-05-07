@@ -6,41 +6,20 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// ISCSIAuth represents an iSCSI CHAP authentication credential set.
-type ISCSIAuth struct {
-	ID            int    `json:"id"`
-	Tag           int    `json:"tag"`
-	User          string `json:"user"`
-	Secret        string `json:"secret"`
-	Peeruser      string `json:"peeruser"`
-	Peersecret    string `json:"peersecret"`
-	DiscoveryAuth string `json:"discovery_auth"`
-}
-
-// ISCSIAuthCreateRequest is the create payload.
-type ISCSIAuthCreateRequest struct {
-	Tag           int    `json:"tag"`
-	User          string `json:"user"`
-	Secret        string `json:"secret"`
-	Peeruser      string `json:"peeruser,omitempty"`
-	Peersecret    string `json:"peersecret,omitempty"`
-	DiscoveryAuth string `json:"discovery_auth,omitempty"`
-}
-
-// ISCSIAuthUpdateRequest is the update payload.
-type ISCSIAuthUpdateRequest struct {
-	Tag           *int    `json:"tag,omitempty"`
-	User          *string `json:"user,omitempty"`
-	Secret        *string `json:"secret,omitempty"`
-	Peeruser      *string `json:"peeruser,omitempty"`
-	Peersecret    *string `json:"peersecret,omitempty"`
-	DiscoveryAuth *string `json:"discovery_auth,omitempty"`
-}
+// ISCSIAuth, ISCSIAuthCreateRequest, ISCSIAuthUpdateRequest moved to
+// internal/types/iscsi_auth.go in the v2.0 transport-migration prep.
+type (
+	ISCSIAuth              = types.ISCSIAuth
+	ISCSIAuthCreateRequest = types.ISCSIAuthCreateRequest
+	ISCSIAuthUpdateRequest = types.ISCSIAuthUpdateRequest
+)
 
 // GetISCSIAuth retrieves an iSCSI auth entry by ID.
-func (c *Client) GetISCSIAuth(ctx context.Context, id int) (*ISCSIAuth, error) {
+func (c *Client) GetISCSIAuth(ctx context.Context, id int) (*types.ISCSIAuth, error) {
 	tflog.Trace(ctx, "GetISCSIAuth start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/iscsi/auth/id/%d", id))
@@ -48,7 +27,7 @@ func (c *Client) GetISCSIAuth(ctx context.Context, id int) (*ISCSIAuth, error) {
 		return nil, fmt.Errorf("getting iSCSI auth %d: %w", id, err)
 	}
 
-	var a ISCSIAuth
+	var a types.ISCSIAuth
 	if err := json.Unmarshal(resp, &a); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI auth response: %w", err)
 	}
@@ -58,7 +37,7 @@ func (c *Client) GetISCSIAuth(ctx context.Context, id int) (*ISCSIAuth, error) {
 }
 
 // CreateISCSIAuth creates an iSCSI auth entry.
-func (c *Client) CreateISCSIAuth(ctx context.Context, req *ISCSIAuthCreateRequest) (*ISCSIAuth, error) {
+func (c *Client) CreateISCSIAuth(ctx context.Context, req *types.ISCSIAuthCreateRequest) (*types.ISCSIAuth, error) {
 	tflog.Trace(ctx, "CreateISCSIAuth start")
 
 	resp, err := c.Post(ctx, "/iscsi/auth", req)
@@ -66,7 +45,7 @@ func (c *Client) CreateISCSIAuth(ctx context.Context, req *ISCSIAuthCreateReques
 		return nil, fmt.Errorf("creating iSCSI auth: %w", err)
 	}
 
-	var a ISCSIAuth
+	var a types.ISCSIAuth
 	if err := json.Unmarshal(resp, &a); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI auth create response: %w", err)
 	}
@@ -76,7 +55,7 @@ func (c *Client) CreateISCSIAuth(ctx context.Context, req *ISCSIAuthCreateReques
 }
 
 // UpdateISCSIAuth updates an iSCSI auth entry by ID.
-func (c *Client) UpdateISCSIAuth(ctx context.Context, id int, req *ISCSIAuthUpdateRequest) (*ISCSIAuth, error) {
+func (c *Client) UpdateISCSIAuth(ctx context.Context, id int, req *types.ISCSIAuthUpdateRequest) (*types.ISCSIAuth, error) {
 	tflog.Trace(ctx, "UpdateISCSIAuth start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/iscsi/auth/id/%d", id), req)
@@ -84,7 +63,7 @@ func (c *Client) UpdateISCSIAuth(ctx context.Context, id int, req *ISCSIAuthUpda
 		return nil, fmt.Errorf("updating iSCSI auth %d: %w", id, err)
 	}
 
-	var a ISCSIAuth
+	var a types.ISCSIAuth
 	if err := json.Unmarshal(resp, &a); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI auth update response: %w", err)
 	}
