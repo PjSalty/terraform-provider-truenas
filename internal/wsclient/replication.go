@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,76 +10,74 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// Replication, ReplicationCreateRequest, ReplicationUpdateRequest moved
-// to internal/types/replication.go in the v2.0 transport-migration prep.
-type (
-	Replication              = types.Replication
-	ReplicationCreateRequest = types.ReplicationCreateRequest
-	ReplicationUpdateRequest = types.ReplicationUpdateRequest
-)
+// JSON-RPC method namespace for replications: replication.{...}.
 
 // GetReplication retrieves a replication task by ID.
 func (c *Client) GetReplication(ctx context.Context, id int) (*types.Replication, error) {
-	tflog.Trace(ctx, "GetReplication start")
+	tflog.Trace(ctx, "GetReplication (ws) start")
 
-	resp, err := c.Get(ctx, fmt.Sprintf("/replication/id/%d", id))
+	result, err := c.Call(ctx, "replication.get_instance",
+		[]interface{}{id}, CallOptions{Read: true, Idempotent: true})
 	if err != nil {
 		return nil, fmt.Errorf("getting replication %d: %w", id, err)
 	}
 
 	var repl types.Replication
-	if err := json.Unmarshal(resp, &repl); err != nil {
+	if err := json.Unmarshal(result, &repl); err != nil {
 		return nil, fmt.Errorf("parsing replication response: %w", err)
 	}
 
-	tflog.Trace(ctx, "GetReplication success")
+	tflog.Trace(ctx, "GetReplication (ws) success")
 	return &repl, nil
 }
 
 // CreateReplication creates a new replication task.
 func (c *Client) CreateReplication(ctx context.Context, req *types.ReplicationCreateRequest) (*types.Replication, error) {
-	tflog.Trace(ctx, "CreateReplication start")
+	tflog.Trace(ctx, "CreateReplication (ws) start")
 
-	resp, err := c.Post(ctx, "/replication", req)
+	result, err := c.Call(ctx, "replication.create",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("creating replication: %w", err)
 	}
 
 	var repl types.Replication
-	if err := json.Unmarshal(resp, &repl); err != nil {
+	if err := json.Unmarshal(result, &repl); err != nil {
 		return nil, fmt.Errorf("parsing replication create response: %w", err)
 	}
 
-	tflog.Trace(ctx, "CreateReplication success")
+	tflog.Trace(ctx, "CreateReplication (ws) success")
 	return &repl, nil
 }
 
 // UpdateReplication updates an existing replication task.
 func (c *Client) UpdateReplication(ctx context.Context, id int, req *types.ReplicationUpdateRequest) (*types.Replication, error) {
-	tflog.Trace(ctx, "UpdateReplication start")
+	tflog.Trace(ctx, "UpdateReplication (ws) start")
 
-	resp, err := c.Put(ctx, fmt.Sprintf("/replication/id/%d", id), req)
+	result, err := c.Call(ctx, "replication.update",
+		[]interface{}{id, req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating replication %d: %w", id, err)
 	}
 
 	var repl types.Replication
-	if err := json.Unmarshal(resp, &repl); err != nil {
+	if err := json.Unmarshal(result, &repl); err != nil {
 		return nil, fmt.Errorf("parsing replication update response: %w", err)
 	}
 
-	tflog.Trace(ctx, "UpdateReplication success")
+	tflog.Trace(ctx, "UpdateReplication (ws) success")
 	return &repl, nil
 }
 
 // DeleteReplication deletes a replication task.
 func (c *Client) DeleteReplication(ctx context.Context, id int) error {
-	tflog.Trace(ctx, "DeleteReplication start")
+	tflog.Trace(ctx, "DeleteReplication (ws) start")
 
-	_, err := c.Delete(ctx, fmt.Sprintf("/replication/id/%d", id))
-	if err != nil {
+	if _, err := c.Call(ctx, "replication.delete",
+		[]interface{}{id}, CallOptions{}); err != nil {
 		return fmt.Errorf("deleting replication %d: %w", id, err)
 	}
-	tflog.Trace(ctx, "DeleteReplication success")
+
+	tflog.Trace(ctx, "DeleteReplication (ws) success")
 	return nil
 }
