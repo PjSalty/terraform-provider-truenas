@@ -7,60 +7,20 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- Certificate API ---
 
-// Certificate represents a TLS certificate in TrueNAS.
-type Certificate struct {
-	ID                 int      `json:"id"`
-	Type               int      `json:"type"`
-	Name               string   `json:"name"`
-	CertificateData    string   `json:"certificate"`
-	Privatekey         string   `json:"privatekey"`
-	CSR                string   `json:"CSR"`
-	KeyLength          int      `json:"key_length"`
-	KeyType            string   `json:"key_type"`
-	Country            string   `json:"country"`
-	State              string   `json:"state"`
-	City               string   `json:"city"`
-	Organization       string   `json:"organization"`
-	OrganizationalUnit string   `json:"organizational_unit"`
-	Common             string   `json:"common"`
-	Email              string   `json:"email"`
-	DigestAlgorithm    string   `json:"digest_algorithm"`
-	Lifetime           int      `json:"lifetime"`
-	From               string   `json:"from"`
-	Until              string   `json:"until"`
-	Expired            bool     `json:"expired"`
-	Parsed             bool     `json:"parsed"`
-	DN                 string   `json:"DN"`
-	SAN                []string `json:"san"`
-}
-
-// CertificateCreateRequest represents the request body for creating/importing a certificate.
-type CertificateCreateRequest struct {
-	Name               string   `json:"name"`
-	CreateType         string   `json:"create_type"`
-	CertificateData    string   `json:"certificate,omitempty"`
-	Privatekey         string   `json:"privatekey,omitempty"`
-	KeyType            string   `json:"key_type,omitempty"`
-	KeyLength          int      `json:"key_length,omitempty"`
-	DigestAlgorithm    string   `json:"digest_algorithm,omitempty"`
-	Country            string   `json:"country,omitempty"`
-	State              string   `json:"state,omitempty"`
-	City               string   `json:"city,omitempty"`
-	Organization       string   `json:"organization,omitempty"`
-	OrganizationalUnit string   `json:"organizational_unit,omitempty"`
-	Email              string   `json:"email,omitempty"`
-	Common             string   `json:"common,omitempty"`
-	SAN                []string `json:"san,omitempty"`
-}
-
-// CertificateUpdateRequest represents the request body for updating a certificate.
-type CertificateUpdateRequest struct {
-	Name string `json:"name,omitempty"`
-}
+// Certificate, CertificateCreateRequest, CertificateUpdateRequest moved
+// to internal/types/certificate.go in the v2.0 transport-migration prep.
+// Aliased here so existing imports keep compiling.
+type (
+	Certificate              = types.Certificate
+	CertificateCreateRequest = types.CertificateCreateRequest
+	CertificateUpdateRequest = types.CertificateUpdateRequest
+)
 
 // Job represents a TrueNAS async job.
 type Job struct {
