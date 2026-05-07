@@ -134,6 +134,10 @@ func TestProvider_Configure_FromConfig(t *testing.T) {
 	t.Setenv("TRUENAS_URL", "")
 	t.Setenv("TRUENAS_API_KEY", "")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
+	// v2.0 cutover: default transport is now "websocket", which would
+	// dial a non-existent server and fail this test. Pin to "rest" so
+	// the test continues to exercise the REST-client construction path.
+	t.Setenv("TRUENAS_TRANSPORT", "rest")
 
 	p := New("test")()
 	cfg := buildProviderConfig(t, p, providerConfigValues{
@@ -162,6 +166,9 @@ func TestProvider_Configure_FromEnv(t *testing.T) {
 	t.Setenv("TRUENAS_URL", "https://env.example.com")
 	t.Setenv("TRUENAS_API_KEY", "env-key")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
+	// Pin REST so the test exercises the env-default REST path, not
+	// the post-v2.0 websocket-dial path.
+	t.Setenv("TRUENAS_TRANSPORT", "rest")
 
 	p := New("test")()
 	cfg := buildProviderConfig(t, p, providerConfigValues{
@@ -431,6 +438,9 @@ func TestProvider_Configure_ClientError(t *testing.T) {
 	t.Setenv("TRUENAS_URL", "")
 	t.Setenv("TRUENAS_API_KEY", "")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
+	// Forced REST-client failure path; pin transport so the websocket
+	// branch (default in v2.0+) doesn't pre-empt it.
+	t.Setenv("TRUENAS_TRANSPORT", "rest")
 
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
