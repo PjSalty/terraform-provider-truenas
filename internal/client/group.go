@@ -6,10 +6,12 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // ListGroups retrieves all groups.
-func (c *Client) ListGroups(ctx context.Context) ([]Group, error) {
+func (c *Client) ListGroups(ctx context.Context) ([]types.Group, error) {
 	tflog.Trace(ctx, "ListGroups start")
 
 	resp, err := c.Get(ctx, "/group")
@@ -17,7 +19,7 @@ func (c *Client) ListGroups(ctx context.Context) ([]Group, error) {
 		return nil, fmt.Errorf("listing groups: %w", err)
 	}
 
-	var groups []Group
+	var groups []types.Group
 	if err := json.Unmarshal(resp, &groups); err != nil {
 		return nil, fmt.Errorf("parsing groups list: %w", err)
 	}
@@ -27,7 +29,7 @@ func (c *Client) ListGroups(ctx context.Context) ([]Group, error) {
 }
 
 // GetGroupByName finds a group by name.
-func (c *Client) GetGroupByName(ctx context.Context, name string) (*Group, error) {
+func (c *Client) GetGroupByName(ctx context.Context, name string) (*types.Group, error) {
 	tflog.Trace(ctx, "GetGroupByName start")
 
 	groups, err := c.ListGroups(ctx)
