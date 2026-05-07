@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,94 +10,93 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// NFSShare, NFSShareCreateRequest, NFSShareUpdateRequest moved to
-// internal/types/nfs_share.go in the v2.0 transport-migration prep.
-type (
-	NFSShare              = types.NFSShare
-	NFSShareCreateRequest = types.NFSShareCreateRequest
-	NFSShareUpdateRequest = types.NFSShareUpdateRequest
-)
+// JSON-RPC method namespace for NFS shares: sharing.nfs.{...}.
 
 // GetNFSShare retrieves an NFS share by ID.
 func (c *Client) GetNFSShare(ctx context.Context, id int) (*types.NFSShare, error) {
-	tflog.Trace(ctx, "GetNFSShare start")
+	tflog.Trace(ctx, "GetNFSShare (ws) start")
 
-	resp, err := c.Get(ctx, fmt.Sprintf("/sharing/nfs/id/%d", id))
+	result, err := c.Call(ctx, "sharing.nfs.get_instance",
+		[]interface{}{id}, CallOptions{Read: true, Idempotent: true})
 	if err != nil {
 		return nil, fmt.Errorf("getting NFS share %d: %w", id, err)
 	}
 
 	var share types.NFSShare
-	if err := json.Unmarshal(resp, &share); err != nil {
+	if err := json.Unmarshal(result, &share); err != nil {
 		return nil, fmt.Errorf("parsing NFS share response: %w", err)
 	}
 
-	tflog.Trace(ctx, "GetNFSShare success")
+	tflog.Trace(ctx, "GetNFSShare (ws) success")
 	return &share, nil
 }
 
 // ListNFSShares retrieves all NFS shares.
 func (c *Client) ListNFSShares(ctx context.Context) ([]types.NFSShare, error) {
-	tflog.Trace(ctx, "ListNFSShares start")
+	tflog.Trace(ctx, "ListNFSShares (ws) start")
 
-	resp, err := c.Get(ctx, "/sharing/nfs")
+	result, err := c.Call(ctx, "sharing.nfs.query", nil,
+		CallOptions{Read: true, Idempotent: true})
 	if err != nil {
 		return nil, fmt.Errorf("listing NFS shares: %w", err)
 	}
 
 	var shares []types.NFSShare
-	if err := json.Unmarshal(resp, &shares); err != nil {
+	if err := json.Unmarshal(result, &shares); err != nil {
 		return nil, fmt.Errorf("parsing NFS shares list: %w", err)
 	}
 
-	tflog.Trace(ctx, "ListNFSShares success")
+	tflog.Trace(ctx, "ListNFSShares (ws) success")
 	return shares, nil
 }
 
 // CreateNFSShare creates a new NFS share.
 func (c *Client) CreateNFSShare(ctx context.Context, req *types.NFSShareCreateRequest) (*types.NFSShare, error) {
-	tflog.Trace(ctx, "CreateNFSShare start")
+	tflog.Trace(ctx, "CreateNFSShare (ws) start")
 
-	resp, err := c.Post(ctx, "/sharing/nfs", req)
+	result, err := c.Call(ctx, "sharing.nfs.create",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("creating NFS share: %w", err)
 	}
 
 	var share types.NFSShare
-	if err := json.Unmarshal(resp, &share); err != nil {
+	if err := json.Unmarshal(result, &share); err != nil {
 		return nil, fmt.Errorf("parsing NFS share create response: %w", err)
 	}
 
-	tflog.Trace(ctx, "CreateNFSShare success")
+	tflog.Trace(ctx, "CreateNFSShare (ws) success")
 	return &share, nil
 }
 
 // UpdateNFSShare updates an existing NFS share.
 func (c *Client) UpdateNFSShare(ctx context.Context, id int, req *types.NFSShareUpdateRequest) (*types.NFSShare, error) {
-	tflog.Trace(ctx, "UpdateNFSShare start")
+	tflog.Trace(ctx, "UpdateNFSShare (ws) start")
 
-	resp, err := c.Put(ctx, fmt.Sprintf("/sharing/nfs/id/%d", id), req)
+	result, err := c.Call(ctx, "sharing.nfs.update",
+		[]interface{}{id, req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating NFS share %d: %w", id, err)
 	}
 
 	var share types.NFSShare
-	if err := json.Unmarshal(resp, &share); err != nil {
+	if err := json.Unmarshal(result, &share); err != nil {
 		return nil, fmt.Errorf("parsing NFS share update response: %w", err)
 	}
 
-	tflog.Trace(ctx, "UpdateNFSShare success")
+	tflog.Trace(ctx, "UpdateNFSShare (ws) success")
 	return &share, nil
 }
 
-// DeleteNFSShare deletes an NFS share.
+// DeleteNFSShare deletes an NFS share by ID.
 func (c *Client) DeleteNFSShare(ctx context.Context, id int) error {
-	tflog.Trace(ctx, "DeleteNFSShare start")
+	tflog.Trace(ctx, "DeleteNFSShare (ws) start")
 
-	_, err := c.Delete(ctx, fmt.Sprintf("/sharing/nfs/id/%d", id))
-	if err != nil {
+	if _, err := c.Call(ctx, "sharing.nfs.delete",
+		[]interface{}{id}, CallOptions{}); err != nil {
 		return fmt.Errorf("deleting NFS share %d: %w", id, err)
 	}
-	tflog.Trace(ctx, "DeleteNFSShare success")
+
+	tflog.Trace(ctx, "DeleteNFSShare (ws) success")
 	return nil
 }
