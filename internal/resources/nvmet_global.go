@@ -17,8 +17,15 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// nvmetGlobalClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type nvmetGlobalClient interface {
+	GetNVMetGlobal(ctx context.Context) (*tnstypes.NVMetGlobal, error)
+	UpdateNVMetGlobal(ctx context.Context, req *tnstypes.NVMetGlobalUpdateRequest) (*tnstypes.NVMetGlobal, error)
+}
 
 var (
 	_ resource.Resource                = &NVMetGlobalResource{}
@@ -27,7 +34,7 @@ var (
 
 // NVMetGlobalResource manages the TrueNAS NVMe-oF global (singleton) config.
 type NVMetGlobalResource struct {
-	client *client.Client
+	client nvmetGlobalClient
 }
 
 // NVMetGlobalResourceModel describes the resource data model.
@@ -122,11 +129,11 @@ func (r *NVMetGlobalResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(nvmetGlobalClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected nvmetGlobalClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -230,8 +237,8 @@ func (r *NVMetGlobalResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NVMetGlobalResource) buildUpdateRequest(plan *NVMetGlobalResourceModel) *client.NVMetGlobalUpdateRequest {
-	updateReq := &client.NVMetGlobalUpdateRequest{}
+func (r *NVMetGlobalResource) buildUpdateRequest(plan *NVMetGlobalResourceModel) *tnstypes.NVMetGlobalUpdateRequest {
+	updateReq := &tnstypes.NVMetGlobalUpdateRequest{}
 	if !plan.Basenqn.IsNull() && !plan.Basenqn.IsUnknown() {
 		v := plan.Basenqn.ValueString()
 		updateReq.Basenqn = &v
@@ -255,7 +262,7 @@ func (r *NVMetGlobalResource) buildUpdateRequest(plan *NVMetGlobalResourceModel)
 	return updateReq
 }
 
-func (r *NVMetGlobalResource) mapResponseToModel(config *client.NVMetGlobal, model *NVMetGlobalResourceModel) {
+func (r *NVMetGlobalResource) mapResponseToModel(config *tnstypes.NVMetGlobal, model *NVMetGlobalResourceModel) {
 	model.ID = types.StringValue("1")
 	model.Basenqn = types.StringValue(config.Basenqn)
 	model.Kernel = types.BoolValue(config.Kernel)
