@@ -24,8 +24,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// filesystemACLTemplateClient is the transport-agnostic surface for
+// ACL-template CRUD.
+type filesystemACLTemplateClient interface {
+	GetFilesystemACLTemplate(ctx context.Context, id int) (*tnstypes.FilesystemACLTemplate, error)
+	CreateFilesystemACLTemplate(ctx context.Context, req *tnstypes.FilesystemACLTemplateCreateRequest) (*tnstypes.FilesystemACLTemplate, error)
+	UpdateFilesystemACLTemplate(ctx context.Context, id int, req *tnstypes.FilesystemACLTemplateUpdateRequest) (*tnstypes.FilesystemACLTemplate, error)
+	DeleteFilesystemACLTemplate(ctx context.Context, id int) error
+}
 
 var (
 	_ resource.Resource                = &FilesystemACLTemplateResource{}
@@ -33,7 +42,7 @@ var (
 )
 
 type FilesystemACLTemplateResource struct {
-	client *client.Client
+	client filesystemACLTemplateClient
 }
 
 type FilesystemACLTemplateResourceModel struct {
@@ -114,11 +123,11 @@ func (r *FilesystemACLTemplateResource) Configure(_ context.Context, req resourc
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(filesystemACLTemplateClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected filesystemACLTemplateClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -141,7 +150,7 @@ func (r *FilesystemACLTemplateResource) Create(ctx context.Context, req resource
 		return
 	}
 
-	createReq := &client.FilesystemACLTemplateCreateRequest{
+	createReq := &tnstypes.FilesystemACLTemplateCreateRequest{
 		Name:    plan.Name.ValueString(),
 		ACLType: plan.ACLType.ValueString(),
 		Comment: plan.Comment.ValueString(),
@@ -181,7 +190,7 @@ func (r *FilesystemACLTemplateResource) Read(ctx context.Context, req resource.R
 
 	t, err := r.client.GetFilesystemACLTemplate(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -228,7 +237,7 @@ func (r *FilesystemACLTemplateResource) Update(ctx context.Context, req resource
 	name := plan.Name.ValueString()
 	comment := plan.Comment.ValueString()
 
-	updateReq := &client.FilesystemACLTemplateUpdateRequest{
+	updateReq := &tnstypes.FilesystemACLTemplateUpdateRequest{
 		Name:    &name,
 		Comment: &comment,
 		ACL:     acl,
@@ -264,7 +273,7 @@ func (r *FilesystemACLTemplateResource) Delete(ctx context.Context, req resource
 	}
 
 	if err := r.client.DeleteFilesystemACLTemplate(ctx, id); err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			tflog.Warn(ctx, "Filesystem ACL template already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -282,7 +291,7 @@ func (r *FilesystemACLTemplateResource) ImportState(ctx context.Context, req res
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *FilesystemACLTemplateResource) mapResponseToModel(t *client.FilesystemACLTemplate, model *FilesystemACLTemplateResourceModel) {
+func (r *FilesystemACLTemplateResource) mapResponseToModel(t *tnstypes.FilesystemACLTemplate, model *FilesystemACLTemplateResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(t.ID))
 	model.Name = types.StringValue(t.Name)
 	model.ACLType = types.StringValue(t.ACLType)
