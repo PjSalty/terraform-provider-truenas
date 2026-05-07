@@ -6,10 +6,12 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // ListUsers retrieves all users.
-func (c *Client) ListUsers(ctx context.Context) ([]User, error) {
+func (c *Client) ListUsers(ctx context.Context) ([]types.User, error) {
 	tflog.Trace(ctx, "ListUsers start")
 
 	resp, err := c.Get(ctx, "/user")
@@ -17,7 +19,7 @@ func (c *Client) ListUsers(ctx context.Context) ([]User, error) {
 		return nil, fmt.Errorf("listing users: %w", err)
 	}
 
-	var users []User
+	var users []types.User
 	if err := json.Unmarshal(resp, &users); err != nil {
 		return nil, fmt.Errorf("parsing users list: %w", err)
 	}
@@ -27,7 +29,7 @@ func (c *Client) ListUsers(ctx context.Context) ([]User, error) {
 }
 
 // GetUserByUsername finds a user by username.
-func (c *Client) GetUserByUsername(ctx context.Context, username string) (*User, error) {
+func (c *Client) GetUserByUsername(ctx context.Context, username string) (*types.User, error) {
 	tflog.Trace(ctx, "GetUserByUsername start")
 
 	users, err := c.ListUsers(ctx)
