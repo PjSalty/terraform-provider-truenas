@@ -139,23 +139,12 @@ func (c *Client) DeleteApp(ctx context.Context, id string, req *AppDeleteRequest
 
 // --- Catalog API ---
 
-// Catalog represents the TrueNAS SCALE application catalog.
-//
-// In TrueNAS SCALE 25.04+ the catalog is a singleton — there is only one
-// official catalog (label "TRUENAS") and the only user-tunable field is
-// `preferred_trains`. The provider models the full struct for state, but
-// only `preferred_trains` is mutable through the REST API.
-type Catalog struct {
-	ID              string   `json:"id"`
-	Label           string   `json:"label"`
-	PreferredTrains []string `json:"preferred_trains"`
-	Location        string   `json:"location"`
-}
-
-// CatalogUpdateRequest represents the body for PUT /catalog.
-type CatalogUpdateRequest struct {
-	PreferredTrains *[]string `json:"preferred_trains,omitempty"`
-}
+// Catalog, CatalogUpdateRequest moved to internal/types/catalog.go in
+// the v2.0 transport-migration prep.
+type (
+	Catalog              = types.Catalog
+	CatalogUpdateRequest = types.CatalogUpdateRequest
+)
 
 // GetCatalog retrieves the singleton catalog configuration.
 func (c *Client) GetCatalog(ctx context.Context) (*Catalog, error) {
