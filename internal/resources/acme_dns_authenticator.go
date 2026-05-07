@@ -19,8 +19,18 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// acmeDNSAuthenticatorClient is the transport-agnostic surface used by
+// ACMEDNSAuthenticatorResource. Both *client.Client (REST) and
+// *wsclient.Client (JSON-RPC) satisfy it via duck typing.
+type acmeDNSAuthenticatorClient interface {
+	GetACMEDNSAuthenticator(ctx context.Context, id int) (*tnstypes.ACMEDNSAuthenticator, error)
+	CreateACMEDNSAuthenticator(ctx context.Context, req *tnstypes.ACMEDNSAuthenticatorCreateRequest) (*tnstypes.ACMEDNSAuthenticator, error)
+	UpdateACMEDNSAuthenticator(ctx context.Context, id int, req *tnstypes.ACMEDNSAuthenticatorUpdateRequest) (*tnstypes.ACMEDNSAuthenticator, error)
+	DeleteACMEDNSAuthenticator(ctx context.Context, id int) error
+}
 
 var (
 	_ resource.Resource                = &ACMEDNSAuthenticatorResource{}
@@ -29,7 +39,7 @@ var (
 
 // ACMEDNSAuthenticatorResource manages a TrueNAS ACME DNS authenticator.
 type ACMEDNSAuthenticatorResource struct {
-	client *client.Client
+	client acmeDNSAuthenticatorClient
 }
 
 // ACMEDNSAuthenticatorResourceModel describes the resource data model.
@@ -95,11 +105,11 @@ func (r *ACMEDNSAuthenticatorResource) Configure(_ context.Context, req resource
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(acmeDNSAuthenticatorClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected acmeDNSAuthenticatorClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -128,7 +138,7 @@ func (r *ACMEDNSAuthenticatorResource) Create(ctx context.Context, req resource.
 		}
 	}
 
-	createReq := &client.ACMEDNSAuthenticatorCreateRequest{
+	createReq := &tnstypes.ACMEDNSAuthenticatorCreateRequest{
 		Name:       plan.Name.ValueString(),
 		Attributes: attrs,
 	}
@@ -172,7 +182,7 @@ func (r *ACMEDNSAuthenticatorResource) Read(ctx context.Context, req resource.Re
 
 	auth, err := r.client.GetACMEDNSAuthenticator(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -225,7 +235,7 @@ func (r *ACMEDNSAuthenticatorResource) Update(ctx context.Context, req resource.
 		}
 	}
 
-	updateReq := &client.ACMEDNSAuthenticatorUpdateRequest{
+	updateReq := &tnstypes.ACMEDNSAuthenticatorUpdateRequest{
 		Name:       plan.Name.ValueString(),
 		Attributes: attrs,
 	}
@@ -266,7 +276,7 @@ func (r *ACMEDNSAuthenticatorResource) Delete(ctx context.Context, req resource.
 
 	err = r.client.DeleteACMEDNSAuthenticator(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			tflog.Warn(ctx, "ACME DNS authenticator already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -287,7 +297,7 @@ func (r *ACMEDNSAuthenticatorResource) ImportState(ctx context.Context, req reso
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ACMEDNSAuthenticatorResource) mapResponseToModel(ctx context.Context, auth *client.ACMEDNSAuthenticator, model *ACMEDNSAuthenticatorResourceModel) {
+func (r *ACMEDNSAuthenticatorResource) mapResponseToModel(ctx context.Context, auth *tnstypes.ACMEDNSAuthenticator, model *ACMEDNSAuthenticatorResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(auth.ID))
 	model.Name = types.StringValue(auth.Name)
 
