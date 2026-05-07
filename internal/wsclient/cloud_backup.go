@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,78 +10,74 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// CloudBackupSchedule, CloudBackup, CloudBackupCreateRequest,
-// CloudBackupUpdateRequest moved to internal/types/cloud_backup.go in
-// the v2.0 transport-migration prep.
-type (
-	CloudBackupSchedule      = types.CloudBackupSchedule
-	CloudBackup              = types.CloudBackup
-	CloudBackupCreateRequest = types.CloudBackupCreateRequest
-	CloudBackupUpdateRequest = types.CloudBackupUpdateRequest
-)
+// JSON-RPC method namespace for cloud backup tasks: cloud_backup.{...}.
 
 // GetCloudBackup retrieves a cloud backup task by ID.
 func (c *Client) GetCloudBackup(ctx context.Context, id int) (*types.CloudBackup, error) {
-	tflog.Trace(ctx, "GetCloudBackup start")
+	tflog.Trace(ctx, "GetCloudBackup (ws) start")
 
-	resp, err := c.Get(ctx, fmt.Sprintf("/cloud_backup/id/%d", id))
+	result, err := c.Call(ctx, "cloud_backup.get_instance",
+		[]interface{}{id}, CallOptions{Read: true, Idempotent: true})
 	if err != nil {
 		return nil, fmt.Errorf("getting cloud backup %d: %w", id, err)
 	}
 
 	var cb types.CloudBackup
-	if err := json.Unmarshal(resp, &cb); err != nil {
+	if err := json.Unmarshal(result, &cb); err != nil {
 		return nil, fmt.Errorf("parsing cloud backup response: %w", err)
 	}
 
-	tflog.Trace(ctx, "GetCloudBackup success")
+	tflog.Trace(ctx, "GetCloudBackup (ws) success")
 	return &cb, nil
 }
 
 // CreateCloudBackup creates a cloud backup task.
 func (c *Client) CreateCloudBackup(ctx context.Context, req *types.CloudBackupCreateRequest) (*types.CloudBackup, error) {
-	tflog.Trace(ctx, "CreateCloudBackup start")
+	tflog.Trace(ctx, "CreateCloudBackup (ws) start")
 
-	resp, err := c.Post(ctx, "/cloud_backup", req)
+	result, err := c.Call(ctx, "cloud_backup.create",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("creating cloud backup: %w", err)
 	}
 
 	var cb types.CloudBackup
-	if err := json.Unmarshal(resp, &cb); err != nil {
+	if err := json.Unmarshal(result, &cb); err != nil {
 		return nil, fmt.Errorf("parsing cloud backup create response: %w", err)
 	}
 
-	tflog.Trace(ctx, "CreateCloudBackup success")
+	tflog.Trace(ctx, "CreateCloudBackup (ws) success")
 	return &cb, nil
 }
 
 // UpdateCloudBackup updates an existing cloud backup task.
 func (c *Client) UpdateCloudBackup(ctx context.Context, id int, req *types.CloudBackupUpdateRequest) (*types.CloudBackup, error) {
-	tflog.Trace(ctx, "UpdateCloudBackup start")
+	tflog.Trace(ctx, "UpdateCloudBackup (ws) start")
 
-	resp, err := c.Put(ctx, fmt.Sprintf("/cloud_backup/id/%d", id), req)
+	result, err := c.Call(ctx, "cloud_backup.update",
+		[]interface{}{id, req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating cloud backup %d: %w", id, err)
 	}
 
 	var cb types.CloudBackup
-	if err := json.Unmarshal(resp, &cb); err != nil {
+	if err := json.Unmarshal(result, &cb); err != nil {
 		return nil, fmt.Errorf("parsing cloud backup update response: %w", err)
 	}
 
-	tflog.Trace(ctx, "UpdateCloudBackup success")
+	tflog.Trace(ctx, "UpdateCloudBackup (ws) success")
 	return &cb, nil
 }
 
 // DeleteCloudBackup deletes a cloud backup task.
 func (c *Client) DeleteCloudBackup(ctx context.Context, id int) error {
-	tflog.Trace(ctx, "DeleteCloudBackup start")
+	tflog.Trace(ctx, "DeleteCloudBackup (ws) start")
 
-	_, err := c.Delete(ctx, fmt.Sprintf("/cloud_backup/id/%d", id))
-	if err != nil {
+	if _, err := c.Call(ctx, "cloud_backup.delete",
+		[]interface{}{id}, CallOptions{}); err != nil {
 		return fmt.Errorf("deleting cloud backup %d: %w", id, err)
 	}
-	tflog.Trace(ctx, "DeleteCloudBackup success")
+
+	tflog.Trace(ctx, "DeleteCloudBackup (ws) success")
 	return nil
 }
