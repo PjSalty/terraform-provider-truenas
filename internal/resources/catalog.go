@@ -19,8 +19,16 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// catalogClient is the transport-agnostic surface used by
+// CatalogResource.
+type catalogClient interface {
+	GetCatalog(ctx context.Context) (*tnstypes.Catalog, error)
+	UpdateCatalog(ctx context.Context, req *tnstypes.CatalogUpdateRequest) (*tnstypes.Catalog, error)
+	SyncCatalog(ctx context.Context) error
+}
 
 var (
 	_ resource.Resource                = &CatalogResource{}
@@ -35,7 +43,7 @@ var (
 // singleton: Create/Update/Read all hit PUT/GET /catalog, and Delete resets
 // the preferred trains to an empty list.
 type CatalogResource struct {
-	client *client.Client
+	client catalogClient
 }
 
 // CatalogResourceModel describes the resource data model.
@@ -113,11 +121,11 @@ func (r *CatalogResource) Configure(_ context.Context, req resource.ConfigureReq
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(catalogClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected catalogClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -137,7 +145,7 @@ func (r *CatalogResource) Create(ctx context.Context, req resource.CreateRequest
 	trains, d := listToStringSlice(ctx, plan.PreferredTrains)
 	resp.Diagnostics.Append(d...)
 
-	updateReq := &client.CatalogUpdateRequest{PreferredTrains: &trains}
+	updateReq := &tnstypes.CatalogUpdateRequest{PreferredTrains: &trains}
 	tflog.Debug(ctx, "Updating TrueNAS catalog (singleton create)", map[string]interface{}{
 		"preferred_trains": trains,
 	})
@@ -211,7 +219,7 @@ func (r *CatalogResource) Update(ctx context.Context, req resource.UpdateRequest
 	trains, d := listToStringSlice(ctx, plan.PreferredTrains)
 	resp.Diagnostics.Append(d...)
 
-	cat, err := r.client.UpdateCatalog(ctx, &client.CatalogUpdateRequest{PreferredTrains: &trains})
+	cat, err := r.client.UpdateCatalog(ctx, &tnstypes.CatalogUpdateRequest{PreferredTrains: &trains})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating Catalog",
@@ -236,7 +244,7 @@ func (r *CatalogResource) Delete(ctx context.Context, _ resource.DeleteRequest, 
 	tflog.Debug(ctx, "Resetting TrueNAS catalog preferred_trains to default on delete")
 
 	trains := []string{"stable"}
-	if _, err := r.client.UpdateCatalog(ctx, &client.CatalogUpdateRequest{PreferredTrains: &trains}); err != nil {
+	if _, err := r.client.UpdateCatalog(ctx, &tnstypes.CatalogUpdateRequest{PreferredTrains: &trains}); err != nil {
 		resp.Diagnostics.AddError(
 			"Error Resetting Catalog",
 			fmt.Sprintf("Could not reset catalog preferred_trains: %s", err),
@@ -251,7 +259,7 @@ func (r *CatalogResource) ImportState(ctx context.Context, req resource.ImportSt
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("sync_on_create"), types.BoolValue(false))...)
 }
 
-func (r *CatalogResource) mapResponseToModel(ctx context.Context, cat *client.Catalog, model *CatalogResourceModel) {
+func (r *CatalogResource) mapResponseToModel(ctx context.Context, cat *tnstypes.Catalog, model *CatalogResourceModel) {
 	model.ID = types.StringValue(cat.ID)
 	model.Label = types.StringValue(cat.Label)
 	model.Location = types.StringValue(cat.Location)
