@@ -17,9 +17,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// nvmetHostClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type nvmetHostClient interface {
+	GetNVMetHost(ctx context.Context, id int) (*tnstypes.NVMetHost, error)
+	CreateNVMetHost(ctx context.Context, req *tnstypes.NVMetHostCreateRequest) (*tnstypes.NVMetHost, error)
+	UpdateNVMetHost(ctx context.Context, id int, req *tnstypes.NVMetHostUpdateRequest) (*tnstypes.NVMetHost, error)
+	DeleteNVMetHost(ctx context.Context, id int) error
+}
 
 var (
 	_ resource.Resource                = &NVMetHostResource{}
@@ -29,7 +38,7 @@ var (
 
 // NVMetHostResource manages an NVMe-oF host (initiator NQN).
 type NVMetHostResource struct {
-	client *client.Client
+	client nvmetHostClient
 }
 
 // NVMetHostResourceModel describes the resource data model.
@@ -114,11 +123,11 @@ func (r *NVMetHostResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(nvmetHostClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected nvmetHostClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -135,7 +144,7 @@ func (r *NVMetHostResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	createReq := &client.NVMetHostCreateRequest{
+	createReq := &tnstypes.NVMetHostCreateRequest{
 		Hostnqn: plan.Hostnqn.ValueString(),
 	}
 	if !plan.DhchapKey.IsNull() && !plan.DhchapKey.IsUnknown() {
@@ -191,7 +200,7 @@ func (r *NVMetHostResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	host, err := r.client.GetNVMetHost(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -232,7 +241,7 @@ func (r *NVMetHostResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	updateReq := &client.NVMetHostUpdateRequest{}
+	updateReq := &tnstypes.NVMetHostUpdateRequest{}
 	if !plan.Hostnqn.IsNull() && !plan.Hostnqn.IsUnknown() {
 		v := plan.Hostnqn.ValueString()
 		updateReq.Hostnqn = &v
@@ -289,7 +298,7 @@ func (r *NVMetHostResource) Delete(ctx context.Context, req resource.DeleteReque
 	tflog.Debug(ctx, "Deleting nvmet_host", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteNVMetHost(ctx, id); err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			tflog.Warn(ctx, "NVMe-oF host already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -351,7 +360,7 @@ func (r *NVMetHostResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NVMetHostResource) mapResponseToModel(host *client.NVMetHost, model *NVMetHostResourceModel) {
+func (r *NVMetHostResource) mapResponseToModel(host *tnstypes.NVMetHost, model *NVMetHostResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(host.ID))
 	model.Hostnqn = types.StringValue(host.Hostnqn)
 	if host.DhchapKey != nil {
