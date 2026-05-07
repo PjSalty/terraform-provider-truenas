@@ -6,58 +6,20 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// --- Rsync Task API ---
-
-// RsyncTask represents an rsync task in TrueNAS.
-type RsyncTask struct {
-	ID           int      `json:"id"`
-	Path         string   `json:"path"`
-	Remotehost   string   `json:"remotehost,omitempty"`
-	Remoteport   int      `json:"remoteport,omitempty"`
-	Mode         string   `json:"mode,omitempty"`
-	Remotemodule string   `json:"remotemodule,omitempty"`
-	Remotepath   string   `json:"remotepath,omitempty"`
-	Direction    string   `json:"direction,omitempty"`
-	Schedule     Schedule `json:"schedule"`
-	User         string   `json:"user"`
-	Enabled      bool     `json:"enabled"`
-	Desc         string   `json:"desc,omitempty"`
-}
-
-// RsyncTaskCreateRequest represents the request to create an rsync task.
-type RsyncTaskCreateRequest struct {
-	Path         string   `json:"path"`
-	Remotehost   string   `json:"remotehost,omitempty"`
-	Remoteport   int      `json:"remoteport,omitempty"`
-	Mode         string   `json:"mode,omitempty"`
-	Remotemodule string   `json:"remotemodule,omitempty"`
-	Remotepath   string   `json:"remotepath,omitempty"`
-	Direction    string   `json:"direction,omitempty"`
-	Schedule     Schedule `json:"schedule,omitempty"`
-	User         string   `json:"user"`
-	Enabled      bool     `json:"enabled"`
-	Desc         string   `json:"desc,omitempty"`
-}
-
-// RsyncTaskUpdateRequest represents the request to update an rsync task.
-type RsyncTaskUpdateRequest struct {
-	Path         string    `json:"path,omitempty"`
-	Remotehost   string    `json:"remotehost,omitempty"`
-	Remoteport   int       `json:"remoteport,omitempty"`
-	Mode         string    `json:"mode,omitempty"`
-	Remotemodule string    `json:"remotemodule,omitempty"`
-	Remotepath   string    `json:"remotepath,omitempty"`
-	Direction    string    `json:"direction,omitempty"`
-	Schedule     *Schedule `json:"schedule,omitempty"`
-	User         string    `json:"user,omitempty"`
-	Enabled      *bool     `json:"enabled,omitempty"`
-	Desc         string    `json:"desc,omitempty"`
-}
+// RsyncTask, RsyncTaskCreateRequest, RsyncTaskUpdateRequest moved to
+// internal/types/rsync_task.go in the v2.0 transport-migration prep.
+type (
+	RsyncTask              = types.RsyncTask
+	RsyncTaskCreateRequest = types.RsyncTaskCreateRequest
+	RsyncTaskUpdateRequest = types.RsyncTaskUpdateRequest
+)
 
 // GetRsyncTask retrieves an rsync task by ID.
-func (c *Client) GetRsyncTask(ctx context.Context, id int) (*RsyncTask, error) {
+func (c *Client) GetRsyncTask(ctx context.Context, id int) (*types.RsyncTask, error) {
 	tflog.Trace(ctx, "GetRsyncTask start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/rsynctask/id/%d", id))
@@ -65,7 +27,7 @@ func (c *Client) GetRsyncTask(ctx context.Context, id int) (*RsyncTask, error) {
 		return nil, fmt.Errorf("getting rsync task %d: %w", id, err)
 	}
 
-	var task RsyncTask
+	var task types.RsyncTask
 	if err := json.Unmarshal(resp, &task); err != nil {
 		return nil, fmt.Errorf("parsing rsync task response: %w", err)
 	}
@@ -75,7 +37,7 @@ func (c *Client) GetRsyncTask(ctx context.Context, id int) (*RsyncTask, error) {
 }
 
 // CreateRsyncTask creates a new rsync task.
-func (c *Client) CreateRsyncTask(ctx context.Context, req *RsyncTaskCreateRequest) (*RsyncTask, error) {
+func (c *Client) CreateRsyncTask(ctx context.Context, req *types.RsyncTaskCreateRequest) (*types.RsyncTask, error) {
 	tflog.Trace(ctx, "CreateRsyncTask start")
 
 	resp, err := c.Post(ctx, "/rsynctask", req)
@@ -83,7 +45,7 @@ func (c *Client) CreateRsyncTask(ctx context.Context, req *RsyncTaskCreateReques
 		return nil, fmt.Errorf("creating rsync task: %w", err)
 	}
 
-	var task RsyncTask
+	var task types.RsyncTask
 	if err := json.Unmarshal(resp, &task); err != nil {
 		return nil, fmt.Errorf("parsing rsync task create response: %w", err)
 	}
@@ -93,7 +55,7 @@ func (c *Client) CreateRsyncTask(ctx context.Context, req *RsyncTaskCreateReques
 }
 
 // UpdateRsyncTask updates an existing rsync task.
-func (c *Client) UpdateRsyncTask(ctx context.Context, id int, req *RsyncTaskUpdateRequest) (*RsyncTask, error) {
+func (c *Client) UpdateRsyncTask(ctx context.Context, id int, req *types.RsyncTaskUpdateRequest) (*types.RsyncTask, error) {
 	tflog.Trace(ctx, "UpdateRsyncTask start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/rsynctask/id/%d", id), req)
@@ -101,7 +63,7 @@ func (c *Client) UpdateRsyncTask(ctx context.Context, id int, req *RsyncTaskUpda
 		return nil, fmt.Errorf("updating rsync task %d: %w", id, err)
 	}
 
-	var task RsyncTask
+	var task types.RsyncTask
 	if err := json.Unmarshal(resp, &task); err != nil {
 		return nil, fmt.Errorf("parsing rsync task update response: %w", err)
 	}
