@@ -20,10 +20,19 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	tnvalidators "github.com/PjSalty/terraform-provider-truenas/internal/validators"
 )
+
+// iscsiPortalClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type iscsiPortalClient interface {
+	GetISCSIPortal(ctx context.Context, id int) (*tnstypes.ISCSIPortal, error)
+	CreateISCSIPortal(ctx context.Context, req *tnstypes.ISCSIPortalCreateRequest) (*tnstypes.ISCSIPortal, error)
+	UpdateISCSIPortal(ctx context.Context, id int, req *tnstypes.ISCSIPortalUpdateRequest) (*tnstypes.ISCSIPortal, error)
+	DeleteISCSIPortal(ctx context.Context, id int) error
+}
 
 var (
 	_ resource.Resource                = &ISCSIPortalResource{}
@@ -33,7 +42,7 @@ var (
 
 // ISCSIPortalResource manages a TrueNAS iSCSI portal.
 type ISCSIPortalResource struct {
-	client *client.Client
+	client iscsiPortalClient
 }
 
 // ISCSIPortalResourceModel describes the resource data model.
@@ -129,11 +138,11 @@ func (r *ISCSIPortalResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(iscsiPortalClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected iscsiPortalClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -150,7 +159,7 @@ func (r *ISCSIPortalResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createReq := &client.ISCSIPortalCreateRequest{}
+	createReq := &tnstypes.ISCSIPortalCreateRequest{}
 
 	if !plan.Comment.IsNull() {
 		createReq.Comment = plan.Comment.ValueString()
@@ -159,7 +168,7 @@ func (r *ISCSIPortalResource) Create(ctx context.Context, req resource.CreateReq
 	var listens []ISCSIPortalListenModel
 	resp.Diagnostics.Append(plan.Listen.ElementsAs(ctx, &listens, false)...)
 	for _, l := range listens {
-		listen := client.ISCSIPortalListen{
+		listen := tnstypes.ISCSIPortalListen{
 			IP: l.IP.ValueString(),
 		}
 		if !l.Port.IsNull() && !l.Port.IsUnknown() {
@@ -204,7 +213,7 @@ func (r *ISCSIPortalResource) Read(ctx context.Context, req resource.ReadRequest
 
 	portal, err := r.client.GetISCSIPortal(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -245,7 +254,7 @@ func (r *ISCSIPortalResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	updateReq := &client.ISCSIPortalUpdateRequest{}
+	updateReq := &tnstypes.ISCSIPortalUpdateRequest{}
 
 	if !plan.Comment.IsNull() {
 		updateReq.Comment = plan.Comment.ValueString()
@@ -254,7 +263,7 @@ func (r *ISCSIPortalResource) Update(ctx context.Context, req resource.UpdateReq
 	var listens []ISCSIPortalListenModel
 	resp.Diagnostics.Append(plan.Listen.ElementsAs(ctx, &listens, false)...)
 	for _, l := range listens {
-		listen := client.ISCSIPortalListen{
+		listen := tnstypes.ISCSIPortalListen{
 			IP: l.IP.ValueString(),
 		}
 		if !l.Port.IsNull() && !l.Port.IsUnknown() {
@@ -299,7 +308,7 @@ func (r *ISCSIPortalResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err = r.client.DeleteISCSIPortal(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			tflog.Warn(ctx, "iSCSI portal already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -328,7 +337,7 @@ func (r *ISCSIPortalResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ISCSIPortalResource) mapResponseToModel(_ context.Context, portal *client.ISCSIPortal, model *ISCSIPortalResourceModel) {
+func (r *ISCSIPortalResource) mapResponseToModel(_ context.Context, portal *tnstypes.ISCSIPortal, model *ISCSIPortalResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(portal.ID))
 	model.Comment = types.StringValue(portal.Comment)
 	model.Tag = types.Int64Value(int64(portal.Tag))
