@@ -22,9 +22,18 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// nfsShareClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type nfsShareClient interface {
+	GetNFSShare(ctx context.Context, id int) (*tnstypes.NFSShare, error)
+	CreateNFSShare(ctx context.Context, req *tnstypes.NFSShareCreateRequest) (*tnstypes.NFSShare, error)
+	UpdateNFSShare(ctx context.Context, id int, req *tnstypes.NFSShareUpdateRequest) (*tnstypes.NFSShare, error)
+	DeleteNFSShare(ctx context.Context, id int) error
+}
 
 var (
 	_ resource.Resource                = &NFSShareResource{}
@@ -34,7 +43,7 @@ var (
 
 // NFSShareResource manages a TrueNAS NFS share.
 type NFSShareResource struct {
-	client *client.Client
+	client nfsShareClient
 }
 
 // NFSShareResourceModel describes the resource data model.
@@ -170,11 +179,11 @@ func (r *NFSShareResource) Configure(_ context.Context, req resource.ConfigureRe
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(nfsShareClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected nfsShareClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -191,7 +200,7 @@ func (r *NFSShareResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	createReq := &client.NFSShareCreateRequest{
+	createReq := &tnstypes.NFSShareCreateRequest{
 		Path:    plan.Path.ValueString(),
 		Enabled: plan.Enabled.ValueBool(),
 	}
@@ -271,7 +280,7 @@ func (r *NFSShareResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	share, err := r.client.GetNFSShare(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -315,7 +324,7 @@ func (r *NFSShareResource) Update(ctx context.Context, req resource.UpdateReques
 	readOnly := plan.ReadOnly.ValueBool()
 	enabled := plan.Enabled.ValueBool()
 
-	updateReq := &client.NFSShareUpdateRequest{
+	updateReq := &tnstypes.NFSShareUpdateRequest{
 		Path:     plan.Path.ValueString(),
 		ReadOnly: &readOnly,
 		Enabled:  &enabled,
@@ -393,7 +402,7 @@ func (r *NFSShareResource) Delete(ctx context.Context, req resource.DeleteReques
 
 	err = r.client.DeleteNFSShare(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			tflog.Warn(ctx, "NFS share already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -472,7 +481,7 @@ func (r *NFSShareResource) ImportState(ctx context.Context, req resource.ImportS
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NFSShareResource) mapResponseToModel(ctx context.Context, share *client.NFSShare, model *NFSShareResourceModel) {
+func (r *NFSShareResource) mapResponseToModel(ctx context.Context, share *tnstypes.NFSShare, model *NFSShareResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(share.ID))
 	model.Path = types.StringValue(share.Path)
 	model.Comment = types.StringValue(share.Comment)
