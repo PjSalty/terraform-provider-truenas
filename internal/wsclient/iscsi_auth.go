@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,76 +10,74 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// ISCSIAuth, ISCSIAuthCreateRequest, ISCSIAuthUpdateRequest moved to
-// internal/types/iscsi_auth.go in the v2.0 transport-migration prep.
-type (
-	ISCSIAuth              = types.ISCSIAuth
-	ISCSIAuthCreateRequest = types.ISCSIAuthCreateRequest
-	ISCSIAuthUpdateRequest = types.ISCSIAuthUpdateRequest
-)
+// JSON-RPC method namespace for iSCSI CHAP auth: iscsi.auth.{...}.
 
 // GetISCSIAuth retrieves an iSCSI auth entry by ID.
 func (c *Client) GetISCSIAuth(ctx context.Context, id int) (*types.ISCSIAuth, error) {
-	tflog.Trace(ctx, "GetISCSIAuth start")
+	tflog.Trace(ctx, "GetISCSIAuth (ws) start")
 
-	resp, err := c.Get(ctx, fmt.Sprintf("/iscsi/auth/id/%d", id))
+	result, err := c.Call(ctx, "iscsi.auth.get_instance",
+		[]interface{}{id}, CallOptions{Read: true, Idempotent: true})
 	if err != nil {
 		return nil, fmt.Errorf("getting iSCSI auth %d: %w", id, err)
 	}
 
 	var a types.ISCSIAuth
-	if err := json.Unmarshal(resp, &a); err != nil {
+	if err := json.Unmarshal(result, &a); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI auth response: %w", err)
 	}
 
-	tflog.Trace(ctx, "GetISCSIAuth success")
+	tflog.Trace(ctx, "GetISCSIAuth (ws) success")
 	return &a, nil
 }
 
 // CreateISCSIAuth creates an iSCSI auth entry.
 func (c *Client) CreateISCSIAuth(ctx context.Context, req *types.ISCSIAuthCreateRequest) (*types.ISCSIAuth, error) {
-	tflog.Trace(ctx, "CreateISCSIAuth start")
+	tflog.Trace(ctx, "CreateISCSIAuth (ws) start")
 
-	resp, err := c.Post(ctx, "/iscsi/auth", req)
+	result, err := c.Call(ctx, "iscsi.auth.create",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("creating iSCSI auth: %w", err)
 	}
 
 	var a types.ISCSIAuth
-	if err := json.Unmarshal(resp, &a); err != nil {
+	if err := json.Unmarshal(result, &a); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI auth create response: %w", err)
 	}
 
-	tflog.Trace(ctx, "CreateISCSIAuth success")
+	tflog.Trace(ctx, "CreateISCSIAuth (ws) success")
 	return &a, nil
 }
 
 // UpdateISCSIAuth updates an iSCSI auth entry by ID.
 func (c *Client) UpdateISCSIAuth(ctx context.Context, id int, req *types.ISCSIAuthUpdateRequest) (*types.ISCSIAuth, error) {
-	tflog.Trace(ctx, "UpdateISCSIAuth start")
+	tflog.Trace(ctx, "UpdateISCSIAuth (ws) start")
 
-	resp, err := c.Put(ctx, fmt.Sprintf("/iscsi/auth/id/%d", id), req)
+	result, err := c.Call(ctx, "iscsi.auth.update",
+		[]interface{}{id, req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating iSCSI auth %d: %w", id, err)
 	}
 
 	var a types.ISCSIAuth
-	if err := json.Unmarshal(resp, &a); err != nil {
+	if err := json.Unmarshal(result, &a); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI auth update response: %w", err)
 	}
 
-	tflog.Trace(ctx, "UpdateISCSIAuth success")
+	tflog.Trace(ctx, "UpdateISCSIAuth (ws) success")
 	return &a, nil
 }
 
 // DeleteISCSIAuth deletes an iSCSI auth entry.
 func (c *Client) DeleteISCSIAuth(ctx context.Context, id int) error {
-	tflog.Trace(ctx, "DeleteISCSIAuth start")
+	tflog.Trace(ctx, "DeleteISCSIAuth (ws) start")
 
-	_, err := c.Delete(ctx, fmt.Sprintf("/iscsi/auth/id/%d", id))
-	if err != nil {
+	if _, err := c.Call(ctx, "iscsi.auth.delete",
+		[]interface{}{id}, CallOptions{}); err != nil {
 		return fmt.Errorf("deleting iSCSI auth %d: %w", id, err)
 	}
-	tflog.Trace(ctx, "DeleteISCSIAuth success")
+
+	tflog.Trace(ctx, "DeleteISCSIAuth (ws) success")
 	return nil
 }
