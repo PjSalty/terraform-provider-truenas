@@ -6,38 +6,22 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// --- Cloud Sync Credential API ---
-//
-// Cloud Sync Credentials are distinct from Keychain Credentials on TrueNAS
-// SCALE: they live under /cloudsync/credentials and hold provider-specific
-// authentication payloads (S3 access keys, B2 application keys, Azure
-// account keys, etc.) used by cloud_sync and cloud_backup tasks.
-
-// CloudSyncCredential represents a cloud storage credential on TrueNAS SCALE.
-// The `provider` field is polymorphic; its shape depends on the provider type
-// (e.g. {"type": "S3", "access_key_id": "...", "secret_access_key": "..."}).
-type CloudSyncCredential struct {
-	ID       int                    `json:"id"`
-	Name     string                 `json:"name"`
-	Provider map[string]interface{} `json:"provider"`
-}
-
-// CloudSyncCredentialCreateRequest is the body for creating a cloud sync credential.
-type CloudSyncCredentialCreateRequest struct {
-	Name     string                 `json:"name"`
-	Provider map[string]interface{} `json:"provider"`
-}
-
-// CloudSyncCredentialUpdateRequest is the body for updating a cloud sync credential.
-type CloudSyncCredentialUpdateRequest struct {
-	Name     string                 `json:"name,omitempty"`
-	Provider map[string]interface{} `json:"provider,omitempty"`
-}
+// CloudSyncCredential, CloudSyncCredentialCreateRequest,
+// CloudSyncCredentialUpdateRequest moved to
+// internal/types/cloudsync_credential.go in the v2.0
+// transport-migration prep.
+type (
+	CloudSyncCredential              = types.CloudSyncCredential
+	CloudSyncCredentialCreateRequest = types.CloudSyncCredentialCreateRequest
+	CloudSyncCredentialUpdateRequest = types.CloudSyncCredentialUpdateRequest
+)
 
 // GetCloudSyncCredential retrieves a cloud sync credential by ID.
-func (c *Client) GetCloudSyncCredential(ctx context.Context, id int) (*CloudSyncCredential, error) {
+func (c *Client) GetCloudSyncCredential(ctx context.Context, id int) (*types.CloudSyncCredential, error) {
 	tflog.Trace(ctx, "GetCloudSyncCredential start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/cloudsync/credentials/id/%d", id))
@@ -45,7 +29,7 @@ func (c *Client) GetCloudSyncCredential(ctx context.Context, id int) (*CloudSync
 		return nil, fmt.Errorf("getting cloud sync credential %d: %w", id, err)
 	}
 
-	var cred CloudSyncCredential
+	var cred types.CloudSyncCredential
 	if err := json.Unmarshal(resp, &cred); err != nil {
 		return nil, fmt.Errorf("parsing cloud sync credential response: %w", err)
 	}
@@ -55,7 +39,7 @@ func (c *Client) GetCloudSyncCredential(ctx context.Context, id int) (*CloudSync
 }
 
 // ListCloudSyncCredentials retrieves all cloud sync credentials.
-func (c *Client) ListCloudSyncCredentials(ctx context.Context) ([]CloudSyncCredential, error) {
+func (c *Client) ListCloudSyncCredentials(ctx context.Context) ([]types.CloudSyncCredential, error) {
 	tflog.Trace(ctx, "ListCloudSyncCredentials start")
 
 	resp, err := c.Get(ctx, "/cloudsync/credentials")
@@ -63,7 +47,7 @@ func (c *Client) ListCloudSyncCredentials(ctx context.Context) ([]CloudSyncCrede
 		return nil, fmt.Errorf("listing cloud sync credentials: %w", err)
 	}
 
-	var creds []CloudSyncCredential
+	var creds []types.CloudSyncCredential
 	if err := json.Unmarshal(resp, &creds); err != nil {
 		return nil, fmt.Errorf("parsing cloud sync credentials list: %w", err)
 	}
@@ -73,7 +57,7 @@ func (c *Client) ListCloudSyncCredentials(ctx context.Context) ([]CloudSyncCrede
 }
 
 // GetCloudSyncCredentialByName finds a cloud sync credential by name.
-func (c *Client) GetCloudSyncCredentialByName(ctx context.Context, name string) (*CloudSyncCredential, error) {
+func (c *Client) GetCloudSyncCredentialByName(ctx context.Context, name string) (*types.CloudSyncCredential, error) {
 	tflog.Trace(ctx, "GetCloudSyncCredentialByName start")
 
 	creds, err := c.ListCloudSyncCredentials(ctx)
@@ -95,7 +79,7 @@ func (c *Client) GetCloudSyncCredentialByName(ctx context.Context, name string) 
 }
 
 // CreateCloudSyncCredential creates a new cloud sync credential.
-func (c *Client) CreateCloudSyncCredential(ctx context.Context, req *CloudSyncCredentialCreateRequest) (*CloudSyncCredential, error) {
+func (c *Client) CreateCloudSyncCredential(ctx context.Context, req *types.CloudSyncCredentialCreateRequest) (*types.CloudSyncCredential, error) {
 	tflog.Trace(ctx, "CreateCloudSyncCredential start")
 
 	resp, err := c.Post(ctx, "/cloudsync/credentials", req)
@@ -103,7 +87,7 @@ func (c *Client) CreateCloudSyncCredential(ctx context.Context, req *CloudSyncCr
 		return nil, fmt.Errorf("creating cloud sync credential %q: %w", req.Name, err)
 	}
 
-	var cred CloudSyncCredential
+	var cred types.CloudSyncCredential
 	if err := json.Unmarshal(resp, &cred); err != nil {
 		return nil, fmt.Errorf("parsing cloud sync credential create response: %w", err)
 	}
@@ -113,7 +97,7 @@ func (c *Client) CreateCloudSyncCredential(ctx context.Context, req *CloudSyncCr
 }
 
 // UpdateCloudSyncCredential updates an existing cloud sync credential.
-func (c *Client) UpdateCloudSyncCredential(ctx context.Context, id int, req *CloudSyncCredentialUpdateRequest) (*CloudSyncCredential, error) {
+func (c *Client) UpdateCloudSyncCredential(ctx context.Context, id int, req *types.CloudSyncCredentialUpdateRequest) (*types.CloudSyncCredential, error) {
 	tflog.Trace(ctx, "UpdateCloudSyncCredential start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/cloudsync/credentials/id/%d", id), req)
@@ -121,7 +105,7 @@ func (c *Client) UpdateCloudSyncCredential(ctx context.Context, id int, req *Clo
 		return nil, fmt.Errorf("updating cloud sync credential %d: %w", id, err)
 	}
 
-	var cred CloudSyncCredential
+	var cred types.CloudSyncCredential
 	if err := json.Unmarshal(resp, &cred); err != nil {
 		return nil, fmt.Errorf("parsing cloud sync credential update response: %w", err)
 	}
