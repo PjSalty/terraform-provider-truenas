@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,77 +10,75 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// ISCSITargetExtent, ISCSITargetExtentCreateRequest,
-// ISCSITargetExtentUpdateRequest moved to
-// internal/types/iscsi_targetextent.go in the v2.0 transport-migration prep.
-type (
-	ISCSITargetExtent              = types.ISCSITargetExtent
-	ISCSITargetExtentCreateRequest = types.ISCSITargetExtentCreateRequest
-	ISCSITargetExtentUpdateRequest = types.ISCSITargetExtentUpdateRequest
-)
+// JSON-RPC method namespace for iSCSI target-extent associations:
+// iscsi.targetextent.{...}.
 
 // GetISCSITargetExtent retrieves an iSCSI target-extent association by ID.
 func (c *Client) GetISCSITargetExtent(ctx context.Context, id int) (*types.ISCSITargetExtent, error) {
-	tflog.Trace(ctx, "GetISCSITargetExtent start")
+	tflog.Trace(ctx, "GetISCSITargetExtent (ws) start")
 
-	resp, err := c.Get(ctx, fmt.Sprintf("/iscsi/targetextent/id/%d", id))
+	result, err := c.Call(ctx, "iscsi.targetextent.get_instance",
+		[]interface{}{id}, CallOptions{Read: true, Idempotent: true})
 	if err != nil {
 		return nil, fmt.Errorf("getting iSCSI target-extent %d: %w", id, err)
 	}
 
 	var te types.ISCSITargetExtent
-	if err := json.Unmarshal(resp, &te); err != nil {
+	if err := json.Unmarshal(result, &te); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI target-extent response: %w", err)
 	}
 
-	tflog.Trace(ctx, "GetISCSITargetExtent success")
+	tflog.Trace(ctx, "GetISCSITargetExtent (ws) success")
 	return &te, nil
 }
 
 // CreateISCSITargetExtent creates a new iSCSI target-extent association.
 func (c *Client) CreateISCSITargetExtent(ctx context.Context, req *types.ISCSITargetExtentCreateRequest) (*types.ISCSITargetExtent, error) {
-	tflog.Trace(ctx, "CreateISCSITargetExtent start")
+	tflog.Trace(ctx, "CreateISCSITargetExtent (ws) start")
 
-	resp, err := c.Post(ctx, "/iscsi/targetextent", req)
+	result, err := c.Call(ctx, "iscsi.targetextent.create",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("creating iSCSI target-extent: %w", err)
 	}
 
 	var te types.ISCSITargetExtent
-	if err := json.Unmarshal(resp, &te); err != nil {
+	if err := json.Unmarshal(result, &te); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI target-extent create response: %w", err)
 	}
 
-	tflog.Trace(ctx, "CreateISCSITargetExtent success")
+	tflog.Trace(ctx, "CreateISCSITargetExtent (ws) success")
 	return &te, nil
 }
 
 // UpdateISCSITargetExtent updates an existing iSCSI target-extent association.
 func (c *Client) UpdateISCSITargetExtent(ctx context.Context, id int, req *types.ISCSITargetExtentUpdateRequest) (*types.ISCSITargetExtent, error) {
-	tflog.Trace(ctx, "UpdateISCSITargetExtent start")
+	tflog.Trace(ctx, "UpdateISCSITargetExtent (ws) start")
 
-	resp, err := c.Put(ctx, fmt.Sprintf("/iscsi/targetextent/id/%d", id), req)
+	result, err := c.Call(ctx, "iscsi.targetextent.update",
+		[]interface{}{id, req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating iSCSI target-extent %d: %w", id, err)
 	}
 
 	var te types.ISCSITargetExtent
-	if err := json.Unmarshal(resp, &te); err != nil {
+	if err := json.Unmarshal(result, &te); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI target-extent update response: %w", err)
 	}
 
-	tflog.Trace(ctx, "UpdateISCSITargetExtent success")
+	tflog.Trace(ctx, "UpdateISCSITargetExtent (ws) success")
 	return &te, nil
 }
 
 // DeleteISCSITargetExtent deletes an iSCSI target-extent association.
 func (c *Client) DeleteISCSITargetExtent(ctx context.Context, id int) error {
-	tflog.Trace(ctx, "DeleteISCSITargetExtent start")
+	tflog.Trace(ctx, "DeleteISCSITargetExtent (ws) start")
 
-	_, err := c.Delete(ctx, fmt.Sprintf("/iscsi/targetextent/id/%d", id))
-	if err != nil {
+	if _, err := c.Call(ctx, "iscsi.targetextent.delete",
+		[]interface{}{id}, CallOptions{}); err != nil {
 		return fmt.Errorf("deleting iSCSI target-extent %d: %w", id, err)
 	}
-	tflog.Trace(ctx, "DeleteISCSITargetExtent success")
+
+	tflog.Trace(ctx, "DeleteISCSITargetExtent (ws) success")
 	return nil
 }
