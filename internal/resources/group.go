@@ -24,9 +24,18 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// groupClient is the transport-agnostic surface this resource needs.
+// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
+type groupClient interface {
+	GetGroup(ctx context.Context, id int) (*tnstypes.Group, error)
+	CreateGroup(ctx context.Context, req *tnstypes.GroupCreateRequest) (*tnstypes.Group, error)
+	UpdateGroup(ctx context.Context, id int, req *tnstypes.GroupUpdateRequest) (*tnstypes.Group, error)
+	DeleteGroup(ctx context.Context, id int) error
+}
 
 var (
 	_ resource.Resource                = &GroupResource{}
@@ -36,7 +45,7 @@ var (
 
 // GroupResource manages a TrueNAS local group.
 type GroupResource struct {
-	client *client.Client
+	client groupClient
 }
 
 // GroupResourceModel describes the resource data model.
@@ -110,11 +119,11 @@ func (r *GroupResource) Configure(_ context.Context, req resource.ConfigureReque
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(groupClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected groupClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -131,7 +140,7 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	createReq := &client.GroupCreateRequest{
+	createReq := &tnstypes.GroupCreateRequest{
 		Name: plan.Name.ValueString(),
 		SMB:  plan.SMB.ValueBool(),
 	}
@@ -184,7 +193,7 @@ func (r *GroupResource) Read(ctx context.Context, req resource.ReadRequest, resp
 
 	group, err := r.client.GetGroup(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -227,7 +236,7 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	smb := plan.SMB.ValueBool()
 
-	updateReq := &client.GroupUpdateRequest{
+	updateReq := &tnstypes.GroupUpdateRequest{
 		Name: plan.Name.ValueString(),
 		SMB:  &smb,
 	}
@@ -274,7 +283,7 @@ func (r *GroupResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 
 	err = r.client.DeleteGroup(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			tflog.Warn(ctx, "Group already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -303,7 +312,7 @@ func (r *GroupResource) ImportState(ctx context.Context, req resource.ImportStat
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *GroupResource) mapResponseToModel(group *client.Group, model *GroupResourceModel) {
+func (r *GroupResource) mapResponseToModel(group *tnstypes.Group, model *GroupResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(group.ID))
 	model.Name = types.StringValue(group.Name)
 	model.GID = types.Int64Value(int64(group.GID))
