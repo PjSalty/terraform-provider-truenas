@@ -7,26 +7,15 @@ import (
 	"net/url"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- Disk API (read-only) ---
 
-// Disk represents a disk in TrueNAS.
-type Disk struct {
-	Identifier  string  `json:"identifier"`
-	Name        string  `json:"name"`
-	Subsystem   string  `json:"subsystem"`
-	Number      int     `json:"number"`
-	Serial      string  `json:"serial"`
-	Size        int64   `json:"size"`
-	Description string  `json:"description"`
-	Model       string  `json:"model"`
-	Type        string  `json:"type"`
-	ZFSGuid     *string `json:"zfs_guid"`
-	Bus         string  `json:"bus"`
-	Devname     string  `json:"devname"`
-	Pool        *string `json:"pool"`
-}
+// Disk moved to internal/types/disk.go in the v2.0 transport-migration
+// prep.
+type Disk = types.Disk
 
 // ListDisks retrieves all disks.
 func (c *Client) ListDisks(ctx context.Context) ([]Disk, error) {
