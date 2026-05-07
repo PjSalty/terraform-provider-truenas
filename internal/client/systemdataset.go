@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- System Dataset API ---
@@ -14,23 +16,12 @@ import (
 // hosts TrueNAS's internal system data (samba, reports, syslog, ...).
 // PUT /systemdataset is asynchronous and returns a job ID.
 
-// SystemDataset represents the system dataset configuration.
-type SystemDataset struct {
-	ID       int    `json:"id"`
-	Pool     string `json:"pool"`
-	PoolSet  bool   `json:"pool_set"`
-	UUID     string `json:"uuid"`
-	Basename string `json:"basename"`
-	Path     string `json:"path"`
-}
-
-// SystemDatasetUpdateRequest represents the payload to move the system
-// dataset to a different pool. `pool` names the target pool; `pool_exclude`
-// names a pool to avoid if `pool` is not given.
-type SystemDatasetUpdateRequest struct {
-	Pool        *string `json:"pool,omitempty"`
-	PoolExclude *string `json:"pool_exclude,omitempty"`
-}
+// SystemDataset, SystemDatasetUpdateRequest moved to
+// internal/types/systemdataset.go in the v2.0 transport-migration prep.
+type (
+	SystemDataset              = types.SystemDataset
+	SystemDatasetUpdateRequest = types.SystemDatasetUpdateRequest
+)
 
 // GetSystemDataset retrieves the current system dataset configuration.
 func (c *Client) GetSystemDataset(ctx context.Context) (*SystemDataset, error) {
