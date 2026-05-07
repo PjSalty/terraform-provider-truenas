@@ -1,4 +1,4 @@
-package client
+package wsclient
 
 import (
 	"context"
@@ -10,94 +10,93 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// SMBShare, SMBShareCreateRequest, SMBShareUpdateRequest moved to
-// internal/types/smb_share.go in the v2.0 transport-migration prep.
-type (
-	SMBShare              = types.SMBShare
-	SMBShareCreateRequest = types.SMBShareCreateRequest
-	SMBShareUpdateRequest = types.SMBShareUpdateRequest
-)
+// JSON-RPC method namespace for SMB shares: sharing.smb.{...}.
 
 // ListSMBShares retrieves all SMB shares.
 func (c *Client) ListSMBShares(ctx context.Context) ([]types.SMBShare, error) {
-	tflog.Trace(ctx, "ListSMBShares start")
+	tflog.Trace(ctx, "ListSMBShares (ws) start")
 
-	resp, err := c.Get(ctx, "/sharing/smb")
+	result, err := c.Call(ctx, "sharing.smb.query", nil,
+		CallOptions{Read: true, Idempotent: true})
 	if err != nil {
 		return nil, fmt.Errorf("listing SMB shares: %w", err)
 	}
 
 	var shares []types.SMBShare
-	if err := json.Unmarshal(resp, &shares); err != nil {
+	if err := json.Unmarshal(result, &shares); err != nil {
 		return nil, fmt.Errorf("parsing SMB shares list: %w", err)
 	}
 
-	tflog.Trace(ctx, "ListSMBShares success")
+	tflog.Trace(ctx, "ListSMBShares (ws) success")
 	return shares, nil
 }
 
 // GetSMBShare retrieves an SMB share by ID.
 func (c *Client) GetSMBShare(ctx context.Context, id int) (*types.SMBShare, error) {
-	tflog.Trace(ctx, "GetSMBShare start")
+	tflog.Trace(ctx, "GetSMBShare (ws) start")
 
-	resp, err := c.Get(ctx, fmt.Sprintf("/sharing/smb/id/%d", id))
+	result, err := c.Call(ctx, "sharing.smb.get_instance",
+		[]interface{}{id}, CallOptions{Read: true, Idempotent: true})
 	if err != nil {
 		return nil, fmt.Errorf("getting SMB share %d: %w", id, err)
 	}
 
 	var share types.SMBShare
-	if err := json.Unmarshal(resp, &share); err != nil {
+	if err := json.Unmarshal(result, &share); err != nil {
 		return nil, fmt.Errorf("parsing SMB share response: %w", err)
 	}
 
-	tflog.Trace(ctx, "GetSMBShare success")
+	tflog.Trace(ctx, "GetSMBShare (ws) success")
 	return &share, nil
 }
 
 // CreateSMBShare creates a new SMB share.
 func (c *Client) CreateSMBShare(ctx context.Context, req *types.SMBShareCreateRequest) (*types.SMBShare, error) {
-	tflog.Trace(ctx, "CreateSMBShare start")
+	tflog.Trace(ctx, "CreateSMBShare (ws) start")
 
-	resp, err := c.Post(ctx, "/sharing/smb", req)
+	result, err := c.Call(ctx, "sharing.smb.create",
+		[]interface{}{req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("creating SMB share: %w", err)
 	}
 
 	var share types.SMBShare
-	if err := json.Unmarshal(resp, &share); err != nil {
+	if err := json.Unmarshal(result, &share); err != nil {
 		return nil, fmt.Errorf("parsing SMB share create response: %w", err)
 	}
 
-	tflog.Trace(ctx, "CreateSMBShare success")
+	tflog.Trace(ctx, "CreateSMBShare (ws) success")
 	return &share, nil
 }
 
 // UpdateSMBShare updates an existing SMB share.
 func (c *Client) UpdateSMBShare(ctx context.Context, id int, req *types.SMBShareUpdateRequest) (*types.SMBShare, error) {
-	tflog.Trace(ctx, "UpdateSMBShare start")
+	tflog.Trace(ctx, "UpdateSMBShare (ws) start")
 
-	resp, err := c.Put(ctx, fmt.Sprintf("/sharing/smb/id/%d", id), req)
+	result, err := c.Call(ctx, "sharing.smb.update",
+		[]interface{}{id, req}, CallOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("updating SMB share %d: %w", id, err)
 	}
 
 	var share types.SMBShare
-	if err := json.Unmarshal(resp, &share); err != nil {
+	if err := json.Unmarshal(result, &share); err != nil {
 		return nil, fmt.Errorf("parsing SMB share update response: %w", err)
 	}
 
-	tflog.Trace(ctx, "UpdateSMBShare success")
+	tflog.Trace(ctx, "UpdateSMBShare (ws) success")
 	return &share, nil
 }
 
-// DeleteSMBShare deletes an SMB share.
+// DeleteSMBShare deletes an SMB share by ID.
 func (c *Client) DeleteSMBShare(ctx context.Context, id int) error {
-	tflog.Trace(ctx, "DeleteSMBShare start")
+	tflog.Trace(ctx, "DeleteSMBShare (ws) start")
 
-	_, err := c.Delete(ctx, fmt.Sprintf("/sharing/smb/id/%d", id))
-	if err != nil {
+	if _, err := c.Call(ctx, "sharing.smb.delete",
+		[]interface{}{id}, CallOptions{}); err != nil {
 		return fmt.Errorf("deleting SMB share %d: %w", id, err)
 	}
-	tflog.Trace(ctx, "DeleteSMBShare success")
+
+	tflog.Trace(ctx, "DeleteSMBShare (ws) success")
 	return nil
 }
