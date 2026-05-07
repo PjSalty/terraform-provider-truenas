@@ -6,34 +6,20 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// --- API Key API ---
-
-// APIKey represents an API key in TrueNAS.
-type APIKey struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	Username string `json:"username"`
-	Key      string `json:"key,omitempty"`
-	Local    bool   `json:"local"`
-	Revoked  bool   `json:"revoked"`
-}
-
-// APIKeyCreateRequest represents the request body for creating an API key.
-type APIKeyCreateRequest struct {
-	Name     string `json:"name"`
-	Username string `json:"username,omitempty"`
-}
-
-// APIKeyUpdateRequest represents the request body for updating an API key.
-type APIKeyUpdateRequest struct {
-	Name  string `json:"name,omitempty"`
-	Reset bool   `json:"reset,omitempty"`
-}
+// APIKey, APIKeyCreateRequest, APIKeyUpdateRequest moved to
+// internal/types/api_key.go in the v2.0 transport-migration prep.
+type (
+	APIKey              = types.APIKey
+	APIKeyCreateRequest = types.APIKeyCreateRequest
+	APIKeyUpdateRequest = types.APIKeyUpdateRequest
+)
 
 // GetAPIKey retrieves an API key by ID.
-func (c *Client) GetAPIKey(ctx context.Context, id int) (*APIKey, error) {
+func (c *Client) GetAPIKey(ctx context.Context, id int) (*types.APIKey, error) {
 	tflog.Trace(ctx, "GetAPIKey start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/api_key/id/%d", id))
@@ -41,7 +27,7 @@ func (c *Client) GetAPIKey(ctx context.Context, id int) (*APIKey, error) {
 		return nil, fmt.Errorf("getting API key %d: %w", id, err)
 	}
 
-	var key APIKey
+	var key types.APIKey
 	if err := json.Unmarshal(resp, &key); err != nil {
 		return nil, fmt.Errorf("parsing API key response: %w", err)
 	}
@@ -51,7 +37,7 @@ func (c *Client) GetAPIKey(ctx context.Context, id int) (*APIKey, error) {
 }
 
 // CreateAPIKey creates a new API key. The key value is only returned on creation.
-func (c *Client) CreateAPIKey(ctx context.Context, req *APIKeyCreateRequest) (*APIKey, error) {
+func (c *Client) CreateAPIKey(ctx context.Context, req *types.APIKeyCreateRequest) (*types.APIKey, error) {
 	tflog.Trace(ctx, "CreateAPIKey start")
 
 	resp, err := c.Post(ctx, "/api_key", req)
@@ -59,7 +45,7 @@ func (c *Client) CreateAPIKey(ctx context.Context, req *APIKeyCreateRequest) (*A
 		return nil, fmt.Errorf("creating API key %q: %w", req.Name, err)
 	}
 
-	var key APIKey
+	var key types.APIKey
 	if err := json.Unmarshal(resp, &key); err != nil {
 		return nil, fmt.Errorf("parsing API key create response: %w", err)
 	}
@@ -69,7 +55,7 @@ func (c *Client) CreateAPIKey(ctx context.Context, req *APIKeyCreateRequest) (*A
 }
 
 // UpdateAPIKey updates an existing API key.
-func (c *Client) UpdateAPIKey(ctx context.Context, id int, req *APIKeyUpdateRequest) (*APIKey, error) {
+func (c *Client) UpdateAPIKey(ctx context.Context, id int, req *types.APIKeyUpdateRequest) (*types.APIKey, error) {
 	tflog.Trace(ctx, "UpdateAPIKey start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/api_key/id/%d", id), req)
@@ -77,7 +63,7 @@ func (c *Client) UpdateAPIKey(ctx context.Context, id int, req *APIKeyUpdateRequ
 		return nil, fmt.Errorf("updating API key %d: %w", id, err)
 	}
 
-	var key APIKey
+	var key types.APIKey
 	if err := json.Unmarshal(resp, &key); err != nil {
 		return nil, fmt.Errorf("parsing API key update response: %w", err)
 	}
