@@ -18,8 +18,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// kerberosRealmClient is the transport-agnostic surface for Kerberos
+// realm CRUD.
+type kerberosRealmClient interface {
+	GetKerberosRealm(ctx context.Context, id int) (*tnstypes.KerberosRealm, error)
+	CreateKerberosRealm(ctx context.Context, req *tnstypes.KerberosRealmCreateRequest) (*tnstypes.KerberosRealm, error)
+	UpdateKerberosRealm(ctx context.Context, id int, req *tnstypes.KerberosRealmUpdateRequest) (*tnstypes.KerberosRealm, error)
+	DeleteKerberosRealm(ctx context.Context, id int) error
+}
 
 var (
 	_ resource.Resource                = &KerberosRealmResource{}
@@ -28,7 +37,7 @@ var (
 
 // KerberosRealmResource manages a Kerberos realm on TrueNAS.
 type KerberosRealmResource struct {
-	client *client.Client
+	client kerberosRealmClient
 }
 
 type KerberosRealmResourceModel struct {
@@ -114,11 +123,11 @@ func (r *KerberosRealmResource) Configure(_ context.Context, req resource.Config
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(kerberosRealmClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected kerberosRealmClient implementation, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -138,7 +147,7 @@ func (r *KerberosRealmResource) Create(ctx context.Context, req resource.CreateR
 	admin := privilegeListToStringSlice(ctx, plan.AdminServer, &resp.Diagnostics)
 	kpasswd := privilegeListToStringSlice(ctx, plan.KPasswdServer, &resp.Diagnostics)
 
-	createReq := &client.KerberosRealmCreateRequest{
+	createReq := &tnstypes.KerberosRealmCreateRequest{
 		Realm:         plan.Realm.ValueString(),
 		KDC:           kdc,
 		AdminServer:   admin,
@@ -182,7 +191,7 @@ func (r *KerberosRealmResource) Read(ctx context.Context, req resource.ReadReque
 
 	realm, err := r.client.GetKerberosRealm(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -223,7 +232,7 @@ func (r *KerberosRealmResource) Update(ctx context.Context, req resource.UpdateR
 	kpasswd := privilegeListToStringSlice(ctx, plan.KPasswdServer, &resp.Diagnostics)
 
 	realmName := plan.Realm.ValueString()
-	updateReq := &client.KerberosRealmUpdateRequest{
+	updateReq := &tnstypes.KerberosRealmUpdateRequest{
 		Realm:         &realmName,
 		KDC:           &kdc,
 		AdminServer:   &admin,
@@ -265,7 +274,7 @@ func (r *KerberosRealmResource) Delete(ctx context.Context, req resource.DeleteR
 
 	tflog.Debug(ctx, "Deleting kerberos realm", map[string]interface{}{"id": id})
 	if err := r.client.DeleteKerberosRealm(ctx, id); err != nil {
-		if client.IsNotFound(err) {
+		if isNotFound(err) {
 			tflog.Warn(ctx, "Kerberos realm already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -286,7 +295,7 @@ func (r *KerberosRealmResource) ImportState(ctx context.Context, req resource.Im
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *KerberosRealmResource) mapResponseToModel(ctx context.Context, realm *client.KerberosRealm, model *KerberosRealmResourceModel, diags *diag.Diagnostics) {
+func (r *KerberosRealmResource) mapResponseToModel(ctx context.Context, realm *tnstypes.KerberosRealm, model *KerberosRealmResourceModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(strconv.Itoa(realm.ID))
 	model.Realm = types.StringValue(realm.Realm)
 
