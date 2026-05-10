@@ -2,14 +2,22 @@
 page_title: "Provider: TrueNAS"
 description: |-
   The TrueNAS provider is used to manage storage, network, and virtualization
-  resources on a TrueNAS SCALE system through its REST API v2.0.
+  resources on a TrueNAS SCALE system through its JSON-RPC 2.0 over WebSocket
+  API (default) or the legacy REST API v2.0 (rollback path).
 ---
 
 # TrueNAS Provider
 
 The TrueNAS provider is used to interact with the resources supported by
-TrueNAS SCALE 24.04 and later. The provider needs to be configured with a
-base URL and an API key before it can be used.
+TrueNAS SCALE 25.04 and later (or 24.04+ with `transport = "rest"`).
+The provider needs to be configured with a base URL and an API key
+before it can be used.
+
+The default transport is JSON-RPC 2.0 over WebSocket (`/api/current`).
+The legacy REST API at `/api/v2.0` remains available via
+`transport = "rest"` for hosts on SCALE 24.x or for rollback purposes,
+but is deprecated and removed in v2.1. See the
+[Upgrading to v2.0 guide](guides/upgrade-to-v2.md) for details.
 
 Use the navigation to the left to read about the available resources and
 data sources.
@@ -21,7 +29,7 @@ terraform {
   required_providers {
     truenas = {
       source  = "PjSalty/truenas"
-      version = "~> 1.0"
+      version = "~> 2.0"
     }
   }
 }
