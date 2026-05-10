@@ -2,12 +2,14 @@
 
 [![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-brightgreen.svg)](LICENSE)
 [![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.0-623CE4)](https://www.terraform.io/)
-[![TrueNAS SCALE](https://img.shields.io/badge/TrueNAS%20SCALE-24.04%2B-0095D5)](https://www.truenas.com/truenas-scale/)
+[![TrueNAS SCALE](https://img.shields.io/badge/TrueNAS%20SCALE-25.04%2B-0095D5)](https://www.truenas.com/truenas-scale/)
 
 Terraform provider for managing
 [TrueNAS SCALE](https://www.truenas.com/truenas-scale/) storage, network,
-and virtualization resources through the REST API v2.0. Built on
-`terraform-plugin-framework`.
+and virtualization resources. Defaults to JSON-RPC 2.0 over WebSocket
+(`/api/current`); the legacy REST API v2.0 (`/api/v2.0`) remains
+available as a rollback path through v2.x via `transport = "rest"`.
+Built on `terraform-plugin-framework`.
 
 ---
 
@@ -30,7 +32,7 @@ terraform {
   required_providers {
     truenas = {
       source  = "PjSalty/truenas"
-      version = "~> 1.10"
+      version = "~> 2.0"
     }
   }
 }
@@ -83,7 +85,8 @@ resource "truenas_snapshot_task" "media_hourly" {
 
 ## Authentication
 
-The provider authenticates to the TrueNAS REST API with an API key.
+The provider authenticates to the TrueNAS API with an API key. The
+same key works for both the WebSocket (default) and REST transports.
 
 | Argument               | Environment Variable          | Required | Description                                                                                                                                            |
 | ---------------------- | ----------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -338,16 +341,25 @@ example under `examples/data-sources/<name>/data-source.tf`.
 
 ## Version Compatibility
 
-| Provider Version | TrueNAS SCALE | Terraform | Go (build) |
-| ---------------- | ------------- | --------- | ---------- |
-| `0.4.x`          | 24.04 – 25.10 | `>= 1.0`  | `>= 1.23`  |
-| `0.3.x`          | 24.04 – 25.04 | `>= 1.0`  | `>= 1.23`  |
-| `0.1.x`          | 24.04         | `>= 1.0`  | `>= 1.22`  |
+| Provider Version | TrueNAS SCALE        | Default Transport | Terraform | Go (build) |
+| ---------------- | -------------------- | ----------------- | --------- | ---------- |
+| `2.x`            | 25.04+               | WebSocket         | `>= 1.5`  | `>= 1.25`  |
+| `2.x` (REST)     | 24.04 – 26.04        | `transport=rest`  | `>= 1.5`  | `>= 1.25`  |
+| `1.10.x`         | 24.04 – 26.04        | REST              | `>= 1.5`  | `>= 1.23`  |
+| `0.4.x`          | 24.04 – 25.10        | REST              | `>= 1.0`  | `>= 1.23`  |
+| `0.3.x`          | 24.04 – 25.04        | REST              | `>= 1.0`  | `>= 1.23`  |
+| `0.1.x`          | 24.04                | REST              | `>= 1.0`  | `>= 1.22`  |
+
+The 2.0 release flips the default transport from REST to JSON-RPC
+2.0 over WebSocket (TrueNAS's `/api/current` endpoint). REST remains
+available as a rollback path through v2.x via `transport = "rest"`
+or the `TRUENAS_TRANSPORT=rest` env var; v2.1 deletes it. The REST
+API itself is scheduled for removal in TrueNAS SCALE 26.04.
 
 SCALE 25.10 introduced several schema-breaking changes (alert services,
-dataset comments) that the 0.4.x provider handles transparently; older
-provider versions will surface spurious drift when pointed at a 25.10
-instance.
+dataset comments) that the 0.4.x and later providers handle
+transparently; older provider versions will surface spurious drift
+when pointed at a 25.10 instance.
 
 ## Development
 
