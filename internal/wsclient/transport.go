@@ -92,6 +92,15 @@ func (c *Client) recvLoop(ctx context.Context, conn *websocket.Conn) {
 			if c.isClosing() {
 				return
 			}
+			// Mark the conn as dead so reconnectIfNeeded actually
+			// redials on the next idempotent retry. Without this
+			// clear, c.conn still references the (closed) conn and
+			// reconnectIfNeeded reports it healthy on entry.
+			c.connMu.Lock()
+			if c.conn == conn {
+				c.conn = nil
+			}
+			c.connMu.Unlock()
 			c.failPending(fmt.Errorf("%w: %w", ErrConnectionLost, err))
 			return
 		}
