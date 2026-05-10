@@ -19,7 +19,8 @@ import (
 // only client still needs to authenticate before it can read.
 func (c *Client) authenticate(ctx context.Context) error {
 	result, err := c.Call(ctx, "auth.login_with_api_key", []interface{}{c.apiKey}, CallOptions{
-		Read: true, // bypass read-only suffix classifier; auth must succeed even with ReadOnly=true
+		Read:             true, // bypass read-only suffix classifier; auth must succeed even with ReadOnly=true
+		disableReconnect: true, // reconnectIfNeeded calls authenticate; re-entering reconnect would deadlock on reconnectMu
 	})
 	if err != nil {
 		return err
