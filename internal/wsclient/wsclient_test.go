@@ -97,18 +97,26 @@ func TestFailPending(t *testing.T) {
 	c.pending[1] = ch1
 	c.pending[2] = ch2
 
-	c.failPending(errors.New("test failure"))
+	sentinel := errors.New("test failure")
+	c.failPending(sentinel)
 
 	if len(c.pending) != 0 {
 		t.Errorf("pending should be empty, got %d", len(c.pending))
 	}
+	// failPending now passes the error through transportErr (preserving
+	// the error chain so callers can errors.Is against ErrConnectionLost
+	// / ErrShuttingDown). The Error field stays nil — wire-level
+	// RPCErrors are a different code path.
 	r1, ok1 := <-ch1
-	if !ok1 || r1 == nil || r1.Error == nil || r1.Error.Code != CodeInternalError {
-		t.Errorf("ch1: got %v ok=%v", r1, ok1)
+	if !ok1 || r1 == nil || r1.transportErr == nil || !errors.Is(r1.transportErr, sentinel) {
+		t.Errorf("ch1: got %+v ok=%v", r1, ok1)
+	}
+	if r1 != nil && r1.Error != nil {
+		t.Errorf("ch1: Error should be nil for synthetic transport failures, got %v", r1.Error)
 	}
 	r2, ok2 := <-ch2
-	if !ok2 || r2 == nil || r2.Error == nil {
-		t.Errorf("ch2: got %v ok=%v", r2, ok2)
+	if !ok2 || r2 == nil || r2.transportErr == nil {
+		t.Errorf("ch2: got %+v ok=%v", r2, ok2)
 	}
 }
 
