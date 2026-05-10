@@ -86,7 +86,14 @@ func (c *Client) Call(ctx context.Context, method string, params []interface{}, 
 		// context cancellation surface immediately. Before retrying,
 		// trigger a reconnect so the next callOnce dials a fresh
 		// transport rather than re-using a dead conn.
-		if errors.Is(err, ErrConnectionLost) {
+		//
+		// The disableReconnect escape hatch suppresses this branch for
+		// the auth-handshake call issued from inside reconnectIfNeeded:
+		// re-entering reconnect from there would deadlock on the
+		// package-level reconnectMu. The auth call surfaces the
+		// connection-lost error to its caller (reconnectIfNeeded),
+		// which loops on its own dial-retry budget instead.
+		if errors.Is(err, ErrConnectionLost) && !opts.disableReconnect {
 			if rerr := c.reconnectIfNeeded(ctx); rerr != nil {
 				return nil, rerr
 			}
@@ -145,6 +152,13 @@ func (c *Client) callOnce(ctx context.Context, method string, params []interface
 		// recvLoop sends a non-nil *rpcResponse before closing ch, and
 		// failPending sends a synthetic value before closing. Both
 		// paths guarantee resp != nil when the channel produces.
+		//
+		// Synthesized transport errors come through resp.transportErr
+		// with their error chain intact; we surface those as-is so
+		// the retry loop can match errors.Is(err, ErrConnectionLost).
+		if resp.transportErr != nil {
+			return nil, resp.transportErr
+		}
 		if resp.Error != nil {
 			// Run the message through redactMessage before returning
 			// so a verbose middlewared error cannot bleed sensitive
