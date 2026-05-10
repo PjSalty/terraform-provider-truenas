@@ -82,6 +82,13 @@ type CallOptions struct {
 	// suffix. Used for methods that destroy state under non-canonical
 	// names (e.g. system.reboot).
 	Destroys bool
+	// disableReconnect, when true, suppresses the retry loop's
+	// reconnectIfNeeded branch. Internal-only — set by authenticate()
+	// when called from inside reconnectIfNeeded so a transport drop
+	// during the auth handshake surfaces immediately rather than
+	// recursively re-entering the reconnect path (which would deadlock
+	// on the package-level reconnectMu).
+	disableReconnect bool
 }
 
 // Client handles communication with the TrueNAS SCALE JSON-RPC 2.0
@@ -157,11 +164,17 @@ type rpcRequest struct {
 // server. Exactly one of Result or Error is populated on a well-formed
 // response. Result is held as RawMessage so callers can decode the
 // inner value into the per-method typed result struct.
+//
+// transportErr is internal-only — it carries a synthesized error from
+// failPending() that needs to surface up to call.go's retry loop with
+// its error chain intact (so errors.Is(err, ErrConnectionLost) still
+// matches). Wire responses always have transportErr nil.
 type rpcResponse struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      uint64          `json:"id"`
-	Result  json.RawMessage `json:"result,omitempty"`
-	Error   *RPCError       `json:"error,omitempty"`
+	JSONRPC      string          `json:"jsonrpc"`
+	ID           uint64          `json:"id"`
+	Result       json.RawMessage `json:"result,omitempty"`
+	Error        *RPCError       `json:"error,omitempty"`
+	transportErr error
 }
 
 // New constructs a wsclient.Client connected to baseURL using apiKey.
@@ -262,14 +275,18 @@ func (c *Client) Close() error {
 
 // failPending closes every pending response channel with err. Called
 // from Close() and from the receive loop on connection drop. Each
-// pending channel receives a synthetic rpcResponse carrying err in
-// its Error field so Call() can surface it without special-casing.
+// pending channel receives a synthetic rpcResponse whose transportErr
+// field carries err with its error chain intact, so call.go's retry
+// loop can errors.Is() against ErrConnectionLost / ErrShuttingDown
+// and decide whether to retry. We deliberately do NOT wrap err inside
+// an *RPCError — that flattens the chain and breaks the reconnect
+// contract for in-flight idempotent calls.
 func (c *Client) failPending(err error) {
 	c.pendingMu.Lock()
 	defer c.pendingMu.Unlock()
 	for id, ch := range c.pending {
 		select {
-		case ch <- &rpcResponse{ID: id, Error: &RPCError{Code: CodeInternalError, Message: err.Error()}}:
+		case ch <- &rpcResponse{ID: id, transportErr: err}:
 		default:
 		}
 		close(ch)
