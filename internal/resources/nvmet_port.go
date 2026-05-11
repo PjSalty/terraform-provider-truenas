@@ -20,17 +20,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// nvmetPortClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type nvmetPortClient interface {
-	GetNVMetPort(ctx context.Context, id int) (*tnstypes.NVMetPort, error)
-	CreateNVMetPort(ctx context.Context, req *tnstypes.NVMetPortCreateRequest) (*tnstypes.NVMetPort, error)
-	UpdateNVMetPort(ctx context.Context, id int, req *tnstypes.NVMetPortUpdateRequest) (*tnstypes.NVMetPort, error)
-	DeleteNVMetPort(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &NVMetPortResource{}
@@ -39,7 +30,7 @@ var (
 
 // NVMetPortResource manages an NVMe-oF transport port.
 type NVMetPortResource struct {
-	client nvmetPortClient
+	client *client.Client
 }
 
 // NVMetPortResourceModel describes the resource data model.
@@ -146,11 +137,11 @@ func (r *NVMetPortResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(nvmetPortClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected nvmetPortClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -167,7 +158,7 @@ func (r *NVMetPortResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	createReq := &tnstypes.NVMetPortCreateRequest{
+	createReq := &client.NVMetPortCreateRequest{
 		AddrTrtype: plan.AddrTrtype.ValueString(),
 		AddrTraddr: plan.AddrTraddr.ValueString(),
 	}
@@ -231,7 +222,7 @@ func (r *NVMetPortResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	port, err := r.client.GetNVMetPort(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -272,7 +263,7 @@ func (r *NVMetPortResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	updateReq := &tnstypes.NVMetPortUpdateRequest{}
+	updateReq := &client.NVMetPortUpdateRequest{}
 	if !plan.AddrTrtype.IsNull() && !plan.AddrTrtype.IsUnknown() {
 		v := plan.AddrTrtype.ValueString()
 		updateReq.AddrTrtype = &v
@@ -337,7 +328,7 @@ func (r *NVMetPortResource) Delete(ctx context.Context, req resource.DeleteReque
 	tflog.Debug(ctx, "Deleting nvmet_port", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteNVMetPort(ctx, id); err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "NVMe-oF port already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -358,7 +349,7 @@ func (r *NVMetPortResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NVMetPortResource) mapResponseToModel(port *tnstypes.NVMetPort, model *NVMetPortResourceModel) {
+func (r *NVMetPortResource) mapResponseToModel(port *client.NVMetPort, model *NVMetPortResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(port.ID))
 	model.Index = types.Int64Value(int64(port.Index))
 	model.AddrTrtype = types.StringValue(port.AddrTrtype)

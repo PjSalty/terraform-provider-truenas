@@ -6,20 +6,38 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// VMware, VMwareCreateRequest, VMwareUpdateRequest moved to
-// internal/types/vmware.go in the v2.0 transport-migration prep.
-type (
-	VMware              = types.VMware
-	VMwareCreateRequest = types.VMwareCreateRequest
-	VMwareUpdateRequest = types.VMwareUpdateRequest
-)
+// VMware represents a VMware host registration in TrueNAS.
+type VMware struct {
+	ID         int    `json:"id"`
+	Datastore  string `json:"datastore"`
+	Filesystem string `json:"filesystem"`
+	Hostname   string `json:"hostname"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+}
+
+// VMwareCreateRequest represents a request to create a VMware integration.
+type VMwareCreateRequest struct {
+	Datastore  string `json:"datastore"`
+	Filesystem string `json:"filesystem"`
+	Hostname   string `json:"hostname"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+}
+
+// VMwareUpdateRequest represents a request to update a VMware integration.
+type VMwareUpdateRequest struct {
+	Datastore  *string `json:"datastore,omitempty"`
+	Filesystem *string `json:"filesystem,omitempty"`
+	Hostname   *string `json:"hostname,omitempty"`
+	Username   *string `json:"username,omitempty"`
+	Password   *string `json:"password,omitempty"`
+}
 
 // GetVMware retrieves a VMware integration by ID.
-func (c *Client) GetVMware(ctx context.Context, id int) (*types.VMware, error) {
+func (c *Client) GetVMware(ctx context.Context, id int) (*VMware, error) {
 	tflog.Trace(ctx, "GetVMware start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/vmware/id/%d", id))
@@ -27,7 +45,7 @@ func (c *Client) GetVMware(ctx context.Context, id int) (*types.VMware, error) {
 		return nil, fmt.Errorf("getting VMware %d: %w", id, err)
 	}
 
-	var v types.VMware
+	var v VMware
 	if err := json.Unmarshal(resp, &v); err != nil {
 		return nil, fmt.Errorf("parsing VMware response: %w", err)
 	}
@@ -37,7 +55,7 @@ func (c *Client) GetVMware(ctx context.Context, id int) (*types.VMware, error) {
 }
 
 // CreateVMware creates a new VMware integration.
-func (c *Client) CreateVMware(ctx context.Context, req *types.VMwareCreateRequest) (*types.VMware, error) {
+func (c *Client) CreateVMware(ctx context.Context, req *VMwareCreateRequest) (*VMware, error) {
 	tflog.Trace(ctx, "CreateVMware start")
 
 	resp, err := c.Post(ctx, "/vmware", req)
@@ -45,7 +63,7 @@ func (c *Client) CreateVMware(ctx context.Context, req *types.VMwareCreateReques
 		return nil, fmt.Errorf("creating VMware: %w", err)
 	}
 
-	var v types.VMware
+	var v VMware
 	if err := json.Unmarshal(resp, &v); err != nil {
 		return nil, fmt.Errorf("parsing VMware create response: %w", err)
 	}
@@ -55,7 +73,7 @@ func (c *Client) CreateVMware(ctx context.Context, req *types.VMwareCreateReques
 }
 
 // UpdateVMware updates an existing VMware integration.
-func (c *Client) UpdateVMware(ctx context.Context, id int, req *types.VMwareUpdateRequest) (*types.VMware, error) {
+func (c *Client) UpdateVMware(ctx context.Context, id int, req *VMwareUpdateRequest) (*VMware, error) {
 	tflog.Trace(ctx, "UpdateVMware start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/vmware/id/%d", id), req)
@@ -63,7 +81,7 @@ func (c *Client) UpdateVMware(ctx context.Context, id int, req *types.VMwareUpda
 		return nil, fmt.Errorf("updating VMware %d: %w", id, err)
 	}
 
-	var v types.VMware
+	var v VMware
 	if err := json.Unmarshal(resp, &v); err != nil {
 		return nil, fmt.Errorf("parsing VMware update response: %w", err)
 	}

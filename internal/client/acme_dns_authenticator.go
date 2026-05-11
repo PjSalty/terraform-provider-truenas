@@ -6,21 +6,29 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- ACME DNS Authenticator API ---
 
-// ACMEDNSAuthenticator, ACMEDNSAuthenticatorCreateRequest,
-// ACMEDNSAuthenticatorUpdateRequest moved to
-// internal/types/acme_dns_authenticator.go in the v2.0 transport-
-// migration prep.
-type (
-	ACMEDNSAuthenticator              = types.ACMEDNSAuthenticator
-	ACMEDNSAuthenticatorCreateRequest = types.ACMEDNSAuthenticatorCreateRequest
-	ACMEDNSAuthenticatorUpdateRequest = types.ACMEDNSAuthenticatorUpdateRequest
-)
+// ACMEDNSAuthenticator represents an ACME DNS authenticator in TrueNAS.
+type ACMEDNSAuthenticator struct {
+	ID         int                    `json:"id"`
+	Name       string                 `json:"name"`
+	Attributes map[string]interface{} `json:"attributes"`
+}
+
+// ACMEDNSAuthenticatorCreateRequest represents the request body for creating an ACME DNS authenticator.
+// The "authenticator" field (e.g., "cloudflare") is placed inside the attributes map.
+type ACMEDNSAuthenticatorCreateRequest struct {
+	Name       string                 `json:"name"`
+	Attributes map[string]interface{} `json:"attributes"`
+}
+
+// ACMEDNSAuthenticatorUpdateRequest represents the request body for updating an ACME DNS authenticator.
+type ACMEDNSAuthenticatorUpdateRequest struct {
+	Name       string                 `json:"name,omitempty"`
+	Attributes map[string]interface{} `json:"attributes,omitempty"`
+}
 
 // GetACMEDNSAuthenticator retrieves an ACME DNS authenticator by ID.
 func (c *Client) GetACMEDNSAuthenticator(ctx context.Context, id int) (*ACMEDNSAuthenticator, error) {
