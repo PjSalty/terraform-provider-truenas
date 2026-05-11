@@ -3,8 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -12,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // providerConfigValues is a convenience map of the provider attributes.
@@ -26,7 +23,6 @@ type providerConfigValues struct {
 	readOnly           tftypes.Value
 	destroyProtection  tftypes.Value
 	requestTimeout     tftypes.Value
-	transport          tftypes.Value
 }
 
 // buildProviderConfig constructs a tfsdk.Config for the provider schema,
@@ -52,10 +48,6 @@ func buildProviderConfig(t *testing.T, p provider.Provider, v providerConfigValu
 	if requestTimeoutVal.Type() == nil {
 		requestTimeoutVal = nullString()
 	}
-	transportVal := v.transport
-	if transportVal.Type() == nil {
-		transportVal = nullString()
-	}
 	raw := tftypes.NewValue(objType, map[string]tftypes.Value{
 		"url":                  v.url,
 		"api_key":              v.apiKey,
@@ -63,7 +55,6 @@ func buildProviderConfig(t *testing.T, p provider.Provider, v providerConfigValu
 		"read_only":            readOnlyVal,
 		"destroy_protection":   destroyProtectionVal,
 		"request_timeout":      requestTimeoutVal,
-		"transport":            transportVal,
 	})
 	return tfsdk.Config{Schema: schemaResp.Schema, Raw: raw}
 }
@@ -93,7 +84,7 @@ func TestProvider_Schema(t *testing.T) {
 	if resp.Schema.Description == "" {
 		t.Error("Schema description should not be empty")
 	}
-	for _, name := range []string{"url", "api_key", "insecure_skip_verify", "read_only", "destroy_protection", "request_timeout", "transport"} {
+	for _, name := range []string{"url", "api_key", "insecure_skip_verify", "read_only", "destroy_protection", "request_timeout"} {
 		if _, ok := resp.Schema.Attributes[name]; !ok {
 			t.Errorf("Schema missing attribute %q", name)
 		}
@@ -134,10 +125,6 @@ func TestProvider_Configure_FromConfig(t *testing.T) {
 	t.Setenv("TRUENAS_URL", "")
 	t.Setenv("TRUENAS_API_KEY", "")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
-	// v2.0 cutover: default transport is now "websocket", which would
-	// dial a non-existent server and fail this test. Pin to "rest" so
-	// the test continues to exercise the REST-client construction path.
-	t.Setenv("TRUENAS_TRANSPORT", "rest")
 
 	p := New("test")()
 	cfg := buildProviderConfig(t, p, providerConfigValues{
@@ -166,9 +153,6 @@ func TestProvider_Configure_FromEnv(t *testing.T) {
 	t.Setenv("TRUENAS_URL", "https://env.example.com")
 	t.Setenv("TRUENAS_API_KEY", "env-key")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
-	// Pin REST so the test exercises the env-default REST path, not
-	// the post-v2.0 websocket-dial path.
-	t.Setenv("TRUENAS_TRANSPORT", "rest")
 
 	p := New("test")()
 	cfg := buildProviderConfig(t, p, providerConfigValues{
@@ -261,186 +245,12 @@ func TestProvider_Configure_BadConfig(t *testing.T) {
 	}
 }
 
-// TestProvider_Configure_TransportInvalidEnv exercises the env-var path
-// for transport with an invalid value. The schema validator gates HCL
-// values, but the env var fallback bypasses it; Configure must reject
-// the bad value with a typed diagnostic.
-func TestProvider_Configure_TransportInvalidEnv(t *testing.T) {
-	t.Setenv("TRUENAS_URL", "")
-	t.Setenv("TRUENAS_API_KEY", "")
-	t.Setenv("TRUENAS_TRANSPORT", "grpc")
-
-	p := New("test")()
-	cfg := buildProviderConfig(t, p, providerConfigValues{
-		url:                tftypes.NewValue(tftypes.String, "https://x.example.com"),
-		apiKey:             tftypes.NewValue(tftypes.String, "k"),
-		insecureSkipVerify: tftypes.NewValue(tftypes.Bool, true),
-	})
-	resp := &provider.ConfigureResponse{}
-	p.(*TrueNASProvider).Configure(context.Background(), provider.ConfigureRequest{Config: cfg}, resp)
-	if !resp.Diagnostics.HasError() {
-		t.Error("expected diagnostics error for invalid transport env var")
-	}
-}
-
-// TestProvider_Configure_TransportRESTExplicit exercises the explicit
-// transport=rest HCL path: same as default behavior but the value
-// flows through the config-override branch rather than the env-default.
-func TestProvider_Configure_TransportRESTExplicit(t *testing.T) {
-	t.Setenv("TRUENAS_URL", "")
-	t.Setenv("TRUENAS_API_KEY", "")
-	t.Setenv("TRUENAS_TRANSPORT", "")
-
-	p := New("test")()
-	cfg := buildProviderConfig(t, p, providerConfigValues{
-		url:                tftypes.NewValue(tftypes.String, "https://x.example.com"),
-		apiKey:             tftypes.NewValue(tftypes.String, "k"),
-		insecureSkipVerify: tftypes.NewValue(tftypes.Bool, true),
-		transport:          tftypes.NewValue(tftypes.String, "rest"),
-	})
-	resp := &provider.ConfigureResponse{}
-	p.(*TrueNASProvider).Configure(context.Background(), provider.ConfigureRequest{Config: cfg}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
-	}
-	if _, ok := resp.ResourceData.(*client.Client); !ok {
-		t.Errorf("expected ResourceData *client.Client, got %T", resp.ResourceData)
-	}
-}
-
-// TestProvider_Configure_TransportWebSocket_success runs Configure
-// against a wsclient TestServer that completes the handshake. Verifies
-// ResourceData is set to a *wsclient.Client and that the safety-rail
-// flags propagate through applyWSClientFlags.
-func TestProvider_Configure_TransportWebSocket_success(t *testing.T) {
-	t.Setenv("TRUENAS_URL", "")
-	t.Setenv("TRUENAS_API_KEY", "")
-	t.Setenv("TRUENAS_TRANSPORT", "")
-
-	ts := wsclient.NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
-		return nil, nil
-	})
-	defer (func() *httptest.Server { return nil })() // keep linter happy with unused import in some builds
-
-	p := New("test")()
-	cfg := buildProviderConfig(t, p, providerConfigValues{
-		url:                tftypes.NewValue(tftypes.String, ts.URL()),
-		apiKey:             tftypes.NewValue(tftypes.String, "k"),
-		insecureSkipVerify: tftypes.NewValue(tftypes.Bool, true),
-		readOnly:           tftypes.NewValue(tftypes.Bool, true),
-		destroyProtection:  tftypes.NewValue(tftypes.Bool, true),
-		requestTimeout:     tftypes.NewValue(tftypes.String, "45s"),
-		transport:          tftypes.NewValue(tftypes.String, "websocket"),
-	})
-	resp := &provider.ConfigureResponse{}
-	p.(*TrueNASProvider).Configure(context.Background(), provider.ConfigureRequest{Config: cfg}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
-	}
-	wsc, ok := resp.ResourceData.(*wsclient.Client)
-	if !ok {
-		t.Fatalf("expected *wsclient.Client, got %T", resp.ResourceData)
-	}
-	if !wsc.ReadOnly {
-		t.Error("ReadOnly flag did not propagate to wsclient")
-	}
-	if !wsc.DestroyProtection {
-		t.Error("DestroyProtection flag did not propagate to wsclient")
-	}
-}
-
-// TestProvider_Configure_TransportWebSocket_badTimeout exercises the
-// applyWSClientFlags request_timeout parse-error branch.
-func TestProvider_Configure_TransportWebSocket_badTimeout(t *testing.T) {
-	t.Setenv("TRUENAS_URL", "")
-	t.Setenv("TRUENAS_API_KEY", "")
-	t.Setenv("TRUENAS_TRANSPORT", "")
-
-	ts := wsclient.NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
-		return nil, nil
-	})
-	p := New("test")()
-	cfg := buildProviderConfig(t, p, providerConfigValues{
-		url:                tftypes.NewValue(tftypes.String, ts.URL()),
-		apiKey:             tftypes.NewValue(tftypes.String, "k"),
-		insecureSkipVerify: tftypes.NewValue(tftypes.Bool, true),
-		requestTimeout:     tftypes.NewValue(tftypes.String, "garbage"),
-		transport:          tftypes.NewValue(tftypes.String, "websocket"),
-	})
-	resp := &provider.ConfigureResponse{}
-	p.(*TrueNASProvider).Configure(context.Background(), provider.ConfigureRequest{Config: cfg}, resp)
-	if !resp.Diagnostics.HasError() {
-		t.Error("expected diagnostics error from bad timeout duration")
-	}
-	if !strings.Contains(fmt.Sprint(resp.Diagnostics), "request_timeout") {
-		t.Errorf("expected request_timeout error, got %v", resp.Diagnostics)
-	}
-}
-
-// TestProvider_Configure_TransportWebSocket_envFlags exercises the env
-// var fallback paths inside applyWSClientFlags.
-func TestProvider_Configure_TransportWebSocket_envFlags(t *testing.T) {
-	t.Setenv("TRUENAS_URL", "")
-	t.Setenv("TRUENAS_API_KEY", "")
-	t.Setenv("TRUENAS_TRANSPORT", "websocket")
-	t.Setenv("TRUENAS_READONLY", "true")
-	t.Setenv("TRUENAS_DESTROY_PROTECTION", "1")
-	t.Setenv("TRUENAS_REQUEST_TIMEOUT", "30s")
-
-	ts := wsclient.NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
-		return nil, nil
-	})
-	p := New("test")()
-	cfg := buildProviderConfig(t, p, providerConfigValues{
-		url:                tftypes.NewValue(tftypes.String, ts.URL()),
-		apiKey:             tftypes.NewValue(tftypes.String, "k"),
-		insecureSkipVerify: tftypes.NewValue(tftypes.Bool, true),
-	})
-	resp := &provider.ConfigureResponse{}
-	p.(*TrueNASProvider).Configure(context.Background(), provider.ConfigureRequest{Config: cfg}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
-	}
-	wsc, ok := resp.ResourceData.(*wsclient.Client)
-	if !ok {
-		t.Fatalf("expected *wsclient.Client, got %T", resp.ResourceData)
-	}
-	if !wsc.ReadOnly || !wsc.DestroyProtection {
-		t.Error("env-var safety rails did not propagate to wsclient")
-	}
-}
-
-// TestProvider_Configure_TransportWebSocket_dialFails exercises the
-// websocket-transport branch when the dial fails. Provider Configure
-// surfaces the dial error as a diagnostic.
-func TestProvider_Configure_TransportWebSocket_dialFails(t *testing.T) {
-	t.Setenv("TRUENAS_URL", "")
-	t.Setenv("TRUENAS_API_KEY", "")
-	t.Setenv("TRUENAS_TRANSPORT", "")
-
-	p := New("test")()
-	cfg := buildProviderConfig(t, p, providerConfigValues{
-		url:                tftypes.NewValue(tftypes.String, "http://127.0.0.1:1"),
-		apiKey:             tftypes.NewValue(tftypes.String, "k"),
-		insecureSkipVerify: tftypes.NewValue(tftypes.Bool, true),
-		transport:          tftypes.NewValue(tftypes.String, "websocket"),
-	})
-	resp := &provider.ConfigureResponse{}
-	p.(*TrueNASProvider).Configure(context.Background(), provider.ConfigureRequest{Config: cfg}, resp)
-	if !resp.Diagnostics.HasError() {
-		t.Error("expected dial-failure diagnostic")
-	}
-}
-
 // TestProvider_Configure_ClientError swaps newClientFn to force an error and
 // exercises the client-construction error-handling branch in Configure.
 func TestProvider_Configure_ClientError(t *testing.T) {
 	t.Setenv("TRUENAS_URL", "")
 	t.Setenv("TRUENAS_API_KEY", "")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
-	// Forced REST-client failure path; pin transport so the websocket
-	// branch (default in v2.0+) doesn't pre-empt it.
-	t.Setenv("TRUENAS_TRANSPORT", "rest")
 
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })

@@ -23,18 +23,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
-
-// iscsiTargetClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type iscsiTargetClient interface {
-	GetISCSITarget(ctx context.Context, id int) (*tnstypes.ISCSITarget, error)
-	CreateISCSITarget(ctx context.Context, req *tnstypes.ISCSITargetCreateRequest) (*tnstypes.ISCSITarget, error)
-	UpdateISCSITarget(ctx context.Context, id int, req *tnstypes.ISCSITargetUpdateRequest) (*tnstypes.ISCSITarget, error)
-	DeleteISCSITarget(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &ISCSITargetResource{}
@@ -44,7 +35,7 @@ var (
 
 // ISCSITargetResource manages an iSCSI target.
 type ISCSITargetResource struct {
-	client iscsiTargetClient
+	client *client.Client
 }
 
 // ISCSITargetResourceModel describes the resource data model.
@@ -173,11 +164,11 @@ func (r *ISCSITargetResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(iscsiTargetClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected iscsiTargetClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -194,7 +185,7 @@ func (r *ISCSITargetResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createReq := &tnstypes.ISCSITargetCreateRequest{
+	createReq := &client.ISCSITargetCreateRequest{
 		Name: plan.Name.ValueString(),
 		Mode: plan.Mode.ValueString(),
 	}
@@ -207,7 +198,7 @@ func (r *ISCSITargetResource) Create(ctx context.Context, req resource.CreateReq
 		var groups []ISCSITargetGroupModel
 		resp.Diagnostics.Append(plan.Groups.ElementsAs(ctx, &groups, false)...)
 		for _, g := range groups {
-			createReq.Groups = append(createReq.Groups, tnstypes.ISCSITargetGroup{
+			createReq.Groups = append(createReq.Groups, client.ISCSITargetGroup{
 				Portal:     int(g.Portal.ValueInt64()),
 				Initiator:  int(g.Initiator.ValueInt64()),
 				AuthMethod: g.AuthMethod.ValueString(),
@@ -252,7 +243,7 @@ func (r *ISCSITargetResource) Read(ctx context.Context, req resource.ReadRequest
 
 	target, err := r.client.GetISCSITarget(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -293,7 +284,7 @@ func (r *ISCSITargetResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	updateReq := &tnstypes.ISCSITargetUpdateRequest{
+	updateReq := &client.ISCSITargetUpdateRequest{
 		Name: plan.Name.ValueString(),
 		Mode: plan.Mode.ValueString(),
 	}
@@ -306,7 +297,7 @@ func (r *ISCSITargetResource) Update(ctx context.Context, req resource.UpdateReq
 		var groups []ISCSITargetGroupModel
 		resp.Diagnostics.Append(plan.Groups.ElementsAs(ctx, &groups, false)...)
 		for _, g := range groups {
-			updateReq.Groups = append(updateReq.Groups, tnstypes.ISCSITargetGroup{
+			updateReq.Groups = append(updateReq.Groups, client.ISCSITargetGroup{
 				Portal:     int(g.Portal.ValueInt64()),
 				Initiator:  int(g.Initiator.ValueInt64()),
 				AuthMethod: g.AuthMethod.ValueString(),
@@ -351,7 +342,7 @@ func (r *ISCSITargetResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err = r.client.DeleteISCSITarget(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "iSCSI target already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -410,7 +401,7 @@ func (r *ISCSITargetResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ISCSITargetResource) mapResponseToModel(_ context.Context, target *tnstypes.ISCSITarget, model *ISCSITargetResourceModel) {
+func (r *ISCSITargetResource) mapResponseToModel(_ context.Context, target *client.ISCSITarget, model *ISCSITargetResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(target.ID))
 	model.Name = types.StringValue(target.Name)
 	model.Alias = types.StringValue(target.Alias)

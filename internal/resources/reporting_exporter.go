@@ -23,17 +23,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// reportingExporterClient is the transport-agnostic surface used by
-// the ReportingExporterResource.
-type reportingExporterClient interface {
-	GetReportingExporter(ctx context.Context, id int) (*tnstypes.ReportingExporter, error)
-	CreateReportingExporter(ctx context.Context, req *tnstypes.ReportingExporterCreateRequest) (*tnstypes.ReportingExporter, error)
-	UpdateReportingExporter(ctx context.Context, id int, req *tnstypes.ReportingExporterUpdateRequest) (*tnstypes.ReportingExporter, error)
-	DeleteReportingExporter(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &ReportingExporterResource{}
@@ -41,7 +32,7 @@ var (
 )
 
 type ReportingExporterResource struct {
-	client reportingExporterClient
+	client *client.Client
 }
 
 type ReportingExporterResourceModel struct {
@@ -106,11 +97,11 @@ func (r *ReportingExporterResource) Configure(_ context.Context, req resource.Co
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(reportingExporterClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected reportingExporterClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -133,7 +124,7 @@ func (r *ReportingExporterResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	createReq := &tnstypes.ReportingExporterCreateRequest{
+	createReq := &client.ReportingExporterCreateRequest{
 		Name:       plan.Name.ValueString(),
 		Enabled:    plan.Enabled.ValueBool(),
 		Attributes: attrs,
@@ -174,7 +165,7 @@ func (r *ReportingExporterResource) Read(ctx context.Context, req resource.ReadR
 
 	e, err := r.client.GetReportingExporter(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -221,7 +212,7 @@ func (r *ReportingExporterResource) Update(ctx context.Context, req resource.Upd
 	enabled := plan.Enabled.ValueBool()
 	name := plan.Name.ValueString()
 
-	updateReq := &tnstypes.ReportingExporterUpdateRequest{
+	updateReq := &client.ReportingExporterUpdateRequest{
 		Enabled:    &enabled,
 		Name:       &name,
 		Attributes: attrs,
@@ -257,7 +248,7 @@ func (r *ReportingExporterResource) Delete(ctx context.Context, req resource.Del
 	}
 
 	if err := r.client.DeleteReportingExporter(ctx, id); err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "Reporting exporter already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -275,7 +266,7 @@ func (r *ReportingExporterResource) ImportState(ctx context.Context, req resourc
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ReportingExporterResource) mapResponseToModel(e *tnstypes.ReportingExporter, model *ReportingExporterResourceModel) {
+func (r *ReportingExporterResource) mapResponseToModel(e *client.ReportingExporter, model *ReportingExporterResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(e.ID))
 	model.Name = types.StringValue(e.Name)
 	model.Enabled = types.BoolValue(e.Enabled)

@@ -2,7 +2,7 @@ terraform {
   required_providers {
     truenas = {
       source  = "registry.terraform.io/PjSalty/truenas"
-      version = "~> 2.0"
+      version = "~> 1.0"
     }
   }
 }

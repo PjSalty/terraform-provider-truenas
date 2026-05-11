@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -16,24 +15,7 @@ import (
 // TestMain is the entry point for `go test -sweep`. It enables sweeper mode
 // when -sweep is passed and otherwise behaves like a normal test binary.
 // This is the standard Terraform provider sweeper bootstrap pattern.
-//
-// v2.0 cutover: the provider's default transport is now "websocket".
-// Most existing unit tests in this package use fake hostnames
-// (example.com, env.example.com, etc.) and were written to exercise
-// the REST-construction code path. Defaulting TRUENAS_TRANSPORT=rest
-// here keeps that code path active for those tests; tests that need
-// the websocket branch override with t.Setenv("TRUENAS_TRANSPORT",
-// "websocket") explicitly.
-//
-// Setting via os.Setenv (not t.Setenv) so it covers tests that don't
-// touch this env var themselves and remains in effect for the whole
-// process. Unit tests that DO call t.Setenv("TRUENAS_TRANSPORT", ...)
-// will override per-test, which is the only behavior that matters
-// for transport selection inside Configure().
 func TestMain(m *testing.M) {
-	if os.Getenv("TRUENAS_TRANSPORT") == "" {
-		_ = os.Setenv("TRUENAS_TRANSPORT", "rest")
-	}
 	resource.TestMain(m)
 }
 

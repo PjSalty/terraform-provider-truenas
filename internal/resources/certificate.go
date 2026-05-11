@@ -21,24 +21,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planmodifiers"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators"
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
-
-// certificateClient is the transport-agnostic surface that
-// CertificateResource needs from the underlying TrueNAS client. Both
-// *client.Client (REST) and *wsclient.Client (JSON-RPC over WebSocket)
-// satisfy it via duck typing — the resource never imports either
-// concrete client package, which is what lets Phase 5 delete REST
-// without touching this file.
-type certificateClient interface {
-	GetCertificate(ctx context.Context, id int) (*tnstypes.Certificate, error)
-	CreateCertificate(ctx context.Context, req *tnstypes.CertificateCreateRequest) (*tnstypes.Certificate, error)
-	UpdateCertificate(ctx context.Context, id int, req *tnstypes.CertificateUpdateRequest) (*tnstypes.Certificate, error)
-	DeleteCertificate(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                     = &CertificateResource{}
@@ -49,7 +36,7 @@ var (
 
 // CertificateResource manages a TrueNAS TLS certificate.
 type CertificateResource struct {
-	client certificateClient
+	client *client.Client
 }
 
 // CertificateResourceModel describes the resource data model.
@@ -328,11 +315,11 @@ func (r *CertificateResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(certificateClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected certificateClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -349,7 +336,7 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createReq := &tnstypes.CertificateCreateRequest{
+	createReq := &client.CertificateCreateRequest{
 		Name:       plan.Name.ValueString(),
 		CreateType: plan.CreateType.ValueString(),
 	}
@@ -434,7 +421,7 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 
 	cert, err := r.client.GetCertificate(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -478,7 +465,7 @@ func (r *CertificateResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	updateReq := &tnstypes.CertificateUpdateRequest{
+	updateReq := &client.CertificateUpdateRequest{
 		Name: plan.Name.ValueString(),
 	}
 
@@ -521,7 +508,7 @@ func (r *CertificateResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err = r.client.DeleteCertificate(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "Certificate already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -595,7 +582,7 @@ func (r *CertificateResource) ImportState(ctx context.Context, req resource.Impo
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("create_type"), types.StringValue("CERTIFICATE_CREATE_IMPORTED"))...)
 }
 
-func (r *CertificateResource) mapResponseToModel(ctx context.Context, cert *tnstypes.Certificate, model *CertificateResourceModel) {
+func (r *CertificateResource) mapResponseToModel(ctx context.Context, cert *client.Certificate, model *CertificateResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(cert.ID))
 	model.Name = types.StringValue(cert.Name)
 	model.Certificate = types.StringValue(cert.CertificateData)
