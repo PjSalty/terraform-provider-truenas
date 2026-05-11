@@ -17,17 +17,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// apiKeyClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type apiKeyClient interface {
-	GetAPIKey(ctx context.Context, id int) (*tnstypes.APIKey, error)
-	CreateAPIKey(ctx context.Context, req *tnstypes.APIKeyCreateRequest) (*tnstypes.APIKey, error)
-	UpdateAPIKey(ctx context.Context, id int, req *tnstypes.APIKeyUpdateRequest) (*tnstypes.APIKey, error)
-	DeleteAPIKey(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &APIKeyResource{}
@@ -36,7 +27,7 @@ var (
 
 // APIKeyResource manages a TrueNAS API key.
 type APIKeyResource struct {
-	client apiKeyClient
+	client *client.Client
 }
 
 // APIKeyResourceModel describes the resource data model.
@@ -99,11 +90,11 @@ func (r *APIKeyResource) Configure(_ context.Context, req resource.ConfigureRequ
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(apiKeyClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected apiKeyClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -120,7 +111,7 @@ func (r *APIKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	createReq := &tnstypes.APIKeyCreateRequest{
+	createReq := &client.APIKeyCreateRequest{
 		Name: plan.Name.ValueString(),
 	}
 
@@ -170,7 +161,7 @@ func (r *APIKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	apiKey, err := r.client.GetAPIKey(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -216,7 +207,7 @@ func (r *APIKeyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	updateReq := &tnstypes.APIKeyUpdateRequest{
+	updateReq := &client.APIKeyUpdateRequest{
 		Name: plan.Name.ValueString(),
 	}
 
@@ -260,7 +251,7 @@ func (r *APIKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 	err = r.client.DeleteAPIKey(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "API key already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}

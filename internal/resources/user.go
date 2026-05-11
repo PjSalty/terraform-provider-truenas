@@ -25,18 +25,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
-
-// userClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type userClient interface {
-	GetUser(ctx context.Context, id int) (*tnstypes.User, error)
-	CreateUser(ctx context.Context, req *tnstypes.UserCreateRequest) (*tnstypes.User, error)
-	UpdateUser(ctx context.Context, id int, req *tnstypes.UserUpdateRequest) (*tnstypes.User, error)
-	DeleteUser(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &UserResource{}
@@ -46,7 +37,7 @@ var (
 
 // UserResource manages a TrueNAS local user.
 type UserResource struct {
-	client userClient
+	client *client.Client
 }
 
 // UserResourceModel describes the resource data model.
@@ -215,11 +206,11 @@ func (r *UserResource) Configure(_ context.Context, req resource.ConfigureReques
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(userClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected userClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -236,7 +227,7 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	createReq := &tnstypes.UserCreateRequest{
+	createReq := &client.UserCreateRequest{
 		Username:    plan.Username.ValueString(),
 		FullName:    plan.FullName.ValueString(),
 		Password:    plan.Password.ValueString(),
@@ -319,7 +310,7 @@ func (r *UserResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 
 	user, err := r.client.GetUser(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -363,7 +354,7 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	locked := plan.Locked.ValueBool()
 	smb := plan.SMB.ValueBool()
 
-	updateReq := &tnstypes.UserUpdateRequest{
+	updateReq := &client.UserUpdateRequest{
 		FullName: plan.FullName.ValueString(),
 		Locked:   &locked,
 		SMB:      &smb,
@@ -440,7 +431,7 @@ func (r *UserResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 
 	err = r.client.DeleteUser(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "User already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -470,7 +461,7 @@ func (r *UserResource) ImportState(ctx context.Context, req resource.ImportState
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("password"), types.StringValue(""))...)
 }
 
-func (r *UserResource) mapResponseToModel(_ context.Context, user *tnstypes.User, model *UserResourceModel) {
+func (r *UserResource) mapResponseToModel(_ context.Context, user *client.User, model *UserResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(user.ID))
 	model.UID = types.Int64Value(int64(user.UID))
 	model.Username = types.StringValue(user.Username)
