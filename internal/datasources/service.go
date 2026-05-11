@@ -8,21 +8,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// serviceLookupClient is the read-only surface used by the service
-// datasource. Both *client.Client (REST) and *wsclient.Client
-// (JSON-RPC) satisfy it via duck typing.
-type serviceLookupClient interface {
-	GetServiceByName(ctx context.Context, name string) (*tnstypes.Service, error)
-}
 
 var _ datasource.DataSource = &ServiceDataSource{}
 
 // ServiceDataSource provides information about a TrueNAS service.
 type ServiceDataSource struct {
-	client serviceLookupClient
+	client *client.Client
 }
 
 // ServiceDataSourceModel describes the data source model.
@@ -69,11 +62,11 @@ func (d *ServiceDataSource) Configure(_ context.Context, req datasource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(serviceLookupClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected DataSource Configure Type",
-			fmt.Sprintf("Expected serviceLookupClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}

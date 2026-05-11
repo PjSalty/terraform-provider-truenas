@@ -7,8 +7,6 @@ import (
 	"net/url"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- Network Interface API ---
@@ -22,27 +20,84 @@ import (
 //   3. GET  /interface/checkin -> acknowledges the changes as good, canceling
 //                                the rollback timer and making them permanent
 //
-// CreateInterface() / UpdateInterface() / DeleteInterface() perform steps 1-3
-// in sequence so callers (the Terraform resource) get a simple synchronous API.
+// This client exposes CreateInterface() that performs steps 1-3 in sequence
+// so callers (the Terraform resource) get a simple synchronous API. The same
+// pattern is followed for UpdateInterface() and DeleteInterface().
 //
-// The interface ID is a STRING (the interface name, e.g. "br0", "vlan10",
-// "bond0") — not a numeric ID.
+// Note that the interface ID is a STRING (the interface name, e.g. "br0",
+// "vlan10", "bond0") — not a numeric ID.
 
-// NetworkInterface, NetworkInterfaceAlias, and the create/update/commit
-// requests moved to internal/types/network_interface.go in the v2.0
-// transport-migration prep.
-type (
-	NetworkInterface              = types.NetworkInterface
-	NetworkInterfaceAlias         = types.NetworkInterfaceAlias
-	NetworkInterfaceCreateRequest = types.NetworkInterfaceCreateRequest
-	NetworkInterfaceUpdateRequest = types.NetworkInterfaceUpdateRequest
-	InterfaceCommitRequest        = types.InterfaceCommitRequest
-)
+// NetworkInterface represents a network interface as returned by /interface.
+// Only the fields we surface in Terraform state are declared; additional
+// fields are ignored via the absence of strict parsing (API returns a lot
+// of state/runtime data we don't care about on the client side).
+type NetworkInterface struct {
+	ID                  string                  `json:"id"`
+	Name                string                  `json:"name"`
+	Type                string                  `json:"type"`
+	Description         string                  `json:"description"`
+	IPv4DHCP            bool                    `json:"ipv4_dhcp"`
+	IPv6Auto            bool                    `json:"ipv6_auto"`
+	MTU                 *int                    `json:"mtu"`
+	Aliases             []NetworkInterfaceAlias `json:"aliases"`
+	BridgeMembers       []string                `json:"bridge_members"`
+	LagProtocol         string                  `json:"lag_protocol"`
+	LagPorts            []string                `json:"lag_ports"`
+	VlanParentInterface string                  `json:"vlan_parent_interface"`
+	VlanTag             *int                    `json:"vlan_tag"`
+	VlanPCP             *int                    `json:"vlan_pcp"`
+}
+
+// NetworkInterfaceAlias represents an IP alias on an interface.
+type NetworkInterfaceAlias struct {
+	Type    string `json:"type"`
+	Address string `json:"address"`
+	Netmask int    `json:"netmask"`
+}
+
+// NetworkInterfaceCreateRequest is the POST /interface payload.
+type NetworkInterfaceCreateRequest struct {
+	Name                string                  `json:"name,omitempty"`
+	Description         string                  `json:"description,omitempty"`
+	Type                string                  `json:"type"`
+	IPv4DHCP            bool                    `json:"ipv4_dhcp"`
+	IPv6Auto            bool                    `json:"ipv6_auto"`
+	Aliases             []NetworkInterfaceAlias `json:"aliases,omitempty"`
+	MTU                 *int                    `json:"mtu,omitempty"`
+	BridgeMembers       []string                `json:"bridge_members,omitempty"`
+	LagProtocol         string                  `json:"lag_protocol,omitempty"`
+	LagPorts            []string                `json:"lag_ports,omitempty"`
+	VlanParentInterface string                  `json:"vlan_parent_interface,omitempty"`
+	VlanTag             *int                    `json:"vlan_tag,omitempty"`
+	VlanPCP             *int                    `json:"vlan_pcp,omitempty"`
+}
+
+// NetworkInterfaceUpdateRequest is the PUT /interface/id/{id_} payload.
+// Mirrors the create request; all fields are optional for partial updates.
+type NetworkInterfaceUpdateRequest struct {
+	Description         *string                 `json:"description,omitempty"`
+	IPv4DHCP            *bool                   `json:"ipv4_dhcp,omitempty"`
+	IPv6Auto            *bool                   `json:"ipv6_auto,omitempty"`
+	Aliases             []NetworkInterfaceAlias `json:"aliases,omitempty"`
+	MTU                 *int                    `json:"mtu,omitempty"`
+	BridgeMembers       []string                `json:"bridge_members,omitempty"`
+	LagProtocol         *string                 `json:"lag_protocol,omitempty"`
+	LagPorts            []string                `json:"lag_ports,omitempty"`
+	VlanParentInterface *string                 `json:"vlan_parent_interface,omitempty"`
+	VlanTag             *int                    `json:"vlan_tag,omitempty"`
+	VlanPCP             *int                    `json:"vlan_pcp,omitempty"`
+}
+
+// InterfaceCommitRequest is the POST /interface/commit payload.
+type InterfaceCommitRequest struct {
+	Rollback       bool `json:"rollback"`
+	CheckinTimeout int  `json:"checkin_timeout"`
+}
 
 // commitAndCheckin applies any pending interface changes and acknowledges them.
 // This is the glue that turns TrueNAS's staged workflow into a single call.
 func (c *Client) commitAndCheckin(ctx context.Context) error {
-	commitReq := &types.InterfaceCommitRequest{
+	commitReq := &InterfaceCommitRequest{
 		Rollback:       true,
 		CheckinTimeout: 60,
 	}
@@ -57,7 +112,7 @@ func (c *Client) commitAndCheckin(ctx context.Context) error {
 }
 
 // GetInterface retrieves a network interface by its ID (name).
-func (c *Client) GetInterface(ctx context.Context, id string) (*types.NetworkInterface, error) {
+func (c *Client) GetInterface(ctx context.Context, id string) (*NetworkInterface, error) {
 	tflog.Trace(ctx, "GetInterface start")
 
 	encoded := url.PathEscape(id)
@@ -65,7 +120,7 @@ func (c *Client) GetInterface(ctx context.Context, id string) (*types.NetworkInt
 	if err != nil {
 		return nil, fmt.Errorf("getting interface %q: %w", id, err)
 	}
-	var iface types.NetworkInterface
+	var iface NetworkInterface
 	if err := json.Unmarshal(resp, &iface); err != nil {
 		return nil, fmt.Errorf("parsing interface response: %w", err)
 	}
@@ -74,14 +129,14 @@ func (c *Client) GetInterface(ctx context.Context, id string) (*types.NetworkInt
 }
 
 // ListInterfaces retrieves all network interfaces.
-func (c *Client) ListInterfaces(ctx context.Context) ([]types.NetworkInterface, error) {
+func (c *Client) ListInterfaces(ctx context.Context) ([]NetworkInterface, error) {
 	tflog.Trace(ctx, "ListInterfaces start")
 
 	resp, err := c.Get(ctx, "/interface")
 	if err != nil {
 		return nil, fmt.Errorf("listing interfaces: %w", err)
 	}
-	var ifaces []types.NetworkInterface
+	var ifaces []NetworkInterface
 	if err := json.Unmarshal(resp, &ifaces); err != nil {
 		return nil, fmt.Errorf("parsing interfaces list: %w", err)
 	}
@@ -91,7 +146,7 @@ func (c *Client) ListInterfaces(ctx context.Context) ([]types.NetworkInterface, 
 
 // CreateInterface creates a virtual interface (BRIDGE, LINK_AGGREGATION, VLAN)
 // and applies the change via commit + checkin.
-func (c *Client) CreateInterface(ctx context.Context, req *types.NetworkInterfaceCreateRequest) (*types.NetworkInterface, error) {
+func (c *Client) CreateInterface(ctx context.Context, req *NetworkInterfaceCreateRequest) (*NetworkInterface, error) {
 	tflog.Trace(ctx, "CreateInterface start")
 
 	resp, err := c.Post(ctx, "/interface", req)
@@ -99,7 +154,7 @@ func (c *Client) CreateInterface(ctx context.Context, req *types.NetworkInterfac
 		return nil, fmt.Errorf("creating interface: %w", err)
 	}
 
-	var iface types.NetworkInterface
+	var iface NetworkInterface
 	if err := json.Unmarshal(resp, &iface); err != nil {
 		return nil, fmt.Errorf("parsing interface create response: %w", err)
 	}
@@ -115,7 +170,7 @@ func (c *Client) CreateInterface(ctx context.Context, req *types.NetworkInterfac
 
 // UpdateInterface updates an existing interface by ID (name) and applies
 // the change via commit + checkin.
-func (c *Client) UpdateInterface(ctx context.Context, id string, req *types.NetworkInterfaceUpdateRequest) (*types.NetworkInterface, error) {
+func (c *Client) UpdateInterface(ctx context.Context, id string, req *NetworkInterfaceUpdateRequest) (*NetworkInterface, error) {
 	tflog.Trace(ctx, "UpdateInterface start")
 
 	encoded := url.PathEscape(id)
@@ -124,7 +179,7 @@ func (c *Client) UpdateInterface(ctx context.Context, id string, req *types.Netw
 		return nil, fmt.Errorf("updating interface %q: %w", id, err)
 	}
 
-	var iface types.NetworkInterface
+	var iface NetworkInterface
 	if err := json.Unmarshal(resp, &iface); err != nil {
 		return nil, fmt.Errorf("parsing interface update response: %w", err)
 	}

@@ -19,17 +19,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// tunableClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type tunableClient interface {
-	GetTunable(ctx context.Context, id int) (*tnstypes.Tunable, error)
-	CreateTunable(ctx context.Context, req *tnstypes.TunableCreateRequest) (*tnstypes.Tunable, error)
-	UpdateTunable(ctx context.Context, id int, req *tnstypes.TunableUpdateRequest) (*tnstypes.Tunable, error)
-	DeleteTunable(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &TunableResource{}
@@ -38,7 +29,7 @@ var (
 
 // TunableResource manages a TrueNAS kernel tunable.
 type TunableResource struct {
-	client tunableClient
+	client *client.Client
 }
 
 // TunableResourceModel describes the resource data model.
@@ -120,11 +111,11 @@ func (r *TunableResource) Configure(_ context.Context, req resource.ConfigureReq
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(tunableClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected tunableClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -141,7 +132,7 @@ func (r *TunableResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	createReq := &tnstypes.TunableCreateRequest{
+	createReq := &client.TunableCreateRequest{
 		Type:    plan.Type.ValueString(),
 		Var:     plan.Var.ValueString(),
 		Value:   plan.Value.ValueString(),
@@ -190,7 +181,7 @@ func (r *TunableResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	tunable, err := r.client.GetTunable(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -233,7 +224,7 @@ func (r *TunableResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	enabled := plan.Enabled.ValueBool()
 
-	updateReq := &tnstypes.TunableUpdateRequest{
+	updateReq := &client.TunableUpdateRequest{
 		Value:   plan.Value.ValueString(),
 		Enabled: &enabled,
 	}
@@ -278,7 +269,7 @@ func (r *TunableResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 	err = r.client.DeleteTunable(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "Tunable already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -299,7 +290,7 @@ func (r *TunableResource) ImportState(ctx context.Context, req resource.ImportSt
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *TunableResource) mapResponseToModel(tunable *tnstypes.Tunable, model *TunableResourceModel) {
+func (r *TunableResource) mapResponseToModel(tunable *client.Tunable, model *TunableResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(tunable.ID))
 	model.Type = types.StringValue(tunable.Type)
 	model.Var = types.StringValue(tunable.Var)

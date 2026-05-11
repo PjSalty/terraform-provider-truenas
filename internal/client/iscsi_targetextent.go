@@ -6,21 +6,34 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// ISCSITargetExtent, ISCSITargetExtentCreateRequest,
-// ISCSITargetExtentUpdateRequest moved to
-// internal/types/iscsi_targetextent.go in the v2.0 transport-migration prep.
-type (
-	ISCSITargetExtent              = types.ISCSITargetExtent
-	ISCSITargetExtentCreateRequest = types.ISCSITargetExtentCreateRequest
-	ISCSITargetExtentUpdateRequest = types.ISCSITargetExtentUpdateRequest
-)
+// --- iSCSI Target-Extent Association API ---
+
+// ISCSITargetExtent represents an iSCSI target-to-extent mapping.
+type ISCSITargetExtent struct {
+	ID     int `json:"id"`
+	Target int `json:"target"`
+	Extent int `json:"extent"`
+	LunID  int `json:"lunid"`
+}
+
+// ISCSITargetExtentCreateRequest represents the request to create a target-extent association.
+type ISCSITargetExtentCreateRequest struct {
+	Target int  `json:"target"`
+	Extent int  `json:"extent"`
+	LunID  *int `json:"lunid,omitempty"`
+}
+
+// ISCSITargetExtentUpdateRequest represents the request to update a target-extent association.
+type ISCSITargetExtentUpdateRequest struct {
+	Target int  `json:"target,omitempty"`
+	Extent int  `json:"extent,omitempty"`
+	LunID  *int `json:"lunid,omitempty"`
+}
 
 // GetISCSITargetExtent retrieves an iSCSI target-extent association by ID.
-func (c *Client) GetISCSITargetExtent(ctx context.Context, id int) (*types.ISCSITargetExtent, error) {
+func (c *Client) GetISCSITargetExtent(ctx context.Context, id int) (*ISCSITargetExtent, error) {
 	tflog.Trace(ctx, "GetISCSITargetExtent start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/iscsi/targetextent/id/%d", id))
@@ -28,7 +41,7 @@ func (c *Client) GetISCSITargetExtent(ctx context.Context, id int) (*types.ISCSI
 		return nil, fmt.Errorf("getting iSCSI target-extent %d: %w", id, err)
 	}
 
-	var te types.ISCSITargetExtent
+	var te ISCSITargetExtent
 	if err := json.Unmarshal(resp, &te); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI target-extent response: %w", err)
 	}
@@ -38,7 +51,7 @@ func (c *Client) GetISCSITargetExtent(ctx context.Context, id int) (*types.ISCSI
 }
 
 // CreateISCSITargetExtent creates a new iSCSI target-extent association.
-func (c *Client) CreateISCSITargetExtent(ctx context.Context, req *types.ISCSITargetExtentCreateRequest) (*types.ISCSITargetExtent, error) {
+func (c *Client) CreateISCSITargetExtent(ctx context.Context, req *ISCSITargetExtentCreateRequest) (*ISCSITargetExtent, error) {
 	tflog.Trace(ctx, "CreateISCSITargetExtent start")
 
 	resp, err := c.Post(ctx, "/iscsi/targetextent", req)
@@ -46,7 +59,7 @@ func (c *Client) CreateISCSITargetExtent(ctx context.Context, req *types.ISCSITa
 		return nil, fmt.Errorf("creating iSCSI target-extent: %w", err)
 	}
 
-	var te types.ISCSITargetExtent
+	var te ISCSITargetExtent
 	if err := json.Unmarshal(resp, &te); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI target-extent create response: %w", err)
 	}
@@ -56,7 +69,7 @@ func (c *Client) CreateISCSITargetExtent(ctx context.Context, req *types.ISCSITa
 }
 
 // UpdateISCSITargetExtent updates an existing iSCSI target-extent association.
-func (c *Client) UpdateISCSITargetExtent(ctx context.Context, id int, req *types.ISCSITargetExtentUpdateRequest) (*types.ISCSITargetExtent, error) {
+func (c *Client) UpdateISCSITargetExtent(ctx context.Context, id int, req *ISCSITargetExtentUpdateRequest) (*ISCSITargetExtent, error) {
 	tflog.Trace(ctx, "UpdateISCSITargetExtent start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/iscsi/targetextent/id/%d", id), req)
@@ -64,7 +77,7 @@ func (c *Client) UpdateISCSITargetExtent(ctx context.Context, id int, req *types
 		return nil, fmt.Errorf("updating iSCSI target-extent %d: %w", id, err)
 	}
 
-	var te types.ISCSITargetExtent
+	var te ISCSITargetExtent
 	if err := json.Unmarshal(resp, &te); err != nil {
 		return nil, fmt.Errorf("parsing iSCSI target-extent update response: %w", err)
 	}
