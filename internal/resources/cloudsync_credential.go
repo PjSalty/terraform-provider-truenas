@@ -32,17 +32,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// cloudSyncCredentialClient is the transport-agnostic surface this resource
-// needs. Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type cloudSyncCredentialClient interface {
-	GetCloudSyncCredential(ctx context.Context, id int) (*tnstypes.CloudSyncCredential, error)
-	CreateCloudSyncCredential(ctx context.Context, req *tnstypes.CloudSyncCredentialCreateRequest) (*tnstypes.CloudSyncCredential, error)
-	UpdateCloudSyncCredential(ctx context.Context, id int, req *tnstypes.CloudSyncCredentialUpdateRequest) (*tnstypes.CloudSyncCredential, error)
-	DeleteCloudSyncCredential(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &CloudSyncCredentialResource{}
@@ -52,7 +43,7 @@ var (
 // CloudSyncCredentialResource manages a TrueNAS cloud sync credential
 // (S3, B2, Azure, GCS, Dropbox, etc.) used by cloud_sync and cloud_backup tasks.
 type CloudSyncCredentialResource struct {
-	client cloudSyncCredentialClient
+	client *client.Client
 }
 
 // CloudSyncCredentialResourceModel describes the resource data model.
@@ -147,11 +138,11 @@ func (r *CloudSyncCredentialResource) Configure(_ context.Context, req resource.
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(cloudSyncCredentialClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected cloudSyncCredentialClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -188,7 +179,7 @@ func (r *CloudSyncCredentialResource) Create(ctx context.Context, req resource.C
 		return
 	}
 
-	createReq := &tnstypes.CloudSyncCredentialCreateRequest{
+	createReq := &client.CloudSyncCredentialCreateRequest{
 		Name:     plan.Name.ValueString(),
 		Provider: providerMap,
 	}
@@ -232,7 +223,7 @@ func (r *CloudSyncCredentialResource) Read(ctx context.Context, req resource.Rea
 
 	cred, err := r.client.GetCloudSyncCredential(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -279,7 +270,7 @@ func (r *CloudSyncCredentialResource) Update(ctx context.Context, req resource.U
 		return
 	}
 
-	updateReq := &tnstypes.CloudSyncCredentialUpdateRequest{
+	updateReq := &client.CloudSyncCredentialUpdateRequest{
 		Name:     plan.Name.ValueString(),
 		Provider: providerMap,
 	}
@@ -319,7 +310,7 @@ func (r *CloudSyncCredentialResource) Delete(ctx context.Context, req resource.D
 	tflog.Debug(ctx, "Deleting cloud sync credential", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteCloudSyncCredential(ctx, id); err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "Cloud sync credential already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -344,7 +335,7 @@ func (r *CloudSyncCredentialResource) ImportState(ctx context.Context, req resou
 // Terraform model, extracting the provider type and filtering the remaining
 // provider keys back down to the user's original JSON shape to avoid
 // phantom drift from server-side defaults.
-func (r *CloudSyncCredentialResource) mapResponseToModel(_ context.Context, cred *tnstypes.CloudSyncCredential, model *CloudSyncCredentialResourceModel) {
+func (r *CloudSyncCredentialResource) mapResponseToModel(_ context.Context, cred *client.CloudSyncCredential, model *CloudSyncCredentialResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(cred.ID))
 	model.Name = types.StringValue(cred.Name)
 

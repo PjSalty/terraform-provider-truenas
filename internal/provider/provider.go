@@ -5,20 +5,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/datasources"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resources"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var _ provider.Provider = &TrueNASProvider{}
@@ -41,7 +38,6 @@ type TrueNASProviderModel struct {
 	ReadOnly           types.Bool   `tfsdk:"read_only"`
 	DestroyProtection  types.Bool   `tfsdk:"destroy_protection"`
 	RequestTimeout     types.String `tfsdk:"request_timeout"`
-	Transport          types.String `tfsdk:"transport"`
 }
 
 // New returns a new provider factory function.
@@ -116,24 +112,6 @@ func (p *TrueNASProvider) Schema(_ context.Context, _ provider.SchemaRequest, re
 					"less are ignored so this attribute can never disable the timeout.",
 				Optional: true,
 			},
-			"transport": schema.StringAttribute{
-				Description: "Which transport to use when talking to the TrueNAS API. " +
-					"\"websocket\" (default in v2.0+) uses the JSON-RPC 2.0 over WebSocket API at /api/current. " +
-					"\"rest\" uses the legacy REST API at /api/v2.0. " +
-					"The REST API is deprecated and scheduled for removal in TrueNAS SCALE 26.04. " +
-					"\"rest\" remains supported in v2.x as a rollback path; v2.1 deletes it. " +
-					"Can also be set via the TRUENAS_TRANSPORT environment variable.",
-				MarkdownDescription: "Which transport to use when talking to the TrueNAS API. " +
-					"`\"websocket\"` (default in v2.0+) uses the JSON-RPC 2.0 over WebSocket API at `/api/current`. " +
-					"`\"rest\"` uses the legacy REST API at `/api/v2.0`. " +
-					"The REST API is deprecated and scheduled for removal in TrueNAS SCALE 26.04. " +
-					"`\"rest\"` remains supported in v2.x as a rollback path; v2.1 deletes it. " +
-					"Can also be set via the `TRUENAS_TRANSPORT` environment variable.",
-				Optional: true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("rest", "websocket"),
-				},
-			},
 		},
 	}
 }
@@ -185,60 +163,11 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 		insecureSkipVerify = config.InsecureSkipVerify.ValueBool()
 	}
 
-	// Resolve transport from config or environment. Default is now
-	// "websocket" (Phase 4 cutover, v2.0+). "rest" remains supported as a
-	// rollback path through v2.x and is removed in v2.1.
-	//
-	// The schema validator already gates HCL values to {"rest",
-	// "websocket"} so any invalid value here came in via the env var
-	// path; reject it explicitly.
-	transport := os.Getenv("TRUENAS_TRANSPORT")
-	if transport == "" {
-		transport = "websocket"
-	}
-	if !config.Transport.IsNull() {
-		transport = config.Transport.ValueString()
-	}
-	if transport != "rest" && transport != "websocket" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("transport"),
-			"Invalid transport value",
-			"transport must be \"rest\" or \"websocket\"; got: "+transport,
-		)
-		return
-	}
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Create the API client. The wsclient path is opt-in alpha during v1.x —
-	// only resources that have been migrated will accept its interface; the
-	// rest will surface a "Unexpected Resource Configure Type" diagnostic
-	// at resource Configure time. v2.0 will flip the default and v2.1 will
-	// delete the REST path entirely.
-	if transport == "websocket" {
-		wsc, werr := wsclient.New(ctx, url, apiKey, insecureSkipVerify)
-		if werr != nil {
-			resp.Diagnostics.AddError(
-				"Unable to Create TrueNAS WebSocket Client",
-				"An unexpected error occurred when dialing the TrueNAS WebSocket transport: "+werr.Error(),
-			)
-			return
-		}
-		applyWSClientFlags(ctx, wsc, &config, url, resp)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		tflog.Debug(ctx, "TrueNAS provider configured", map[string]interface{}{
-			"url":       url,
-			"transport": "websocket",
-		})
-		resp.DataSourceData = wsc
-		resp.ResourceData = wsc
-		return
-	}
-
+	// Create the API client
 	c, err := newClientFn(url, apiKey, insecureSkipVerify)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -319,7 +248,6 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 	tflog.Debug(ctx, "TrueNAS provider configured", map[string]interface{}{
 		"url":                url,
-		"transport":          "rest",
 		"read_only":          c.ReadOnly,
 		"destroy_protection": c.DestroyProtection,
 		"request_timeout":    c.RequestTimeout().String(),
@@ -327,58 +255,6 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 	resp.DataSourceData = c
 	resp.ResourceData = c
-}
-
-// applyWSClientFlags mirrors the REST client's safety-rail / timeout
-// resolution against a *wsclient.Client: read_only, destroy_protection
-// (HCL > env > default) and the per-request timeout. Kept separate
-// from the REST path so the two transports can drift independently
-// without sharing state.
-func applyWSClientFlags(ctx context.Context, wsc *wsclient.Client, config *TrueNASProviderModel, url string, resp *provider.ConfigureResponse) {
-	if v := os.Getenv("TRUENAS_READONLY"); v == "true" || v == "1" {
-		wsc.ReadOnly = true
-	}
-	if !config.ReadOnly.IsNull() {
-		wsc.ReadOnly = config.ReadOnly.ValueBool()
-	}
-	if wsc.ReadOnly {
-		tflog.Warn(ctx, "TrueNAS provider is in read-only mode (websocket) — all mutating calls will fail with ErrReadOnly", map[string]interface{}{
-			"url": url,
-		})
-	}
-
-	if v := os.Getenv("TRUENAS_DESTROY_PROTECTION"); v == "true" || v == "1" {
-		wsc.DestroyProtection = true
-	}
-	if !config.DestroyProtection.IsNull() {
-		wsc.DestroyProtection = config.DestroyProtection.ValueBool()
-	}
-	if wsc.DestroyProtection {
-		tflog.Warn(ctx, "TrueNAS provider is in destroy-protected mode (websocket) — destructive calls will fail with ErrDestroyProtected", map[string]interface{}{
-			"url": url,
-		})
-	}
-
-	var requestTimeoutRaw string
-	if v := os.Getenv("TRUENAS_REQUEST_TIMEOUT"); v != "" {
-		requestTimeoutRaw = v
-	}
-	if !config.RequestTimeout.IsNull() {
-		requestTimeoutRaw = config.RequestTimeout.ValueString()
-	}
-	if requestTimeoutRaw != "" {
-		parsed, perr := time.ParseDuration(requestTimeoutRaw)
-		if perr != nil {
-			resp.Diagnostics.AddAttributeError(
-				path.Root("request_timeout"),
-				"Invalid request_timeout duration",
-				"The request_timeout value could not be parsed as a Go time.Duration "+
-					"(e.g. \"60s\", \"2m\", \"5m\"): "+perr.Error(),
-			)
-			return
-		}
-		wsc.SetRequestTimeout(parsed)
-	}
 }
 
 func (p *TrueNASProvider) Resources(_ context.Context) []func() resource.Resource {

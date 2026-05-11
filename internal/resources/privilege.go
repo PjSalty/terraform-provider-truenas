@@ -19,17 +19,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// privilegeClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type privilegeClient interface {
-	GetPrivilege(ctx context.Context, id int) (*tnstypes.Privilege, error)
-	CreatePrivilege(ctx context.Context, req *tnstypes.PrivilegeCreateRequest) (*tnstypes.Privilege, error)
-	UpdatePrivilege(ctx context.Context, id int, req *tnstypes.PrivilegeUpdateRequest) (*tnstypes.Privilege, error)
-	DeletePrivilege(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &PrivilegeResource{}
@@ -38,7 +29,7 @@ var (
 
 // PrivilegeResource manages a TrueNAS privilege (RBAC grant).
 type PrivilegeResource struct {
-	client privilegeClient
+	client *client.Client
 }
 
 // PrivilegeResourceModel describes the resource data model.
@@ -125,11 +116,11 @@ func (r *PrivilegeResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(privilegeClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected privilegeClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -149,7 +140,7 @@ func (r *PrivilegeResource) Create(ctx context.Context, req resource.CreateReque
 	dsGroups := privilegeListToDSGroupSlice(ctx, plan.DSGroups, &resp.Diagnostics)
 	roles := privilegeListToStringSlice(ctx, plan.Roles, &resp.Diagnostics)
 
-	createReq := &tnstypes.PrivilegeCreateRequest{
+	createReq := &client.PrivilegeCreateRequest{
 		Name:        plan.Name.ValueString(),
 		LocalGroups: localGroups,
 		DSGroups:    dsGroups,
@@ -190,7 +181,7 @@ func (r *PrivilegeResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	p, err := r.client.GetPrivilege(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -232,7 +223,7 @@ func (r *PrivilegeResource) Update(ctx context.Context, req resource.UpdateReque
 
 	name := plan.Name.ValueString()
 	webShell := plan.WebShell.ValueBool()
-	updateReq := &tnstypes.PrivilegeUpdateRequest{
+	updateReq := &client.PrivilegeUpdateRequest{
 		Name:        &name,
 		LocalGroups: &localGroups,
 		DSGroups:    &dsGroups,
@@ -271,7 +262,7 @@ func (r *PrivilegeResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	tflog.Debug(ctx, "Deleting privilege", map[string]interface{}{"id": id})
 	if err := r.client.DeletePrivilege(ctx, id); err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "Privilege already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -292,7 +283,7 @@ func (r *PrivilegeResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *PrivilegeResource) mapResponseToModel(ctx context.Context, p *tnstypes.Privilege, model *PrivilegeResourceModel, diags *diag.Diagnostics) {
+func (r *PrivilegeResource) mapResponseToModel(ctx context.Context, p *client.Privilege, model *PrivilegeResourceModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(strconv.Itoa(p.ID))
 	model.Name = types.StringValue(p.Name)
 	model.WebShell = types.BoolValue(p.WebShell)

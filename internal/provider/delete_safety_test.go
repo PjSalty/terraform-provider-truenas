@@ -80,13 +80,7 @@ func TestDeleteHandlesNotFound(t *testing.T) {
 			// only care about files that DO define Delete, so skip.
 			continue
 		}
-		// Accept either client.IsNotFound (legacy REST resources) or the
-		// internal isNotFound helper (transport-agnostic, used by
-		// migrated resources). Both classify the not-found error type
-		// for their respective transport so the Delete-while-already-
-		// gone race resolves to a clean state removal.
-		text := string(src)
-		if !strings.Contains(text, "IsNotFound(") && !strings.Contains(text, "isNotFound(") {
+		if !strings.Contains(string(src), "IsNotFound(") {
 			violations = append(violations, name)
 		}
 	}
