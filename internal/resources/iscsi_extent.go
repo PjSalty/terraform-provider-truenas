@@ -23,19 +23,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators"
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
-
-// iscsiExtentClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type iscsiExtentClient interface {
-	GetISCSIExtent(ctx context.Context, id int) (*tnstypes.ISCSIExtent, error)
-	CreateISCSIExtent(ctx context.Context, req *tnstypes.ISCSIExtentCreateRequest) (*tnstypes.ISCSIExtent, error)
-	UpdateISCSIExtent(ctx context.Context, id int, req *tnstypes.ISCSIExtentUpdateRequest) (*tnstypes.ISCSIExtent, error)
-	DeleteISCSIExtent(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                     = &ISCSIExtentResource{}
@@ -46,7 +37,7 @@ var (
 
 // ISCSIExtentResource manages an iSCSI extent.
 type ISCSIExtentResource struct {
-	client iscsiExtentClient
+	client *client.Client
 }
 
 // ISCSIExtentResourceModel describes the resource data model.
@@ -199,11 +190,11 @@ func (r *ISCSIExtentResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(iscsiExtentClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected iscsiExtentClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -220,7 +211,7 @@ func (r *ISCSIExtentResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createReq := &tnstypes.ISCSIExtentCreateRequest{
+	createReq := &client.ISCSIExtentCreateRequest{
 		Name:      plan.Name.ValueString(),
 		Type:      plan.Type.ValueString(),
 		Blocksize: int(plan.Blocksize.ValueInt64()),
@@ -280,7 +271,7 @@ func (r *ISCSIExtentResource) Read(ctx context.Context, req resource.ReadRequest
 
 	extent, err := r.client.GetISCSIExtent(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -324,7 +315,7 @@ func (r *ISCSIExtentResource) Update(ctx context.Context, req resource.UpdateReq
 	enabled := plan.Enabled.ValueBool()
 	readOnly := plan.ReadOnly.ValueBool()
 
-	updateReq := &tnstypes.ISCSIExtentUpdateRequest{
+	updateReq := &client.ISCSIExtentUpdateRequest{
 		Name:      plan.Name.ValueString(),
 		Type:      plan.Type.ValueString(),
 		Blocksize: int(plan.Blocksize.ValueInt64()),
@@ -384,7 +375,7 @@ func (r *ISCSIExtentResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err = r.client.DeleteISCSIExtent(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "iSCSI extent already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -458,7 +449,7 @@ func (r *ISCSIExtentResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ISCSIExtentResource) mapResponseToModel(extent *tnstypes.ISCSIExtent, model *ISCSIExtentResourceModel) {
+func (r *ISCSIExtentResource) mapResponseToModel(extent *client.ISCSIExtent, model *ISCSIExtentResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(extent.ID))
 	model.Name = types.StringValue(extent.Name)
 	model.Type = types.StringValue(extent.Type)

@@ -7,19 +7,31 @@ import (
 	"net/url"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// ZvolCreateRequest, ZvolUpdateRequest moved to internal/types/zvol.go in
-// the v2.0 transport-migration prep.
-type (
-	ZvolCreateRequest = types.ZvolCreateRequest
-	ZvolUpdateRequest = types.ZvolUpdateRequest
-)
+// --- Zvol API (uses dataset endpoint with type=VOLUME) ---
+
+// ZvolCreateRequest represents the request to create a zvol.
+type ZvolCreateRequest struct {
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	Volsize       int64  `json:"volsize"`
+	Volblocksize  string `json:"volblocksize,omitempty"`
+	Deduplication string `json:"deduplication,omitempty"`
+	Compression   string `json:"compression,omitempty"`
+	Comments      string `json:"comments,omitempty"`
+}
+
+// ZvolUpdateRequest represents the request to update a zvol.
+type ZvolUpdateRequest struct {
+	Volsize       int64  `json:"volsize,omitempty"`
+	Deduplication string `json:"deduplication,omitempty"`
+	Compression   string `json:"compression,omitempty"`
+	Comments      string `json:"comments,omitempty"`
+}
 
 // CreateZvol creates a new ZFS volume (zvol).
-func (c *Client) CreateZvol(ctx context.Context, req *types.ZvolCreateRequest) (*types.DatasetResponse, error) {
+func (c *Client) CreateZvol(ctx context.Context, req *ZvolCreateRequest) (*DatasetResponse, error) {
 	tflog.Trace(ctx, "CreateZvol start")
 
 	req.Type = "VOLUME"
@@ -28,7 +40,7 @@ func (c *Client) CreateZvol(ctx context.Context, req *types.ZvolCreateRequest) (
 		return nil, fmt.Errorf("creating zvol %q: %w", req.Name, err)
 	}
 
-	var dataset types.DatasetResponse
+	var dataset DatasetResponse
 	if err := json.Unmarshal(resp, &dataset); err != nil {
 		return nil, fmt.Errorf("parsing zvol create response: %w", err)
 	}
@@ -38,7 +50,7 @@ func (c *Client) CreateZvol(ctx context.Context, req *types.ZvolCreateRequest) (
 }
 
 // GetZvol retrieves a zvol by its full path (pool/name).
-func (c *Client) GetZvol(ctx context.Context, id string) (*types.DatasetResponse, error) {
+func (c *Client) GetZvol(ctx context.Context, id string) (*DatasetResponse, error) {
 	tflog.Trace(ctx, "GetZvol start")
 
 	tflog.Trace(ctx, "GetZvol success")
@@ -46,7 +58,7 @@ func (c *Client) GetZvol(ctx context.Context, id string) (*types.DatasetResponse
 }
 
 // UpdateZvol updates an existing zvol.
-func (c *Client) UpdateZvol(ctx context.Context, id string, req *types.ZvolUpdateRequest) (*types.DatasetResponse, error) {
+func (c *Client) UpdateZvol(ctx context.Context, id string, req *ZvolUpdateRequest) (*DatasetResponse, error) {
 	tflog.Trace(ctx, "UpdateZvol start")
 
 	encodedID := url.PathEscape(id)
@@ -55,7 +67,7 @@ func (c *Client) UpdateZvol(ctx context.Context, id string, req *types.ZvolUpdat
 		return nil, fmt.Errorf("updating zvol %q: %w", id, err)
 	}
 
-	var dataset types.DatasetResponse
+	var dataset DatasetResponse
 	if err := json.Unmarshal(resp, &dataset); err != nil {
 		return nil, fmt.Errorf("parsing zvol update response: %w", err)
 	}

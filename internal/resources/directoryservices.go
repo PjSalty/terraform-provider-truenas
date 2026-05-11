@@ -20,16 +20,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// directoryServicesClient is the transport-agnostic surface used by
-// DirectoryServicesResource.
-type directoryServicesClient interface {
-	GetDirectoryServicesConfig(ctx context.Context) (*tnstypes.DirectoryServicesConfig, error)
-	UpdateDirectoryServicesConfig(ctx context.Context, req *tnstypes.DirectoryServicesUpdateRequest) (*tnstypes.DirectoryServicesConfig, error)
-	LeaveDirectoryServices(ctx context.Context, body map[string]interface{}) ([]byte, error)
-}
 
 var (
 	_ resource.Resource                = &DirectoryServicesResource{}
@@ -41,7 +33,7 @@ var (
 // be configured at a time. Delete disables the service rather than removing
 // the underlying singleton record.
 type DirectoryServicesResource struct {
-	client directoryServicesClient
+	client *client.Client
 }
 
 // DirectoryServicesResourceModel describes the resource data model.
@@ -171,11 +163,11 @@ func (r *DirectoryServicesResource) Configure(_ context.Context, req resource.Co
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(directoryServicesClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected directoryServicesClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -280,7 +272,7 @@ func (r *DirectoryServicesResource) Delete(ctx context.Context, _ resource.Delet
 
 	disabled := false
 	emptyType := ""
-	resetReq := &tnstypes.DirectoryServicesUpdateRequest{
+	resetReq := &client.DirectoryServicesUpdateRequest{
 		ServiceType: &emptyType,
 		Enable:      &disabled,
 	}
@@ -298,8 +290,8 @@ func (r *DirectoryServicesResource) ImportState(ctx context.Context, req resourc
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *DirectoryServicesResource) buildUpdateRequest(plan *DirectoryServicesResourceModel, diags *diag.Diagnostics) *tnstypes.DirectoryServicesUpdateRequest {
-	out := &tnstypes.DirectoryServicesUpdateRequest{}
+func (r *DirectoryServicesResource) buildUpdateRequest(plan *DirectoryServicesResourceModel, diags *diag.Diagnostics) *client.DirectoryServicesUpdateRequest {
+	out := &client.DirectoryServicesUpdateRequest{}
 
 	if !plan.ServiceType.IsNull() && !plan.ServiceType.IsUnknown() {
 		v := plan.ServiceType.ValueString()
@@ -350,7 +342,7 @@ func (r *DirectoryServicesResource) buildUpdateRequest(plan *DirectoryServicesRe
 	return out
 }
 
-func (r *DirectoryServicesResource) mapResponseToModel(cfg *tnstypes.DirectoryServicesConfig, model *DirectoryServicesResourceModel) {
+func (r *DirectoryServicesResource) mapResponseToModel(cfg *client.DirectoryServicesConfig, model *DirectoryServicesResourceModel) {
 	model.ID = types.StringValue("1")
 
 	if cfg.ServiceType != nil {

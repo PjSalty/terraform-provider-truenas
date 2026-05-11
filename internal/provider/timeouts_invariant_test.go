@@ -47,16 +47,6 @@ func TestResourcesHaveTimeoutsBlock(t *testing.T) {
 			t.Fatalf("read %s: %v", m, err)
 		}
 		text := string(src)
-		// Skip files that do not declare a resource type — package-level
-		// helpers that happen to live under internal/resources/ are not
-		// resources and have no schema to attach a timeouts block to.
-		// "Resource struct" + "Resource interface" cover both pointer-
-		// receiver structs and accept-the-interface shapes used in the
-		// transport-migration refactor.
-		if !strings.Contains(text, "Resource struct") &&
-			!strings.Contains(text, "Resource interface") {
-			continue
-		}
 		// Every resource file that declares a Schema must contain at
 		// least one reference to the plugin-framework-timeouts package.
 		// Allow either the Block() helper (most common) or the

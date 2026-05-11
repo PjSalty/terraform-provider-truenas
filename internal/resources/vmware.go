@@ -16,17 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// vmwareClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type vmwareClient interface {
-	GetVMware(ctx context.Context, id int) (*tnstypes.VMware, error)
-	CreateVMware(ctx context.Context, req *tnstypes.VMwareCreateRequest) (*tnstypes.VMware, error)
-	UpdateVMware(ctx context.Context, id int, req *tnstypes.VMwareUpdateRequest) (*tnstypes.VMware, error)
-	DeleteVMware(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &VMwareResource{}
@@ -37,7 +28,7 @@ var (
 // It is used for snapshot-aware replication of VMware datastores that are
 // backed by TrueNAS ZFS datasets.
 type VMwareResource struct {
-	client vmwareClient
+	client *client.Client
 }
 
 // VMwareResourceModel describes the resource data model.
@@ -123,11 +114,11 @@ func (r *VMwareResource) Configure(_ context.Context, req resource.ConfigureRequ
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(vmwareClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected vmwareClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -144,7 +135,7 @@ func (r *VMwareResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	createReq := &tnstypes.VMwareCreateRequest{
+	createReq := &client.VMwareCreateRequest{
 		Datastore:  plan.Datastore.ValueString(),
 		Filesystem: plan.Filesystem.ValueString(),
 		Hostname:   plan.Hostname.ValueString(),
@@ -187,7 +178,7 @@ func (r *VMwareResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	v, err := r.client.GetVMware(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -231,7 +222,7 @@ func (r *VMwareResource) Update(ctx context.Context, req resource.UpdateRequest,
 	username := plan.Username.ValueString()
 	password := plan.Password.ValueString()
 
-	updateReq := &tnstypes.VMwareUpdateRequest{
+	updateReq := &client.VMwareUpdateRequest{
 		Datastore:  &datastore,
 		Filesystem: &filesystem,
 		Hostname:   &hostname,
@@ -271,7 +262,7 @@ func (r *VMwareResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	tflog.Debug(ctx, "Deleting VMware", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteVMware(ctx, id); err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "VMware snapshot already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -292,7 +283,7 @@ func (r *VMwareResource) ImportState(ctx context.Context, req resource.ImportSta
 
 // mapResponseToModel copies API fields to the model, preserving the
 // user-supplied password value (API returns it redacted).
-func (r *VMwareResource) mapResponseToModel(v *tnstypes.VMware, model *VMwareResourceModel) {
+func (r *VMwareResource) mapResponseToModel(v *client.VMware, model *VMwareResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(v.ID))
 	model.Datastore = types.StringValue(v.Datastore)
 	model.Filesystem = types.StringValue(v.Filesystem)

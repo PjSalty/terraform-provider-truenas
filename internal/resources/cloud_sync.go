@@ -22,18 +22,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
-
-// cloudSyncClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type cloudSyncClient interface {
-	GetCloudSync(ctx context.Context, id int) (*tnstypes.CloudSync, error)
-	CreateCloudSync(ctx context.Context, req *tnstypes.CloudSyncCreateRequest) (*tnstypes.CloudSync, error)
-	UpdateCloudSync(ctx context.Context, id int, req *tnstypes.CloudSyncUpdateRequest) (*tnstypes.CloudSync, error)
-	DeleteCloudSync(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &CloudSyncResource{}
@@ -43,7 +34,7 @@ var (
 
 // CloudSyncResource manages a TrueNAS cloud sync task.
 type CloudSyncResource struct {
-	client cloudSyncClient
+	client *client.Client
 }
 
 // CloudSyncResourceModel describes the resource data model.
@@ -177,11 +168,11 @@ func (r *CloudSyncResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(cloudSyncClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected cloudSyncClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -198,13 +189,13 @@ func (r *CloudSyncResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	createReq := &tnstypes.CloudSyncCreateRequest{
+	createReq := &client.CloudSyncCreateRequest{
 		Path:         plan.Path.ValueString(),
 		Credentials:  int(plan.Credentials.ValueInt64()),
 		Direction:    plan.Direction.ValueString(),
 		TransferMode: plan.TransferMode.ValueString(),
 		Enabled:      plan.Enabled.ValueBool(),
-		Schedule: tnstypes.Schedule{
+		Schedule: client.Schedule{
 			Minute: plan.Minute.ValueString(),
 			Hour:   plan.Hour.ValueString(),
 			Dom:    plan.Dom.ValueString(),
@@ -267,7 +258,7 @@ func (r *CloudSyncResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	cs, err := r.client.GetCloudSync(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -309,7 +300,7 @@ func (r *CloudSyncResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	enabled := plan.Enabled.ValueBool()
-	schedule := &tnstypes.Schedule{
+	schedule := &client.Schedule{
 		Minute: plan.Minute.ValueString(),
 		Hour:   plan.Hour.ValueString(),
 		Dom:    plan.Dom.ValueString(),
@@ -317,7 +308,7 @@ func (r *CloudSyncResource) Update(ctx context.Context, req resource.UpdateReque
 		Dow:    plan.Dow.ValueString(),
 	}
 
-	updateReq := &tnstypes.CloudSyncUpdateRequest{
+	updateReq := &client.CloudSyncUpdateRequest{
 		Path:         plan.Path.ValueString(),
 		Credentials:  int(plan.Credentials.ValueInt64()),
 		Direction:    plan.Direction.ValueString(),
@@ -378,7 +369,7 @@ func (r *CloudSyncResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	err = r.client.DeleteCloudSync(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "Cloud sync task already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -407,7 +398,7 @@ func (r *CloudSyncResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *CloudSyncResource) mapResponseToModel(cs *tnstypes.CloudSync, model *CloudSyncResourceModel) {
+func (r *CloudSyncResource) mapResponseToModel(cs *client.CloudSync, model *CloudSyncResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(cs.ID))
 	model.Description = types.StringValue(cs.Description)
 	model.Path = types.StringValue(cs.Path)

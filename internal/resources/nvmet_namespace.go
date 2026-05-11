@@ -20,17 +20,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// nvmetNamespaceClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type nvmetNamespaceClient interface {
-	GetNVMetNamespace(ctx context.Context, id int) (*tnstypes.NVMetNamespace, error)
-	CreateNVMetNamespace(ctx context.Context, req *tnstypes.NVMetNamespaceCreateRequest) (*tnstypes.NVMetNamespace, error)
-	UpdateNVMetNamespace(ctx context.Context, id int, req *tnstypes.NVMetNamespaceUpdateRequest) (*tnstypes.NVMetNamespace, error)
-	DeleteNVMetNamespace(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &NVMetNamespaceResource{}
@@ -39,7 +30,7 @@ var (
 
 // NVMetNamespaceResource manages an NVMe-oF namespace (block device within a subsystem).
 type NVMetNamespaceResource struct {
-	client nvmetNamespaceClient
+	client *client.Client
 }
 
 // NVMetNamespaceResourceModel describes the resource data model.
@@ -137,11 +128,11 @@ func (r *NVMetNamespaceResource) Configure(_ context.Context, req resource.Confi
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(nvmetNamespaceClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected nvmetNamespaceClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -158,7 +149,7 @@ func (r *NVMetNamespaceResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	createReq := &tnstypes.NVMetNamespaceCreateRequest{
+	createReq := &client.NVMetNamespaceCreateRequest{
 		DeviceType: plan.DeviceType.ValueString(),
 		DevicePath: plan.DevicePath.ValueString(),
 		SubsysID:   int(plan.SubsysID.ValueInt64()),
@@ -215,7 +206,7 @@ func (r *NVMetNamespaceResource) Read(ctx context.Context, req resource.ReadRequ
 
 	ns, err := r.client.GetNVMetNamespace(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -256,7 +247,7 @@ func (r *NVMetNamespaceResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	updateReq := &tnstypes.NVMetNamespaceUpdateRequest{}
+	updateReq := &client.NVMetNamespaceUpdateRequest{}
 	if !plan.Nsid.IsNull() && !plan.Nsid.IsUnknown() {
 		v := int(plan.Nsid.ValueInt64())
 		updateReq.Nsid = &v
@@ -317,7 +308,7 @@ func (r *NVMetNamespaceResource) Delete(ctx context.Context, req resource.Delete
 	tflog.Debug(ctx, "Deleting nvmet_namespace", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteNVMetNamespace(ctx, id); err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "NVMe-oF namespace already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -338,7 +329,7 @@ func (r *NVMetNamespaceResource) ImportState(ctx context.Context, req resource.I
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NVMetNamespaceResource) mapResponseToModel(ns *tnstypes.NVMetNamespace, model *NVMetNamespaceResourceModel) {
+func (r *NVMetNamespaceResource) mapResponseToModel(ns *client.NVMetNamespace, model *NVMetNamespaceResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(ns.ID))
 	if ns.Nsid != nil {
 		model.Nsid = types.Int64Value(int64(*ns.Nsid))
