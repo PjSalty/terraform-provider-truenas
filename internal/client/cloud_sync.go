@@ -6,20 +6,49 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// CloudSync, CloudSyncCreateRequest, CloudSyncUpdateRequest moved to
-// internal/types/cloud_sync.go in the v2.0 transport-migration prep.
-type (
-	CloudSync              = types.CloudSync
-	CloudSyncCreateRequest = types.CloudSyncCreateRequest
-	CloudSyncUpdateRequest = types.CloudSyncUpdateRequest
-)
+// --- Cloud Sync API ---
+
+// CloudSync represents a cloud sync task in TrueNAS.
+type CloudSync struct {
+	ID           int                    `json:"id"`
+	Description  string                 `json:"description,omitempty"`
+	Path         string                 `json:"path"`
+	Credentials  int                    `json:"credentials"`
+	Direction    string                 `json:"direction"`
+	TransferMode string                 `json:"transfer_mode"`
+	Schedule     Schedule               `json:"schedule"`
+	Enabled      bool                   `json:"enabled"`
+	Attributes   map[string]interface{} `json:"attributes,omitempty"`
+}
+
+// CloudSyncCreateRequest represents the request to create a cloud sync task.
+type CloudSyncCreateRequest struct {
+	Description  string                 `json:"description,omitempty"`
+	Path         string                 `json:"path"`
+	Credentials  int                    `json:"credentials"`
+	Direction    string                 `json:"direction"`
+	TransferMode string                 `json:"transfer_mode"`
+	Schedule     Schedule               `json:"schedule,omitempty"`
+	Enabled      bool                   `json:"enabled"`
+	Attributes   map[string]interface{} `json:"attributes"`
+}
+
+// CloudSyncUpdateRequest represents the request to update a cloud sync task.
+type CloudSyncUpdateRequest struct {
+	Description  string                 `json:"description,omitempty"`
+	Path         string                 `json:"path,omitempty"`
+	Credentials  int                    `json:"credentials,omitempty"`
+	Direction    string                 `json:"direction,omitempty"`
+	TransferMode string                 `json:"transfer_mode,omitempty"`
+	Schedule     *Schedule              `json:"schedule,omitempty"`
+	Enabled      *bool                  `json:"enabled,omitempty"`
+	Attributes   map[string]interface{} `json:"attributes,omitempty"`
+}
 
 // GetCloudSync retrieves a cloud sync task by ID.
-func (c *Client) GetCloudSync(ctx context.Context, id int) (*types.CloudSync, error) {
+func (c *Client) GetCloudSync(ctx context.Context, id int) (*CloudSync, error) {
 	tflog.Trace(ctx, "GetCloudSync start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/cloudsync/id/%d", id))
@@ -27,7 +56,7 @@ func (c *Client) GetCloudSync(ctx context.Context, id int) (*types.CloudSync, er
 		return nil, fmt.Errorf("getting cloud sync %d: %w", id, err)
 	}
 
-	var cs types.CloudSync
+	var cs CloudSync
 	if err := json.Unmarshal(resp, &cs); err != nil {
 		return nil, fmt.Errorf("parsing cloud sync response: %w", err)
 	}
@@ -37,7 +66,7 @@ func (c *Client) GetCloudSync(ctx context.Context, id int) (*types.CloudSync, er
 }
 
 // CreateCloudSync creates a new cloud sync task.
-func (c *Client) CreateCloudSync(ctx context.Context, req *types.CloudSyncCreateRequest) (*types.CloudSync, error) {
+func (c *Client) CreateCloudSync(ctx context.Context, req *CloudSyncCreateRequest) (*CloudSync, error) {
 	tflog.Trace(ctx, "CreateCloudSync start")
 
 	resp, err := c.Post(ctx, "/cloudsync", req)
@@ -45,7 +74,7 @@ func (c *Client) CreateCloudSync(ctx context.Context, req *types.CloudSyncCreate
 		return nil, fmt.Errorf("creating cloud sync: %w", err)
 	}
 
-	var cs types.CloudSync
+	var cs CloudSync
 	if err := json.Unmarshal(resp, &cs); err != nil {
 		return nil, fmt.Errorf("parsing cloud sync create response: %w", err)
 	}
@@ -55,7 +84,7 @@ func (c *Client) CreateCloudSync(ctx context.Context, req *types.CloudSyncCreate
 }
 
 // UpdateCloudSync updates an existing cloud sync task.
-func (c *Client) UpdateCloudSync(ctx context.Context, id int, req *types.CloudSyncUpdateRequest) (*types.CloudSync, error) {
+func (c *Client) UpdateCloudSync(ctx context.Context, id int, req *CloudSyncUpdateRequest) (*CloudSync, error) {
 	tflog.Trace(ctx, "UpdateCloudSync start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/cloudsync/id/%d", id), req)
@@ -63,7 +92,7 @@ func (c *Client) UpdateCloudSync(ctx context.Context, id int, req *types.CloudSy
 		return nil, fmt.Errorf("updating cloud sync %d: %w", id, err)
 	}
 
-	var cs types.CloudSync
+	var cs CloudSync
 	if err := json.Unmarshal(resp, &cs); err != nil {
 		return nil, fmt.Errorf("parsing cloud sync update response: %w", err)
 	}

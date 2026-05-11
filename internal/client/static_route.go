@@ -6,20 +6,32 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// StaticRoute, StaticRouteCreateRequest, StaticRouteUpdateRequest moved to
-// internal/types/static_route.go in the v2.0 transport-migration prep.
-type (
-	StaticRoute              = types.StaticRoute
-	StaticRouteCreateRequest = types.StaticRouteCreateRequest
-	StaticRouteUpdateRequest = types.StaticRouteUpdateRequest
-)
+// StaticRoute represents a static network route in TrueNAS.
+type StaticRoute struct {
+	ID          int    `json:"id"`
+	Destination string `json:"destination"`
+	Gateway     string `json:"gateway"`
+	Description string `json:"description"`
+}
+
+// StaticRouteCreateRequest represents the request to create a static route.
+type StaticRouteCreateRequest struct {
+	Destination string `json:"destination"`
+	Gateway     string `json:"gateway"`
+	Description string `json:"description,omitempty"`
+}
+
+// StaticRouteUpdateRequest represents the request to update a static route.
+type StaticRouteUpdateRequest struct {
+	Destination string `json:"destination,omitempty"`
+	Gateway     string `json:"gateway,omitempty"`
+	Description string `json:"description,omitempty"`
+}
 
 // GetStaticRoute retrieves a static route by ID.
-func (c *Client) GetStaticRoute(ctx context.Context, id int) (*types.StaticRoute, error) {
+func (c *Client) GetStaticRoute(ctx context.Context, id int) (*StaticRoute, error) {
 	tflog.Trace(ctx, "GetStaticRoute start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/staticroute/id/%d", id))
@@ -27,7 +39,7 @@ func (c *Client) GetStaticRoute(ctx context.Context, id int) (*types.StaticRoute
 		return nil, fmt.Errorf("getting static route %d: %w", id, err)
 	}
 
-	var route types.StaticRoute
+	var route StaticRoute
 	if err := json.Unmarshal(resp, &route); err != nil {
 		return nil, fmt.Errorf("parsing static route response: %w", err)
 	}
@@ -37,7 +49,7 @@ func (c *Client) GetStaticRoute(ctx context.Context, id int) (*types.StaticRoute
 }
 
 // CreateStaticRoute creates a new static route.
-func (c *Client) CreateStaticRoute(ctx context.Context, req *types.StaticRouteCreateRequest) (*types.StaticRoute, error) {
+func (c *Client) CreateStaticRoute(ctx context.Context, req *StaticRouteCreateRequest) (*StaticRoute, error) {
 	tflog.Trace(ctx, "CreateStaticRoute start")
 
 	resp, err := c.Post(ctx, "/staticroute", req)
@@ -45,7 +57,7 @@ func (c *Client) CreateStaticRoute(ctx context.Context, req *types.StaticRouteCr
 		return nil, fmt.Errorf("creating static route: %w", err)
 	}
 
-	var route types.StaticRoute
+	var route StaticRoute
 	if err := json.Unmarshal(resp, &route); err != nil {
 		return nil, fmt.Errorf("parsing static route create response: %w", err)
 	}
@@ -55,7 +67,7 @@ func (c *Client) CreateStaticRoute(ctx context.Context, req *types.StaticRouteCr
 }
 
 // UpdateStaticRoute updates an existing static route.
-func (c *Client) UpdateStaticRoute(ctx context.Context, id int, req *types.StaticRouteUpdateRequest) (*types.StaticRoute, error) {
+func (c *Client) UpdateStaticRoute(ctx context.Context, id int, req *StaticRouteUpdateRequest) (*StaticRoute, error) {
 	tflog.Trace(ctx, "UpdateStaticRoute start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/staticroute/id/%d", id), req)
@@ -63,7 +75,7 @@ func (c *Client) UpdateStaticRoute(ctx context.Context, id int, req *types.Stati
 		return nil, fmt.Errorf("updating static route %d: %w", id, err)
 	}
 
-	var route types.StaticRoute
+	var route StaticRoute
 	if err := json.Unmarshal(resp, &route); err != nil {
 		return nil, fmt.Errorf("parsing static route update response: %w", err)
 	}

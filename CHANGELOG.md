@@ -7,29 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- **Default transport flipped to WebSocket (Phase 4 cutover, prep for v2.0)** —
-  provider now defaults to JSON-RPC 2.0 over WebSocket at `/api/current`.
-  The legacy REST API at `/api/v2.0` remains available by setting
-  `transport = "rest"` in the provider block or `TRUENAS_TRANSPORT=rest`
-  in the environment, but is deprecated and will be removed in v2.1.
-  Existing Terraform configurations and state are unchanged — every
-  resource and data source supports both transports identically.
-
-  This change addresses issue #8: TrueNAS SCALE 25.04+ surfaces a
-  "deprecated REST API was used" alert on every REST call. Switching
-  the default transport silences that alert for new users without
-  requiring action.
-
-  **TrueNAS version requirement:** WebSocket transport requires
-  TrueNAS SCALE 25.04 or newer. Operators running 24.10 or older must
-  pin `transport = "rest"` until they upgrade, or stay on v1.x.
-
-  **Rollback:** if you encounter regressions, set
-  `transport = "rest"` (or `TRUENAS_TRANSPORT=rest`) and re-run
-  apply. REST-path code is unchanged from v1.10.x.
-
 ## [1.10.2] - 2026-04-25
 
 ### Fixed
