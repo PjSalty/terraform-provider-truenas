@@ -87,7 +87,12 @@ resource "truenas_alert_service" "test" {
 			},
 			{
 				Config: cfg("CRITICAL"),
-				Check:  resource.TestCheckResourceAttr("truenas_alert_service.test", "level", "CRITICAL"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_alert_service.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_alert_service.test", "level", "CRITICAL"),
 			},
 		},
 	})

@@ -114,7 +114,12 @@ resource "truenas_keychain_credential" "test" {
 			},
 			{
 				Config: cfg(name2),
-				Check:  resource.TestCheckResourceAttr("truenas_keychain_credential.test", "name", name2),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_keychain_credential.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_keychain_credential.test", "name", name2),
 			},
 		},
 	})
