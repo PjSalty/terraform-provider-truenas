@@ -162,6 +162,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where `import` cannot round-trip the secret, env-gated/beta
   resources, and one test-naming alias.
 
+- **Plan-time destroy warning expanded to 10 more destructive
+  resources** — `planhelpers.WarnOnDestroy` now fires from
+  `ModifyPlan` on: `api_key`, `privilege`, `iscsi_initiator`,
+  `iscsi_targetextent`, `nvmet_subsys`, `nvmet_namespace`,
+  `nvmet_port`, `keychain_credential`, `acme_dns_authenticator`,
+  `kerberos_realm`. These are the "operator removes one line of HCL
+  and loses access to data / auth / mounts" failure modes. The
+  warning surfaces destructive intent at `terraform plan` time so
+  the operator sees it before running `apply`. Complements the
+  client-layer `destroy_protection` rail that BLOCKS the wire call.
+  `destroyWarnFloor` ratchet 22 → 32.
+
 ## [1.10.2] - 2026-04-25
 
 ### Fixed
