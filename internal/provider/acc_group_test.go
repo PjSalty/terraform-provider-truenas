@@ -82,6 +82,11 @@ resource "truenas_group" "test" {
   smb  = true
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_group.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_group.test", "smb", "true"),
 			},
 		},
