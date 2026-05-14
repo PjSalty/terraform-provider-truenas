@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccSMBConfigResource_basic verifies the singleton SMB config
@@ -25,6 +26,11 @@ resource "truenas_smb_config" "test" {
   description = "acc test initial"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_smb_config.test", "netbiosname", "truenas"),
 					resource.TestCheckResourceAttr("truenas_smb_config.test", "workgroup", "WORKGROUP"),

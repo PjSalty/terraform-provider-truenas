@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccFTPConfigResource_basic verifies the singleton FTP config
@@ -26,6 +27,11 @@ resource "truenas_ftp_config" "test" {
   banner  = "acctest initial"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_ftp_config.test", "port", "21"),
 					resource.TestCheckResourceAttr("truenas_ftp_config.test", "clients", "5"),
