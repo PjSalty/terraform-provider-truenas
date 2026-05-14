@@ -12,11 +12,33 @@
 # Or use direnv: `direnv allow` once and .envrc.local loads automatically.
 
 # ---------------------------------------------------------------------
-# Required: the test TrueNAS host
+# Required: the TEST TrueNAS host — NEVER point this at production
 # ---------------------------------------------------------------------
+#
+# The acceptance suite CREATES AND DESTROYS REAL RESOURCES (datasets,
+# shares, snapshots, tasks). Running it against a production TrueNAS
+# would produce orphaned fixtures at best and destroy real data at
+# worst. The runner enforces a denylist (TRUENAS_PROD_DENY below)
+# and refuses to start if TRUENAS_URL resolves to a known prod host
+# — but the first line of defense is you, the operator, putting
+# the right URL here.
+#
+# Leave empty and uncomment with your TEST instance URL.
+# Do NOT default this to the production hostname.
+#
+# export TRUENAS_URL="https://truenas-test.lab.example"
+export TRUENAS_URL=""
 
-# Base URL of the test TrueNAS instance. HTTPS required.
-export TRUENAS_URL="https://truenas.example.com"
+# Comma-separated list of hostnames that MUST NEVER be the target of
+# an acceptance test run. The default lists the known production
+# TrueNAS for this homelab. Add to this list if you have other prod
+# instances in the same namespace.
+#
+# The pre-flight refuses to start if TRUENAS_URL's hostname matches
+# any entry here. To intentionally target a host in this list (which
+# you should basically never do), unset the variable AND understand
+# what you're doing.
+export TRUENAS_PROD_DENY="truenas.example.com"
 
 # API key created under Credentials → Local Users → root → API Keys.
 # DO NOT hardcode here in .envrc.local in plaintext — fetch from your
