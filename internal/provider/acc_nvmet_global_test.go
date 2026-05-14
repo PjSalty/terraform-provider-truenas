@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccNVMetGlobalResource_basic — singleton resource. Only one
@@ -25,6 +26,11 @@ resource "truenas_nvmet_global" "test" {
   ana = false
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("truenas_nvmet_global.test", "id"),
 					resource.TestCheckResourceAttr("truenas_nvmet_global.test", "ana", "false"),
