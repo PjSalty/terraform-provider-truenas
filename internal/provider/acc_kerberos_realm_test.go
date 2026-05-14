@@ -76,7 +76,12 @@ resource "truenas_kerberos_realm" "test" {
 			},
 			{
 				Config: cfg("kdc2.example.com"),
-				Check:  resource.TestCheckResourceAttr("truenas_kerberos_realm.test", "primary_kdc", "kdc2.example.com"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_kerberos_realm.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_kerberos_realm.test", "primary_kdc", "kdc2.example.com"),
 			},
 		},
 	})

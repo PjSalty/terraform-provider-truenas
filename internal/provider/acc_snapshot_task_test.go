@@ -125,6 +125,11 @@ resource "truenas_snapshot_task" "test" {
   lifetime_unit  = "DAY"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_snapshot_task.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_snapshot_task.test", "lifetime_value", "7"),
 					resource.TestCheckResourceAttr("truenas_snapshot_task.test", "lifetime_unit", "DAY"),
