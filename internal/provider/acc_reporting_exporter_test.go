@@ -93,6 +93,11 @@ resource "truenas_reporting_exporter" "test" {
 			},
 			{
 				Config: cfg(true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_reporting_exporter.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_reporting_exporter.test", "name", name),
 					resource.TestCheckResourceAttr("truenas_reporting_exporter.test", "enabled", "true"),
