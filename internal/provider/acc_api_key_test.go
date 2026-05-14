@@ -82,6 +82,11 @@ resource "truenas_api_key" "test" {
   username = "root"
 }
 `, name2),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_api_key.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_api_key.test", "name", name2),
 			},
 		},
