@@ -18,11 +18,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &KeychainCredentialResource{}
 	_ resource.ResourceWithImportState = &KeychainCredentialResource{}
+	_ resource.ResourceWithModifyPlan  = &KeychainCredentialResource{}
 )
 
 // KeychainCredentialResource manages a TrueNAS keychain credential (SSH keypairs, etc).
@@ -268,6 +270,13 @@ func (r *KeychainCredentialResource) Delete(ctx context.Context, req resource.De
 		return
 	}
 	tflog.Trace(ctx, "Delete KeychainCredential success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a keychain credential breaks any replication,
+// cloud sync, or rsync task that references it.
+func (r *KeychainCredentialResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_keychain_credential")
 }
 
 func (r *KeychainCredentialResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
