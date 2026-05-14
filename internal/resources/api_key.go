@@ -18,11 +18,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &APIKeyResource{}
 	_ resource.ResourceWithImportState = &APIKeyResource{}
+	_ resource.ResourceWithModifyPlan  = &APIKeyResource{}
 )
 
 // APIKeyResource manages a TrueNAS API key.
@@ -262,6 +264,14 @@ func (r *APIKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 	tflog.Trace(ctx, "Delete APIKey success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Destroying an API key revokes API access for anything
+// holding the key — operators should see the warning before they apply.
+// Non-blocking; pair with the destroy_protection rail for hard stops.
+func (r *APIKeyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_api_key")
 }
 
 func (r *APIKeyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
