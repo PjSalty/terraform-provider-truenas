@@ -69,6 +69,11 @@ resource "truenas_network_config" "test" {
   httpproxy = "http://proxy.example.invalid:3128"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_network_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_network_config.test", "httpproxy", "http://proxy.example.invalid:3128"),
 			},
 			{

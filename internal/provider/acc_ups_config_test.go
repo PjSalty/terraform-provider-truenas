@@ -76,7 +76,12 @@ resource "truenas_ups_config" "test" {
 			},
 			{
 				Config: cfg("acctest-updated"),
-				Check:  resource.TestCheckResourceAttr("truenas_ups_config.test", "description", "acctest-updated"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_ups_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_ups_config.test", "description", "acctest-updated"),
 			},
 			{
 				// Restore the default description so the shared test
