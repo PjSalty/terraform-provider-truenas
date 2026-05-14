@@ -43,7 +43,7 @@ import (
 // resources shipped in b6938a9 (dataset, user, share_smb). Rolled
 // out to 5 more deterministic-Read resources (static_route, group,
 // cronjob, tunable, iscsi_portal) in the rigor batch.
-const idempotencyCheckMinimum = 8
+const idempotencyCheckMinimum = 13
 
 func TestIdempotencyCheckCoverage(t *testing.T) {
 	matches, err := filepath.Glob("acc_*_test.go")
