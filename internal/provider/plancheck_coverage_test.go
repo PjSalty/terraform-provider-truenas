@@ -39,9 +39,11 @@ import (
 // files that MUST contain an apply-idempotency check. Increase this
 // number whenever you roll the check out to another acc test — never
 // decrease it, that would regress battle-hardening coverage for no
-// reason. The starting floor matches the three pattern-proof
-// resources shipped in b6938a9 (dataset, user, share_smb).
-const idempotencyCheckMinimum = 3
+// reason. Initial floor of 3 matched the three pattern-proof
+// resources shipped in b6938a9 (dataset, user, share_smb). Rolled
+// out to 5 more deterministic-Read resources (static_route, group,
+// cronjob, tunable, iscsi_portal) in the rigor batch.
+const idempotencyCheckMinimum = 8
 
 func TestIdempotencyCheckCoverage(t *testing.T) {
 	matches, err := filepath.Glob("acc_*_test.go")
