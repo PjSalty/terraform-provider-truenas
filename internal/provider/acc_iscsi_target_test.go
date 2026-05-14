@@ -100,6 +100,11 @@ resource "truenas_iscsi_target" "test" {
   mode  = "ISCSI"
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_iscsi_target.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_iscsi_target.test", "alias", "alias-updated"),
 			},
 		},

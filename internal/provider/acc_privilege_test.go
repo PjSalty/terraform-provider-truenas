@@ -78,6 +78,11 @@ resource "truenas_privilege" "test" {
   web_shell = true
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_privilege.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_privilege.test", "web_shell", "true"),
 			},
 		},
