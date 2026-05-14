@@ -121,6 +121,11 @@ resource "truenas_zvol" "test" {
   compression = "LZ4"
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_zvol.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_zvol.test", "comments", "updated"),
 					resource.TestCheckResourceAttr("truenas_zvol.test", "compression", "LZ4"),

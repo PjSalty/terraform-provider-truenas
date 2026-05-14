@@ -153,6 +153,11 @@ resource "truenas_dataset" "test" {
   compression = "ZSTD"
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_dataset.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_dataset.test", "comments", "updated"),
 					resource.TestCheckResourceAttr("truenas_dataset.test", "compression", "ZSTD"),
