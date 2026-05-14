@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"golang.org/x/crypto/ssh"
 )
@@ -61,6 +62,11 @@ resource "truenas_keychain_credential" "test" {
   }
 }
 `, name, priv, pub),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_keychain_credential.test", "name", name),
 					resource.TestCheckResourceAttr("truenas_keychain_credential.test", "type", "SSH_KEY_PAIR"),
