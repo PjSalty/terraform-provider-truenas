@@ -60,6 +60,76 @@ resource "truenas_reporting_exporter" "test" {
 `, name, enabled)
 }
 
+func testAccCheckReportingExporterExists(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if _, err := c.GetReportingExporter(ctx, id); err != nil {
+			return fmt.Errorf("reporting exporter %d should exist but lookup failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func testAccCheckReportingExporterDisappears(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if err := c.DeleteReportingExporter(ctx, id); err != nil {
+			return fmt.Errorf("out-of-band delete of reporting exporter %d failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func TestAccReportingExporter_disappears(t *testing.T) {
+	if os.Getenv("TRUENAS_TEST_REPORTING_EXPORTER") != "1" {
+		t.Skip("TRUENAS_TEST_REPORTING_EXPORTER=1 not set; skipping")
+	}
+	resourceName := "truenas_reporting_exporter.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckReportingExporterDestroy(resourceName),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccReportingExporterConfigBasic("tf-acc-graphite-disappears", false),
+				Check:  testAccCheckReportingExporterExists(resourceName),
+			},
+			{
+				Config:             testAccReportingExporterConfigBasic("tf-acc-graphite-disappears", false),
+				Check:              testAccCheckReportingExporterDisappears(resourceName),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
 // testAccCheckReportingExporterDestroy verifies the reporting exporter
 // is gone from the upstream after Terraform removes it.
 func testAccCheckReportingExporterDestroy(resourceName string) resource.TestCheckFunc {
