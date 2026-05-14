@@ -114,6 +114,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   secret to git. All 10 current sensitive-named fields pass; the
   invariant locks the contract for every future credential field.
 
+- **Apply-idempotency rollout: 3 → 29 acceptance tests (5.3% → 49.2%)**
+  — the `ConfigPlanChecks.PostApplyPostRefresh: ExpectEmptyPlan()`
+  assertion is now wired into half the acc test surface, up from
+  three pattern-proof resources at the start of the rigor batch.
+  Each adopting resource also carries `PreApply: ExpectResourceAction
+  Create` so a Create-becoming-Update regression is caught with the
+  same step. `idempotencyCheckMinimum` ratchet bumped 3 → 29.
+  Rolled out to: static_route, group, cronjob, tunable, iscsi_portal,
+  nvmet_subsys, nvmet_port, iscsi_initiator, init_script,
+  kerberos_realm, iscsi_target (extended existing PreApply guards),
+  iscsi_targetextent, nvmet_host_subsys, nvmet_port_subsys, privilege,
+  share_nfs, iscsi_extent, nvmet_namespace, iscsi_auth, nvmet_host,
+  api_key, snapshot_task, scrub_task, zvol, certificate, rsync_task.
+  Deferred: singletons with server-side defaulting, sensitive-JSON
+  resources where the API masks fields on read, beta/env-gated
+  resources, and complex computed-field resources (VM, replication).
+
+- **`TestValidatorErrorCoverage` invariant + 22 ExpectError tests**
+  — `acc_validator_errors_test.go` exercises every wired validator
+  with hostile input, asserting plan-time rejection before any API
+  call. Coverage went from 1 to 22 tests. The new ratchet test in
+  `validator_error_coverage_test.go` counts the
+  `TestAccValidator_*` functions and asserts `>= 22`. Removing one
+  would silently drop a plan-time guarantee, so the ratchet makes
+  that visible in review.
+
+  Tests cover: `IPOrCIDR` (5), `stringvalidator.OneOf` (4),
+  `int64validator.Between` boundaries (5), `stringvalidator.LengthBetween`
+  boundaries (3), `stringvalidator.RegexMatches` (1), with at least
+  one test per wired validator.
+
+- **`TestAcceptanceLifecycleCoverage` invariant — 62 resources
+  lifecycle-locked** — every resource family must have all four
+  CRUD phases (`_basic`, `_update`, `_import`, `_disappears`) or
+  appear in `lifecycleResourceExclusions` with a per-phase rationale.
+  Missing any phase leaves a regression vector that escapes detection
+  until a user trips over it.
+
+  Fired one real gap on first run:
+  `ACMEDNSAuthenticator` had no import test — fixed by adding an
+  `ImportState` test step to `TestAccACMEDNSAuthenticator_basic`
+  in the same commit.
+
+  Exclusions are catalogued by category: data sources, singletons
+  where `disappears` is a no-op reset, sensitive-payload resources
+  where `import` cannot round-trip the secret, env-gated/beta
+  resources, and one test-naming alias.
+
 ## [1.10.2] - 2026-04-25
 
 ### Fixed
