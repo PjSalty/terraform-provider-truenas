@@ -89,6 +89,11 @@ resource "truenas_nvmet_port" "test" {
   addr_trsvcid = %d
 }
 `, p2),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_nvmet_port.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_nvmet_port.test", "addr_trsvcid", strconv.Itoa(p2)),
 			},
 		},
