@@ -51,6 +51,9 @@ resource "truenas_iscsi_target" "test" {
 							knownvalue.StringExact("ISCSI"),
 						),
 					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_iscsi_target.test", "name", name),
