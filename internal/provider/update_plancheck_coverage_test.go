@@ -21,39 +21,58 @@ var updateTestFuncRE = regexp.MustCompile(`(?m)^func TestAcc\w+_update\(t \*test
 // We accept any whitespace between the comma and the Update constant.
 var updateActionRE = regexp.MustCompile(`plancheck\.ExpectResourceAction\([^)]+plancheck\.ResourceActionUpdate\)`)
 
-// updatePlanCheckMinimum is the floor for the count of _update acc tests
-// that assert the change is an in-place Update via
-// plancheck.ExpectResourceAction(... ResourceActionUpdate). A passing
-// _update test that doesn't carry this check could be silently
-// running a destroy+create cycle without the test author noticing —
-// e.g., a Required-bumped-to-RequiresReplace bug slips in, and the
-// end-state assertions still pass because the value is the same after
-// recreate. ratcheting this up over time forces every _update test to
-// prove the Update path, not just observe the end state.
+// updatePlanCheckExclusions lists every acc_*_test.go file whose
+// _update test does NOT carry plancheck.ResourceActionUpdate, with
+// rationale. Every other acc test file with an _update function
+// MUST assert ResourceActionUpdate on the change step.
 //
-// rolling out the assertion to a new _update test = bump this number
-// by 1.
-const updatePlanCheckMinimum = 36
+// Legitimate exclusion categories:
+//   - The "update" step is a no-op by design (same-value re-apply
+//     because the only safe mutation against a shared test VM is none).
+//   - The change attribute is RequiresReplace, so the plan is Replace,
+//     not Update. (These could instead assert ResourceActionReplace —
+//     left as a follow-up.)
+//   - The resource is a data source / read-only / gated test that
+//     can't be safely mutated against the test VM.
+var updatePlanCheckExclusions = map[string]string{
+	"acc_kmip_config_test.go":        "_update is t.Skip stub: SCALE 25.10 KMIP does not persist user-set fields while enabled=false; see test docstring",
+	"acc_network_interface_test.go":  "modifying the live management NIC mid-test risks cutting the provider's own API access; description-only mutation skipped",
+	"acc_nvmet_host_subsys_test.go":  "host_id is RequiresReplace; the _update test step is a destroy+create by design, not an in-place Update",
+	"acc_nvmet_port_subsys_test.go":  "subsys_id is RequiresReplace; the _update test step is a destroy+create by design, not an in-place Update",
+	"acc_pool_test.go":               "data source: pools are managed out-of-band, no Update path through the provider",
+	"acc_systemdataset_test.go":      "_update applies same pool value as basic — singleton with one available pool on the test VM, no meaningful mutation",
+}
 
-// TestUpdatePlanCheckCoverage counts _update acc tests that assert
-// ResourceActionUpdate via plancheck and fails if the count drops
-// below updatePlanCheckMinimum.
+// TestUpdatePlanCheckCoverage scans every acc_*_test.go in
+// internal/provider/ that has an _update function and asserts the
+// plancheck.ResourceActionUpdate check is present, unless the file
+// appears in updatePlanCheckExclusions with rationale.
+//
+// Without the check, an _update test can pass while silently running
+// destroy+create instead of in-place update — exactly the failure
+// mode that breaks the day someone accidentally adds RequiresReplace
+// to a Required attribute. End-state TestCheck assertions still pass
+// because the value is the same after recreate. The plan-shape
+// assertion is what catches the regression.
+//
+// internal/resources/*_test.go _update tests are intentionally NOT
+// scanned: those are unit-level wrappers that run the same Update
+// code path as the provider-level test. Asserting the plan shape
+// once at the canonical acceptance-test layer is sufficient.
 func TestUpdatePlanCheckCoverage(t *testing.T) {
-	var testFiles []string
-	for _, dir := range []string{".", "../resources"} {
-		matches, err := filepath.Glob(filepath.Join(dir, "*_test.go"))
-		if err != nil {
-			t.Fatalf("glob %s: %v", dir, err)
-		}
-		testFiles = append(testFiles, matches...)
+	matches, err := filepath.Glob("acc_*_test.go")
+	if err != nil {
+		t.Fatalf("glob acc tests: %v", err)
 	}
 
 	var withCheck, without []string
-	for _, f := range testFiles {
+	for _, f := range matches {
 		base := filepath.Base(f)
-		// Skip the invariant test files themselves.
 		if strings.HasSuffix(base, "_invariant_test.go") ||
 			strings.HasSuffix(base, "_coverage_test.go") {
+			continue
+		}
+		if _, excluded := updatePlanCheckExclusions[base]; excluded {
 			continue
 		}
 		src, err := os.ReadFile(f)
@@ -73,8 +92,9 @@ func TestUpdatePlanCheckCoverage(t *testing.T) {
 	sort.Strings(withCheck)
 	sort.Strings(without)
 
-	t.Logf("update-plan-shape coverage: %d _update tests with ResourceActionUpdate (floor %d)",
-		len(withCheck), updatePlanCheckMinimum)
+	total := len(withCheck) + len(without)
+	t.Logf("update-plan-shape coverage: %d/%d non-excluded acc tests with _update (%0.1f%%)",
+		len(withCheck), total, 100.0*float64(len(withCheck))/float64(total))
 	for _, f := range withCheck {
 		t.Logf("  OK       %s", f)
 	}
@@ -82,14 +102,12 @@ func TestUpdatePlanCheckCoverage(t *testing.T) {
 		t.Logf("  MISSING  %s", f)
 	}
 
-	if len(withCheck) < updatePlanCheckMinimum {
-		t.Fatalf("update-plan-shape coverage regressed: %d tests assert "+
-			"ResourceActionUpdate, want at least %d. without the check, an "+
-			"_update test can pass while silently running destroy+create "+
-			"instead of in-place update — exactly the failure mode that "+
-			"breaks the day someone accidentally adds RequiresReplace to a "+
-			"Required attribute. add the assertion or, if you removed a "+
-			"_update test, lower the floor with rationale.",
-			len(withCheck), updatePlanCheckMinimum)
+	if len(without) > 0 {
+		t.Fatalf("%d _update acc test(s) missing ResourceActionUpdate plancheck. "+
+			"add the assertion to each file, or add the file to "+
+			"updatePlanCheckExclusions with a one-line rationale explaining "+
+			"why an in-place Update plan cannot be asserted (no-op step, "+
+			"RequiresReplace change, etc).\n  missing: %s",
+			len(without), strings.Join(without, ", "))
 	}
 }

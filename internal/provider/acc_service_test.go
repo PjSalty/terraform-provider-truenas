@@ -76,6 +76,11 @@ resource "truenas_service" "test" {
   enable  = true
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_service.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_service.test", "enable", "true"),
 			},
 		},

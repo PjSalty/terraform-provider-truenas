@@ -92,7 +92,12 @@ func TestAccVMDeviceResource_update(t *testing.T) {
 			},
 			{
 				Config: vmDeviceConfig(vmName, "1280x1024"),
-				Check:  resource.TestCheckResourceAttr("truenas_vm_device.test", "attributes.resolution", "1280x1024"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_vm_device.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_vm_device.test", "attributes.resolution", "1280x1024"),
 			},
 		},
 	})
