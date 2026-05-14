@@ -21,11 +21,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &NVMetNamespaceResource{}
 	_ resource.ResourceWithImportState = &NVMetNamespaceResource{}
+	_ resource.ResourceWithModifyPlan  = &NVMetNamespaceResource{}
 )
 
 // NVMetNamespaceResource manages an NVMe-oF namespace (block device within a subsystem).
@@ -319,6 +321,13 @@ func (r *NVMetNamespaceResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 	tflog.Trace(ctx, "Delete NVMetNamespace success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a namespace removes a block device from the
+// NVMe-oF subsystem; clients lose access to the backing volume.
+func (r *NVMetNamespaceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_namespace")
 }
 
 func (r *NVMetNamespaceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

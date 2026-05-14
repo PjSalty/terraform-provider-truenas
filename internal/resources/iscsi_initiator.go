@@ -20,11 +20,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &ISCSIInitiatorResource{}
 	_ resource.ResourceWithImportState = &ISCSIInitiatorResource{}
+	_ resource.ResourceWithModifyPlan  = &ISCSIInitiatorResource{}
 )
 
 // ISCSIInitiatorResource manages an iSCSI authorized initiator group.
@@ -255,6 +257,13 @@ func (r *ISCSIInitiatorResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 	tflog.Trace(ctx, "Delete ISCSIInitiator success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing an initiator group invalidates the allow-list
+// for every target it's attached to — clients lose access.
+func (r *ISCSIInitiatorResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_iscsi_initiator")
 }
 
 func (r *ISCSIInitiatorResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
