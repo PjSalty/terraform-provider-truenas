@@ -70,6 +70,11 @@ resource "truenas_ssh_config" "test" {
   tcpport = 2222
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_ssh_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_ssh_config.test", "tcpport", "2222"),
 			},
 			{

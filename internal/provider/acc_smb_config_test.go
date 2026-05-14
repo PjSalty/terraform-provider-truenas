@@ -74,6 +74,11 @@ resource "truenas_smb_config" "test" {
   description = "updated"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_smb_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_smb_config.test", "description", "updated"),
 			},
 		},

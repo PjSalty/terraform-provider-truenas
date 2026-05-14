@@ -74,6 +74,11 @@ resource "truenas_snmp_config" "test" {
   location  = "acctest-rack-2"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_snmp_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_snmp_config.test", "contact", "acctest updated"),
 					resource.TestCheckResourceAttr("truenas_snmp_config.test", "location", "acctest-rack-2"),
