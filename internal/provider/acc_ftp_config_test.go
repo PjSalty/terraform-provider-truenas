@@ -74,6 +74,11 @@ resource "truenas_ftp_config" "test" {
   banner  = "updated"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_ftp_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_ftp_config.test", "clients", "15"),
 					resource.TestCheckResourceAttr("truenas_ftp_config.test", "banner", "updated"),
