@@ -112,6 +112,11 @@ resource "truenas_share_smb" "test" {
   readonly  = true
 }
 `, ds, share),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_share_smb.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_share_smb.test", "comment", "updated"),
 					resource.TestCheckResourceAttr("truenas_share_smb.test", "enabled", "false"),
