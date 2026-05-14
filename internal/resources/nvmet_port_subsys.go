@@ -18,11 +18,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &NVMetPortSubsysResource{}
 	_ resource.ResourceWithImportState = &NVMetPortSubsysResource{}
+	_ resource.ResourceWithModifyPlan  = &NVMetPortSubsysResource{}
 )
 
 // NVMetPortSubsysResource manages an NVMe-oF port-to-subsystem association.
@@ -223,6 +225,14 @@ func (r *NVMetPortSubsysResource) Delete(ctx context.Context, req resource.Delet
 		return
 	}
 	tflog.Trace(ctx, "Delete NVMetPortSubsys success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a port-subsys mapping stops advertising the
+// subsystem on that transport port — clients on that listener lose
+// visibility of the subsystem's namespaces.
+func (r *NVMetPortSubsysResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_port_subsys")
 }
 
 func (r *NVMetPortSubsysResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

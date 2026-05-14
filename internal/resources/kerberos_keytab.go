@@ -17,11 +17,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &KerberosKeytabResource{}
 	_ resource.ResourceWithImportState = &KerberosKeytabResource{}
+	_ resource.ResourceWithModifyPlan  = &KerberosKeytabResource{}
 )
 
 // KerberosKeytabResource manages a Kerberos keytab entry on TrueNAS.
@@ -244,6 +246,13 @@ func (r *KerberosKeytabResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 	tflog.Trace(ctx, "Delete KerberosKeytab success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a keytab breaks any service that uses it for
+// Kerberos auth — typically SMB shares with AD bindings.
+func (r *KerberosKeytabResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_kerberos_keytab")
 }
 
 func (r *KerberosKeytabResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

@@ -20,11 +20,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &VMDeviceResource{}
 	_ resource.ResourceWithImportState = &VMDeviceResource{}
+	_ resource.ResourceWithModifyPlan  = &VMDeviceResource{}
 )
 
 // VMDeviceResource manages a device attached to a TrueNAS SCALE virtual machine.
@@ -319,6 +321,13 @@ func (r *VMDeviceResource) Delete(ctx context.Context, req resource.DeleteReques
 		return
 	}
 	tflog.Trace(ctx, "Delete VMDevice success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a VM device detaches storage / NICs / GPUs
+// from a running VM — the next VM start sees missing hardware.
+func (r *VMDeviceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_vm_device")
 }
 
 func (r *VMDeviceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
