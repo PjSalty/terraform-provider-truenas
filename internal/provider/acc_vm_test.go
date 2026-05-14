@@ -54,6 +54,9 @@ resource "truenas_vm" "test" {
 							knownvalue.Int64Exact(128),
 						),
 					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_vm.test", "name", name),
