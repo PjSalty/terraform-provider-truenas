@@ -86,6 +86,11 @@ resource "truenas_static_route" "test" {
   description = "updated"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_static_route.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_static_route.test", "description", "updated"),
 					resource.TestCheckResourceAttr("truenas_static_route.test", "destination", "198.51.100.0/24"),
