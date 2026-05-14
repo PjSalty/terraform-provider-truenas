@@ -162,17 +162,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where `import` cannot round-trip the secret, env-gated/beta
   resources, and one test-naming alias.
 
-- **Plan-time destroy warning expanded to 10 more destructive
+- **Plan-time destroy warning expanded to 15 more destructive
   resources** — `planhelpers.WarnOnDestroy` now fires from
   `ModifyPlan` on: `api_key`, `privilege`, `iscsi_initiator`,
   `iscsi_targetextent`, `nvmet_subsys`, `nvmet_namespace`,
   `nvmet_port`, `keychain_credential`, `acme_dns_authenticator`,
-  `kerberos_realm`. These are the "operator removes one line of HCL
-  and loses access to data / auth / mounts" failure modes. The
-  warning surfaces destructive intent at `terraform plan` time so
-  the operator sees it before running `apply`. Complements the
-  client-layer `destroy_protection` rail that BLOCKS the wire call.
-  `destroyWarnFloor` ratchet 22 → 32.
+  `kerberos_realm`, `vmware`, `kerberos_keytab`, `vm_device`,
+  `nvmet_host_subsys`, `nvmet_port_subsys`. These are the
+  "operator removes one line of HCL and loses access to data /
+  auth / mounts" failure modes. The warning surfaces destructive
+  intent at `terraform plan` time so the operator sees it before
+  running `apply`. Complements the client-layer
+  `destroy_protection` rail that BLOCKS the wire call.
+  `destroyWarnFloor` ratchet 22 → 37.
+
+- **Apply-idempotency check: 100% coverage** — `TestIdempotencyCheckCoverage`
+  rewritten from a floor-style ratchet to a 100%-or-excluded contract.
+  Every `acc_*_test.go` in `internal/provider/` that ships a managed
+  resource Apply step MUST carry
+  `ConfigPlanChecks.PostApplyPostRefresh: ExpectEmptyPlan()`, unless
+  it appears in `idempotencyExclusions` with a one-line rationale
+  (data sources, PlanOnly validator-error tests, import-only tests,
+  scaffolding files).
+
+  Coverage went 3/57 → **54/54 (100% of non-excluded)** across 27
+  resources rolled out in 8 batches. Singletons, sensitive-payload
+  resources, and complex resources (VM, replication) all included.
+  Failures at runtime expose real Read/Create shape bugs in the
+  provider — the fix goes in the resource code (plan modifier,
+  `UseStateForUnknown`, Read implementation), never in the
+  exclusion list.
+
+- **Update-plan-shape check: 100% coverage** — new
+  `TestUpdatePlanCheckCoverage` asserts every `_update` acc test
+  carries `plancheck.ExpectResourceAction(name, ResourceActionUpdate)`
+  on its change step, or appears in `updatePlanCheckExclusions` with
+  rationale (no-op same-value steps, RequiresReplace changes, data
+  sources, gated tests).
+
+  Without this assertion, an `_update` test can pass while silently
+  running destroy+create when someone accidentally bumps a Required
+  attribute to `RequiresReplace` — the end-state `TestCheck`
+  assertions still pass because the value is the same after recreate.
+  The plan-shape assertion is what catches the regression at plan
+  time. **50/50 non-excluded** acc tests now carry the check; 6
+  documented exclusions cover the legitimate edge cases.
 
 ## [1.10.2] - 2026-04-25
 
