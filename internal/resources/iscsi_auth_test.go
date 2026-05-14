@@ -2,9 +2,14 @@ package resources_test
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
 
 func TestAccISCSIAuth_basic(t *testing.T) {
@@ -13,6 +18,7 @@ func TestAccISCSIAuth_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckISCSIAuthDestroy(resourceName),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccISCSIAuthConfigBasic(99, "tf-acc-user", "TfAccSecret12345"),
@@ -42,4 +48,36 @@ resource "truenas_iscsi_auth" "test" {
   secret = %q
 }
 `, tag, user, secret)
+}
+
+// testAccCheckISCSIAuthDestroy verifies the iSCSI auth is gone from
+// the upstream after Terraform removes it.
+func testAccCheckISCSIAuthDestroy(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return nil
+		}
+		if rs.Primary.ID == "" {
+			return fmt.Errorf("iscsi_auth ID not set on %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return fmt.Errorf("iscsi_auth ID %q is not numeric: %w", rs.Primary.ID, err)
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return fmt.Errorf("building API client: %w", err)
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		_, err = c.GetISCSIAuth(ctx, id)
+		if err == nil {
+			return fmt.Errorf("iscsi_auth %d still exists upstream after Terraform removed it", id)
+		}
+		if !client.IsNotFound(err) {
+			return fmt.Errorf("unexpected error checking removal of iscsi_auth %d: %w", id, err)
+		}
+		return nil
+	}
 }
