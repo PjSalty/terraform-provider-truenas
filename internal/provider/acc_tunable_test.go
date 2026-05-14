@@ -85,7 +85,12 @@ resource "truenas_tunable" "test" {
 			},
 			{
 				Config: cfg("acctest updated"),
-				Check:  resource.TestCheckResourceAttr("truenas_tunable.test", "comment", "acctest updated"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_tunable.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_tunable.test", "comment", "acctest updated"),
 			},
 		},
 	})

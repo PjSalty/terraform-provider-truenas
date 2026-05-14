@@ -137,6 +137,11 @@ resource "truenas_scrub_task" "test" {
   description = "updated"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_scrub_task.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_scrub_task.test", "threshold", "60"),
 					resource.TestCheckResourceAttr("truenas_scrub_task.test", "description", "updated"),
