@@ -1,0 +1,65 @@
+# shellcheck shell=bash
+#
+# .envrc.example — copy to .envrc.local (which is gitignored) and edit
+# in your real credentials. Source this file before running the local
+# acceptance test runner:
+#
+#   $ cp .envrc.example .envrc.local
+#   $ $EDITOR .envrc.local
+#   $ source .envrc.local
+#   $ make acc
+#
+# Or use direnv: `direnv allow` once and .envrc.local loads automatically.
+
+# ---------------------------------------------------------------------
+# Required: the test TrueNAS host
+# ---------------------------------------------------------------------
+
+# Base URL of the test TrueNAS instance. HTTPS required.
+export TRUENAS_URL="https://truenas.salt.saltstice.com"
+
+# API key created under Credentials → Local Users → root → API Keys.
+# DO NOT hardcode here in .envrc.local in plaintext — fetch from your
+# secret store at shell start time. Example using SOPS:
+#
+#   export TRUENAS_API_KEY="$(sops -d ~/secrets/credentials.sops.yaml | yq -r '.terraform_provider_truenas.api_key')"
+#
+export TRUENAS_API_KEY=""
+
+# Set to 'true' for self-signed test environments. Default false.
+# Never set for production hosts.
+export TRUENAS_INSECURE_SKIP_VERIFY="true"
+
+# ---------------------------------------------------------------------
+# Optional: per-resource fixture overrides
+# ---------------------------------------------------------------------
+
+# Pool name used by dataset, zvol, share, and snapshot_task acc tests.
+# Default "tank". The tests create datasets under this pool and clean
+# up on teardown via the sweeper.
+export TRUENAS_TEST_POOL="tank"
+
+# Comma-separated disk device names used by TestAccPool_basic (which is
+# skipped by default — pool creation requires dedicated test disks).
+# Example: "sdb,sdc"
+# export TRUENAS_TEST_POOL_DISKS=""
+
+# ---------------------------------------------------------------------
+# Optional: gated-by-default tests
+# ---------------------------------------------------------------------
+# These tests need extra infrastructure (cloud credentials, ESXi host,
+# ACL template support, etc.) so they're opt-in. Uncomment to enable.
+
+# export TRUENAS_TEST_ACLTEMPLATE="1"
+# export TRUENAS_TEST_CLOUD_BACKUP="1"
+# export TRUENAS_TEST_CLOUD_CREDENTIAL_ID="1"
+# export TRUENAS_TEST_CLOUD_BUCKET="my-bucket"
+# export TRUENAS_TEST_CLOUD_PATH="/backup"
+# export TRUENAS_TEST_CLOUD_PASSWORD="restic-password"
+# export TRUENAS_TEST_REPORTING_EXPORTER="1"
+# export TRUENAS_TEST_VMWARE="1"
+# export TRUENAS_TEST_VMWARE_HOST="esxi.example.com"
+# export TRUENAS_TEST_VMWARE_USER="root"
+# export TRUENAS_TEST_VMWARE_PASS=""
+# export TRUENAS_TEST_VMWARE_DATASTORE="datastore1"
+# export TRUENAS_TEST_VMWARE_FS="tank/vmware"
