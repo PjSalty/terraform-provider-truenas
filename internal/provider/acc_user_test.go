@@ -99,6 +99,11 @@ resource "truenas_user" "test" {
   home         = "/var/empty"
 }
 `, username),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_user.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_user.test", "full_name", "Updated Name"),
 			},
 		},
