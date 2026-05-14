@@ -121,6 +121,11 @@ resource "truenas_replication" "test" {
   also_include_naming_schema = ["auto-%%Y-%%m-%%d_%%H-%%M"]
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_replication.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_replication.test", "enabled", "false"),
 			},
 		},

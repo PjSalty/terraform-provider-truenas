@@ -73,6 +73,11 @@ resource "truenas_catalog" "test" {
   preferred_trains = ["community", "stable"]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_catalog.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_catalog.test", "preferred_trains.#", "2"),
 					resource.TestCheckResourceAttr("truenas_catalog.test", "preferred_trains.0", "community"),
