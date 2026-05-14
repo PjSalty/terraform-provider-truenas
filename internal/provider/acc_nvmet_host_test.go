@@ -111,6 +111,11 @@ resource "truenas_nvmet_host" "test" {
   dhchap_hash = "SHA-512"
 }
 `, hostnqn, dhchapKey2),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_nvmet_host.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_nvmet_host.test", "hostnqn", hostnqn),
 					resource.TestCheckResourceAttr("truenas_nvmet_host.test", "dhchap_key", dhchapKey2),

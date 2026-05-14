@@ -133,7 +133,12 @@ resource "truenas_rsync_task" "test" {
 			},
 			{
 				Config: fmt.Sprintf(tpl, "updated"),
-				Check:  resource.TestCheckResourceAttr("truenas_rsync_task.test", "desc", "updated"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_rsync_task.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_rsync_task.test", "desc", "updated"),
 			},
 		},
 	})
