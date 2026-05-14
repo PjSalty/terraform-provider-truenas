@@ -1,8 +1,10 @@
 package provider
 
 import (
+	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -343,6 +345,248 @@ resource "truenas_dns_nameserver" "bad_ns" {
 }
 `,
 				ExpectError: regexp.MustCompile(`(?i)valid ipv4 or ipv6 address`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
+
+// TestAccValidator_ISCSITarget_iqnRegex locks the regex validator on
+// iscsi_target.name. TrueNAS requires the name segment that follows the
+// IQN year-month authority prefix to match a specific character class.
+func TestAccValidator_ISCSITarget_iqnRegex(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "truenas_iscsi_target" "bad_iqn" {
+  name = "UPPER_CASE_BAD"
+  mode = "ISCSI"
+}
+`,
+				// Per RFC 3720 IQN naming, target names must be lowercase.
+				// The provider's stringvalidator.RegexMatches enforces this
+				// at plan time.
+				ExpectError: regexp.MustCompile(`(?i)attribute name`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
+
+// TestAccValidator_ISCSITargetExtent_lunidAtLeast verifies the
+// iscsi_targetextent.lunid AtLeast(0) lower bound. (LUNID may be 0
+// upward; negative values are nonsensical and the validator catches it.)
+// terraform-plugin-framework actually treats Int64Attribute as a signed
+// 64-bit integer, so writing -1 is syntactically valid and reaches the
+// validator. (The framework converts a negative literal into Int64 cleanly.)
+func TestAccValidator_ISCSITargetExtent_lunidAtLeast(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "truenas_iscsi_targetextent" "bad_lunid" {
+  target = 1
+  extent = 1
+  lunid  = -1
+}
+`,
+				ExpectError: regexp.MustCompile(`(?i)attribute lunid value must be at least`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
+
+// TestAccValidator_Certificate_lifetimeOutOfRange covers the
+// certificate.lifetime int64validator.Between(1, 36500) — values
+// outside the [1, 36500] day range must be rejected before reaching
+// the API.
+func TestAccValidator_Certificate_lifetimeOutOfRange(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "truenas_certificate" "bad_lifetime" {
+  name             = "tf-acc-bad-lifetime"
+  create_type      = "CERTIFICATE_CREATE_INTERNAL"
+  key_length       = 2048
+  key_type         = "RSA"
+  digest_algorithm = "SHA256"
+  lifetime         = 36501
+  common           = "example.com"
+}
+`,
+				ExpectError: regexp.MustCompile(`(?i)attribute lifetime value must be between`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
+
+// TestAccValidator_ISCSIPortal_portOutOfRange covers the
+// iscsi_portal.listen[].port int64validator.Between(1, 65535).
+func TestAccValidator_ISCSIPortal_portOutOfRange(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "truenas_iscsi_portal" "bad_port" {
+  listen = [
+    {
+      ip   = "0.0.0.0"
+      port = 70000
+    },
+  ]
+}
+`,
+				ExpectError: regexp.MustCompile(`(?i)attribute listen\[0\].port value must be between`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
+
+// TestAccValidator_Cronjob_userTooLong locks the
+// cronjob.user stringvalidator.LengthBetween(1, 32).
+func TestAccValidator_Cronjob_userTooLong(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				// 33 chars — POSIX usernames cap at 32.
+				Config: `
+resource "truenas_cronjob" "bad_user" {
+  user            = "thisuserislongerthanthirtytwochars"
+  command         = "true"
+  schedule_minute = "*"
+}
+`,
+				ExpectError: regexp.MustCompile(`(?i)attribute user`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
+
+// TestAccValidator_Cronjob_commandEmpty locks the lower bound of
+// cronjob.command stringvalidator.LengthBetween(1, 4096).
+func TestAccValidator_Cronjob_commandEmpty(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "truenas_cronjob" "bad_command" {
+  user            = "root"
+  command         = ""
+  schedule_minute = "*"
+}
+`,
+				ExpectError: regexp.MustCompile(`(?i)attribute command`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
+
+// TestAccValidator_NVMetSubsys_nameTooLong locks the upper bound on
+// nvmet_subsys.name (LengthBetween 1, 253 per NQN RFC 8009).
+func TestAccValidator_NVMetSubsys_nameTooLong(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				// 254 'x' characters — one over the 253-char limit.
+				Config: fmt.Sprintf(`
+resource "truenas_nvmet_subsys" "bad_name" {
+  name = %q
+}
+`, strings.Repeat("x", 254)),
+				ExpectError: regexp.MustCompile(`(?i)attribute name`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
+
+// TestAccValidator_MailConfig_portOutOfRange covers the
+// mail_config.port int64validator.Between(1, 65535).
+func TestAccValidator_MailConfig_portOutOfRange(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "truenas_mail_config" "bad_port" {
+  fromemail = "test@example.com"
+  fromname  = "test"
+  outgoingserver = "smtp.example.com"
+  port    = 0
+}
+`,
+				ExpectError: regexp.MustCompile(`(?i)attribute port value must be between`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
+
+// TestAccValidator_UPSConfig_portOutOfRange covers the
+// ups_config.remoteport int64validator.Between(1, 65535).
+func TestAccValidator_UPSConfig_portOutOfRange(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "truenas_ups_config" "bad_port" {
+  identifier = "tf-acc"
+  mode       = "MASTER"
+  remoteport = 99999
+}
+`,
+				ExpectError: regexp.MustCompile(`(?i)attribute remoteport value must be between`),
 				PlanOnly:    true,
 			},
 		},
