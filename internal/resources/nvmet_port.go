@@ -21,11 +21,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &NVMetPortResource{}
 	_ resource.ResourceWithImportState = &NVMetPortResource{}
+	_ resource.ResourceWithModifyPlan  = &NVMetPortResource{}
 )
 
 // NVMetPortResource manages an NVMe-oF transport port.
@@ -339,6 +341,13 @@ func (r *NVMetPortResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 	tflog.Trace(ctx, "Delete NVMetPort success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a port closes the transport listener;
+// clients lose all connectivity to subsystems advertised on it.
+func (r *NVMetPortResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_port")
 }
 
 func (r *NVMetPortResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

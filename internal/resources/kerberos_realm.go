@@ -19,11 +19,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &KerberosRealmResource{}
 	_ resource.ResourceWithImportState = &KerberosRealmResource{}
+	_ resource.ResourceWithModifyPlan  = &KerberosRealmResource{}
 )
 
 // KerberosRealmResource manages a Kerberos realm on TrueNAS.
@@ -276,6 +278,14 @@ func (r *KerberosRealmResource) Delete(ctx context.Context, req resource.DeleteR
 		return
 	}
 	tflog.Trace(ctx, "Delete KerberosRealm success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a Kerberos realm breaks authentication for
+// every principal that depends on it; anything bound to AD/MIT via the
+// realm loses access.
+func (r *KerberosRealmResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_kerberos_realm")
 }
 
 func (r *KerberosRealmResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
