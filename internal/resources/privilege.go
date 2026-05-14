@@ -20,11 +20,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &PrivilegeResource{}
 	_ resource.ResourceWithImportState = &PrivilegeResource{}
+	_ resource.ResourceWithModifyPlan  = &PrivilegeResource{}
 )
 
 // PrivilegeResource manages a TrueNAS privilege (RBAC grant).
@@ -273,6 +275,13 @@ func (r *PrivilegeResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 	tflog.Trace(ctx, "Delete Privilege success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a privilege grant strips access for everyone
+// holding the matching role; operators must see this before apply.
+func (r *PrivilegeResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_privilege")
 }
 
 func (r *PrivilegeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
