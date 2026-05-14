@@ -156,7 +156,12 @@ resource "truenas_filesystem_acl" "test" {
 			},
 			{
 				Config: fmt.Sprintf(baseResource, name, 1000),
-				Check:  resource.TestCheckResourceAttr("truenas_filesystem_acl.test", "uid", "1000"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_filesystem_acl.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_filesystem_acl.test", "uid", "1000"),
 			},
 		},
 	})

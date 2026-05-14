@@ -85,6 +85,11 @@ resource "truenas_iscsi_auth" "test" {
   secret = "othersecret123"
 }
 `, tag),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_iscsi_auth.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_iscsi_auth.test", "user", "acctest2"),
 			},
 		},

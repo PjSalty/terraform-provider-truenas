@@ -96,7 +96,12 @@ resource "truenas_kerberos_keytab" "test" {
 			},
 			{
 				Config: cfg(name2),
-				Check:  resource.TestCheckResourceAttr("truenas_kerberos_keytab.test", "name", name2),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_kerberos_keytab.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_kerberos_keytab.test", "name", name2),
 			},
 		},
 	})

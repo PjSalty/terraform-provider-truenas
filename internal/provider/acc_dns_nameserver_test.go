@@ -70,6 +70,11 @@ resource "truenas_dns_nameserver" "test" {
   nameserver1 = "8.8.8.8"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_dns_nameserver.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_dns_nameserver.test", "nameserver1", "8.8.8.8"),
 			},
 			{
