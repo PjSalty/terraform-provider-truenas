@@ -84,6 +84,30 @@ gate plus every behavioral test that touches the live TrueNAS has
 passed against your test VM. The full log is saved to `acc-*.log` in
 case you want to attach it to a release note.
 
+## Safety rail: never against production
+
+The acceptance suite creates and destroys real resources. Pointing
+it at a production TrueNAS by accident would orphan acc-test
+fixtures at best and destroy real data at worst. The runner enforces
+a denylist at three layers so a typo cannot get you there:
+
+1. **`.envrc.example`** — `TRUENAS_URL` defaults to an empty string,
+   not the production hostname. You have to consciously set it to
+   your test instance.
+2. **`scripts/lib/_env.sh`** — `acc_assert_not_prod` runs as part of
+   the env-load phase. If `TRUENAS_URL`'s hostname is in
+   `TRUENAS_PROD_DENY` (default: the homelab prod TrueNAS), the
+   pipeline refuses to start.
+3. **`internal/acctest/acctest.Client()`** — same check, in Go. Any
+   `_disappears` helper that goes through the framework hits this
+   before constructing a real client, so even running `go test`
+   directly without the shell runner cannot bypass the guard.
+
+To intentionally target a host in the deny list (you should
+basically never do this), export `TRUENAS_PROD_DENY=""` explicitly
+and re-run. The denylist is comma-separated; add more prod hosts
+in your `.envrc.local` if you have multiple.
+
 ## What the runner does NOT do
 
 - It does not push anything anywhere. The runner is purely local.

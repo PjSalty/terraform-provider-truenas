@@ -72,7 +72,56 @@ acc_load_env() {
   fi
   : "${TRUENAS_INSECURE_SKIP_VERIFY:=false}"
   : "${TRUENAS_TEST_POOL:=tank}"
-  export TRUENAS_INSECURE_SKIP_VERIFY TRUENAS_TEST_POOL
+  : "${TRUENAS_PROD_DENY:=truenas.salt.saltstice.com}"
+  export TRUENAS_INSECURE_SKIP_VERIFY TRUENAS_TEST_POOL TRUENAS_PROD_DENY
+
+  # Safety rail #1 — refuse to run against a known production host.
+  # The acc suite creates and destroys REAL resources; pointing it
+  # at prod by accident is a class of mistake this check exists to
+  # prevent. The denylist is comma-separated; an exact case-
+  # insensitive hostname match against the URL's authority is enough
+  # to fail.
+  acc_assert_not_prod
+}
+
+# acc_url_host extracts the hostname (without port) from TRUENAS_URL.
+# Used by the prod-deny check; isolated as its own function so the
+# parser is testable without firing the whole load path.
+acc_url_host() {
+  # Strip scheme, then strip path, then strip port. Tolerates the
+  # absence of any of those.
+  local hostport=${TRUENAS_URL#*://}
+  hostport=${hostport%%/*}
+  printf '%s' "${hostport%%:*}"
+}
+
+# acc_assert_not_prod fails loudly if TRUENAS_URL's hostname appears
+# in TRUENAS_PROD_DENY. Comma- or whitespace-separated, case
+# insensitive.
+acc_assert_not_prod() {
+  if [ -z "${TRUENAS_PROD_DENY:-}" ]; then
+    return 0
+  fi
+  local host
+  host="$(acc_url_host | tr '[:upper:]' '[:lower:]')"
+  if [ -z "${host}" ]; then
+    acc_die "could not parse hostname from TRUENAS_URL=${TRUENAS_URL}"
+  fi
+  # Walk the denylist. Split on comma OR whitespace.
+  local deny
+  for deny in $(printf '%s' "${TRUENAS_PROD_DENY}" | tr ',' ' '); do
+    deny="$(printf '%s' "${deny}" | tr '[:upper:]' '[:lower:]' | xargs)"
+    [ -z "${deny}" ] && continue
+    if [ "${host}" = "${deny}" ]; then
+      acc_die "TRUENAS_URL points at ${host}, which is in TRUENAS_PROD_DENY. \
+The acceptance suite creates and destroys real resources; running it \
+against this host would damage production. \
+Set TRUENAS_URL to your TEST TrueNAS instance and re-run. \
+To intentionally target this host (very rare), explicitly unset \
+TRUENAS_PROD_DENY first."
+    fi
+  done
+  acc_ok "TRUENAS_URL=${host} is not in TRUENAS_PROD_DENY"
 }
 
 # acc_curl is a thin wrapper around curl that respects
