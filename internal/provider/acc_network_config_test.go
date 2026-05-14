@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccNetworkConfigResource_basic — singleton: network config has a
@@ -25,6 +26,11 @@ resource "truenas_network_config" "test" {
   httpproxy = ""
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_network_config.test", "httpproxy", ""),
 					resource.TestCheckResourceAttrSet("truenas_network_config.test", "id"),

@@ -59,10 +59,11 @@ import (
 // designed to surface; the fix goes in the resource code, not the
 // exclusion list.
 var idempotencyExclusions = map[string]string{
-	"acc_helpers_test.go":          "scaffolding: not a test file",
-	"acc_validator_errors_test.go": "PlanOnly: every test asserts validator rejection before Apply, no refresh to compare against",
-	"acc_app_test.go":              "beta data-source style: only exercises truenas_catalog data source, no managed-resource Apply path",
-	"acc_pool_test.go":             "data source: reads an existing pool via truenas_pool, no managed-resource lifecycle",
+	"acc_helpers_test.go":           "scaffolding: not a test file",
+	"acc_validator_errors_test.go":  "PlanOnly: every test asserts validator rejection before Apply, no refresh to compare against",
+	"acc_app_test.go":               "beta data-source style: only exercises truenas_catalog data source, no managed-resource Apply path",
+	"acc_pool_test.go":              "data source: reads an existing pool via truenas_pool, no managed-resource lifecycle",
+	"acc_network_interface_test.go": "import-only: basic test is ImportState against a pre-existing NIC, no Apply step (modifying the live management interface risks cutting the provider's own API access)",
 }
 
 // TestIdempotencyCheckCoverage walks every internal/provider/acc_*_test.go
