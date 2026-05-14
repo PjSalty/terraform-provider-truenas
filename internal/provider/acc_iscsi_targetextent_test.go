@@ -112,6 +112,11 @@ resource "truenas_iscsi_targetextent" "test" {
   lunid  = 3
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_iscsi_targetextent.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_iscsi_targetextent.test", "lunid", "3"),
 			},
 		},

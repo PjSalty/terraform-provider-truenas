@@ -79,6 +79,11 @@ resource "truenas_nvmet_global" "test" {
   xport_referral = true
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_nvmet_global.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_nvmet_global.test", "ana", "false"),
 					resource.TestCheckResourceAttr("truenas_nvmet_global.test", "xport_referral", "true"),
