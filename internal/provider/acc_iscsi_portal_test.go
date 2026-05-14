@@ -84,6 +84,11 @@ resource "truenas_iscsi_portal" "test" {
   ]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_iscsi_portal.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_iscsi_portal.test", "comment", "updated"),
 			},
 		},

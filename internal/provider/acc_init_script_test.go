@@ -79,7 +79,12 @@ resource "truenas_init_script" "test" {
 			},
 			{
 				Config: cfg("acctest updated"),
-				Check:  resource.TestCheckResourceAttr("truenas_init_script.test", "comment", "acctest updated"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_init_script.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_init_script.test", "comment", "acctest updated"),
 			},
 		},
 	})

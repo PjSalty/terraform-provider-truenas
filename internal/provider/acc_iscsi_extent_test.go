@@ -110,6 +110,11 @@ resource "truenas_iscsi_extent" "test" {
   readonly = true
 }
 `, extentName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_iscsi_extent.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_iscsi_extent.test", "comment", "updated"),
 					resource.TestCheckResourceAttr("truenas_iscsi_extent.test", "enabled", "false"),

@@ -74,6 +74,11 @@ resource "truenas_iscsi_initiator" "test" {
   initiators = ["iqn.2026-04.com.example:test"]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_iscsi_initiator.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_iscsi_initiator.test", "comment", "updated"),
 					resource.TestCheckResourceAttr("truenas_iscsi_initiator.test", "initiators.#", "1"),
