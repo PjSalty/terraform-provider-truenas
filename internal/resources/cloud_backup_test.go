@@ -67,6 +67,83 @@ resource "truenas_cloud_backup" "test" {
 `, path, credID, bucket, password)
 }
 
+func testAccCheckCloudBackupExists(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if _, err := c.GetCloudBackup(ctx, id); err != nil {
+			return fmt.Errorf("cloud_backup %d should exist but lookup failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func testAccCheckCloudBackupDisappears(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if err := c.DeleteCloudBackup(ctx, id); err != nil {
+			return fmt.Errorf("out-of-band delete of cloud_backup %d failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func TestAccCloudBackup_disappears(t *testing.T) {
+	if os.Getenv("TRUENAS_TEST_CLOUD_BACKUP") != "1" {
+		t.Skip("TRUENAS_TEST_CLOUD_BACKUP=1 not set; skipping (requires cloud credential and restic repo)")
+	}
+	credID := os.Getenv("TRUENAS_TEST_CLOUD_CREDENTIAL_ID")
+	bucket := os.Getenv("TRUENAS_TEST_CLOUD_BUCKET")
+	path := os.Getenv("TRUENAS_TEST_CLOUD_PATH")
+	password := os.Getenv("TRUENAS_TEST_CLOUD_PASSWORD")
+	if credID == "" || bucket == "" || path == "" || password == "" {
+		t.Skip("required TRUENAS_TEST_CLOUD_* vars not set")
+	}
+	resourceName := "truenas_cloud_backup.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckCloudBackupDestroy(resourceName),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCloudBackupConfigBasic(credID, bucket, path, password),
+				Check:  testAccCheckCloudBackupExists(resourceName),
+			},
+			{
+				Config:             testAccCloudBackupConfigBasic(credID, bucket, path, password),
+				Check:              testAccCheckCloudBackupDisappears(resourceName),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
 // testAccCheckCloudBackupDestroy verifies the cloud_backup is gone
 // from the upstream after Terraform removes it. A green check here on
 // a leaked resource is exactly the failure mode the static

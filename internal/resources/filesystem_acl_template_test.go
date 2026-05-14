@@ -60,6 +60,83 @@ resource "truenas_filesystem_acl_template" "test" {
 `, name)
 }
 
+// testAccCheckFilesystemACLTemplateExists is the positive guard used
+// before testAccCheckFilesystemACLTemplateDisappears tears the
+// template down out of band — without this guard, a missing-from-the-
+// start template would silently pass the disappears check vacuously.
+func testAccCheckFilesystemACLTemplateExists(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if _, err := c.GetFilesystemACLTemplate(ctx, id); err != nil {
+			return fmt.Errorf("ACL template %d should exist but lookup failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+// testAccCheckFilesystemACLTemplateDisappears deletes the template
+// out of band via the API to simulate an operator removing it through
+// the TrueNAS UI between two terraform plans.
+func testAccCheckFilesystemACLTemplateDisappears(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if err := c.DeleteFilesystemACLTemplate(ctx, id); err != nil {
+			return fmt.Errorf("out-of-band delete of ACL template %d failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func TestAccFilesystemACLTemplate_disappears(t *testing.T) {
+	if os.Getenv("TRUENAS_TEST_ACLTEMPLATE") != "1" {
+		t.Skip("TRUENAS_TEST_ACLTEMPLATE=1 not set; skipping")
+	}
+	resourceName := "truenas_filesystem_acl_template.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckFilesystemACLTemplateDestroy(resourceName),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccFilesystemACLTemplateConfigBasic("tf-acc-acltmpl-disappears"),
+				Check:  testAccCheckFilesystemACLTemplateExists(resourceName),
+			},
+			{
+				Config:             testAccFilesystemACLTemplateConfigBasic("tf-acc-acltmpl-disappears"),
+				Check:              testAccCheckFilesystemACLTemplateDisappears(resourceName),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
 // testAccCheckFilesystemACLTemplateDestroy verifies the ACL template
 // is gone from the upstream after Terraform removes it.
 func testAccCheckFilesystemACLTemplateDestroy(resourceName string) resource.TestCheckFunc {

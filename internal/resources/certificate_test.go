@@ -9,11 +9,15 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
 
 // generateSelfSignedCert generates a PEM-encoded self-signed certificate and private key.
@@ -114,8 +118,97 @@ func testAccCheckCertificateDestroy(resourceName string) resource.TestCheckFunc 
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("certificate ID not set")
 		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return fmt.Errorf("certificate ID %q is not numeric: %w", rs.Primary.ID, err)
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return fmt.Errorf("building API client: %w", err)
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		_, err = c.GetCertificate(ctx, id)
+		if err == nil {
+			return fmt.Errorf("certificate %d still exists upstream after Terraform removed it", id)
+		}
+		if !client.IsNotFound(err) {
+			return fmt.Errorf("unexpected error checking removal of certificate %d: %w", id, err)
+		}
 		return nil
 	}
+}
+
+func testAccCheckCertificateExists(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if _, err := c.GetCertificate(ctx, id); err != nil {
+			return fmt.Errorf("certificate %d should exist but lookup failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func testAccCheckCertificateDisappears(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if err := c.DeleteCertificate(ctx, id); err != nil {
+			return fmt.Errorf("out-of-band delete of certificate %d failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func TestAccCertificate_disappears(t *testing.T) {
+	cert, key, err := generateSelfSignedCert("disappears.tf-acc.test")
+	if err != nil {
+		t.Fatalf("generate cert: %v", err)
+	}
+	name := fmt.Sprintf("tf-acc-cert-disappears-%d", acctest.ShortSuffix())
+	resourceName := "truenas_certificate.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckCertificateDestroy(resourceName),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCertificateConfigImport(name, cert, key),
+				Check:  testAccCheckCertificateExists(resourceName),
+			},
+			{
+				Config:             testAccCertificateConfigImport(name, cert, key),
+				Check:              testAccCheckCertificateDisappears(resourceName),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
 }
 
 func testAccCertificateConfigImport(name, cert, key string) string {
