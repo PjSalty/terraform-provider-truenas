@@ -28,6 +28,14 @@ func TestAccACMEDNSAuthenticator_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 				),
 			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				// The `attributes` map round-trips through the API as
+				// stored, so the import path verifies the same JSON
+				// shape the user posted on create.
+			},
 		},
 	})
 }
