@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`_disappears` acceptance test coverage for every deletable resource**
+  — 38 new behavioural acceptance tests in `internal/resources/*_test.go`,
+  one per resource that supports out-of-band deletion. Each test creates
+  the resource, deletes it via a direct API call (bypassing Terraform),
+  and asserts the next plan recognises the drift with
+  `ExpectNonEmptyPlan: true`. Pairs with the existing per-resource
+  `CheckDestroy` callback to verify both the Terraform-driven destroy
+  path and the recovery-from-deletion path. Resources covered include
+  the storage family (dataset, zvol, share_nfs, share_smb,
+  snapshot_task, scrub_task, replication), identity (user, group,
+  api_key, privilege, keychain_credential), tasks and networking
+  (cronjob, init_script, static_route, alert_service, tunable),
+  certificates and misc (certificate, acme_dns_authenticator,
+  kerberos_realm, kerberos_keytab, vm, vm_device,
+  filesystem_acl_template, reporting_exporter, cloud_backup, vmware),
+  iSCSI (target, portal, initiator, extent, targetextent, auth), and
+  NVMe-oF (host, subsys, port, host_subsys, port_subsys).
+
+- **Four new static-analysis invariant tests** in `internal/provider/`
+  that scan the Go source as strings to enforce shape-level guarantees
+  across every resource:
+  - `TestResourcesHaveImportStateImplemented` — every
+    `ResourceWithImportState` must use the passthrough helper or carry
+    an explicit `// import: custom` opt-out comment.
+  - `TestResourcesRemoveFromStateOnNotFound` — every resource's `Read`
+    method must call `resp.State.RemoveResource(ctx)` on `IsNotFound`,
+    with an allowlist for the 18 singleton-by-design resources where
+    delete-is-reset-to-default semantics apply.
+  - `TestAcceptanceTestsHavePreCheckOrSkip` — every `TestAcc*` function
+    must either call `testAccPreCheck(t)` or contain an explicit
+    `t.Skip(...)` stub.
+  - `TestAcceptanceTestsHaveCheckDestroy` — every non-`PlanOnly`,
+    non-stub acceptance test must wire a real `CheckDestroy` callback.
+
+- **Production-host deny safety rail** — `internal/acctest/acctest.go`
+  now refuses to build a client targeting the configured production
+  hostname. Three layers of defence: shell-level check in
+  `scripts/lib/_env.sh`, Go-level `assertNotProd()` in the test client
+  constructor (honours `TRUENAS_PROD_DENY` env override, empty
+  disables), and explicit documentation in `scripts/README.md` and
+  `.envrc.example` reminding operators to point tests at a non-prod
+  TrueNAS only.
+
+- **Local acceptance-test runner** — `scripts/acc.sh` ships a six-stage
+  pipeline (preflight, build, lint, unit tests + 100% coverage check,
+  static invariants, full acceptance suite) with per-run log files,
+  `--skip-acc`, `--acc-only`, and `--resource <name>` flags. Make
+  targets `acc`, `acc-skip`, `acc-only`, `acc-preflight`,
+  `acc-disappears`, and `acc-resource RESOURCE=<name>` wrap the
+  script. Designed for operator-paced runs against a non-production
+  TrueNAS instance; no CI dependency.
+
 ## [1.10.2] - 2026-04-25
 
 ### Fixed
