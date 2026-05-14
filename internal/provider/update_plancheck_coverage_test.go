@@ -33,7 +33,7 @@ var updateActionRE = regexp.MustCompile(`plancheck\.ExpectResourceAction\([^)]+p
 //
 // rolling out the assertion to a new _update test = bump this number
 // by 1.
-const updatePlanCheckMinimum = 28
+const updatePlanCheckMinimum = 36
 
 // TestUpdatePlanCheckCoverage counts _update acc tests that assert
 // ResourceActionUpdate via plancheck and fails if the count drops
