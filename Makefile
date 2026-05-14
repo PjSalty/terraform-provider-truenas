@@ -21,7 +21,8 @@ INTERNAL     := ./internal/...
 
 .DEFAULT_GOAL := default
 
-.PHONY: default build install test testacc fmt fmtcheck vet lint tidy docs clean help prod-ready
+.PHONY: default build install test testacc fmt fmtcheck vet lint tidy docs clean help prod-ready \
+        acc acc-skip acc-only acc-preflight acc-disappears acc-resource
 
 default: build
 
@@ -96,8 +97,44 @@ prod-ready:
 	@echo "All Phase B+C+D+E+F+G+H+I+J battle-hardening invariants green — safe to tag."
 
 ## testacc: Run acceptance tests against a real TrueNAS instance. Requires TRUENAS_URL, TRUENAS_API_KEY.
+##          Low-level entry. Prefer `make acc` for the full six-stage pipeline
+##          with preflight, env loading, and per-test summary.
 testacc:
 	TF_ACC=1 $(GO) test -v -count=1 -timeout 120m $(INTERNAL)
+
+## acc: Full local acceptance pipeline against the test TrueNAS.
+##      Loads .envrc.local, runs preflight + build + lint + unit + invariants
+##      + the full acceptance suite. Streams output, saves a log file, prints
+##      a per-test summary at the end. See scripts/README.md for details.
+acc:
+	./scripts/acc.sh
+
+## acc-skip: All stages except the live acceptance suite (~5min).
+##           Useful for fast-iteration development cycles.
+acc-skip:
+	./scripts/acc.sh --skip-acc
+
+## acc-only: Live acceptance suite only — assumes cheap stages already green.
+acc-only:
+	./scripts/acc.sh --acc-only
+
+## acc-preflight: Verify the test TrueNAS is reachable, authenticated, and ready.
+##                ~5 seconds; safe to run any time; no state changes.
+acc-preflight:
+	./scripts/acc-preflight.sh
+
+## acc-disappears: Live out-of-band-delete recovery tests only.
+acc-disappears:
+	./scripts/acc-disappears.sh
+
+## acc-resource: Run a single resource's acceptance tests.
+##               Usage: make acc-resource RESOURCE=Dataset
+acc-resource:
+	@if [ -z "$(RESOURCE)" ]; then \
+		echo "Usage: make acc-resource RESOURCE=Dataset" >&2; \
+		exit 1; \
+	fi
+	./scripts/acc.sh --acc-only --resource '$(RESOURCE)'
 
 ## fmt: Format all Go files with gofmt.
 fmt:
