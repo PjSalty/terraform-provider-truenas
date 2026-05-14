@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccMailConfigResource_basic — singleton: mail service configuration
@@ -30,6 +31,11 @@ resource "truenas_mail_config" "test" {
   smtp           = false
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_mail_config.test", "fromemail", "acctest@example.invalid"),
 					resource.TestCheckResourceAttr("truenas_mail_config.test", "outgoingserver", "smtp.example.invalid"),
