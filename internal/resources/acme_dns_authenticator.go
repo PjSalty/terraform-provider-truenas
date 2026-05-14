@@ -20,11 +20,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &ACMEDNSAuthenticatorResource{}
 	_ resource.ResourceWithImportState = &ACMEDNSAuthenticatorResource{}
+	_ resource.ResourceWithModifyPlan  = &ACMEDNSAuthenticatorResource{}
 )
 
 // ACMEDNSAuthenticatorResource manages a TrueNAS ACME DNS authenticator.
@@ -277,6 +279,13 @@ func (r *ACMEDNSAuthenticatorResource) Delete(ctx context.Context, req resource.
 		return
 	}
 	tflog.Trace(ctx, "Delete ACMEDNSAuthenticator success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing an ACME DNS authenticator breaks any
+// certificate issuance flow that references it; renewal jobs will fail.
+func (r *ACMEDNSAuthenticatorResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_acme_dns_authenticator")
 }
 
 func (r *ACMEDNSAuthenticatorResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
