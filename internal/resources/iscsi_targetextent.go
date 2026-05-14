@@ -19,11 +19,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &ISCSITargetExtentResource{}
 	_ resource.ResourceWithImportState = &ISCSITargetExtentResource{}
+	_ resource.ResourceWithModifyPlan  = &ISCSITargetExtentResource{}
 )
 
 // ISCSITargetExtentResource manages an iSCSI target-to-extent association.
@@ -260,6 +262,13 @@ func (r *ISCSITargetExtentResource) Delete(ctx context.Context, req resource.Del
 		return
 	}
 	tflog.Trace(ctx, "Delete ISCSITargetExtent success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing the target/extent mapping breaks the LUN
+// presentation; iSCSI initiators lose visibility of the backing volume.
+func (r *ISCSITargetExtentResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_iscsi_targetextent")
 }
 
 func (r *ISCSITargetExtentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

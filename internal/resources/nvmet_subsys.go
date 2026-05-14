@@ -21,11 +21,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &NVMetSubsysResource{}
 	_ resource.ResourceWithImportState = &NVMetSubsysResource{}
+	_ resource.ResourceWithModifyPlan  = &NVMetSubsysResource{}
 )
 
 // NVMetSubsysResource manages an NVMe-oF subsystem (target).
@@ -338,6 +340,13 @@ func (r *NVMetSubsysResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 	tflog.Trace(ctx, "Delete NVMetSubsys success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing an NVMe-oF subsystem strips every namespace
+// attached to it; clients lose all backing storage on this subsystem.
+func (r *NVMetSubsysResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_subsys")
 }
 
 func (r *NVMetSubsysResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
