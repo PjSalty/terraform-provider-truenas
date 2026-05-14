@@ -3,9 +3,14 @@ package resources_test
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
 
 func TestAccFilesystemACLTemplate_basic(t *testing.T) {
@@ -18,6 +23,7 @@ func TestAccFilesystemACLTemplate_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckFilesystemACLTemplateDestroy(resourceName),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFilesystemACLTemplateConfigBasic("tf-acc-acltmpl"),
@@ -52,4 +58,36 @@ resource "truenas_filesystem_acl_template" "test" {
   ])
 }
 `, name)
+}
+
+// testAccCheckFilesystemACLTemplateDestroy verifies the ACL template
+// is gone from the upstream after Terraform removes it.
+func testAccCheckFilesystemACLTemplateDestroy(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return nil
+		}
+		if rs.Primary.ID == "" {
+			return fmt.Errorf("filesystem_acl_template ID not set on %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return fmt.Errorf("filesystem_acl_template ID %q is not numeric: %w", rs.Primary.ID, err)
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return fmt.Errorf("building API client: %w", err)
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		_, err = c.GetFilesystemACLTemplate(ctx, id)
+		if err == nil {
+			return fmt.Errorf("filesystem_acl_template %d still exists upstream after Terraform removed it", id)
+		}
+		if !client.IsNotFound(err) {
+			return fmt.Errorf("unexpected error checking removal of filesystem_acl_template %d: %w", id, err)
+		}
+		return nil
+	}
 }
