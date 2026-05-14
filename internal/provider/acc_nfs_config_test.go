@@ -72,6 +72,11 @@ resource "truenas_nfs_config" "test" {
   protocols = ["NFSV4"]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_nfs_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_nfs_config.test", "servers", "8"),
 					resource.TestCheckResourceAttr("truenas_nfs_config.test", "protocols.#", "1"),
