@@ -18,11 +18,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &NVMetHostSubsysResource{}
 	_ resource.ResourceWithImportState = &NVMetHostSubsysResource{}
+	_ resource.ResourceWithModifyPlan  = &NVMetHostSubsysResource{}
 )
 
 // NVMetHostSubsysResource manages an NVMe-oF host-to-subsystem authorization.
@@ -224,6 +226,13 @@ func (r *NVMetHostSubsysResource) Delete(ctx context.Context, req resource.Delet
 		return
 	}
 	tflog.Trace(ctx, "Delete NVMetHostSubsys success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a host-subsys mapping strips authorisation
+// for the host to access this subsystem — clients suddenly get EPERM.
+func (r *NVMetHostSubsysResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_host_subsys")
 }
 
 func (r *NVMetHostSubsysResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
