@@ -17,11 +17,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 var (
 	_ resource.Resource                = &VMwareResource{}
 	_ resource.ResourceWithImportState = &VMwareResource{}
+	_ resource.ResourceWithModifyPlan  = &VMwareResource{}
 )
 
 // VMwareResource manages a VMware host registration on TrueNAS SCALE.
@@ -270,6 +272,14 @@ func (r *VMwareResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 	tflog.Trace(ctx, "Delete VMware success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a VMware host integration breaks the
+// snapshot-quiescing path for any VM whose datastore is hosted on this
+// TrueNAS — backups silently drop to crash-consistent without warning.
+func (r *VMwareResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_vmware")
 }
 
 func (r *VMwareResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
