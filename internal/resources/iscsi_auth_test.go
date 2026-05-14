@@ -50,6 +50,73 @@ resource "truenas_iscsi_auth" "test" {
 `, tag, user, secret)
 }
 
+func testAccCheckISCSIAuthExists(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if _, err := c.GetISCSIAuth(ctx, id); err != nil {
+			return fmt.Errorf("iSCSI auth %d should exist but lookup failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func testAccCheckISCSIAuthDisappears(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if err := c.DeleteISCSIAuth(ctx, id); err != nil {
+			return fmt.Errorf("out-of-band delete of iSCSI auth %d failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func TestAccISCSIAuth_disappears(t *testing.T) {
+	resourceName := "truenas_iscsi_auth.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckISCSIAuthDestroy(resourceName),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccISCSIAuthConfigBasic(98, "tf-acc-disappears", "TfAccDisappears12345"),
+				Check:  testAccCheckISCSIAuthExists(resourceName),
+			},
+			{
+				Config:             testAccISCSIAuthConfigBasic(98, "tf-acc-disappears", "TfAccDisappears12345"),
+				Check:              testAccCheckISCSIAuthDisappears(resourceName),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
 // testAccCheckISCSIAuthDestroy verifies the iSCSI auth is gone from
 // the upstream after Terraform removes it.
 func testAccCheckISCSIAuthDestroy(resourceName string) resource.TestCheckFunc {
