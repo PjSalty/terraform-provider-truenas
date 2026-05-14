@@ -61,6 +61,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   script. Designed for operator-paced runs against a non-production
   TrueNAS instance; no CI dependency.
 
+- **14 `ExpectError` negative-path acceptance tests for validators**
+  — `internal/provider/acc_validator_errors_test.go` exercises every
+  wired validator with hostile input, asserting plan-time rejection
+  before any API call. Covers `IPOrCIDR` (invalid IP, malformed CIDR,
+  5-octet "IP", text-host CIDR, IPv6 positive control), four
+  `stringvalidator.OneOf` enums (`init_script.type`,
+  `init_script.when`, `nvmet_port.addr_trtype`, `iscsi_target.mode`),
+  three `int64validator` bounds (`certificate.key_length`,
+  `nvmet_port.addr_trsvcid` low/high), and `dns_nameserver.address`
+  regex rejection. Locks the `.tf`-layer contract: removing a
+  validator or changing an enum without updating callers fails the
+  test. Previously the entire tree had one `ExpectError` assertion.
+
+- **Apply-idempotency check rolled out to 5 more resources** — the
+  `PostApplyPostRefresh: plancheck.ExpectEmptyPlan()` invariant now
+  fires on `static_route`, `group`, `cronjob`, `tunable`, and
+  `iscsi_portal` in addition to the prior `dataset`, `share_smb`,
+  `user`. Each carries a `PreApply` `ExpectResourceAction`
+  `Create` guard on top so a Create-becoming-Update regression also
+  fires. `idempotencyCheckMinimum` ratchet bumped from 3 to 8.
+  Coverage went from 5.3% to 13.8% of acc test files.
+
+- **Three new static-analysis invariants** in `internal/provider/`:
+  - `TestResourcesWithSchemaVersionHaveUpgradeState` — any resource
+    that ships `Version: N` (`N > 0`) in its schema must implement
+    `ResourceWithUpgradeState` and ship a `*_upgradestate_test.go`.
+    Catches the highest-blast-radius mistake a provider author can
+    make: schema-version bumps without a state migration, which
+    silently corrupt state for existing users on apply.
+  - `TestImportStateVerifyIgnoreEntriesAreDocumented` — every
+    `ImportStateVerifyIgnore` field across the test tree must appear
+    in an explicit `allowedIgnoreFields` registry with one-line
+    rationale. Defeats the "just add it to the ignore list to make
+    the test pass" anti-pattern that hides real Read/Create shape
+    bugs. Current registry: 46 documented entries.
+  - `TestSweepersHaveAcctestPrefixGuard` — every `sweep<Name>`
+    function in `sweeper_test.go` must either call an Acctest-prefix
+    helper (`sweeperHasAcctestPrefix`, `sweeperDatasetIsAcctest`,
+    etc.) or carry a `// sweep-no-prefix-guard: <reason>` opt-out
+    comment. Defense-in-depth alongside the `TRUENAS_PROD_DENY`
+    safety rail.
+
+- **`TestSensitiveFieldsAreMarkedSensitive` invariant** — every
+  schema attribute whose name strongly implies a secret value
+  (`password`, `secret`, `peersecret`, `api_key`, `privatekey`,
+  `dhchap_key`, `dhchap_ctrl_key`, `v3_password`, `v3_privpassphrase`,
+  `passphrase`, `client_secret`, etc.) must carry `Sensitive: true`.
+  Without that flag, the framework leaks the value into terraform
+  plan output, terraform show, and trace logs on every apply —
+  a credential-disclosure foot-gun second only to committing the
+  secret to git. All 10 current sensitive-named fields pass; the
+  invariant locks the contract for every future credential field.
+
 ## [1.10.2] - 2026-04-25
 
 ### Fixed
