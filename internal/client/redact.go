@@ -2,8 +2,26 @@ package client
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 )
+
+// messageRedactRegexps are best-effort patterns that catch secret
+// material in error message bodies even when the key-name match
+// misses (e.g. headers with hyphens, URLs with basic-auth, generic
+// JSON-string fragments TrueNAS pastes into Pydantic error text).
+//
+// Each pattern uses a named "secret" capture group on the value
+// portion only — the prefix (key/scheme/header name) is preserved
+// so the operator can still see WHERE the leak came from.
+var messageRedactRegexps = []*regexp.Regexp{
+	// http basic auth in url: scheme://user:secret@host
+	regexp.MustCompile(`(?i)(\b[a-z][a-z0-9+\-.]*://[^\s:@/]*:)([^@\s/]+)(@)`),
+	// http header with secret value: "X-API-Key: deadbeef"
+	regexp.MustCompile(`(?i)(\b(?:authorization|x-api-key|x-auth-token|cookie|set-cookie)\s*[:=]\s*)([^\s\r\n;,]+)`),
+	// `Bearer xxxxx` after any prefix
+	regexp.MustCompile(`(?i)(\bBearer\s+)([A-Za-z0-9._\-+/=]+)`),
+}
 
 // sensitiveKeyFragments is the set of JSON field-name fragments that, when
 // they appear as a key in any object (at any depth), cause that field's
@@ -44,6 +62,20 @@ var sensitiveKeyFragments = []string{
 	"refresh_token",
 	"access_token",
 	"session_token",
+	// account_key catches ACME's account_key + similar; "_key" alone
+	// would match too much (e.g. "name_key" suffixes that aren't
+	// secrets), so we anchor on "account_key" + the generic key-
+	// material fragments above.
+	"account_key",
+	// Kerberos keytab attribute name = "file"; its value is the
+	// base64-encoded keytab itself. Substring "file" alone would
+	// match "filesystem", "file_path", "file_size" etc. and break
+	// real error messages ("filesystem busy"), so we don't ship it
+	// as a generic fragment. The schema marks the attribute
+	// Sensitive: true which keeps it out of Terraform state and
+	// plan output; redactor coverage at the API layer requires a
+	// follow-up to detect the specific "keytab" + "file" pair
+	// without false-positives — tracked separately.
 }
 
 // redactedPlaceholder is what replaces a sensitive value.
@@ -95,8 +127,12 @@ func redactJSONBody(body []byte) []byte {
 }
 
 // walkRedact recursively replaces the value of any map entry whose key
-// matches isSensitiveKey. Lists and nested maps are walked; scalars are
-// passed through unchanged when the surrounding key is not sensitive.
+// matches isSensitiveKey. Lists and nested maps are walked; string
+// values that themselves parse as JSON are recursively redacted then
+// re-marshalled (catches the common TrueNAS pattern where settings_json,
+// attributes_json, or a similar string-valued attribute carries a
+// password / api_key inside its JSON payload). Scalars and other
+// strings pass through unchanged.
 func walkRedact(v interface{}) interface{} {
 	switch t := v.(type) {
 	case map[string]interface{}:
@@ -115,6 +151,26 @@ func walkRedact(v interface{}) interface{} {
 			out[i] = walkRedact(val)
 		}
 		return out
+	case string:
+		// Quick guard: only attempt a re-parse if the value looks
+		// JSON-shaped (`{...}` or `[...]`). Avoids paying the parse
+		// cost on every plain string field, which dominates a typical
+		// API response body. If the inner JSON contains a sensitive
+		// key, recurse + re-marshal; otherwise pass through verbatim.
+		s := strings.TrimSpace(t)
+		if len(s) < 2 || (s[0] != '{' && s[0] != '[') {
+			return v
+		}
+		var inner interface{}
+		if err := json.Unmarshal([]byte(t), &inner); err != nil {
+			return v
+		}
+		redactedInner := walkRedact(inner)
+		out, err := json.Marshal(redactedInner)
+		if err != nil {
+			return v
+		}
+		return string(out)
 	default:
 		return v
 	}
@@ -129,6 +185,14 @@ func walkRedact(v interface{}) interface{} {
 func redactMessage(msg string) string {
 	if msg == "" {
 		return msg
+	}
+	// First pass: pattern-based redaction. These catch material the
+	// key-fragment match misses — http basic auth in URLs, headers
+	// with hyphens that don't survive the underscore-only fragment
+	// list, raw bearer tokens. Operator still sees the key/scheme
+	// prefix so the leak source is clear.
+	for _, re := range messageRedactRegexps {
+		msg = re.ReplaceAllString(msg, "${1}"+redactedPlaceholder+"${3}")
 	}
 	low := strings.ToLower(msg)
 	for _, frag := range sensitiveKeyFragments {
