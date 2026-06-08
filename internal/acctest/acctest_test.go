@@ -282,4 +282,21 @@ func TestClient_RejectsProdHost(t *testing.T) {
 			t.Errorf("expected URL parse error, got: %v", err)
 		}
 	})
+
+	t.Run("URL parses but has no hostname", func(t *testing.T) {
+		restore := envSandbox(t)
+		defer restore()
+		// "https:/path" — url.Parse succeeds (single slash makes it
+		// a path-only URL with empty host) but Hostname() returns "",
+		// triggering the no-hostname guard inside assertNotProd.
+		t.Setenv("TRUENAS_URL", "https:/path-only")
+		t.Setenv("TRUENAS_API_KEY", "k")
+		_, err := acctest.Client()
+		if err == nil {
+			t.Fatal("expected error on URL with no hostname")
+		}
+		if !strings.Contains(err.Error(), "no hostname") {
+			t.Errorf("expected 'no hostname' error, got: %v", err)
+		}
+	})
 }
