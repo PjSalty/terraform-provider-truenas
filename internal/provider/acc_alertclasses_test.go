@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccAlertClassesResource_basic — singleton: alert classes config
@@ -31,6 +32,11 @@ resource "truenas_alertclasses" "test" {
   }
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_alertclasses.test", "classes.ZpoolCapacityNotice.level", "NOTICE"),
 					resource.TestCheckResourceAttr("truenas_alertclasses.test", "classes.ZpoolCapacityNotice.policy", "IMMEDIATELY"),
@@ -78,6 +84,11 @@ resource "truenas_alertclasses" "test" {
   }
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_alertclasses.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_alertclasses.test", "classes.ZpoolCapacityNotice.policy", "HOURLY"),
 			},
 			{

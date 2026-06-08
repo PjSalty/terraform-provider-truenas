@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -29,6 +30,14 @@ resource "truenas_cronjob" "test" {
   schedule_hour   = "0"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_cronjob.test", plancheck.ResourceActionCreate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_cronjob.test", "user", "root"),
 					resource.TestCheckResourceAttr("truenas_cronjob.test", "command", "/bin/true"),
@@ -74,7 +83,12 @@ resource "truenas_cronjob" "test" {
 			},
 			{
 				Config: cfg("acctest updated"),
-				Check:  resource.TestCheckResourceAttr("truenas_cronjob.test", "description", "acctest updated"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_cronjob.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_cronjob.test", "description", "acctest updated"),
 			},
 		},
 	})

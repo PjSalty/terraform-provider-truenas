@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -34,6 +35,14 @@ resource "truenas_nvmet_port" "test" {
   addr_trsvcid = %d
 }
 `, port),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_nvmet_port.test", plancheck.ResourceActionCreate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_nvmet_port.test", "addr_trtype", "TCP"),
 					resource.TestCheckResourceAttr("truenas_nvmet_port.test", "addr_traddr", "127.0.0.1"),
@@ -80,6 +89,11 @@ resource "truenas_nvmet_port" "test" {
   addr_trsvcid = %d
 }
 `, p2),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_nvmet_port.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_nvmet_port.test", "addr_trsvcid", strconv.Itoa(p2)),
 			},
 		},

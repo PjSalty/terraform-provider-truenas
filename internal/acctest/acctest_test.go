@@ -13,7 +13,7 @@ import (
 // callback reinstates the prior values even on failure.
 func envSandbox(t *testing.T) func() {
 	t.Helper()
-	keys := []string{"TF_ACC", "TRUENAS_URL", "TRUENAS_API_KEY", "TRUENAS_INSECURE_SKIP_VERIFY"}
+	keys := []string{"TF_ACC", "TRUENAS_URL", "TRUENAS_API_KEY", "TRUENAS_INSECURE_SKIP_VERIFY", "TRUENAS_PROD_DENY"}
 	prev := map[string]string{}
 	for _, k := range keys {
 		prev[k] = os.Getenv(k)
@@ -184,4 +184,102 @@ func TestPIDSuffix(t *testing.T) {
 	if s < 0 || s >= 1000000 {
 		t.Fatalf("PIDSuffix out of range: %d", s)
 	}
+}
+
+// TestClient_RejectsProdHost verifies the prod-deny safety rail
+// refuses to build a client targeting any host listed in
+// TRUENAS_PROD_DENY. Walks the most likely operator-error paths:
+//
+//   - Default deny list catches the homelab production hostname.
+//   - Explicit denylist override is honored.
+//   - Hostname matching is case-insensitive.
+//   - The override-to-empty path lets a determined operator disable
+//     the check (after a clear acctest documentation gate).
+//   - Wrong-shape URLs surface a clean error instead of silently
+//     bypassing the check.
+//
+// The destructive default — building a client at all — is gated
+// behind these checks. Each subtest snapshots/restores env so they
+// can run in any order without polluting siblings.
+func TestClient_RejectsProdHost(t *testing.T) {
+	t.Run("default-deny catches default prod host", func(t *testing.T) {
+		restore := envSandbox(t)
+		defer restore()
+		t.Setenv("TRUENAS_URL", "https://"+acctest.DefaultProdDeny)
+		t.Setenv("TRUENAS_API_KEY", "k")
+		if _, err := acctest.Client(); err == nil ||
+			!strings.Contains(err.Error(), "TRUENAS_PROD_DENY") {
+			t.Errorf("expected prod-deny rejection, got: %v", err)
+		}
+	})
+
+	t.Run("explicit denylist override is honored", func(t *testing.T) {
+		restore := envSandbox(t)
+		defer restore()
+		t.Setenv("TRUENAS_URL", "https://my-lab-prod.example")
+		t.Setenv("TRUENAS_API_KEY", "k")
+		t.Setenv("TRUENAS_PROD_DENY", "my-lab-prod.example, other-prod.example")
+		if _, err := acctest.Client(); err == nil ||
+			!strings.Contains(err.Error(), "my-lab-prod.example") {
+			t.Errorf("expected rejection naming my-lab-prod.example, got: %v", err)
+		}
+	})
+
+	t.Run("hostname match is case-insensitive", func(t *testing.T) {
+		restore := envSandbox(t)
+		defer restore()
+		t.Setenv("TRUENAS_URL", "https://MY-LAB-PROD.EXAMPLE")
+		t.Setenv("TRUENAS_API_KEY", "k")
+		t.Setenv("TRUENAS_PROD_DENY", "my-lab-prod.example")
+		if _, err := acctest.Client(); err == nil ||
+			!strings.Contains(err.Error(), "TRUENAS_PROD_DENY") {
+			t.Errorf("expected case-insensitive rejection, got: %v", err)
+		}
+	})
+
+	t.Run("empty deny-list disables the check", func(t *testing.T) {
+		restore := envSandbox(t)
+		defer restore()
+		t.Setenv("TRUENAS_URL", "https://"+acctest.DefaultProdDeny)
+		t.Setenv("TRUENAS_API_KEY", "k")
+		t.Setenv("TRUENAS_PROD_DENY", "")
+		// Client() still has to construct a real *client.Client; we
+		// don't assert success there because the URL may not resolve
+		// — only that the prod-deny error is no longer in the path.
+		_, err := acctest.Client()
+		if err != nil && strings.Contains(err.Error(), "TRUENAS_PROD_DENY") {
+			t.Errorf("empty TRUENAS_PROD_DENY should disable the check; got: %v", err)
+		}
+	})
+
+	t.Run("non-prod URL passes through", func(t *testing.T) {
+		restore := envSandbox(t)
+		defer restore()
+		t.Setenv("TRUENAS_URL", "https://test-truenas.lab.example")
+		t.Setenv("TRUENAS_API_KEY", "k")
+		// We expect no prod-deny error; the underlying client.NewWith
+		// Options may still produce an error if it does anything
+		// network-bound, but that's not what this test is asserting.
+		_, err := acctest.Client()
+		if err != nil && strings.Contains(err.Error(), "TRUENAS_PROD_DENY") {
+			t.Errorf("non-prod URL should pass through; got: %v", err)
+		}
+	})
+
+	t.Run("malformed URL surfaces a clean error", func(t *testing.T) {
+		restore := envSandbox(t)
+		defer restore()
+		t.Setenv("TRUENAS_URL", "://no-scheme")
+		t.Setenv("TRUENAS_API_KEY", "k")
+		_, err := acctest.Client()
+		if err == nil {
+			t.Fatal("expected error on malformed URL")
+		}
+		// Either parse error OR "no hostname" — both are acceptable
+		// outcomes that prevent the destructive default.
+		if !strings.Contains(err.Error(), "not a valid URL") &&
+			!strings.Contains(err.Error(), "no hostname") {
+			t.Errorf("expected URL parse error, got: %v", err)
+		}
+	})
 }

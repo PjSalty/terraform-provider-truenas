@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccUPSConfigResource_basic — singleton: UPS daemon configuration
@@ -30,6 +31,11 @@ resource "truenas_ups_config" "test" {
   description = "acctest"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_ups_config.test", "mode", "SLAVE"),
 					resource.TestCheckResourceAttr("truenas_ups_config.test", "description", "acctest"),
@@ -70,7 +76,12 @@ resource "truenas_ups_config" "test" {
 			},
 			{
 				Config: cfg("acctest-updated"),
-				Check:  resource.TestCheckResourceAttr("truenas_ups_config.test", "description", "acctest-updated"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_ups_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_ups_config.test", "description", "acctest-updated"),
 			},
 			{
 				// Restore the default description so the shared test

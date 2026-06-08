@@ -6,26 +6,125 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// VM, VMStatus, VMCreateRequest, VMUpdateRequest, VMDeleteOptions, VMDevice,
-// VMDeviceCreateRequest, VMDeviceUpdateRequest moved to internal/types/vm.go
-// in the v2.0 transport-migration prep.
-type (
-	VM                    = types.VM
-	VMStatus              = types.VMStatus
-	VMCreateRequest       = types.VMCreateRequest
-	VMUpdateRequest       = types.VMUpdateRequest
-	VMDeleteOptions       = types.VMDeleteOptions
-	VMDevice              = types.VMDevice
-	VMDeviceCreateRequest = types.VMDeviceCreateRequest
-	VMDeviceUpdateRequest = types.VMDeviceUpdateRequest
-)
+// --- VM API ---
+
+// VM represents a TrueNAS SCALE virtual machine.
+type VM struct {
+	ID                         int        `json:"id"`
+	Name                       string     `json:"name"`
+	Description                string     `json:"description"`
+	Vcpus                      int        `json:"vcpus"`
+	Cores                      int        `json:"cores"`
+	Threads                    int        `json:"threads"`
+	Memory                     int64      `json:"memory"`
+	MinMemory                  *int64     `json:"min_memory"`
+	Bootloader                 string     `json:"bootloader"`
+	BootloaderOvmf             string     `json:"bootloader_ovmf"`
+	Autostart                  bool       `json:"autostart"`
+	HideFromMsr                bool       `json:"hide_from_msr"`
+	EnsureDisplayDevice        bool       `json:"ensure_display_device"`
+	Time                       string     `json:"time"`
+	ShutdownTimeout            int        `json:"shutdown_timeout"`
+	ArchType                   *string    `json:"arch_type"`
+	MachineType                *string    `json:"machine_type"`
+	UUID                       *string    `json:"uuid"`
+	CommandLineArgs            string     `json:"command_line_args"`
+	CPUMode                    string     `json:"cpu_mode"`
+	CPUModel                   *string    `json:"cpu_model"`
+	Cpuset                     *string    `json:"cpuset"`
+	Nodeset                    *string    `json:"nodeset"`
+	EnableCPUTopologyExtension bool       `json:"enable_cpu_topology_extension"`
+	PinVcpus                   bool       `json:"pin_vcpus"`
+	SuspendOnSnapshot          bool       `json:"suspend_on_snapshot"`
+	TrustedPlatformModule      bool       `json:"trusted_platform_module"`
+	HypervEnlightenments       bool       `json:"hyperv_enlightenments"`
+	EnableSecureBoot           bool       `json:"enable_secure_boot"`
+	Status                     *VMStatus  `json:"status"`
+	Devices                    []VMDevice `json:"devices"`
+	DisplayAvailable           bool       `json:"display_available"`
+}
+
+// VMStatus represents the runtime status of a VM.
+type VMStatus struct {
+	State       string `json:"state"`
+	PID         *int   `json:"pid"`
+	DomainState string `json:"domain_state"`
+}
+
+// VMCreateRequest represents the request body for creating a VM.
+// Fields are pointers where the TrueNAS API treats absence differently from zero value.
+type VMCreateRequest struct {
+	Name                       string  `json:"name"`
+	Description                *string `json:"description,omitempty"`
+	Vcpus                      *int    `json:"vcpus,omitempty"`
+	Cores                      *int    `json:"cores,omitempty"`
+	Threads                    *int    `json:"threads,omitempty"`
+	Memory                     int64   `json:"memory"`
+	MinMemory                  *int64  `json:"min_memory,omitempty"`
+	Bootloader                 *string `json:"bootloader,omitempty"`
+	BootloaderOvmf             *string `json:"bootloader_ovmf,omitempty"`
+	Autostart                  *bool   `json:"autostart,omitempty"`
+	HideFromMsr                *bool   `json:"hide_from_msr,omitempty"`
+	EnsureDisplayDevice        *bool   `json:"ensure_display_device,omitempty"`
+	Time                       *string `json:"time,omitempty"`
+	ShutdownTimeout            *int    `json:"shutdown_timeout,omitempty"`
+	ArchType                   *string `json:"arch_type,omitempty"`
+	MachineType                *string `json:"machine_type,omitempty"`
+	UUID                       *string `json:"uuid,omitempty"`
+	CommandLineArgs            *string `json:"command_line_args,omitempty"`
+	CPUMode                    *string `json:"cpu_mode,omitempty"`
+	CPUModel                   *string `json:"cpu_model,omitempty"`
+	Cpuset                     *string `json:"cpuset,omitempty"`
+	Nodeset                    *string `json:"nodeset,omitempty"`
+	EnableCPUTopologyExtension *bool   `json:"enable_cpu_topology_extension,omitempty"`
+	PinVcpus                   *bool   `json:"pin_vcpus,omitempty"`
+	SuspendOnSnapshot          *bool   `json:"suspend_on_snapshot,omitempty"`
+	TrustedPlatformModule      *bool   `json:"trusted_platform_module,omitempty"`
+	HypervEnlightenments       *bool   `json:"hyperv_enlightenments,omitempty"`
+	EnableSecureBoot           *bool   `json:"enable_secure_boot,omitempty"`
+}
+
+// VMUpdateRequest is identical in shape to VMCreateRequest but memory is optional.
+type VMUpdateRequest struct {
+	Name                       *string `json:"name,omitempty"`
+	Description                *string `json:"description,omitempty"`
+	Vcpus                      *int    `json:"vcpus,omitempty"`
+	Cores                      *int    `json:"cores,omitempty"`
+	Threads                    *int    `json:"threads,omitempty"`
+	Memory                     *int64  `json:"memory,omitempty"`
+	MinMemory                  *int64  `json:"min_memory,omitempty"`
+	Bootloader                 *string `json:"bootloader,omitempty"`
+	BootloaderOvmf             *string `json:"bootloader_ovmf,omitempty"`
+	Autostart                  *bool   `json:"autostart,omitempty"`
+	HideFromMsr                *bool   `json:"hide_from_msr,omitempty"`
+	EnsureDisplayDevice        *bool   `json:"ensure_display_device,omitempty"`
+	Time                       *string `json:"time,omitempty"`
+	ShutdownTimeout            *int    `json:"shutdown_timeout,omitempty"`
+	ArchType                   *string `json:"arch_type,omitempty"`
+	MachineType                *string `json:"machine_type,omitempty"`
+	CommandLineArgs            *string `json:"command_line_args,omitempty"`
+	CPUMode                    *string `json:"cpu_mode,omitempty"`
+	CPUModel                   *string `json:"cpu_model,omitempty"`
+	Cpuset                     *string `json:"cpuset,omitempty"`
+	Nodeset                    *string `json:"nodeset,omitempty"`
+	EnableCPUTopologyExtension *bool   `json:"enable_cpu_topology_extension,omitempty"`
+	PinVcpus                   *bool   `json:"pin_vcpus,omitempty"`
+	SuspendOnSnapshot          *bool   `json:"suspend_on_snapshot,omitempty"`
+	TrustedPlatformModule      *bool   `json:"trusted_platform_module,omitempty"`
+	HypervEnlightenments       *bool   `json:"hyperv_enlightenments,omitempty"`
+	EnableSecureBoot           *bool   `json:"enable_secure_boot,omitempty"`
+}
+
+// VMDeleteOptions represents the options accepted by the VM delete endpoint.
+type VMDeleteOptions struct {
+	Zvols bool `json:"zvols"`
+	Force bool `json:"force"`
+}
 
 // ListVMs retrieves all VMs.
-func (c *Client) ListVMs(ctx context.Context) ([]types.VM, error) {
+func (c *Client) ListVMs(ctx context.Context) ([]VM, error) {
 	tflog.Trace(ctx, "ListVMs start")
 
 	resp, err := c.Get(ctx, "/vm")
@@ -33,7 +132,7 @@ func (c *Client) ListVMs(ctx context.Context) ([]types.VM, error) {
 		return nil, fmt.Errorf("listing VMs: %w", err)
 	}
 
-	var vms []types.VM
+	var vms []VM
 	if err := json.Unmarshal(resp, &vms); err != nil {
 		return nil, fmt.Errorf("parsing VM list response: %w", err)
 	}
@@ -42,7 +141,7 @@ func (c *Client) ListVMs(ctx context.Context) ([]types.VM, error) {
 }
 
 // GetVM retrieves a VM by its numeric ID.
-func (c *Client) GetVM(ctx context.Context, id int) (*types.VM, error) {
+func (c *Client) GetVM(ctx context.Context, id int) (*VM, error) {
 	tflog.Trace(ctx, "GetVM start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/vm/id/%d", id))
@@ -50,7 +149,7 @@ func (c *Client) GetVM(ctx context.Context, id int) (*types.VM, error) {
 		return nil, fmt.Errorf("getting VM %d: %w", id, err)
 	}
 
-	var vm types.VM
+	var vm VM
 	if err := json.Unmarshal(resp, &vm); err != nil {
 		return nil, fmt.Errorf("parsing VM response: %w", err)
 	}
@@ -59,7 +158,7 @@ func (c *Client) GetVM(ctx context.Context, id int) (*types.VM, error) {
 }
 
 // CreateVM creates a new VM.
-func (c *Client) CreateVM(ctx context.Context, req *types.VMCreateRequest) (*types.VM, error) {
+func (c *Client) CreateVM(ctx context.Context, req *VMCreateRequest) (*VM, error) {
 	tflog.Trace(ctx, "CreateVM start")
 
 	resp, err := c.Post(ctx, "/vm", req)
@@ -67,7 +166,7 @@ func (c *Client) CreateVM(ctx context.Context, req *types.VMCreateRequest) (*typ
 		return nil, fmt.Errorf("creating VM %q: %w", req.Name, err)
 	}
 
-	var vm types.VM
+	var vm VM
 	if err := json.Unmarshal(resp, &vm); err != nil {
 		return nil, fmt.Errorf("parsing VM create response: %w", err)
 	}
@@ -76,7 +175,7 @@ func (c *Client) CreateVM(ctx context.Context, req *types.VMCreateRequest) (*typ
 }
 
 // UpdateVM updates an existing VM.
-func (c *Client) UpdateVM(ctx context.Context, id int, req *types.VMUpdateRequest) (*types.VM, error) {
+func (c *Client) UpdateVM(ctx context.Context, id int, req *VMUpdateRequest) (*VM, error) {
 	tflog.Trace(ctx, "UpdateVM start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/vm/id/%d", id), req)
@@ -84,7 +183,7 @@ func (c *Client) UpdateVM(ctx context.Context, id int, req *types.VMUpdateReques
 		return nil, fmt.Errorf("updating VM %d: %w", id, err)
 	}
 
-	var vm types.VM
+	var vm VM
 	if err := json.Unmarshal(resp, &vm); err != nil {
 		return nil, fmt.Errorf("parsing VM update response: %w", err)
 	}
@@ -94,11 +193,11 @@ func (c *Client) UpdateVM(ctx context.Context, id int, req *types.VMUpdateReques
 
 // DeleteVM deletes a VM. The body controls whether associated zvols are also removed
 // and whether a running VM is forcibly stopped.
-func (c *Client) DeleteVM(ctx context.Context, id int, opts *types.VMDeleteOptions) error {
+func (c *Client) DeleteVM(ctx context.Context, id int, opts *VMDeleteOptions) error {
 	tflog.Trace(ctx, "DeleteVM start")
 
 	if opts == nil {
-		opts = &types.VMDeleteOptions{Force: true, Zvols: false}
+		opts = &VMDeleteOptions{Force: true, Zvols: false}
 	}
 	_, err := c.DeleteWithBody(ctx, fmt.Sprintf("/vm/id/%d", id), opts)
 	if err != nil {
@@ -138,8 +237,30 @@ func (c *Client) StopVM(ctx context.Context, id int, force bool) error {
 
 // --- VM Device API ---
 
+// VMDevice represents a device attached to a VM (DISK, NIC, CDROM, DISPLAY, RAW, PCI, USB).
+type VMDevice struct {
+	ID         int                    `json:"id"`
+	VM         int                    `json:"vm"`
+	Order      *int                   `json:"order"`
+	Attributes map[string]interface{} `json:"attributes"`
+}
+
+// VMDeviceCreateRequest represents the request body for creating a VM device.
+type VMDeviceCreateRequest struct {
+	VM         int                    `json:"vm"`
+	Order      *int                   `json:"order,omitempty"`
+	Attributes map[string]interface{} `json:"attributes"`
+}
+
+// VMDeviceUpdateRequest represents the request body for updating a VM device.
+type VMDeviceUpdateRequest struct {
+	VM         *int                   `json:"vm,omitempty"`
+	Order      *int                   `json:"order,omitempty"`
+	Attributes map[string]interface{} `json:"attributes,omitempty"`
+}
+
 // GetVMDevice retrieves a VM device by its numeric ID.
-func (c *Client) GetVMDevice(ctx context.Context, id int) (*types.VMDevice, error) {
+func (c *Client) GetVMDevice(ctx context.Context, id int) (*VMDevice, error) {
 	tflog.Trace(ctx, "GetVMDevice start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/vm/device/id/%d", id))
@@ -147,7 +268,7 @@ func (c *Client) GetVMDevice(ctx context.Context, id int) (*types.VMDevice, erro
 		return nil, fmt.Errorf("getting VM device %d: %w", id, err)
 	}
 
-	var dev types.VMDevice
+	var dev VMDevice
 	if err := json.Unmarshal(resp, &dev); err != nil {
 		return nil, fmt.Errorf("parsing VM device response: %w", err)
 	}
@@ -156,7 +277,7 @@ func (c *Client) GetVMDevice(ctx context.Context, id int) (*types.VMDevice, erro
 }
 
 // CreateVMDevice creates a new VM device.
-func (c *Client) CreateVMDevice(ctx context.Context, req *types.VMDeviceCreateRequest) (*types.VMDevice, error) {
+func (c *Client) CreateVMDevice(ctx context.Context, req *VMDeviceCreateRequest) (*VMDevice, error) {
 	tflog.Trace(ctx, "CreateVMDevice start")
 
 	resp, err := c.Post(ctx, "/vm/device", req)
@@ -164,7 +285,7 @@ func (c *Client) CreateVMDevice(ctx context.Context, req *types.VMDeviceCreateRe
 		return nil, fmt.Errorf("creating VM device on VM %d: %w", req.VM, err)
 	}
 
-	var dev types.VMDevice
+	var dev VMDevice
 	if err := json.Unmarshal(resp, &dev); err != nil {
 		return nil, fmt.Errorf("parsing VM device create response: %w", err)
 	}
@@ -173,7 +294,7 @@ func (c *Client) CreateVMDevice(ctx context.Context, req *types.VMDeviceCreateRe
 }
 
 // UpdateVMDevice updates an existing VM device.
-func (c *Client) UpdateVMDevice(ctx context.Context, id int, req *types.VMDeviceUpdateRequest) (*types.VMDevice, error) {
+func (c *Client) UpdateVMDevice(ctx context.Context, id int, req *VMDeviceUpdateRequest) (*VMDevice, error) {
 	tflog.Trace(ctx, "UpdateVMDevice start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/vm/device/id/%d", id), req)
@@ -181,7 +302,7 @@ func (c *Client) UpdateVMDevice(ctx context.Context, id int, req *types.VMDevice
 		return nil, fmt.Errorf("updating VM device %d: %w", id, err)
 	}
 
-	var dev types.VMDevice
+	var dev VMDevice
 	if err := json.Unmarshal(resp, &dev); err != nil {
 		return nil, fmt.Errorf("parsing VM device update response: %w", err)
 	}

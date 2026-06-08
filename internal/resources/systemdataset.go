@@ -15,16 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// systemDatasetClient is the transport-agnostic surface that
-// SystemDatasetResource needs. Both *client.Client (REST) and
-// *wsclient.Client (JSON-RPC) satisfy it via duck typing.
-type systemDatasetClient interface {
-	GetSystemDataset(ctx context.Context) (*tnstypes.SystemDataset, error)
-	UpdateSystemDataset(ctx context.Context, req *tnstypes.SystemDatasetUpdateRequest) (*tnstypes.SystemDataset, error)
-}
 
 var (
 	_ resource.Resource                = &SystemDatasetResource{}
@@ -40,7 +32,7 @@ var (
 // pool) — this mirrors the behavior of the other singleton resources in
 // this provider (e.g. ssh_config).
 type SystemDatasetResource struct {
-	client systemDatasetClient
+	client *client.Client
 }
 
 // SystemDatasetResourceModel describes the resource data model.
@@ -115,11 +107,11 @@ func (r *SystemDatasetResource) Configure(_ context.Context, req resource.Config
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(systemDatasetClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected systemDatasetClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -213,7 +205,7 @@ func (r *SystemDatasetResource) Delete(ctx context.Context, _ resource.DeleteReq
 
 	// Reset by sending null pool; TrueNAS will fall back to the boot pool.
 	var nullPool *string
-	_, err := r.client.UpdateSystemDataset(ctx, &tnstypes.SystemDatasetUpdateRequest{
+	_, err := r.client.UpdateSystemDataset(ctx, &client.SystemDatasetUpdateRequest{
 		Pool: nullPool,
 	})
 	if err != nil {
@@ -230,8 +222,8 @@ func (r *SystemDatasetResource) ImportState(ctx context.Context, req resource.Im
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func buildSystemDatasetUpdate(plan *SystemDatasetResourceModel) *tnstypes.SystemDatasetUpdateRequest {
-	updateReq := &tnstypes.SystemDatasetUpdateRequest{}
+func buildSystemDatasetUpdate(plan *SystemDatasetResourceModel) *client.SystemDatasetUpdateRequest {
+	updateReq := &client.SystemDatasetUpdateRequest{}
 	if !plan.Pool.IsNull() && !plan.Pool.IsUnknown() {
 		v := plan.Pool.ValueString()
 		if v == "" {
@@ -244,7 +236,7 @@ func buildSystemDatasetUpdate(plan *SystemDatasetResourceModel) *tnstypes.System
 	return updateReq
 }
 
-func (r *SystemDatasetResource) mapResponseToModel(cfg *tnstypes.SystemDataset, model *SystemDatasetResourceModel) {
+func (r *SystemDatasetResource) mapResponseToModel(cfg *client.SystemDataset, model *SystemDatasetResourceModel) {
 	model.ID = types.StringValue("systemdataset")
 	model.Pool = types.StringValue(cfg.Pool)
 	model.PoolSet = types.BoolValue(cfg.PoolSet)

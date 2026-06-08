@@ -30,6 +30,207 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `transport = "rest"` (or `TRUENAS_TRANSPORT=rest`) and re-run
   apply. REST-path code is unchanged from v1.10.x.
 
+### Added
+
+- **`_disappears` acceptance test coverage for every deletable resource**
+  — 38 new behavioural acceptance tests in `internal/resources/*_test.go`,
+  one per resource that supports out-of-band deletion. Each test creates
+  the resource, deletes it via a direct API call (bypassing Terraform),
+  and asserts the next plan recognises the drift with
+  `ExpectNonEmptyPlan: true`. Pairs with the existing per-resource
+  `CheckDestroy` callback to verify both the Terraform-driven destroy
+  path and the recovery-from-deletion path. Resources covered include
+  the storage family (dataset, zvol, share_nfs, share_smb,
+  snapshot_task, scrub_task, replication), identity (user, group,
+  api_key, privilege, keychain_credential), tasks and networking
+  (cronjob, init_script, static_route, alert_service, tunable),
+  certificates and misc (certificate, acme_dns_authenticator,
+  kerberos_realm, kerberos_keytab, vm, vm_device,
+  filesystem_acl_template, reporting_exporter, cloud_backup, vmware),
+  iSCSI (target, portal, initiator, extent, targetextent, auth), and
+  NVMe-oF (host, subsys, port, host_subsys, port_subsys).
+
+- **Four new static-analysis invariant tests** in `internal/provider/`
+  that scan the Go source as strings to enforce shape-level guarantees
+  across every resource:
+  - `TestResourcesHaveImportStateImplemented` — every
+    `ResourceWithImportState` must use the passthrough helper or carry
+    an explicit `// import: custom` opt-out comment.
+  - `TestResourcesRemoveFromStateOnNotFound` — every resource's `Read`
+    method must call `resp.State.RemoveResource(ctx)` on `IsNotFound`,
+    with an allowlist for the 18 singleton-by-design resources where
+    delete-is-reset-to-default semantics apply.
+  - `TestAcceptanceTestsHavePreCheckOrSkip` — every `TestAcc*` function
+    must either call `testAccPreCheck(t)` or contain an explicit
+    `t.Skip(...)` stub.
+  - `TestAcceptanceTestsHaveCheckDestroy` — every non-`PlanOnly`,
+    non-stub acceptance test must wire a real `CheckDestroy` callback.
+
+- **Production-host deny safety rail** — `internal/acctest/acctest.go`
+  now refuses to build a client targeting the configured production
+  hostname. Three layers of defence: shell-level check in
+  `scripts/lib/_env.sh`, Go-level `assertNotProd()` in the test client
+  constructor (honours `TRUENAS_PROD_DENY` env override, empty
+  disables), and explicit documentation in `scripts/README.md` and
+  `.envrc.example` reminding operators to point tests at a non-prod
+  TrueNAS only.
+
+- **Local acceptance-test runner** — `scripts/acc.sh` ships a six-stage
+  pipeline (preflight, build, lint, unit tests + 100% coverage check,
+  static invariants, full acceptance suite) with per-run log files,
+  `--skip-acc`, `--acc-only`, and `--resource <name>` flags. Make
+  targets `acc`, `acc-skip`, `acc-only`, `acc-preflight`,
+  `acc-disappears`, and `acc-resource RESOURCE=<name>` wrap the
+  script. Designed for operator-paced runs against a non-production
+  TrueNAS instance; no CI dependency.
+
+- **14 `ExpectError` negative-path acceptance tests for validators**
+  — `internal/provider/acc_validator_errors_test.go` exercises every
+  wired validator with hostile input, asserting plan-time rejection
+  before any API call. Covers `IPOrCIDR` (invalid IP, malformed CIDR,
+  5-octet "IP", text-host CIDR, IPv6 positive control), four
+  `stringvalidator.OneOf` enums (`init_script.type`,
+  `init_script.when`, `nvmet_port.addr_trtype`, `iscsi_target.mode`),
+  three `int64validator` bounds (`certificate.key_length`,
+  `nvmet_port.addr_trsvcid` low/high), and `dns_nameserver.address`
+  regex rejection. Locks the `.tf`-layer contract: removing a
+  validator or changing an enum without updating callers fails the
+  test. Previously the entire tree had one `ExpectError` assertion.
+
+- **Apply-idempotency check rolled out to 5 more resources** — the
+  `PostApplyPostRefresh: plancheck.ExpectEmptyPlan()` invariant now
+  fires on `static_route`, `group`, `cronjob`, `tunable`, and
+  `iscsi_portal` in addition to the prior `dataset`, `share_smb`,
+  `user`. Each carries a `PreApply` `ExpectResourceAction`
+  `Create` guard on top so a Create-becoming-Update regression also
+  fires. `idempotencyCheckMinimum` ratchet bumped from 3 to 8.
+  Coverage went from 5.3% to 13.8% of acc test files.
+
+- **Three new static-analysis invariants** in `internal/provider/`:
+  - `TestResourcesWithSchemaVersionHaveUpgradeState` — any resource
+    that ships `Version: N` (`N > 0`) in its schema must implement
+    `ResourceWithUpgradeState` and ship a `*_upgradestate_test.go`.
+    Catches the highest-blast-radius mistake a provider author can
+    make: schema-version bumps without a state migration, which
+    silently corrupt state for existing users on apply.
+  - `TestImportStateVerifyIgnoreEntriesAreDocumented` — every
+    `ImportStateVerifyIgnore` field across the test tree must appear
+    in an explicit `allowedIgnoreFields` registry with one-line
+    rationale. Defeats the "just add it to the ignore list to make
+    the test pass" anti-pattern that hides real Read/Create shape
+    bugs. Current registry: 46 documented entries.
+  - `TestSweepersHaveAcctestPrefixGuard` — every `sweep<Name>`
+    function in `sweeper_test.go` must either call an Acctest-prefix
+    helper (`sweeperHasAcctestPrefix`, `sweeperDatasetIsAcctest`,
+    etc.) or carry a `// sweep-no-prefix-guard: <reason>` opt-out
+    comment. Defense-in-depth alongside the `TRUENAS_PROD_DENY`
+    safety rail.
+
+- **`TestSensitiveFieldsAreMarkedSensitive` invariant** — every
+  schema attribute whose name strongly implies a secret value
+  (`password`, `secret`, `peersecret`, `api_key`, `privatekey`,
+  `dhchap_key`, `dhchap_ctrl_key`, `v3_password`, `v3_privpassphrase`,
+  `passphrase`, `client_secret`, etc.) must carry `Sensitive: true`.
+  Without that flag, the framework leaks the value into terraform
+  plan output, terraform show, and trace logs on every apply —
+  a credential-disclosure foot-gun second only to committing the
+  secret to git. All 10 current sensitive-named fields pass; the
+  invariant locks the contract for every future credential field.
+
+- **Apply-idempotency rollout: 3 → 29 acceptance tests (5.3% → 49.2%)**
+  — the `ConfigPlanChecks.PostApplyPostRefresh: ExpectEmptyPlan()`
+  assertion is now wired into half the acc test surface, up from
+  three pattern-proof resources at the start of the rigor batch.
+  Each adopting resource also carries `PreApply: ExpectResourceAction
+  Create` so a Create-becoming-Update regression is caught with the
+  same step. `idempotencyCheckMinimum` ratchet bumped 3 → 29.
+  Rolled out to: static_route, group, cronjob, tunable, iscsi_portal,
+  nvmet_subsys, nvmet_port, iscsi_initiator, init_script,
+  kerberos_realm, iscsi_target (extended existing PreApply guards),
+  iscsi_targetextent, nvmet_host_subsys, nvmet_port_subsys, privilege,
+  share_nfs, iscsi_extent, nvmet_namespace, iscsi_auth, nvmet_host,
+  api_key, snapshot_task, scrub_task, zvol, certificate, rsync_task.
+  Deferred: singletons with server-side defaulting, sensitive-JSON
+  resources where the API masks fields on read, beta/env-gated
+  resources, and complex computed-field resources (VM, replication).
+
+- **`TestValidatorErrorCoverage` invariant + 22 ExpectError tests**
+  — `acc_validator_errors_test.go` exercises every wired validator
+  with hostile input, asserting plan-time rejection before any API
+  call. Coverage went from 1 to 22 tests. The new ratchet test in
+  `validator_error_coverage_test.go` counts the
+  `TestAccValidator_*` functions and asserts `>= 22`. Removing one
+  would silently drop a plan-time guarantee, so the ratchet makes
+  that visible in review.
+
+  Tests cover: `IPOrCIDR` (5), `stringvalidator.OneOf` (4),
+  `int64validator.Between` boundaries (5), `stringvalidator.LengthBetween`
+  boundaries (3), `stringvalidator.RegexMatches` (1), with at least
+  one test per wired validator.
+
+- **`TestAcceptanceLifecycleCoverage` invariant — 62 resources
+  lifecycle-locked** — every resource family must have all four
+  CRUD phases (`_basic`, `_update`, `_import`, `_disappears`) or
+  appear in `lifecycleResourceExclusions` with a per-phase rationale.
+  Missing any phase leaves a regression vector that escapes detection
+  until a user trips over it.
+
+  Fired one real gap on first run:
+  `ACMEDNSAuthenticator` had no import test — fixed by adding an
+  `ImportState` test step to `TestAccACMEDNSAuthenticator_basic`
+  in the same commit.
+
+  Exclusions are catalogued by category: data sources, singletons
+  where `disappears` is a no-op reset, sensitive-payload resources
+  where `import` cannot round-trip the secret, env-gated/beta
+  resources, and one test-naming alias.
+
+- **Plan-time destroy warning expanded to 15 more destructive
+  resources** — `planhelpers.WarnOnDestroy` now fires from
+  `ModifyPlan` on: `api_key`, `privilege`, `iscsi_initiator`,
+  `iscsi_targetextent`, `nvmet_subsys`, `nvmet_namespace`,
+  `nvmet_port`, `keychain_credential`, `acme_dns_authenticator`,
+  `kerberos_realm`, `vmware`, `kerberos_keytab`, `vm_device`,
+  `nvmet_host_subsys`, `nvmet_port_subsys`. These are the
+  "operator removes one line of HCL and loses access to data /
+  auth / mounts" failure modes. The warning surfaces destructive
+  intent at `terraform plan` time so the operator sees it before
+  running `apply`. Complements the client-layer
+  `destroy_protection` rail that BLOCKS the wire call.
+  `destroyWarnFloor` ratchet 22 → 37.
+
+- **Apply-idempotency check: 100% coverage** — `TestIdempotencyCheckCoverage`
+  rewritten from a floor-style ratchet to a 100%-or-excluded contract.
+  Every `acc_*_test.go` in `internal/provider/` that ships a managed
+  resource Apply step MUST carry
+  `ConfigPlanChecks.PostApplyPostRefresh: ExpectEmptyPlan()`, unless
+  it appears in `idempotencyExclusions` with a one-line rationale
+  (data sources, PlanOnly validator-error tests, import-only tests,
+  scaffolding files).
+
+  Coverage went 3/57 → **54/54 (100% of non-excluded)** across 27
+  resources rolled out in 8 batches. Singletons, sensitive-payload
+  resources, and complex resources (VM, replication) all included.
+  Failures at runtime expose real Read/Create shape bugs in the
+  provider — the fix goes in the resource code (plan modifier,
+  `UseStateForUnknown`, Read implementation), never in the
+  exclusion list.
+
+- **Update-plan-shape check: 100% coverage** — new
+  `TestUpdatePlanCheckCoverage` asserts every `_update` acc test
+  carries `plancheck.ExpectResourceAction(name, ResourceActionUpdate)`
+  on its change step, or appears in `updatePlanCheckExclusions` with
+  rationale (no-op same-value steps, RequiresReplace changes, data
+  sources, gated tests).
+
+  Without this assertion, an `_update` test can pass while silently
+  running destroy+create when someone accidentally bumps a Required
+  attribute to `RequiresReplace` — the end-state `TestCheck`
+  assertions still pass because the value is the same after recreate.
+  The plan-shape assertion is what catches the regression at plan
+  time. **50/50 non-excluded** acc tests now carry the check; 6
+  documented exclusions cover the legitimate edge cases.
+
 ## [1.10.2] - 2026-04-25
 
 ### Fixed
