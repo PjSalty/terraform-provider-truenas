@@ -2,8 +2,19 @@ package wsclient
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 )
+
+// messageRedactRegexps mirrors client.messageRedactRegexps — patterns
+// that catch secret material in error message bodies even when the
+// key-name match misses (headers with hyphens, URLs with basic-auth,
+// bearer tokens). Kept in sync manually with the REST client copy.
+var messageRedactRegexps = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)(\b[a-z][a-z0-9+\-.]*://[^\s:@/]*:)([^@\s/]+)(@)`),
+	regexp.MustCompile(`(?i)(\b(?:authorization|x-api-key|x-auth-token|cookie|set-cookie)\s*[:=]\s*)([^\s\r\n;,]+)`),
+	regexp.MustCompile(`(?i)(\bBearer\s+)([A-Za-z0-9._\-+/=]+)`),
+}
 
 // sensitiveKeyFragments mirrors client.sensitiveKeyFragments. We keep a
 // duplicate copy in this package rather than importing the REST client
@@ -40,6 +51,14 @@ var sensitiveKeyFragments = []string{
 	"refresh_token",
 	"access_token",
 	"session_token",
+	// Added 2026-06-08 after the property-based redactor tests
+	// surfaced ACME account_key as a leak.
+	"account_key",
+	// "file" was considered but rejected: substring match would
+	// trigger on "filesystem", "file_path", "file_size" and break
+	// real error messages. Kerberos keytab.file is schema-Sensitive
+	// which covers Terraform state/plan output; deeper coverage
+	// tracked separately.
 }
 
 // redactedPlaceholder is what replaces a sensitive value.
@@ -82,8 +101,12 @@ func redactJSONBody(body []byte) []byte {
 }
 
 // walkRedact recursively replaces the value of any map entry whose key
-// matches isSensitiveKey. Lists and nested maps are walked; scalars
-// pass through unchanged when the surrounding key is not sensitive.
+// matches isSensitiveKey. Lists and nested maps are walked; string
+// values that themselves parse as JSON are recursively redacted then
+// re-marshalled (catches TrueNAS' settings_json / attributes_json
+// pattern where a secret can be buried inside a JSON-string attribute).
+// Scalars and non-JSON strings pass through unchanged when the
+// surrounding key is not sensitive.
 func walkRedact(v interface{}) interface{} {
 	switch t := v.(type) {
 	case map[string]interface{}:
@@ -102,6 +125,21 @@ func walkRedact(v interface{}) interface{} {
 			out[i] = walkRedact(val)
 		}
 		return out
+	case string:
+		s := strings.TrimSpace(t)
+		if len(s) < 2 || (s[0] != '{' && s[0] != '[') {
+			return v
+		}
+		var inner interface{}
+		if err := json.Unmarshal([]byte(t), &inner); err != nil {
+			return v
+		}
+		redactedInner := walkRedact(inner)
+		out, err := json.Marshal(redactedInner)
+		if err != nil {
+			return v
+		}
+		return string(out)
 	default:
 		return v
 	}
@@ -115,6 +153,12 @@ func walkRedact(v interface{}) interface{} {
 func redactMessage(msg string) string {
 	if msg == "" {
 		return msg
+	}
+	// Pattern-based pass first — catches URLs with basic-auth,
+	// header values with hyphens (X-API-Key, Authorization), and
+	// bare Bearer tokens that the key-fragment match would miss.
+	for _, re := range messageRedactRegexps {
+		msg = re.ReplaceAllString(msg, "${1}"+redactedPlaceholder+"${3}")
 	}
 	low := strings.ToLower(msg)
 	for _, frag := range sensitiveKeyFragments {
