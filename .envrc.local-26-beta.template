@@ -1,0 +1,14 @@
+# Test TrueNAS 26.0.0-BETA.1 — forward-compat multi-version
+# Copy this template to .envrc.local-26-beta and fill in the credentials
+# after walking the manual installer for VM 108.
+
+export TRUENAS_URL="https://10.0.0.<VM108_IP_AFTER_INSTALL>"
+export TRUENAS_API_KEY="<paste-api-key-from-truenas-ui>"
+export TRUENAS_TEST_POOL="test"
+export TRUENAS_PROD_DENY="truenas.example.com"
+export TRUENAS_INSECURE_SKIP_VERIFY="true"
+
+# 26 has REST REMOVED. JSON-RPC over WebSocket is the only transport.
+# Provider v2.0 default is wsclient so no override needed; leaving
+# the var unset to confirm the default works.
+# export TRUENAS_TRANSPORT="wsclient"
