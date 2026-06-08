@@ -21,7 +21,7 @@ INTERNAL     := ./internal/...
 
 .DEFAULT_GOAL := default
 
-.PHONY: default build install test testacc fmt fmtcheck vet lint tidy docs clean help prod-ready \
+.PHONY: default build install test testacc fmt fmtcheck vet lint tidy docs clean help prod-ready mutation \
         acc acc-skip acc-only acc-preflight acc-disappears acc-resource
 
 default: build
@@ -185,3 +185,18 @@ help:
 	@echo
 	@echo "Targets:"
 	@grep -E '^##' $(MAKEFILE_LIST) | sed -e 's/## /  /'
+
+## mutation: Run mutation testing on high-leverage packages. Reports kill score.
+##           Requires go-mutesting: go install github.com/avito-tech/go-mutesting/cmd/go-mutesting@latest
+##           Baselines (2026-06-08):
+##             internal/validators        — 0.84 kill score
+##             internal/resourcevalidators — 0.47 kill score (7k/8p/1dup/15) BELOW TARGET
+##             internal/planmodifiers     — 0.49 kill score (17k/18p/4dup/35) BELOW TARGET
+mutation:
+	@command -v go-mutesting >/dev/null || (echo "install: go install github.com/avito-tech/go-mutesting/cmd/go-mutesting@latest" && exit 1)
+	@echo "==> mutation testing validators"
+	go-mutesting --exec-timeout=60 ./internal/validators/ 2>&1 | tail -3
+	@echo "==> mutation testing resourcevalidators"
+	go-mutesting --exec-timeout=60 ./internal/resourcevalidators/ 2>&1 | tail -3
+	@echo "==> mutation testing planmodifiers"
+	go-mutesting --exec-timeout=120 ./internal/planmodifiers/ 2>&1 | tail -3
