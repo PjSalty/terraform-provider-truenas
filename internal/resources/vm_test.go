@@ -14,7 +14,8 @@ import (
 
 func TestAccVM_basic(t *testing.T) {
 	resourceName := "truenas_vm.test"
-	name := "tf-acc-test-vm"
+	// SCALE 25.10 schema: VM names must be alphanumeric only — no hyphens.
+	name := "tfacctestvm"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -23,12 +24,14 @@ func TestAccVM_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create + read
 			{
-				Config: testAccVMConfigBasic(name, "initial description", 1073741824),
+				// memory is in MB on SCALE 25.10+ (validator: 20–4194304).
+				// Earlier SCALE accepted bytes; 256 MB works on either.
+				Config: testAccVMConfigBasic(name, "initial description", 256),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
 					resource.TestCheckResourceAttr(resourceName, "description", "initial description"),
-					resource.TestCheckResourceAttr(resourceName, "memory", "1073741824"),
+					resource.TestCheckResourceAttr(resourceName, "memory", "256"),
 					resource.TestCheckResourceAttr(resourceName, "vcpus", "1"),
 					resource.TestCheckResourceAttr(resourceName, "cores", "1"),
 					resource.TestCheckResourceAttr(resourceName, "threads", "1"),
@@ -38,7 +41,7 @@ func TestAccVM_basic(t *testing.T) {
 			},
 			// Update description
 			{
-				Config: testAccVMConfigBasic(name, "updated description", 1073741824),
+				Config: testAccVMConfigBasic(name, "updated description", 256),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "description", "updated description"),
 				),
@@ -135,7 +138,8 @@ func testAccCheckVMDisappears(resourceName string) resource.TestCheckFunc {
 
 func TestAccVM_disappears(t *testing.T) {
 	resourceName := "truenas_vm.test"
-	name := fmt.Sprintf("tf-acc-vm-disappears-%d", acctest.ShortSuffix())
+	// SCALE 25.10 VM name validator is alphanumeric-only; no hyphens.
+	name := fmt.Sprintf("tfaccvmdisappears%d", acctest.ShortSuffix())
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
