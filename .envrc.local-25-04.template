@@ -1,0 +1,22 @@
+# Test TrueNAS SCALE 25.04.2.6 (Fangtooth) — multi-version compat
+# Copy this template to .envrc.local-25-04 and fill in the credentials
+# after walking the manual installer for VM 107.
+#
+# Usage:
+#   cp .envrc.local-25-04.template .envrc.local-25-04
+#   # edit credentials below
+#   source .envrc.local-25-04
+#   ./scripts/acc.sh
+#
+# VM 107 admin user is "truenas_admin" by convention; create an API
+# key via System Settings → API Keys after first login.
+
+export TRUENAS_URL="https://10.0.0.<VM107_IP_AFTER_INSTALL>"
+export TRUENAS_API_KEY="<paste-api-key-from-truenas-ui>"
+export TRUENAS_TEST_POOL="test"
+export TRUENAS_PROD_DENY="truenas.example.com"
+export TRUENAS_INSECURE_SKIP_VERIFY="true"
+
+# 25.04 is the LAST REST-only release. Force REST transport here to
+# exercise the fallback path that 25.10's WebSocket default doesn't.
+export TRUENAS_TRANSPORT="rest"
