@@ -8,19 +8,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// diskLookupClient is the read-only surface used by the disk datasource.
-type diskLookupClient interface {
-	ListDisks(ctx context.Context) ([]tnstypes.Disk, error)
-}
 
 var _ datasource.DataSource = &DiskDataSource{}
 
 // DiskDataSource provides disk information from TrueNAS.
 type DiskDataSource struct {
-	client diskLookupClient
+	client *client.Client
 }
 
 // DiskDataSourceModel describes the data source model.
@@ -97,11 +92,11 @@ func (d *DiskDataSource) Configure(_ context.Context, req datasource.ConfigureRe
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(diskLookupClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected DataSource Configure Type",
-			fmt.Sprintf("Expected diskLookupClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -149,7 +144,7 @@ func (d *DiskDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	resp.Diagnostics.Append(diags...)
 }
 
-func (d *DiskDataSource) mapDiskToModel(disk *tnstypes.Disk, model *DiskDataSourceModel) {
+func (d *DiskDataSource) mapDiskToModel(disk *client.Disk, model *DiskDataSourceModel) {
 	model.Name = types.StringValue(disk.Name)
 	model.Serial = types.StringValue(disk.Serial)
 	model.Size = types.Int64Value(disk.Size)

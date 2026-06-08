@@ -21,18 +21,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
-
-// rsyncTaskClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type rsyncTaskClient interface {
-	GetRsyncTask(ctx context.Context, id int) (*tnstypes.RsyncTask, error)
-	CreateRsyncTask(ctx context.Context, req *tnstypes.RsyncTaskCreateRequest) (*tnstypes.RsyncTask, error)
-	UpdateRsyncTask(ctx context.Context, id int, req *tnstypes.RsyncTaskUpdateRequest) (*tnstypes.RsyncTask, error)
-	DeleteRsyncTask(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &RsyncTaskResource{}
@@ -42,7 +33,7 @@ var (
 
 // RsyncTaskResource manages a TrueNAS rsync task.
 type RsyncTaskResource struct {
-	client rsyncTaskClient
+	client *client.Client
 }
 
 // RsyncTaskResourceModel describes the resource data model.
@@ -213,11 +204,11 @@ func (r *RsyncTaskResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(rsyncTaskClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected rsyncTaskClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -234,11 +225,11 @@ func (r *RsyncTaskResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	createReq := &tnstypes.RsyncTaskCreateRequest{
+	createReq := &client.RsyncTaskCreateRequest{
 		Path:    plan.Path.ValueString(),
 		User:    plan.User.ValueString(),
 		Enabled: plan.Enabled.ValueBool(),
-		Schedule: tnstypes.Schedule{
+		Schedule: client.Schedule{
 			Minute: plan.Minute.ValueString(),
 			Hour:   plan.Hour.ValueString(),
 			Dom:    plan.Dom.ValueString(),
@@ -307,7 +298,7 @@ func (r *RsyncTaskResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	task, err := r.client.GetRsyncTask(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -349,7 +340,7 @@ func (r *RsyncTaskResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	enabled := plan.Enabled.ValueBool()
-	schedule := &tnstypes.Schedule{
+	schedule := &client.Schedule{
 		Minute: plan.Minute.ValueString(),
 		Hour:   plan.Hour.ValueString(),
 		Dom:    plan.Dom.ValueString(),
@@ -357,7 +348,7 @@ func (r *RsyncTaskResource) Update(ctx context.Context, req resource.UpdateReque
 		Dow:    plan.Dow.ValueString(),
 	}
 
-	updateReq := &tnstypes.RsyncTaskUpdateRequest{
+	updateReq := &client.RsyncTaskUpdateRequest{
 		Path:     plan.Path.ValueString(),
 		User:     plan.User.ValueString(),
 		Enabled:  &enabled,
@@ -422,7 +413,7 @@ func (r *RsyncTaskResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	err = r.client.DeleteRsyncTask(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "Rsync task already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -451,7 +442,7 @@ func (r *RsyncTaskResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *RsyncTaskResource) mapResponseToModel(task *tnstypes.RsyncTask, model *RsyncTaskResourceModel) {
+func (r *RsyncTaskResource) mapResponseToModel(task *client.RsyncTask, model *RsyncTaskResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(task.ID))
 	model.Path = types.StringValue(task.Path)
 	model.Remotehost = types.StringValue(task.Remotehost)

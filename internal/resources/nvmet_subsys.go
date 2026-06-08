@@ -20,26 +20,19 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
-
-// nvmetSubsysClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type nvmetSubsysClient interface {
-	GetNVMetSubsys(ctx context.Context, id int) (*tnstypes.NVMetSubsys, error)
-	CreateNVMetSubsys(ctx context.Context, req *tnstypes.NVMetSubsysCreateRequest) (*tnstypes.NVMetSubsys, error)
-	UpdateNVMetSubsys(ctx context.Context, id int, req *tnstypes.NVMetSubsysUpdateRequest) (*tnstypes.NVMetSubsys, error)
-	DeleteNVMetSubsys(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &NVMetSubsysResource{}
 	_ resource.ResourceWithImportState = &NVMetSubsysResource{}
+	_ resource.ResourceWithModifyPlan  = &NVMetSubsysResource{}
 )
 
 // NVMetSubsysResource manages an NVMe-oF subsystem (target).
 type NVMetSubsysResource struct {
-	client nvmetSubsysClient
+	client *client.Client
 }
 
 // NVMetSubsysResourceModel describes the resource data model.
@@ -145,11 +138,11 @@ func (r *NVMetSubsysResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(nvmetSubsysClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected nvmetSubsysClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -166,7 +159,7 @@ func (r *NVMetSubsysResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createReq := &tnstypes.NVMetSubsysCreateRequest{
+	createReq := &client.NVMetSubsysCreateRequest{
 		Name: plan.Name.ValueString(),
 	}
 	if !plan.Subnqn.IsNull() && !plan.Subnqn.IsUnknown() {
@@ -230,7 +223,7 @@ func (r *NVMetSubsysResource) Read(ctx context.Context, req resource.ReadRequest
 
 	subsys, err := r.client.GetNVMetSubsys(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -271,7 +264,7 @@ func (r *NVMetSubsysResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	updateReq := &tnstypes.NVMetSubsysUpdateRequest{}
+	updateReq := &client.NVMetSubsysUpdateRequest{}
 	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
 		v := plan.Name.ValueString()
 		updateReq.Name = &v
@@ -336,7 +329,7 @@ func (r *NVMetSubsysResource) Delete(ctx context.Context, req resource.DeleteReq
 	tflog.Debug(ctx, "Deleting nvmet_subsys", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteNVMetSubsys(ctx, id); err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "NVMe-oF subsystem already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -349,6 +342,13 @@ func (r *NVMetSubsysResource) Delete(ctx context.Context, req resource.DeleteReq
 	tflog.Trace(ctx, "Delete NVMetSubsys success")
 }
 
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing an NVMe-oF subsystem strips every namespace
+// attached to it; clients lose all backing storage on this subsystem.
+func (r *NVMetSubsysResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_subsys")
+}
+
 func (r *NVMetSubsysResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	if _, err := strconv.Atoi(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("NVMe-oF subsystem ID must be numeric: %s", err))
@@ -357,7 +357,7 @@ func (r *NVMetSubsysResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NVMetSubsysResource) mapResponseToModel(subsys *tnstypes.NVMetSubsys, model *NVMetSubsysResourceModel) {
+func (r *NVMetSubsysResource) mapResponseToModel(subsys *client.NVMetSubsys, model *NVMetSubsysResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(subsys.ID))
 	model.Name = types.StringValue(subsys.Name)
 	if subsys.Subnqn != nil {

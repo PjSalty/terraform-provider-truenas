@@ -2,10 +2,14 @@ package resources_test
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
 
 func TestAccNFSShare_basic(t *testing.T) {
@@ -98,8 +102,94 @@ func testAccCheckNFSShareDestroy(resourceName string) resource.TestCheckFunc {
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("NFS share ID not set")
 		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return fmt.Errorf("NFS share ID %q is not numeric: %w", rs.Primary.ID, err)
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return fmt.Errorf("building API client: %w", err)
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		_, err = c.GetNFSShare(ctx, id)
+		if err == nil {
+			return fmt.Errorf("NFS share %d still exists upstream after Terraform removed it", id)
+		}
+		if !client.IsNotFound(err) {
+			return fmt.Errorf("unexpected error checking removal of NFS share %d: %w", id, err)
+		}
 		return nil
 	}
+}
+
+func testAccCheckNFSShareExists(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if _, err := c.GetNFSShare(ctx, id); err != nil {
+			return fmt.Errorf("NFS share %d should exist but lookup failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func testAccCheckNFSShareDisappears(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if err := c.DeleteNFSShare(ctx, id); err != nil {
+			return fmt.Errorf("out-of-band delete of NFS share %d failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func TestAccNFSShare_disappears(t *testing.T) {
+	pool := testAccDatasetPool()
+	datasetName := "tf-acc-nfsshare-disappears"
+	resourceName := "truenas_share_nfs.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckNFSShareDestroy(resourceName),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNFSShareConfigBasic(pool, datasetName),
+				Check:  testAccCheckNFSShareExists(resourceName),
+			},
+			{
+				Config:             testAccNFSShareConfigBasic(pool, datasetName),
+				Check:              testAccCheckNFSShareDisappears(resourceName),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
 }
 
 func testAccNFSShareConfigBasic(pool, datasetName string) string {
