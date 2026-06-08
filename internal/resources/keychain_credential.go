@@ -17,26 +17,19 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
-
-// keychainCredentialClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type keychainCredentialClient interface {
-	GetKeychainCredential(ctx context.Context, id int) (*tnstypes.KeychainCredential, error)
-	CreateKeychainCredential(ctx context.Context, req *tnstypes.KeychainCredentialCreateRequest) (*tnstypes.KeychainCredential, error)
-	UpdateKeychainCredential(ctx context.Context, id int, req *tnstypes.KeychainCredentialUpdateRequest) (*tnstypes.KeychainCredential, error)
-	DeleteKeychainCredential(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &KeychainCredentialResource{}
 	_ resource.ResourceWithImportState = &KeychainCredentialResource{}
+	_ resource.ResourceWithModifyPlan  = &KeychainCredentialResource{}
 )
 
 // KeychainCredentialResource manages a TrueNAS keychain credential (SSH keypairs, etc).
 type KeychainCredentialResource struct {
-	client keychainCredentialClient
+	client *client.Client
 }
 
 // KeychainCredentialResourceModel describes the resource data model.
@@ -98,11 +91,11 @@ func (r *KeychainCredentialResource) Configure(_ context.Context, req resource.C
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(keychainCredentialClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected keychainCredentialClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -129,7 +122,7 @@ func (r *KeychainCredentialResource) Create(ctx context.Context, req resource.Cr
 		}
 	}
 
-	createReq := &tnstypes.KeychainCredentialCreateRequest{
+	createReq := &client.KeychainCredentialCreateRequest{
 		Name:       plan.Name.ValueString(),
 		Type:       plan.Type.ValueString(),
 		Attributes: attrs,
@@ -174,7 +167,7 @@ func (r *KeychainCredentialResource) Read(ctx context.Context, req resource.Read
 
 	cred, err := r.client.GetKeychainCredential(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -225,7 +218,7 @@ func (r *KeychainCredentialResource) Update(ctx context.Context, req resource.Up
 		}
 	}
 
-	updateReq := &tnstypes.KeychainCredentialUpdateRequest{
+	updateReq := &client.KeychainCredentialUpdateRequest{
 		Name:       plan.Name.ValueString(),
 		Attributes: attrs,
 	}
@@ -266,7 +259,7 @@ func (r *KeychainCredentialResource) Delete(ctx context.Context, req resource.De
 
 	err = r.client.DeleteKeychainCredential(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "Keychain credential already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -279,6 +272,13 @@ func (r *KeychainCredentialResource) Delete(ctx context.Context, req resource.De
 	tflog.Trace(ctx, "Delete KeychainCredential success")
 }
 
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a keychain credential breaks any replication,
+// cloud sync, or rsync task that references it.
+func (r *KeychainCredentialResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_keychain_credential")
+}
+
 func (r *KeychainCredentialResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	if _, err := strconv.Atoi(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Keychain credential ID must be numeric: %s", err))
@@ -287,7 +287,7 @@ func (r *KeychainCredentialResource) ImportState(ctx context.Context, req resour
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *KeychainCredentialResource) mapResponseToModel(ctx context.Context, cred *tnstypes.KeychainCredential, model *KeychainCredentialResourceModel) {
+func (r *KeychainCredentialResource) mapResponseToModel(ctx context.Context, cred *client.KeychainCredential, model *KeychainCredentialResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(cred.ID))
 	model.Name = types.StringValue(cred.Name)
 	model.Type = types.StringValue(cred.Type)

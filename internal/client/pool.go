@@ -6,8 +6,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- Pool API ---
@@ -16,9 +14,16 @@ import (
 // create/update/export (delete) operations below are asynchronous and use
 // the job polling mechanism via WaitForJob.
 
-// Pool, PoolCreateRequest, PoolExportRequest moved to
-// internal/types/pool.go in the v2.0 transport-migration prep.
-type Pool = types.Pool
+// Pool represents a ZFS pool.
+type Pool struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	GUID        string `json:"guid"`
+	Path        string `json:"path"`
+	Status      string `json:"status"`
+	Healthy     bool   `json:"healthy"`
+	IsDecrypted bool   `json:"is_decrypted"`
+}
 
 // GetPool retrieves a pool by ID.
 func (c *Client) GetPool(ctx context.Context, id int) (*Pool, error) {
@@ -56,10 +61,28 @@ func (c *Client) ListPools(ctx context.Context) ([]Pool, error) {
 	return pools, nil
 }
 
-type (
-	PoolCreateRequest = types.PoolCreateRequest
-	PoolExportRequest = types.PoolExportRequest
-)
+// PoolCreateRequest represents a request to create a ZFS pool.
+// The topology field is a raw JSON object to allow callers to describe
+// the arbitrarily nested vdev structure (data/cache/log/spares/special/dedup
+// each containing vdev entries with type + disks + optional draid params)
+// without forcing the client package to model every discriminated union
+// in the TrueNAS OpenAPI schema.
+type PoolCreateRequest struct {
+	Name                  string                 `json:"name"`
+	Encryption            bool                   `json:"encryption,omitempty"`
+	EncryptionOptions     map[string]interface{} `json:"encryption_options,omitempty"`
+	Topology              json.RawMessage        `json:"topology"`
+	Deduplication         string                 `json:"deduplication,omitempty"`
+	Checksum              string                 `json:"checksum,omitempty"`
+	AllowDuplicateSerials bool                   `json:"allow_duplicate_serials,omitempty"`
+}
+
+// PoolExportRequest represents a request to export/destroy a pool.
+type PoolExportRequest struct {
+	Cascade         bool `json:"cascade"`
+	RestartServices bool `json:"restart_services"`
+	Destroy         bool `json:"destroy"`
+}
 
 // CreatePool creates a new ZFS pool. This is an asynchronous operation
 // that returns a job ID; we wait for the job to complete and unmarshal

@@ -6,20 +6,41 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// ScrubTask, ScrubTaskCreateRequest, ScrubTaskUpdateRequest moved to
-// internal/types/scrub_task.go in the v2.0 transport-migration prep.
-type (
-	ScrubTask              = types.ScrubTask
-	ScrubTaskCreateRequest = types.ScrubTaskCreateRequest
-	ScrubTaskUpdateRequest = types.ScrubTaskUpdateRequest
-)
+// --- Pool Scrub Task API ---
+
+// ScrubTask represents a ZFS pool scrub task.
+type ScrubTask struct {
+	ID          int      `json:"id"`
+	Pool        int      `json:"pool"`
+	PoolName    string   `json:"pool_name"`
+	Threshold   int      `json:"threshold"`
+	Description string   `json:"description"`
+	Schedule    Schedule `json:"schedule"`
+	Enabled     bool     `json:"enabled"`
+}
+
+// ScrubTaskCreateRequest represents the request to create a scrub task.
+type ScrubTaskCreateRequest struct {
+	Pool        int      `json:"pool"`
+	Threshold   int      `json:"threshold"`
+	Description string   `json:"description,omitempty"`
+	Schedule    Schedule `json:"schedule"`
+	Enabled     bool     `json:"enabled"`
+}
+
+// ScrubTaskUpdateRequest represents the request to update a scrub task.
+type ScrubTaskUpdateRequest struct {
+	Pool        int       `json:"pool,omitempty"`
+	Threshold   int       `json:"threshold,omitempty"`
+	Description string    `json:"description,omitempty"`
+	Schedule    *Schedule `json:"schedule,omitempty"`
+	Enabled     *bool     `json:"enabled,omitempty"`
+}
 
 // GetScrubTask retrieves a scrub task by ID.
-func (c *Client) GetScrubTask(ctx context.Context, id int) (*types.ScrubTask, error) {
+func (c *Client) GetScrubTask(ctx context.Context, id int) (*ScrubTask, error) {
 	tflog.Trace(ctx, "GetScrubTask start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/pool/scrub/id/%d", id))
@@ -27,7 +48,7 @@ func (c *Client) GetScrubTask(ctx context.Context, id int) (*types.ScrubTask, er
 		return nil, fmt.Errorf("getting scrub task %d: %w", id, err)
 	}
 
-	var task types.ScrubTask
+	var task ScrubTask
 	if err := json.Unmarshal(resp, &task); err != nil {
 		return nil, fmt.Errorf("parsing scrub task response: %w", err)
 	}
@@ -37,7 +58,7 @@ func (c *Client) GetScrubTask(ctx context.Context, id int) (*types.ScrubTask, er
 }
 
 // CreateScrubTask creates a new scrub task.
-func (c *Client) CreateScrubTask(ctx context.Context, req *types.ScrubTaskCreateRequest) (*types.ScrubTask, error) {
+func (c *Client) CreateScrubTask(ctx context.Context, req *ScrubTaskCreateRequest) (*ScrubTask, error) {
 	tflog.Trace(ctx, "CreateScrubTask start")
 
 	resp, err := c.Post(ctx, "/pool/scrub", req)
@@ -45,7 +66,7 @@ func (c *Client) CreateScrubTask(ctx context.Context, req *types.ScrubTaskCreate
 		return nil, fmt.Errorf("creating scrub task: %w", err)
 	}
 
-	var task types.ScrubTask
+	var task ScrubTask
 	if err := json.Unmarshal(resp, &task); err != nil {
 		return nil, fmt.Errorf("parsing scrub task create response: %w", err)
 	}
@@ -55,7 +76,7 @@ func (c *Client) CreateScrubTask(ctx context.Context, req *types.ScrubTaskCreate
 }
 
 // UpdateScrubTask updates an existing scrub task.
-func (c *Client) UpdateScrubTask(ctx context.Context, id int, req *types.ScrubTaskUpdateRequest) (*types.ScrubTask, error) {
+func (c *Client) UpdateScrubTask(ctx context.Context, id int, req *ScrubTaskUpdateRequest) (*ScrubTask, error) {
 	tflog.Trace(ctx, "UpdateScrubTask start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/pool/scrub/id/%d", id), req)
@@ -63,7 +84,7 @@ func (c *Client) UpdateScrubTask(ctx context.Context, id int, req *types.ScrubTa
 		return nil, fmt.Errorf("updating scrub task %d: %w", id, err)
 	}
 
-	var task types.ScrubTask
+	var task ScrubTask
 	if err := json.Unmarshal(resp, &task); err != nil {
 		return nil, fmt.Errorf("parsing scrub task update response: %w", err)
 	}

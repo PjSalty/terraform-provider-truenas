@@ -19,26 +19,19 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
-
-// iscsiInitiatorClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type iscsiInitiatorClient interface {
-	GetISCSIInitiator(ctx context.Context, id int) (*tnstypes.ISCSIInitiator, error)
-	CreateISCSIInitiator(ctx context.Context, req *tnstypes.ISCSIInitiatorCreateRequest) (*tnstypes.ISCSIInitiator, error)
-	UpdateISCSIInitiator(ctx context.Context, id int, req *tnstypes.ISCSIInitiatorUpdateRequest) (*tnstypes.ISCSIInitiator, error)
-	DeleteISCSIInitiator(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &ISCSIInitiatorResource{}
 	_ resource.ResourceWithImportState = &ISCSIInitiatorResource{}
+	_ resource.ResourceWithModifyPlan  = &ISCSIInitiatorResource{}
 )
 
 // ISCSIInitiatorResource manages an iSCSI authorized initiator group.
 type ISCSIInitiatorResource struct {
-	client iscsiInitiatorClient
+	client *client.Client
 }
 
 // ISCSIInitiatorResourceModel describes the resource data model.
@@ -95,11 +88,11 @@ func (r *ISCSIInitiatorResource) Configure(_ context.Context, req resource.Confi
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(iscsiInitiatorClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected iscsiInitiatorClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -116,7 +109,7 @@ func (r *ISCSIInitiatorResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	createReq := &tnstypes.ISCSIInitiatorCreateRequest{}
+	createReq := &client.ISCSIInitiatorCreateRequest{}
 
 	if !plan.Initiators.IsNull() && !plan.Initiators.IsUnknown() {
 		var initiators []string
@@ -164,7 +157,7 @@ func (r *ISCSIInitiatorResource) Read(ctx context.Context, req resource.ReadRequ
 
 	initiator, err := r.client.GetISCSIInitiator(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -205,7 +198,7 @@ func (r *ISCSIInitiatorResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	updateReq := &tnstypes.ISCSIInitiatorUpdateRequest{}
+	updateReq := &client.ISCSIInitiatorUpdateRequest{}
 
 	if !plan.Initiators.IsNull() {
 		var initiators []string
@@ -253,7 +246,7 @@ func (r *ISCSIInitiatorResource) Delete(ctx context.Context, req resource.Delete
 
 	err = r.client.DeleteISCSIInitiator(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "iSCSI initiator already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -266,6 +259,13 @@ func (r *ISCSIInitiatorResource) Delete(ctx context.Context, req resource.Delete
 	tflog.Trace(ctx, "Delete ISCSIInitiator success")
 }
 
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing an initiator group invalidates the allow-list
+// for every target it's attached to — clients lose access.
+func (r *ISCSIInitiatorResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_iscsi_initiator")
+}
+
 func (r *ISCSIInitiatorResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	if _, err := strconv.Atoi(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("iSCSI initiator ID must be numeric: %s", err))
@@ -274,7 +274,7 @@ func (r *ISCSIInitiatorResource) ImportState(ctx context.Context, req resource.I
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ISCSIInitiatorResource) mapResponseToModel(ctx context.Context, initiator *tnstypes.ISCSIInitiator, model *ISCSIInitiatorResourceModel) {
+func (r *ISCSIInitiatorResource) mapResponseToModel(ctx context.Context, initiator *client.ISCSIInitiator, model *ISCSIInitiatorResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(initiator.ID))
 	model.Comment = types.StringValue(initiator.Comment)
 

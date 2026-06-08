@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccMailConfigResource_basic — singleton: mail service configuration
@@ -30,6 +31,11 @@ resource "truenas_mail_config" "test" {
   smtp           = false
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_mail_config.test", "fromemail", "acctest@example.invalid"),
 					resource.TestCheckResourceAttr("truenas_mail_config.test", "outgoingserver", "smtp.example.invalid"),
@@ -71,7 +77,12 @@ resource "truenas_mail_config" "test" {
 			},
 			{
 				Config: cfg("acctest-updated"),
-				Check:  resource.TestCheckResourceAttr("truenas_mail_config.test", "fromname", "acctest-updated"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_mail_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_mail_config.test", "fromname", "acctest-updated"),
 			},
 			{
 				// Restore the default (empty) fromname so the shared

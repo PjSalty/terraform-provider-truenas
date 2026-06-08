@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -50,6 +51,11 @@ func TestAccVMDeviceResource_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: vmDeviceConfig(vmName, "1024x768"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_vm_device.test", "dtype", "DISPLAY"),
 					resource.TestCheckResourceAttr("truenas_vm_device.test", "attributes.resolution", "1024x768"),
@@ -86,7 +92,12 @@ func TestAccVMDeviceResource_update(t *testing.T) {
 			},
 			{
 				Config: vmDeviceConfig(vmName, "1280x1024"),
-				Check:  resource.TestCheckResourceAttr("truenas_vm_device.test", "attributes.resolution", "1280x1024"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_vm_device.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_vm_device.test", "attributes.resolution", "1280x1024"),
 			},
 		},
 	})

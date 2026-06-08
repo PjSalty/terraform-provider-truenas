@@ -18,7 +18,7 @@ import (
 // group, iscsi_*, replication, cloud_*, cronjob, scrub_task,
 // snapshot_task, init_script) MUST all be in the set. Adding
 // WarnOnDestroy to a new destructive resource = bump this number by 1.
-const destroyWarnFloor = 22
+const destroyWarnFloor = 37
 
 // TestDestroyWarningCoverage counts resource files that call
 // planhelpers.WarnOnDestroy and fails if the count drops below

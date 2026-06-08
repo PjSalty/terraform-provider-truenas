@@ -6,22 +6,79 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// CloudBackupSchedule, CloudBackup, CloudBackupCreateRequest,
-// CloudBackupUpdateRequest moved to internal/types/cloud_backup.go in
-// the v2.0 transport-migration prep.
-type (
-	CloudBackupSchedule      = types.CloudBackupSchedule
-	CloudBackup              = types.CloudBackup
-	CloudBackupCreateRequest = types.CloudBackupCreateRequest
-	CloudBackupUpdateRequest = types.CloudBackupUpdateRequest
-)
+// CloudBackupSchedule represents a cron-style schedule for cloud backup tasks.
+type CloudBackupSchedule struct {
+	Minute string `json:"minute,omitempty"`
+	Hour   string `json:"hour,omitempty"`
+	Dom    string `json:"dom,omitempty"`
+	Month  string `json:"month,omitempty"`
+	Dow    string `json:"dow,omitempty"`
+}
+
+// CloudBackup represents a cloud backup task. Fields that are polymorphic
+// (attributes, credentials) are kept as raw JSON so the resource layer can
+// round-trip them without losing information.
+type CloudBackup struct {
+	ID              int                 `json:"id"`
+	Description     string              `json:"description"`
+	Path            string              `json:"path"`
+	Credentials     json.RawMessage     `json:"credentials,omitempty"`
+	Attributes      json.RawMessage     `json:"attributes,omitempty"`
+	Schedule        CloudBackupSchedule `json:"schedule"`
+	PreScript       string              `json:"pre_script"`
+	PostScript      string              `json:"post_script"`
+	Snapshot        bool                `json:"snapshot"`
+	Include         []string            `json:"include"`
+	Exclude         []string            `json:"exclude"`
+	Args            string              `json:"args"`
+	Enabled         bool                `json:"enabled"`
+	Password        string              `json:"password"`
+	KeepLast        int                 `json:"keep_last"`
+	TransferSetting string              `json:"transfer_setting"`
+}
+
+// CloudBackupCreateRequest represents a request to create a cloud backup task.
+type CloudBackupCreateRequest struct {
+	Description     string               `json:"description,omitempty"`
+	Path            string               `json:"path"`
+	Credentials     int                  `json:"credentials"`
+	Attributes      json.RawMessage      `json:"attributes"`
+	Schedule        *CloudBackupSchedule `json:"schedule,omitempty"`
+	PreScript       string               `json:"pre_script,omitempty"`
+	PostScript      string               `json:"post_script,omitempty"`
+	Snapshot        *bool                `json:"snapshot,omitempty"`
+	Include         []string             `json:"include,omitempty"`
+	Exclude         []string             `json:"exclude,omitempty"`
+	Args            string               `json:"args,omitempty"`
+	Enabled         *bool                `json:"enabled,omitempty"`
+	Password        string               `json:"password"`
+	KeepLast        int                  `json:"keep_last"`
+	TransferSetting string               `json:"transfer_setting,omitempty"`
+}
+
+// CloudBackupUpdateRequest represents a request to update a cloud backup task.
+type CloudBackupUpdateRequest struct {
+	Description     *string              `json:"description,omitempty"`
+	Path            *string              `json:"path,omitempty"`
+	Credentials     *int                 `json:"credentials,omitempty"`
+	Attributes      json.RawMessage      `json:"attributes,omitempty"`
+	Schedule        *CloudBackupSchedule `json:"schedule,omitempty"`
+	PreScript       *string              `json:"pre_script,omitempty"`
+	PostScript      *string              `json:"post_script,omitempty"`
+	Snapshot        *bool                `json:"snapshot,omitempty"`
+	Include         *[]string            `json:"include,omitempty"`
+	Exclude         *[]string            `json:"exclude,omitempty"`
+	Args            *string              `json:"args,omitempty"`
+	Enabled         *bool                `json:"enabled,omitempty"`
+	Password        *string              `json:"password,omitempty"`
+	KeepLast        *int                 `json:"keep_last,omitempty"`
+	TransferSetting *string              `json:"transfer_setting,omitempty"`
+}
 
 // GetCloudBackup retrieves a cloud backup task by ID.
-func (c *Client) GetCloudBackup(ctx context.Context, id int) (*types.CloudBackup, error) {
+func (c *Client) GetCloudBackup(ctx context.Context, id int) (*CloudBackup, error) {
 	tflog.Trace(ctx, "GetCloudBackup start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/cloud_backup/id/%d", id))
@@ -29,7 +86,7 @@ func (c *Client) GetCloudBackup(ctx context.Context, id int) (*types.CloudBackup
 		return nil, fmt.Errorf("getting cloud backup %d: %w", id, err)
 	}
 
-	var cb types.CloudBackup
+	var cb CloudBackup
 	if err := json.Unmarshal(resp, &cb); err != nil {
 		return nil, fmt.Errorf("parsing cloud backup response: %w", err)
 	}
@@ -39,7 +96,7 @@ func (c *Client) GetCloudBackup(ctx context.Context, id int) (*types.CloudBackup
 }
 
 // CreateCloudBackup creates a cloud backup task.
-func (c *Client) CreateCloudBackup(ctx context.Context, req *types.CloudBackupCreateRequest) (*types.CloudBackup, error) {
+func (c *Client) CreateCloudBackup(ctx context.Context, req *CloudBackupCreateRequest) (*CloudBackup, error) {
 	tflog.Trace(ctx, "CreateCloudBackup start")
 
 	resp, err := c.Post(ctx, "/cloud_backup", req)
@@ -47,7 +104,7 @@ func (c *Client) CreateCloudBackup(ctx context.Context, req *types.CloudBackupCr
 		return nil, fmt.Errorf("creating cloud backup: %w", err)
 	}
 
-	var cb types.CloudBackup
+	var cb CloudBackup
 	if err := json.Unmarshal(resp, &cb); err != nil {
 		return nil, fmt.Errorf("parsing cloud backup create response: %w", err)
 	}
@@ -57,7 +114,7 @@ func (c *Client) CreateCloudBackup(ctx context.Context, req *types.CloudBackupCr
 }
 
 // UpdateCloudBackup updates an existing cloud backup task.
-func (c *Client) UpdateCloudBackup(ctx context.Context, id int, req *types.CloudBackupUpdateRequest) (*types.CloudBackup, error) {
+func (c *Client) UpdateCloudBackup(ctx context.Context, id int, req *CloudBackupUpdateRequest) (*CloudBackup, error) {
 	tflog.Trace(ctx, "UpdateCloudBackup start")
 
 	resp, err := c.Put(ctx, fmt.Sprintf("/cloud_backup/id/%d", id), req)
@@ -65,7 +122,7 @@ func (c *Client) UpdateCloudBackup(ctx context.Context, id int, req *types.Cloud
 		return nil, fmt.Errorf("updating cloud backup %d: %w", id, err)
 	}
 
-	var cb types.CloudBackup
+	var cb CloudBackup
 	if err := json.Unmarshal(resp, &cb); err != nil {
 		return nil, fmt.Errorf("parsing cloud backup update response: %w", err)
 	}
