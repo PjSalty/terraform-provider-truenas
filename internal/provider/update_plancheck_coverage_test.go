@@ -35,12 +35,12 @@ var updateActionRE = regexp.MustCompile(`plancheck\.ExpectResourceAction\([^)]+p
 //   - The resource is a data source / read-only / gated test that
 //     can't be safely mutated against the test VM.
 var updatePlanCheckExclusions = map[string]string{
-	"acc_kmip_config_test.go":        "_update is t.Skip stub: SCALE 25.10 KMIP does not persist user-set fields while enabled=false; see test docstring",
-	"acc_network_interface_test.go":  "modifying the live management NIC mid-test risks cutting the provider's own API access; description-only mutation skipped",
-	"acc_nvmet_host_subsys_test.go":  "host_id is RequiresReplace; the _update test step is a destroy+create by design, not an in-place Update",
-	"acc_nvmet_port_subsys_test.go":  "subsys_id is RequiresReplace; the _update test step is a destroy+create by design, not an in-place Update",
-	"acc_pool_test.go":               "data source: pools are managed out-of-band, no Update path through the provider",
-	"acc_systemdataset_test.go":      "_update applies same pool value as basic — singleton with one available pool on the test VM, no meaningful mutation",
+	"acc_kmip_config_test.go":       "_update is t.Skip stub: SCALE 25.10 KMIP does not persist user-set fields while enabled=false; see test docstring",
+	"acc_network_interface_test.go": "modifying the live management NIC mid-test risks cutting the provider's own API access; description-only mutation skipped",
+	"acc_nvmet_host_subsys_test.go": "host_id is RequiresReplace; the _update test step is a destroy+create by design, not an in-place Update",
+	"acc_nvmet_port_subsys_test.go": "subsys_id is RequiresReplace; the _update test step is a destroy+create by design, not an in-place Update",
+	"acc_pool_test.go":              "data source: pools are managed out-of-band, no Update path through the provider",
+	"acc_systemdataset_test.go":     "_update applies same pool value as basic — singleton with one available pool on the test VM, no meaningful mutation",
 }
 
 // TestUpdatePlanCheckCoverage scans every acc_*_test.go in
