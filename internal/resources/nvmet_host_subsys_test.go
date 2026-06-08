@@ -142,7 +142,7 @@ func testAccNVMetHostSubsysConfigBasic() string {
 provider "truenas" {}
 
 resource "truenas_nvmet_host" "hs_host" {
-  hostnqn = "nqn.2014-08.org.nvmexpress:uuid:acctest-hs-0001"
+  hostnqn = "nqn.2014-08.org.nvmexpress:uuid:11111111-2222-3333-4444-555555555555"
 }
 
 resource "truenas_nvmet_subsys" "hs_subsys" {

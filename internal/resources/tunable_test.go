@@ -145,7 +145,14 @@ func testAccCheckTunableDisappears(resourceName string) resource.TestCheckFunc {
 
 func TestAccTunable_disappears(t *testing.T) {
 	resourceName := "truenas_tunable.test"
-	varName := fmt.Sprintf("tf_acc_tunable_disappears_%d", acctest.ShortSuffix())
+	// SYSCTL tunable var must be a real /proc/sys path on SCALE 25.10+;
+	// the API silently fails Create on unknown names with a generic
+	// "tunable not found after creation" error. `kernel.acct` is a
+	// benign BSD-process-accounting sysctl that's safe to set to 0.
+	// We don't need a per-run-unique var name here because the
+	// _disappears test out-of-band deletes the row before the next
+	// step plans, so subsequent runs don't collide.
+	varName := "kernel.acct"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },

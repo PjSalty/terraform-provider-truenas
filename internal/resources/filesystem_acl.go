@@ -341,8 +341,16 @@ func (r *FilesystemACLResource) Delete(ctx context.Context, req resource.DeleteR
 	tflog.Trace(ctx, "Delete FilesystemACL success")
 }
 
+// ImportState populates both `id` and `path` from the supplied import
+// ID. Filesystem ACLs are identified by their absolute filesystem path
+// on TrueNAS (e.g. `/mnt/test/dataset`); `id` and `path` carry the same
+// string. Without seeding `path` here the very next Read call queries
+// the middleware with an empty path and TrueNAS returns
+// "String should have at least 1 character", failing the import step
+// of TestAccFilesystemACL_basic.
 func (r *FilesystemACLResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), req.ID)...)
 }
 
 func (r *FilesystemACLResource) buildSetRequest(ctx context.Context, plan *FilesystemACLResourceModel) (*client.SetACLRequest, diag.Diagnostics) {
