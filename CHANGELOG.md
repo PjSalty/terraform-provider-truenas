@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking — SCALE 25.10 compatibility realignments
+
+- **`truenas_share_smb.purpose` accepts a new vocabulary.** TrueNAS
+  25.10 overhauled the SMB share preset registry. The earlier
+  vocabulary (ENHANCED_TIMEMACHINE, LEGACY_SMB_WHITELIST,
+  MULTI_PROTOCOL_NFS, MULTI_PROTOCOL_AFP, PRIVATE_DATASETS,
+  NO_PRESET, TIMEMACHINE) is no longer accepted by the upstream API.
+  Only `DEFAULT_SHARE` survives. The new 25.10 vocabulary is:
+  - `DEFAULT_SHARE`
+  - `LEGACY_SHARE` (closest match for the old `NO_PRESET`)
+  - `TIMEMACHINE_SHARE` (replaces both `TIMEMACHINE` and
+    `ENHANCED_TIMEMACHINE`; requires `aapl_extensions=true` on
+    global SMB config)
+  - `MULTIPROTOCOL_SHARE` (replaces `MULTI_PROTOCOL_NFS` /
+    `MULTI_PROTOCOL_AFP`)
+  - `PRIVATE_DATASETS_SHARE` (replaces `PRIVATE_DATASETS`)
+  - `EXTERNAL_SHARE` (new — requires preset-options map; tracked
+    as v2.x gap)
+  - `TIME_LOCKED_SHARE` (new)
+  - `VEEAM_REPOSITORY_SHARE` (new — requires enterprise license)
+
+  Operators upgrading from v1.x with a `purpose` value in state
+  must migrate to the closest 25.10 equivalent before the next
+  apply.
+
+### Added
+
+- **`truenas_dataset.compression` accepts the full SCALE 25.10
+  algorithm ladder.** Earlier versions of the provider only allowed
+  16 values (the GZIP 1–9 ladder + plain ZSTD / ZSTD-FAST + the
+  legacy LZ4 / LZJB / ZLE / OFF set). 25.10's
+  `pool.dataset.compression_choices` actually exposes 49 algorithms
+  — every `ZSTD-{1..19}`, every `ZSTD-FAST-{1..10}`, plus the
+  skip-step `ZSTD-FAST-{20,30,40,50,60,70,80,90,100,500,1000}`, and
+  `ON` (server-side "use pool default"). Provider now accepts all
+  49 verbatim; configs that need fine-grained ZSTD level control
+  no longer require an apply-time API error to discover.
+
 ### Changed
 
 - **Default transport flipped to WebSocket (Phase 4 cutover, prep for v2.0)** —
