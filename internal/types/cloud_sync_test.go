@@ -90,3 +90,18 @@ func TestCloudSync_UnmarshalJSON_MalformedCredentials(t *testing.T) {
 		t.Errorf("expected wrapped 'credentials field' error, got: %v", err)
 	}
 }
+
+// TestCloudSync_UnmarshalJSON_DirectCallMalformed covers the inner
+// json.Unmarshal(data, aux) error path. Reachable only by calling
+// UnmarshalJSON directly with garbage — the std-lib parser would
+// reject malformed bytes before delegating to a custom UnmarshalJSON.
+// Callers that re-use the method on a stream of bytes (e.g. testing
+// harnesses) still get a clean error rather than a silent partial
+// state.
+func TestCloudSync_UnmarshalJSON_DirectCallMalformed(t *testing.T) {
+	var cs CloudSync
+	err := cs.UnmarshalJSON([]byte(`{this is not valid`))
+	if err == nil {
+		t.Fatal("expected error on direct call with malformed bytes")
+	}
+}
