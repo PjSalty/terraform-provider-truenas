@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	fwattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -248,6 +249,86 @@ func exerciseValidatorsOnAttribute(t *testing.T, sch schema.Schema, name string,
 					}
 					resp := &validator.Int64Response{}
 					v.ValidateInt64(ctx, req, resp)
+				})
+			}
+		}
+	case schema.ListAttribute:
+		if len(a.Validators) == 0 {
+			return
+		}
+		// Build a battery of edge List values: nil, empty, one
+		// element, large list. List validators (listvalidator.
+		// SizeAtLeast, ValueStringsAre, etc.) panic-classes:
+		// nil-element handling, very-long-list iteration cost,
+		// nested validator panic on weird element values.
+		lists := []struct {
+			name string
+			val  types.List
+		}{
+			{"null", types.ListNull(a.ElementType)},
+			{"unknown", types.ListUnknown(a.ElementType)},
+			{"empty", types.ListValueMust(a.ElementType, nil)},
+		}
+		// Try a single-element list with each string brutality
+		// input — only if the element type is StringType.
+		if a.ElementType == types.StringType {
+			for _, val := range []string{"", "a", strings.Repeat("x", 1024), "🚀", "\x00"} {
+				lv, d := types.ListValue(types.StringType, []fwattr.Value{types.StringValue(val)})
+				if d.HasError() {
+					continue
+				}
+				lists = append(lists, struct {
+					name string
+					val  types.List
+				}{"single-" + safeSubtestName(val), lv})
+			}
+		}
+		for _, lc := range lists {
+			lc := lc
+			for vi, v := range a.Validators {
+				vi, v := vi, v
+				t.Run(lc.name, func(t *testing.T) {
+					defer recoverAsFailure(t, name, vi, lc.val)
+					req := validator.ListRequest{
+						Path:           path.Root(name),
+						PathExpression: path.MatchRoot(name),
+						ConfigValue:    lc.val,
+						Config:         tfsdk.Config{Schema: sch, Raw: emptyObjectRaw(ctx, sch)},
+					}
+					resp := &validator.ListResponse{}
+					v.ValidateList(ctx, req, resp)
+				})
+			}
+		}
+	case schema.MapAttribute:
+		if len(a.Validators) == 0 {
+			return
+		}
+		// Build a battery of edge Map values. mapvalidator
+		// surface is small in this codebase but the panic class
+		// is the same.
+		maps := []struct {
+			name string
+			val  types.Map
+		}{
+			{"null", types.MapNull(a.ElementType)},
+			{"unknown", types.MapUnknown(a.ElementType)},
+			{"empty", types.MapValueMust(a.ElementType, nil)},
+		}
+		for _, mc := range maps {
+			mc := mc
+			for vi, v := range a.Validators {
+				vi, v := vi, v
+				t.Run(mc.name, func(t *testing.T) {
+					defer recoverAsFailure(t, name, vi, mc.val)
+					req := validator.MapRequest{
+						Path:           path.Root(name),
+						PathExpression: path.MatchRoot(name),
+						ConfigValue:    mc.val,
+						Config:         tfsdk.Config{Schema: sch, Raw: emptyObjectRaw(ctx, sch)},
+					}
+					resp := &validator.MapResponse{}
+					v.ValidateMap(ctx, req, resp)
 				})
 			}
 		}
