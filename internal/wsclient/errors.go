@@ -77,6 +77,17 @@ func (e *RPCError) Error() string {
 		return "<nil RPCError>"
 	}
 	errname, reason := e.errnameAndReason()
+	// Only the `reason` field gets redacted: TrueNAS' middlewared
+	// frequently quotes the offending request payload verbatim in
+	// reasons (caught by the brutal redactor matrix when a
+	// ValidationErrors reason contained
+	// "bad value for password: 's3cret'"). `Message` is the static
+	// server-controlled label ("Method call error", "cloud sync
+	// credential 'foo' not found") and is left intact so legitimate
+	// diagnostics still read cleanly — running it through the
+	// fragment matcher would strip phrases like "cloud sync
+	// credential" because they contain the substring "credential".
+	reason = redactMessage(reason)
 	switch {
 	case errname != "" && reason != "":
 		return fmt.Sprintf("truenas rpc error %d: %s: %s (%s)", e.Code, e.Message, reason, errname)
