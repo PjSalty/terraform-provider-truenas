@@ -23,8 +23,16 @@ func testAccVMDeviceTargetVM() string {
 }
 
 func TestAccVMDevice_display(t *testing.T) {
+	// Match the _disappears gate: VM device tests need an existing
+	// parent VM that this suite does NOT create (VM-create is heavy
+	// and the test pool may not have backing storage). Previously the
+	// helper fell back to VM ID 1, which hard-fails on instances
+	// where no VMs have been provisioned ("VM 1 does not exist").
+	vmID := os.Getenv("TRUENAS_TEST_VM_ID")
+	if vmID == "" {
+		t.Skip("TRUENAS_TEST_VM_ID not set; VM device tests need a parent VM that the test does not create")
+	}
 	resourceName := "truenas_vm_device.test"
-	vmID := testAccVMDeviceTargetVM()
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },

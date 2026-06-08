@@ -92,6 +92,17 @@ func (v requiredWhenEqualValidator) ValidateResource(ctx context.Context, req re
 		if getDiags.HasError() {
 			continue
 		}
+		// Unknown values come from interpolation against a not-yet-known
+		// dependency (e.g. `path = truenas_dataset.x.mount_point`). At
+		// config-validation time the framework hasn't resolved the
+		// reference; treat the value as "will be there at apply time"
+		// and let the API surface a missing-value error if it isn't.
+		// Without this carve-out, any acc test that builds path/disk
+		// from a sibling resource's computed attribute fails at plan
+		// time with a spurious "Missing required attribute" diagnostic.
+		if val.IsUnknown() {
+			continue
+		}
 		if val.IsNull() || val.ValueString() == "" {
 			resp.Diagnostics.AddAttributeError(
 				path.Root(name),
