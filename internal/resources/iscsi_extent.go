@@ -410,9 +410,18 @@ func (r *ISCSIExtentResource) ModifyPlan(ctx context.Context, req resource.Modif
 	}
 	extentType := config.Type.ValueString()
 
-	diskSet := !config.Disk.IsNull() && !config.Disk.IsUnknown() && config.Disk.ValueString() != ""
-	pathSet := !config.Path.IsNull() && !config.Path.IsUnknown() && config.Path.ValueString() != ""
-	filesizeSet := !config.Filesize.IsNull() && !config.Filesize.IsUnknown() && config.Filesize.ValueInt64() > 0
+	// Treat unknown as "value will appear at apply time" — the framework
+	// re-runs ModifyPlan after the dependency resolves. Without this
+	// carve-out a wired-from-sibling config (e.g.
+	// `path = truenas_dataset.x.mount_point`) fails plan with a spurious
+	// "Missing path" diagnostic.
+	if config.Disk.IsUnknown() || config.Path.IsUnknown() || config.Filesize.IsUnknown() {
+		return
+	}
+
+	diskSet := !config.Disk.IsNull() && config.Disk.ValueString() != ""
+	pathSet := !config.Path.IsNull() && config.Path.ValueString() != ""
+	filesizeSet := !config.Filesize.IsNull() && config.Filesize.ValueInt64() > 0
 
 	switch extentType {
 	case "DISK":
