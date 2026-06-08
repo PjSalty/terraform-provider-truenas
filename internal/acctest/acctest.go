@@ -95,9 +95,9 @@ func Client() (*client.Client, error) {
 // behavior, which goes through Client().
 //
 // The denylist source-of-truth:
-//   1. The TRUENAS_PROD_DENY env var, if set (including explicit empty
-//      string, which disables the check).
-//   2. Otherwise, DefaultProdDeny.
+//  1. The TRUENAS_PROD_DENY env var, if set (including explicit empty
+//     string, which disables the check).
+//  2. Otherwise, DefaultProdDeny.
 func assertNotProd(rawURL string) error {
 	deny, override := os.LookupEnv("TRUENAS_PROD_DENY")
 	if !override {
