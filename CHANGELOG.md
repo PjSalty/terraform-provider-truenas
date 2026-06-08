@@ -30,6 +30,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `transport = "rest"` (or `TRUENAS_TRANSPORT=rest`) and re-run
   apply. REST-path code is unchanged from v1.10.x.
 
+### Fixed
+
+- **`terraform import truenas_cloud_sync.*` no longer errors with
+  `cannot unmarshal object into Go struct field`** — TrueNAS returns the
+  `credentials` field as a nested object on `GET /cloudsync/id/<n>`
+  (and the equivalent JSON-RPC `cloudsync.get_instance`), but as a
+  plain integer on create/update responses. The Go struct field was
+  always `int`, so import / refresh paths errored out. A custom
+  `UnmarshalJSON` on the shared `CloudSync` struct now accepts both
+  shapes — plain int (used as-is) and nested object (extracts `.id`).
+  Mirrored on both `internal/client.CloudSync` (REST path) and
+  `internal/types.CloudSync` (used by the WebSocket transport).
+  Originally reported and fixed by Max Poelman in PR #12.
+
 ### Added
 
 - **`_disappears` acceptance test coverage for every deletable resource**
