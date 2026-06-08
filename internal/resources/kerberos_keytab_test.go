@@ -1,7 +1,6 @@
 package resources_test
 
 import (
-	"encoding/base64"
 	"fmt"
 	"strconv"
 	"testing"
@@ -13,10 +12,17 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
 
+// validKeytabB64 is a minimal MIT-format keytab fixture that parses as
+// real keytab data. SCALE 25.04 accepted any base64 blob; 25.10+ validates
+// the parse and rejects garbage. Contents are dummy (principal
+// testuser@EXAMPLE.COM.INVALID, zero key); fine for fixture use, the
+// keytab is never actually exercised for auth in the test path.
+const validKeytabB64 = "BQIAAABFAAEAEUVYQU1QTEUuQ09NLklOVkFMSUQAB3Rlc3R1c2VyAAAAAVwOJWQBABIAIN5w" +
+	"M+JFu6n9P3JfDe5N9bDM3JIuVxoVNvBYdVu8/JqLAAAAAg=="
+
 func TestAccKerberosKeytab_basic(t *testing.T) {
 	resourceName := "truenas_kerberos_keytab.test"
-	// A dummy base64 payload — real keytabs are opaque binary.
-	payload := base64.StdEncoding.EncodeToString([]byte("dummy-tf-acc-keytab"))
+	payload := validKeytabB64
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -121,11 +127,7 @@ func testAccCheckKerberosKeytabDisappears(resourceName string) resource.TestChec
 func TestAccKerberosKeytab_disappears(t *testing.T) {
 	resourceName := "truenas_kerberos_keytab.test"
 	name := fmt.Sprintf("tf-acc-keytab-disappears-%d", acctest.ShortSuffix())
-	// Minimal MIT-format keytab fixture (same shape the basic test uses).
-	const keytabB64 = "BQIAAABFAAEAEUVYQU1QTEUuQ09NLklOVkFMSUQAB3Rlc3R1c2VyAAAAAVwOJWQBABIAIN5w" +
-		"M+JFu6n9P3JfDe5N9bDM3JIuVxoVNvBYdVu8/JqLAAAAAg=="
-	_ = keytabB64
-	priv := base64.StdEncoding.EncodeToString([]byte("disappears-keytab-fixture"))
+	priv := validKeytabB64
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },

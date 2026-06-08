@@ -105,11 +105,11 @@ func TestAccISCSIAuth_disappears(t *testing.T) {
 		CheckDestroy:             testAccCheckISCSIAuthDestroy(resourceName),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccISCSIAuthConfigBasic(98, "tf-acc-disappears", "TfAccDisappears12345"),
+				Config: testAccISCSIAuthConfigBasic(98, "tf-acc-disappears", "TfAccDisappear1"),
 				Check:  testAccCheckISCSIAuthExists(resourceName),
 			},
 			{
-				Config:             testAccISCSIAuthConfigBasic(98, "tf-acc-disappears", "TfAccDisappears12345"),
+				Config:             testAccISCSIAuthConfigBasic(98, "tf-acc-disappears", "TfAccDisappear1"),
 				Check:              testAccCheckISCSIAuthDisappears(resourceName),
 				ExpectNonEmptyPlan: true,
 			},
