@@ -168,7 +168,10 @@ acc_check_auth() {
     acc_die "/system/info request failed. API key invalid, revoked, or scoped too narrowly."
   fi
   local version
-  version="$(printf '%s' "${resp}" | grep -oE '"version":"[^"]+"' | head -1 | sed 's/.*"version":"//;s/"$//')"
+  # TrueNAS SCALE 25.10+ pretty-prints JSON with whitespace after the
+  # colon (`"version": "25.10.0"`); 25.04 and earlier emitted it
+  # compactly. Accept either by tolerating optional whitespace.
+  version="$(printf '%s' "${resp}" | grep -oE '"version":[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"version":[[:space:]]*"//;s/"$//')"
   if [ -z "${version}" ]; then
     acc_die "/system/info response did not include a version field. Unexpected upstream shape."
   fi
@@ -184,7 +187,9 @@ acc_check_pool() {
   if ! resp="$(acc_curl --fail "${TRUENAS_URL}/api/v2.0/pool")"; then
     acc_die "/pool listing failed. The API key may not have permission to read pools."
   fi
-  if ! printf '%s' "${resp}" | grep -q "\"name\":\"${TRUENAS_TEST_POOL}\""; then
+  # Same whitespace-tolerant match as the version grep — TrueNAS 25.10+
+  # pretty-prints with a space after the colon.
+  if ! printf '%s' "${resp}" | grep -qE "\"name\":[[:space:]]*\"${TRUENAS_TEST_POOL}\""; then
     acc_die "pool ${TRUENAS_TEST_POOL} not found on host. Set TRUENAS_TEST_POOL to an existing pool name."
   fi
   acc_ok "pool ${TRUENAS_TEST_POOL} exists"
