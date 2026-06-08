@@ -17,10 +17,15 @@ import (
 var messageRedactRegexps = []*regexp.Regexp{
 	// http basic auth in url: scheme://user:secret@host
 	regexp.MustCompile(`(?i)(\b[a-z][a-z0-9+\-.]*://[^\s:@/]*:)([^@\s/]+)(@)`),
-	// http header with secret value: "X-API-Key: deadbeef"
-	regexp.MustCompile(`(?i)(\b(?:authorization|x-api-key|x-auth-token|cookie|set-cookie)\s*[:=]\s*)([^\s\r\n;,]+)`),
-	// `Bearer xxxxx` after any prefix
+	// "Bearer xxxxx" anywhere — runs BEFORE the header regex so the
+	// token inside an "Authorization: Bearer xxxxx" string is hit
+	// even if the header regex stops at the first whitespace.
 	regexp.MustCompile(`(?i)(\bBearer\s+)([A-Za-z0-9._\-+/=]+)`),
+	// http header with secret value: "X-API-Key: deadbeef" or
+	// "Authorization: Token …". Match anything that isn't a comma/
+	// semicolon/quote/newline so the entire credential portion
+	// (including multi-word values like "Bearer …") gets replaced.
+	regexp.MustCompile(`(?i)(\b(?:authorization|x-api-key|x-auth-token|cookie|set-cookie)\s*[:=]\s*)([^\r\n,;"']+)`),
 }
 
 // sensitiveKeyFragments is the set of JSON field-name fragments that, when
@@ -152,25 +157,31 @@ func walkRedact(v interface{}) interface{} {
 		}
 		return out
 	case string:
-		// Quick guard: only attempt a re-parse if the value looks
-		// JSON-shaped (`{...}` or `[...]`). Avoids paying the parse
-		// cost on every plain string field, which dominates a typical
-		// API response body. If the inner JSON contains a sensitive
-		// key, recurse + re-marshal; otherwise pass through verbatim.
+		// Quick guard: if the value looks JSON-shaped (`{...}` or
+		// `[...]`), try to recurse into it — catches the
+		// "settings_json": "{\"password\":\"x\"}" pattern.
 		s := strings.TrimSpace(t)
-		if len(s) < 2 || (s[0] != '{' && s[0] != '[') {
-			return v
+		if len(s) >= 2 && (s[0] == '{' || s[0] == '[') {
+			var inner interface{}
+			if err := json.Unmarshal([]byte(t), &inner); err == nil {
+				redactedInner := walkRedact(inner)
+				if out, mErr := json.Marshal(redactedInner); mErr == nil {
+					return string(out)
+				}
+			}
 		}
-		var inner interface{}
-		if err := json.Unmarshal([]byte(t), &inner); err != nil {
-			return v
+		// Even on plain string values, apply the message-pattern
+		// redactor. TrueNAS validation errors and trace dumps embed
+		// raw bearer tokens, basic-auth URLs, and `X-API-Key: …`
+		// strings inside otherwise-innocent JSON string values
+		// (e.g. `{"trace":"...Authorization: Bearer eyJ…"}`). The
+		// JSON walker can't see those because the surrounding key
+		// is harmless; the pattern matcher catches them.
+		redacted := t
+		for _, re := range messageRedactRegexps {
+			redacted = re.ReplaceAllString(redacted, "${1}"+redactedPlaceholder+"${3}")
 		}
-		redactedInner := walkRedact(inner)
-		out, err := json.Marshal(redactedInner)
-		if err != nil {
-			return v
-		}
-		return string(out)
+		return redacted
 	default:
 		return v
 	}
