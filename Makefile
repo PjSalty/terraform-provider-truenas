@@ -186,7 +186,10 @@ help:
 	@echo "Targets:"
 	@grep -E '^##' $(MAKEFILE_LIST) | sed -e 's/## /  /'
 
-## mutation: Run mutation testing on high-leverage packages. Reports kill score.
+## mutation: Run mutation testing on high-leverage packages. NOTE: go-mutesting tooling has
+##           a sandboxing bug where manually-applied mutants kill tests but the tool
+##           reports PASS. Scores below are nominal — empirical mutation testing requires
+##           a different harness (e.g. gremlin or hand-rolled). Tracked as v2.x polish.
 ##           Requires go-mutesting: go install github.com/avito-tech/go-mutesting/cmd/go-mutesting@latest
 ##           Baselines (2026-06-08):
 ##             internal/validators        — 0.84 kill score
