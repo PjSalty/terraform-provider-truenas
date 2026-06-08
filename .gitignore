@@ -36,3 +36,6 @@ live-test/
 
 # Local env
 .envrc.local
+*.html
+report.json
+go-mutesting-*
