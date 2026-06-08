@@ -57,6 +57,21 @@ func (v zfsPathValidator) ValidateString(_ context.Context, req validator.String
 			)
 			return
 		}
+		// Reject path-traversal components. ZFS itself rejects ".."
+		// at the kernel level, but the value may be re-used to
+		// construct on-disk filesystem paths (mountpoint, share
+		// path, dataset child references) where a "../" component
+		// would escape the intended root. Catching it here keeps
+		// the validator surface honest and prevents accidental
+		// re-use through downstream string concatenation.
+		if component == "." || component == ".." {
+			resp.Diagnostics.AddAttributeError(
+				req.Path,
+				"Invalid ZFS Path",
+				"ZFS dataset path components must not be \".\" or \"..\" (path-traversal not allowed).",
+			)
+			return
+		}
 		if !zfsComponentRe.MatchString(component) {
 			resp.Diagnostics.AddAttributeError(
 				req.Path,
