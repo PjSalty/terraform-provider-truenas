@@ -12,8 +12,10 @@ import (
 // bearer tokens). Kept in sync manually with the REST client copy.
 var messageRedactRegexps = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)(\b[a-z][a-z0-9+\-.]*://[^\s:@/]*:)([^@\s/]+)(@)`),
-	regexp.MustCompile(`(?i)(\b(?:authorization|x-api-key|x-auth-token|cookie|set-cookie)\s*[:=]\s*)([^\s\r\n;,]+)`),
+	// Bearer regex runs BEFORE the header regex so an
+	// "Authorization: Bearer xxx" string has the token clipped first.
 	regexp.MustCompile(`(?i)(\bBearer\s+)([A-Za-z0-9._\-+/=]+)`),
+	regexp.MustCompile(`(?i)(\b(?:authorization|x-api-key|x-auth-token|cookie|set-cookie)\s*[:=]\s*)([^\r\n,;"']+)`),
 }
 
 // sensitiveKeyFragments mirrors client.sensitiveKeyFragments. We keep a
@@ -126,20 +128,29 @@ func walkRedact(v interface{}) interface{} {
 		}
 		return out
 	case string:
+		// JSON-in-string carve-out: when the value LOOKS like a
+		// JSON object/array, recurse and re-marshal so secrets
+		// buried inside (e.g. `"settings_json":"{...}"`) get hit.
 		s := strings.TrimSpace(t)
-		if len(s) < 2 || (s[0] != '{' && s[0] != '[') {
-			return v
+		if len(s) >= 2 && (s[0] == '{' || s[0] == '[') {
+			var inner interface{}
+			if err := json.Unmarshal([]byte(t), &inner); err == nil {
+				redactedInner := walkRedact(inner)
+				if out, mErr := json.Marshal(redactedInner); mErr == nil {
+					return string(out)
+				}
+			}
 		}
-		var inner interface{}
-		if err := json.Unmarshal([]byte(t), &inner); err != nil {
-			return v
+		// Even on plain strings, scrub bearer/basic-auth/header
+		// patterns. TrueNAS middleware traces echo raw tokens into
+		// otherwise-innocent string values (`"trace":"...Bearer
+		// eyJ…"`); the JSON-key matcher misses these because the
+		// surrounding key is harmless.
+		redacted := t
+		for _, re := range messageRedactRegexps {
+			redacted = re.ReplaceAllString(redacted, "${1}"+redactedPlaceholder+"${3}")
 		}
-		redactedInner := walkRedact(inner)
-		out, err := json.Marshal(redactedInner)
-		if err != nil {
-			return v
-		}
-		return string(out)
+		return redacted
 	default:
 		return v
 	}

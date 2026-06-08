@@ -298,15 +298,24 @@ type APIError struct {
 	StatusCode int
 	Message    string
 	Body       string
+	// RequestID is the client-generated X-Request-ID that was sent on
+	// the failing request. Echoed in Error() so an operator can grep
+	// for the same ID in tflog output and in TrueNAS' middlewared
+	// audit log to correlate breadcrumbs.
+	RequestID string
 	// retryAfter is set internally when a retry should honor a server-provided delay.
 	retryAfter time.Duration
 }
 
 func (e *APIError) Error() string {
-	if e.Message != "" {
-		return fmt.Sprintf("TrueNAS API error (HTTP %d): %s", e.StatusCode, e.Message)
+	suffix := ""
+	if e.RequestID != "" {
+		suffix = fmt.Sprintf(" (req-id %s)", e.RequestID)
 	}
-	return fmt.Sprintf("TrueNAS API error (HTTP %d): %s", e.StatusCode, e.Body)
+	if e.Message != "" {
+		return fmt.Sprintf("TrueNAS API error (HTTP %d)%s: %s", e.StatusCode, suffix, e.Message)
+	}
+	return fmt.Sprintf("TrueNAS API error (HTTP %d)%s: %s", e.StatusCode, suffix, e.Body)
 }
 
 // doRequest executes an HTTP request against the TrueNAS API with retry support.
@@ -466,6 +475,7 @@ func (c *Client) doOnce(ctx context.Context, method, path string, bodyBytes []by
 		apiErr := &APIError{
 			StatusCode: resp.StatusCode,
 			Body:       string(safeBody),
+			RequestID:  reqID,
 			retryAfter: parseRetryAfter(resp),
 		}
 		// Try to parse error message from JSON response
