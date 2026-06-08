@@ -74,12 +74,15 @@ func TestContract_StatusMatrix_doRequest(t *testing.T) {
 				w.WriteHeader(tc.status)
 				_, _ = w.Write([]byte(tc.body))
 			}))
-			// Retryable cases need a longer deadline since doRequest
-			// retries 5xx/429 with exponential backoff. Non-retryable
-			// cases are fast and 3s is plenty.
-			deadline := 3 * time.Second
+			// Retryable cases need just enough budget to verify the
+			// retry path was entered — we don't care whether the full
+			// exponential-backoff window was used. 1.2s lets the
+			// client's first retry fire (default initial backoff
+			// ~500ms) and then time out. Non-retryable cases are
+			// instant; 1s is plenty.
+			deadline := 1 * time.Second
 			if tc.retryable {
-				deadline = 5 * time.Second
+				deadline = 1200 * time.Millisecond
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), deadline)
 			defer cancel()
