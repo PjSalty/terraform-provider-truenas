@@ -17,8 +17,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // newRequestID returns a fresh 16-char lowercase hex ID; one per logical
@@ -510,12 +508,20 @@ func (c *Client) DeleteWithBody(ctx context.Context, path string, body interface
 
 // --- Dataset API ---
 
-// PropertyValue and PropertyRawVal moved to internal/types/property.go in
-// the v2.0 transport-migration prep.
-type (
-	PropertyValue  = types.PropertyValue
-	PropertyRawVal = types.PropertyRawVal
-)
+// PropertyValue represents a ZFS property with a value field.
+type PropertyValue struct {
+	Value  string      `json:"value"`
+	Source string      `json:"source"`
+	Parsed interface{} `json:"parsed"`
+}
+
+// PropertyRawVal represents a ZFS property with a rawvalue field.
+type PropertyRawVal struct {
+	Value    string      `json:"value"`
+	Rawvalue string      `json:"rawvalue"`
+	Source   string      `json:"source"`
+	Parsed   interface{} `json:"parsed"`
+}
 
 // --- NFS Share API ---
 
@@ -523,9 +529,14 @@ type (
 
 // --- Snapshot Task API ---
 
-// Schedule moved to internal/types/schedule.go in the v2.0
-// transport-migration prep.
-type Schedule = types.Schedule
+// Schedule represents a cron-like schedule.
+type Schedule struct {
+	Minute string `json:"minute"`
+	Hour   string `json:"hour"`
+	Dom    string `json:"dom"`
+	Month  string `json:"month"`
+	Dow    string `json:"dow"`
+}
 
 // --- iSCSI Target API ---
 
@@ -549,17 +560,70 @@ type Schedule = types.Schedule
 
 // --- User API ---
 
-// User, UserGroup, UserCreateRequest, UserUpdateRequest moved to
-// internal/types/user.go in the v2.0 transport-migration prep.
-type (
-	User              = types.User
-	UserGroup         = types.UserGroup
-	UserCreateRequest = types.UserCreateRequest
-	UserUpdateRequest = types.UserUpdateRequest
-)
+// User represents a local user in TrueNAS.
+type User struct {
+	ID               int       `json:"id"`
+	UID              int       `json:"uid"`
+	Username         string    `json:"username"`
+	FullName         string    `json:"full_name"`
+	Email            *string   `json:"email"`
+	Home             string    `json:"home"`
+	Shell            string    `json:"shell"`
+	Builtin          bool      `json:"builtin"`
+	Locked           bool      `json:"locked"`
+	SMB              bool      `json:"smb"`
+	SSHPubKey        *string   `json:"sshpubkey"`
+	PasswordDisabled bool      `json:"password_disabled"`
+	Group            UserGroup `json:"group"`
+	Groups           []int     `json:"groups"`
+	SudoCommands     []string  `json:"sudo_commands"`
+	SudoCommandsNP   []string  `json:"sudo_commands_nopasswd"`
+}
+
+// UserGroup represents the primary group of a user.
+type UserGroup struct {
+	ID    int    `json:"id"`
+	GID   int    `json:"bsdgrp_gid"`
+	Group string `json:"bsdgrp_group"`
+}
+
+// UserCreateRequest represents the request to create a user.
+type UserCreateRequest struct {
+	Username       string   `json:"username"`
+	FullName       string   `json:"full_name"`
+	Email          string   `json:"email,omitempty"`
+	Password       string   `json:"password"`
+	UID            int      `json:"uid,omitempty"`
+	Group          int      `json:"group,omitempty"`
+	GroupCreate    bool     `json:"group_create"`
+	Groups         []int    `json:"groups,omitempty"`
+	Home           string   `json:"home,omitempty"`
+	Shell          string   `json:"shell,omitempty"`
+	Locked         bool     `json:"locked"`
+	SMB            bool     `json:"smb"`
+	SSHPubKey      string   `json:"sshpubkey,omitempty"`
+	SudoCommands   []string `json:"sudo_commands,omitempty"`
+	SudoCommandsNP []string `json:"sudo_commands_nopasswd,omitempty"`
+}
+
+// UserUpdateRequest represents the request to update a user.
+type UserUpdateRequest struct {
+	FullName       string   `json:"full_name,omitempty"`
+	Email          string   `json:"email,omitempty"`
+	Password       string   `json:"password,omitempty"`
+	Group          int      `json:"group,omitempty"`
+	Groups         []int    `json:"groups,omitempty"`
+	Home           string   `json:"home,omitempty"`
+	Shell          string   `json:"shell,omitempty"`
+	Locked         *bool    `json:"locked,omitempty"`
+	SMB            *bool    `json:"smb,omitempty"`
+	SSHPubKey      string   `json:"sshpubkey,omitempty"`
+	SudoCommands   []string `json:"sudo_commands,omitempty"`
+	SudoCommandsNP []string `json:"sudo_commands_nopasswd,omitempty"`
+}
 
 // GetUser retrieves a user by ID.
-func (c *Client) GetUser(ctx context.Context, id int) (*types.User, error) {
+func (c *Client) GetUser(ctx context.Context, id int) (*User, error) {
 	tflog.Trace(ctx, "GetUser start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/user/id/%d", id))
@@ -567,7 +631,7 @@ func (c *Client) GetUser(ctx context.Context, id int) (*types.User, error) {
 		return nil, fmt.Errorf("getting user %d: %w", id, err)
 	}
 
-	var user types.User
+	var user User
 	if err := json.Unmarshal(resp, &user); err != nil {
 		return nil, fmt.Errorf("parsing user response: %w", err)
 	}
@@ -585,7 +649,7 @@ func (c *Client) CreateUser(ctx context.Context, req *UserCreateRequest) (*User,
 		return nil, fmt.Errorf("creating user %q: %w", req.Username, err)
 	}
 
-	var user types.User
+	var user User
 	if err := json.Unmarshal(resp, &user); err != nil {
 		return nil, fmt.Errorf("parsing user create response: %w", err)
 	}
@@ -603,7 +667,7 @@ func (c *Client) UpdateUser(ctx context.Context, id int, req *UserUpdateRequest)
 		return nil, fmt.Errorf("updating user %d: %w", id, err)
 	}
 
-	var user types.User
+	var user User
 	if err := json.Unmarshal(resp, &user); err != nil {
 		return nil, fmt.Errorf("parsing user update response: %w", err)
 	}
@@ -628,16 +692,37 @@ func (c *Client) DeleteUser(ctx context.Context, id int) error {
 
 // --- Group API ---
 
-// Group, GroupCreateRequest, GroupUpdateRequest moved to
-// internal/types/group.go in the v2.0 transport-migration prep.
-type (
-	Group              = types.Group
-	GroupCreateRequest = types.GroupCreateRequest
-	GroupUpdateRequest = types.GroupUpdateRequest
-)
+// Group represents a local group in TrueNAS.
+type Group struct {
+	ID             int      `json:"id"`
+	GID            int      `json:"gid"`
+	Name           string   `json:"name"`
+	Builtin        bool     `json:"builtin"`
+	SMB            bool     `json:"smb"`
+	SudoCommands   []string `json:"sudo_commands"`
+	SudoCommandsNP []string `json:"sudo_commands_nopasswd"`
+	Users          []int    `json:"users"`
+}
+
+// GroupCreateRequest represents the request to create a group.
+type GroupCreateRequest struct {
+	Name           string   `json:"name"`
+	GID            int      `json:"gid,omitempty"`
+	SMB            bool     `json:"smb"`
+	SudoCommands   []string `json:"sudo_commands,omitempty"`
+	SudoCommandsNP []string `json:"sudo_commands_nopasswd,omitempty"`
+}
+
+// GroupUpdateRequest represents the request to update a group.
+type GroupUpdateRequest struct {
+	Name           string   `json:"name,omitempty"`
+	SMB            *bool    `json:"smb,omitempty"`
+	SudoCommands   []string `json:"sudo_commands,omitempty"`
+	SudoCommandsNP []string `json:"sudo_commands_nopasswd,omitempty"`
+}
 
 // GetGroup retrieves a group by ID.
-func (c *Client) GetGroup(ctx context.Context, id int) (*types.Group, error) {
+func (c *Client) GetGroup(ctx context.Context, id int) (*Group, error) {
 	tflog.Trace(ctx, "GetGroup start")
 
 	resp, err := c.Get(ctx, fmt.Sprintf("/group/id/%d", id))
@@ -645,7 +730,7 @@ func (c *Client) GetGroup(ctx context.Context, id int) (*types.Group, error) {
 		return nil, fmt.Errorf("getting group %d: %w", id, err)
 	}
 
-	var group types.Group
+	var group Group
 	if err := json.Unmarshal(resp, &group); err != nil {
 		return nil, fmt.Errorf("parsing group response: %w", err)
 	}

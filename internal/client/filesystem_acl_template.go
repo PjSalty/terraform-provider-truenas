@@ -6,19 +6,33 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// FilesystemACLTemplate, FilesystemACLTemplateCreateRequest,
-// FilesystemACLTemplateUpdateRequest moved to
-// internal/types/filesystem_acl_template.go in the v2.0
-// transport-migration prep.
-type (
-	FilesystemACLTemplate              = types.FilesystemACLTemplate
-	FilesystemACLTemplateCreateRequest = types.FilesystemACLTemplateCreateRequest
-	FilesystemACLTemplateUpdateRequest = types.FilesystemACLTemplateUpdateRequest
-)
+// FilesystemACLTemplate represents a named ACL template.
+// ACL entries are polymorphic (NFS4/POSIX1E) so we keep them as raw JSON.
+type FilesystemACLTemplate struct {
+	ID      int             `json:"id"`
+	Name    string          `json:"name"`
+	ACLType string          `json:"acltype"`
+	Comment string          `json:"comment"`
+	ACL     json.RawMessage `json:"acl,omitempty"`
+	Builtin bool            `json:"builtin"`
+}
+
+// FilesystemACLTemplateCreateRequest is the create payload.
+type FilesystemACLTemplateCreateRequest struct {
+	Name    string          `json:"name"`
+	ACLType string          `json:"acltype"`
+	Comment string          `json:"comment,omitempty"`
+	ACL     json.RawMessage `json:"acl"`
+}
+
+// FilesystemACLTemplateUpdateRequest is the update payload.
+type FilesystemACLTemplateUpdateRequest struct {
+	Name    *string         `json:"name,omitempty"`
+	Comment *string         `json:"comment,omitempty"`
+	ACL     json.RawMessage `json:"acl,omitempty"`
+}
 
 // GetFilesystemACLTemplate retrieves an ACL template by ID.
 func (c *Client) GetFilesystemACLTemplate(ctx context.Context, id int) (*FilesystemACLTemplate, error) {

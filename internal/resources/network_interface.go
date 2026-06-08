@@ -21,19 +21,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators"
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	tnvalidators "github.com/PjSalty/terraform-provider-truenas/internal/validators"
 )
-
-// networkInterfaceClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type networkInterfaceClient interface {
-	GetInterface(ctx context.Context, id string) (*tnstypes.NetworkInterface, error)
-	CreateInterface(ctx context.Context, req *tnstypes.NetworkInterfaceCreateRequest) (*tnstypes.NetworkInterface, error)
-	UpdateInterface(ctx context.Context, id string, req *tnstypes.NetworkInterfaceUpdateRequest) (*tnstypes.NetworkInterface, error)
-	DeleteInterface(ctx context.Context, id string) error
-}
 
 var (
 	_ resource.Resource                     = &NetworkInterfaceResource{}
@@ -52,7 +43,7 @@ var (
 // they are discovered automatically from the host. This resource only
 // supports creating virtual interface types.
 type NetworkInterfaceResource struct {
-	client networkInterfaceClient
+	client *client.Client
 }
 
 // NetworkInterfaceResourceModel describes the resource data model.
@@ -298,11 +289,11 @@ func (r *NetworkInterfaceResource) Configure(_ context.Context, req resource.Con
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(networkInterfaceClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected networkInterfaceClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -319,7 +310,7 @@ func (r *NetworkInterfaceResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	createReq := &tnstypes.NetworkInterfaceCreateRequest{
+	createReq := &client.NetworkInterfaceCreateRequest{
 		Type: plan.Type.ValueString(),
 	}
 	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
@@ -397,7 +388,7 @@ func (r *NetworkInterfaceResource) Read(ctx context.Context, req resource.ReadRe
 
 	iface, err := r.client.GetInterface(ctx, state.ID.ValueString())
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -430,7 +421,7 @@ func (r *NetworkInterfaceResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	updateReq := &tnstypes.NetworkInterfaceUpdateRequest{}
+	updateReq := &client.NetworkInterfaceUpdateRequest{}
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		v := plan.Description.ValueString()
 		updateReq.Description = &v
@@ -506,7 +497,7 @@ func (r *NetworkInterfaceResource) Delete(ctx context.Context, req resource.Dele
 
 	tflog.Debug(ctx, "Deleting interface", map[string]interface{}{"id": state.ID.ValueString()})
 	if err := r.client.DeleteInterface(ctx, state.ID.ValueString()); err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "Network interface already deleted, removing from state", map[string]interface{}{"id": state.ID.ValueString()})
 			return
 		}
@@ -526,7 +517,7 @@ func (r *NetworkInterfaceResource) ImportState(ctx context.Context, req resource
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NetworkInterfaceResource) mapResponseToModel(ctx context.Context, iface *tnstypes.NetworkInterface, model *NetworkInterfaceResourceModel) {
+func (r *NetworkInterfaceResource) mapResponseToModel(ctx context.Context, iface *client.NetworkInterface, model *NetworkInterfaceResourceModel) {
 	model.ID = types.StringValue(iface.ID)
 	model.Name = types.StringValue(iface.Name)
 	model.Type = types.StringValue(iface.Type)
@@ -578,19 +569,19 @@ func (r *NetworkInterfaceResource) mapResponseToModel(ctx context.Context, iface
 // aliasesFromList converts a Terraform list of alias objects into the client
 // alias struct slice. Returns ok=false if the list is null/unknown (caller
 // should skip setting the field in that case).
-func aliasesFromList(ctx context.Context, list types.List, diags *diag.Diagnostics) ([]tnstypes.NetworkInterfaceAlias, bool) {
+func aliasesFromList(ctx context.Context, list types.List, diags *diag.Diagnostics) ([]client.NetworkInterfaceAlias, bool) {
 	_ = ctx
 	_ = diags
 	if list.IsNull() || list.IsUnknown() {
 		return nil, false
 	}
 	elements := list.Elements()
-	result := make([]tnstypes.NetworkInterfaceAlias, 0, len(elements))
+	result := make([]client.NetworkInterfaceAlias, 0, len(elements))
 	for _, elem := range elements {
 		// ListNestedAttribute schema guarantees elements are types.Object.
 		obj := elem.(types.Object)
 		attrs := obj.Attributes()
-		alias := tnstypes.NetworkInterfaceAlias{}
+		alias := client.NetworkInterfaceAlias{}
 		if v, ok := attrs["type"].(types.String); ok && !v.IsNull() {
 			alias.Type = v.ValueString()
 		}

@@ -23,18 +23,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
-
-// datasetClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type datasetClient interface {
-	GetDataset(ctx context.Context, id string) (*tnstypes.DatasetResponse, error)
-	CreateDataset(ctx context.Context, req *tnstypes.DatasetCreateRequest) (*tnstypes.DatasetResponse, error)
-	UpdateDataset(ctx context.Context, id string, req *tnstypes.DatasetUpdateRequest) (*tnstypes.DatasetResponse, error)
-	DeleteDataset(ctx context.Context, id string) error
-}
 
 var (
 	_ resource.Resource                = &DatasetResource{}
@@ -44,7 +35,7 @@ var (
 
 // DatasetResource manages a TrueNAS ZFS dataset.
 type DatasetResource struct {
-	client datasetClient
+	client *client.Client
 }
 
 // DatasetResourceModel describes the resource data model.
@@ -285,11 +276,11 @@ func (r *DatasetResource) Configure(_ context.Context, req resource.ConfigureReq
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(datasetClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected datasetClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -320,7 +311,7 @@ func (r *DatasetResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 	fullName := buildFullName(plan.Pool.ValueString(), parent, plan.Name.ValueString())
 
-	createReq := &tnstypes.DatasetCreateRequest{
+	createReq := &client.DatasetCreateRequest{
 		Name: fullName,
 	}
 
@@ -397,7 +388,7 @@ func (r *DatasetResource) Read(ctx context.Context, req resource.ReadRequest, re
 	dataset, err := r.client.GetDataset(ctx, state.ID.ValueString())
 	if err != nil {
 		// If the dataset no longer exists, remove from state
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -432,7 +423,7 @@ func (r *DatasetResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	updateReq := &tnstypes.DatasetUpdateRequest{}
+	updateReq := &client.DatasetUpdateRequest{}
 
 	if !plan.Compression.IsNull() {
 		updateReq.Compression = plan.Compression.ValueString()
@@ -500,7 +491,7 @@ func (r *DatasetResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 	err := r.client.DeleteDataset(ctx, state.ID.ValueString())
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "Dataset already deleted, removing from state", map[string]interface{}{"id": state.ID.ValueString()})
 			return
 		}
@@ -526,7 +517,7 @@ func (r *DatasetResource) ImportState(ctx context.Context, req resource.ImportSt
 }
 
 // mapResponseToModel maps the API response to the Terraform resource model.
-func (r *DatasetResource) mapResponseToModel(dataset *tnstypes.DatasetResponse, model *DatasetResourceModel) {
+func (r *DatasetResource) mapResponseToModel(dataset *client.DatasetResponse, model *DatasetResourceModel) {
 	model.ID = types.StringValue(dataset.ID)
 	model.MountPoint = types.StringValue(dataset.MountPoint)
 

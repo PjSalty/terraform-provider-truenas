@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -26,6 +27,14 @@ resource "truenas_privilege" "test" {
   roles = ["READONLY_ADMIN"]
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_privilege.test", plancheck.ResourceActionCreate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_privilege.test", "name", name),
 					resource.TestCheckResourceAttrSet("truenas_privilege.test", "id"),
@@ -69,6 +78,11 @@ resource "truenas_privilege" "test" {
   web_shell = true
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_privilege.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_privilege.test", "web_shell", "true"),
 			},
 		},
