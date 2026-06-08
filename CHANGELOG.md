@@ -44,6 +44,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `internal/types.CloudSync` (used by the WebSocket transport).
   Originally reported and fixed by Max Poelman in PR #12.
 
+- **Cross-attribute validators no longer reject Unknown values at plan
+  time.** Two related bug fixes surfaced by the v2.0 acceptance suite
+  on TrueNAS SCALE 25.10:
+  - `internal/resourcevalidators.RequiredWhenEqual` treated an Unknown
+    required attribute as missing. Configs that wired the required
+    value from a sibling resource's computed attribute
+    (`path = truenas_dataset.x.mount_point`) failed plan with
+    `Missing required attribute`. The validator now defers to apply
+    time when the value is Unknown.
+  - `truenas_iscsi_extent.ModifyPlan` had the same shape bug for
+    `path`, `disk`, and `filesize`. Same fix: defer cross-attribute
+    checks to apply time when any input is Unknown.
+
+- **`terraform import truenas_filesystem_acl.<id>` no longer errors
+  with `String should have at least 1 character`.** ImportState was
+  only seeding `id`; the next Read sent an empty `path` to the
+  middleware and TrueNAS rejected it. ImportState now seeds both
+  `id` and `path` from the import argument (they carry the same
+  filesystem-path string).
+
+### Security
+
+- **Redactor closes three secret-leak paths** surfaced by the v2.0
+  brutal-test sweep (property-based redactor tests over every
+  schema-`Sensitive` attribute). All three were paths where a real
+  secret could reach `APIError.Body`, `tflog` traces, or
+  `Diagnostics.AddError` output:
+  - **ACME account_key** wasn't in `sensitiveKeyFragments`. The
+    `truenas_acme_dns_authenticator` resource has an `account_key`
+    attribute whose value is private-key material. Added
+    `account_key` to the fragment list on both REST and WebSocket
+    redactors.
+  - **JSON-in-string values** bypassed the recursive walker. Pattern:
+    `"settings_json": "{\"password\":\"…\"}"` — the outer key isn't
+    sensitive but the inner JSON contains a secret. `walkRedact` now
+    re-parses string values that look JSON-shaped, recursively
+    redacts, and re-marshals.
+  - **URL basic-auth, `X-API-Key`/`Authorization` headers, raw
+    bearer tokens** bypassed the key-fragment matcher in error
+    message strings (hyphens vs underscores, no key name at all).
+    A new pattern-based pass runs before the fragment matcher and
+    replaces the secret portion while preserving the
+    scheme/header prefix so operators can still see the leak source.
+
+### Tests
+
+- **178 JSON-unmarshal fuzz targets** added across
+  `internal/types`, `internal/client`, and `internal/wsclient`. Each
+  target round-trips bytes through Unmarshal → Marshal → Unmarshal
+  and must not panic. Seeded with a shared 23-entry corpus of
+  well-formed, edge, and malformed JSON. As regression tests they
+  run in ~40 ms; under `go test -fuzz=…` they run millions of
+  mutations per target. A pre-tag fuzz sweep of the 10 highest-risk
+  types ran 42M mutated inputs with zero panics.
+- **Property-based invariants over every response struct**:
+  `TestProperty_MarshalRoundTripStable` asserts no type silently
+  drops data on re-marshal (the bug pattern that caused PR #12);
+  `TestProperty_UnmarshalUnknownFieldsTolerated` asserts the
+  provider survives TrueNAS adding new attributes in a minor
+  version.
+- **Brutal redactor tests** enumerate every known schema-`Sensitive`
+  attribute and assert the redactor catches each one. These caught
+  the three Security fixes above.
+
 ### Added
 
 - **`_disappears` acceptance test coverage for every deletable resource**
