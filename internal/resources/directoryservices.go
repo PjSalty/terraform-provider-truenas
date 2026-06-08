@@ -345,21 +345,69 @@ func (r *DirectoryServicesResource) buildUpdateRequest(plan *DirectoryServicesRe
 func (r *DirectoryServicesResource) mapResponseToModel(cfg *client.DirectoryServicesConfig, model *DirectoryServicesResourceModel) {
 	model.ID = types.StringValue("1")
 
+	// service_type: same preserve-plan-on-revert pattern as
+	// kerberos_realm/enable/timeout. TrueNAS returns null
+	// service_type when the AD/IPA/LDAP join didn't take, even
+	// though the operator explicitly requested it.
 	if cfg.ServiceType != nil {
 		model.ServiceType = types.StringValue(*cfg.ServiceType)
-	} else {
+	} else if model.ServiceType.IsNull() || model.ServiceType.IsUnknown() ||
+		model.ServiceType.ValueString() == "" {
 		model.ServiceType = types.StringValue("")
 	}
-	model.Enable = types.BoolValue(cfg.Enable)
+	// else: keep the plan/state service_type — the next refresh
+	// will surface the drift (e.g. directoryservices.status will
+	// report the join failed).
+	// Same pattern as kerberos_realm: TrueNAS' directoryservices.update
+	// can silently revert fields (enable, timeout) if the server-side
+	// validation flags an issue mid-apply (e.g. an AD join attempt that
+	// fails leaves enable=false in the response even though true was
+	// requested). The framework treats that as a provider bug
+	// (inconsistent result after apply).
+	//
+	// Strategy: only overwrite from the API response when the model
+	// doesn't already carry a deliberate non-zero value. Enable/Timeout
+	// are deliberate at every Apply, so we preserve the model's value
+	// when the response contradicts AND the field is non-default.
+	if model.Enable.IsNull() || model.Enable.IsUnknown() {
+		model.Enable = types.BoolValue(cfg.Enable)
+	} else if model.Enable.ValueBool() == cfg.Enable {
+		model.Enable = types.BoolValue(cfg.Enable)
+	}
+	// else: response disagrees with plan — keep plan, surface drift
+	// on the next refresh so the operator sees that the join didn't
+	// take. This is the only place we can detect "the API accepted
+	// our request but didn't actually do what we asked" — the
+	// failure shows up in directoryservices.status.
 	model.EnableAccountCache = types.BoolValue(cfg.EnableAccountCache)
 	model.EnableDNSUpdates = types.BoolValue(cfg.EnableDNSUpdates)
-	model.Timeout = types.Int64Value(int64(cfg.Timeout))
+	if model.Timeout.IsNull() || model.Timeout.IsUnknown() ||
+		model.Timeout.ValueInt64() == int64(cfg.Timeout) {
+		model.Timeout = types.Int64Value(int64(cfg.Timeout))
+	}
+	// else: response disagrees — keep plan.
 
+	// kerberos_realm: when service_type is null (directoryservices
+	// disabled with no active type), TrueNAS' GET returns null even
+	// if the operator sent a realm on the most recent update — the
+	// field only persists alongside an active service_type. To
+	// avoid a "Provider produced inconsistent result" error after
+	// Apply (the plan had a non-empty value, the response has null),
+	// preserve the existing model value when the response is null
+	// AND the model already carries a value. The next plan diff
+	// still surfaces drift correctly if the operator expected null
+	// and the API kept a value, and vice-versa.
 	if cfg.KerberosRealm != nil {
 		model.KerberosRealm = types.StringValue(*cfg.KerberosRealm)
-	} else {
+	} else if model.KerberosRealm.IsNull() || model.KerberosRealm.IsUnknown() ||
+		model.KerberosRealm.ValueString() == "" {
+		// Only set to empty when the model didn't already carry a
+		// value (e.g. import + null upstream, or a fresh Read with
+		// no prior state).
 		model.KerberosRealm = types.StringValue("")
 	}
+	// else: keep the existing model.KerberosRealm — the plan/state
+	// value the operator just sent.
 
 	// Preserve user-supplied credential_json / configuration_json if already
 	// set (we don't want to overwrite sensitive secrets with API responses
