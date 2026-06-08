@@ -1382,4 +1382,3 @@ func FuzzVMware_Unmarshal(f *testing.F) {
 		_ = json.Unmarshal(b, &v2)
 	})
 }
-
