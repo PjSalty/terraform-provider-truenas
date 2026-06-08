@@ -17,25 +17,19 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
-
-// nvmetHostSubsysClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type nvmetHostSubsysClient interface {
-	GetNVMetHostSubsys(ctx context.Context, id int) (*tnstypes.NVMetHostSubsys, error)
-	CreateNVMetHostSubsys(ctx context.Context, req *tnstypes.NVMetHostSubsysCreateRequest) (*tnstypes.NVMetHostSubsys, error)
-	DeleteNVMetHostSubsys(ctx context.Context, id int) error
-}
 
 var (
 	_ resource.Resource                = &NVMetHostSubsysResource{}
 	_ resource.ResourceWithImportState = &NVMetHostSubsysResource{}
+	_ resource.ResourceWithModifyPlan  = &NVMetHostSubsysResource{}
 )
 
 // NVMetHostSubsysResource manages an NVMe-oF host-to-subsystem authorization.
 type NVMetHostSubsysResource struct {
-	client nvmetHostSubsysClient
+	client *client.Client
 }
 
 // NVMetHostSubsysResourceModel describes the resource data model.
@@ -103,11 +97,11 @@ func (r *NVMetHostSubsysResource) Configure(_ context.Context, req resource.Conf
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(nvmetHostSubsysClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected nvmetHostSubsysClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -124,7 +118,7 @@ func (r *NVMetHostSubsysResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	createReq := &tnstypes.NVMetHostSubsysCreateRequest{
+	createReq := &client.NVMetHostSubsysCreateRequest{
 		HostID:   int(plan.HostID.ValueInt64()),
 		SubsysID: int(plan.SubsysID.ValueInt64()),
 	}
@@ -168,7 +162,7 @@ func (r *NVMetHostSubsysResource) Read(ctx context.Context, req resource.ReadReq
 
 	hs, err := r.client.GetNVMetHostSubsys(ctx, id)
 	if err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -221,7 +215,7 @@ func (r *NVMetHostSubsysResource) Delete(ctx context.Context, req resource.Delet
 	tflog.Debug(ctx, "Deleting nvmet_host_subsys", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteNVMetHostSubsys(ctx, id); err != nil {
-		if isNotFound(err) {
+		if client.IsNotFound(err) {
 			tflog.Warn(ctx, "NVMe-oF host-subsys association already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -234,6 +228,13 @@ func (r *NVMetHostSubsysResource) Delete(ctx context.Context, req resource.Delet
 	tflog.Trace(ctx, "Delete NVMetHostSubsys success")
 }
 
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a host-subsys mapping strips authorisation
+// for the host to access this subsystem — clients suddenly get EPERM.
+func (r *NVMetHostSubsysResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_host_subsys")
+}
+
 func (r *NVMetHostSubsysResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	if _, err := strconv.Atoi(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("NVMe-oF host-subsys ID must be numeric: %s", err))
@@ -242,7 +243,7 @@ func (r *NVMetHostSubsysResource) ImportState(ctx context.Context, req resource.
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NVMetHostSubsysResource) mapResponseToModel(hs *tnstypes.NVMetHostSubsys, model *NVMetHostSubsysResourceModel) {
+func (r *NVMetHostSubsysResource) mapResponseToModel(hs *client.NVMetHostSubsys, model *NVMetHostSubsysResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(hs.ID))
 	model.HostID = types.Int64Value(int64(hs.EffectiveHostID()))
 	model.SubsysID = types.Int64Value(int64(hs.EffectiveSubsysID()))

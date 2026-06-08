@@ -14,12 +14,23 @@ package acctest
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
+
+// DefaultProdDeny lists hostnames that the acceptance suite must
+// never run against. It mirrors the TRUENAS_PROD_DENY default in
+// scripts/lib/_env.sh so the Go-side and shell-side checks agree.
+//
+// Comma-separated, case-insensitive exact hostname match (no port,
+// no path). Override at runtime by exporting TRUENAS_PROD_DENY; an
+// empty export disables the check.
+const DefaultProdDeny = "truenas.salt.saltstice.com"
 
 // SkipMsg is the shared skip message used by every acceptance test when
 // TF_ACC is not set. Keeping it in one place makes grepping the SKIPs in
@@ -58,14 +69,68 @@ func SkipIfNoAcc(t *testing.T) bool {
 // that need to delete a resource out-of-band to verify the provider
 // detects and recovers from the drift. Never use this for anything else —
 // all other infrastructure mutations must flow through Terraform.
+//
+// Refuses to build a client targeting any host in TRUENAS_PROD_DENY
+// (defaulted to the homelab production TrueNAS). This is the Go-side
+// counterpart to the same check in scripts/lib/_env.sh — defense in
+// depth so even an operator who bypasses the shell runner can't
+// accidentally point an _disappears test at production.
 func Client() (*client.Client, error) {
-	url := os.Getenv("TRUENAS_URL")
+	rawURL := os.Getenv("TRUENAS_URL")
 	apiKey := os.Getenv("TRUENAS_API_KEY")
-	if url == "" || apiKey == "" {
+	if rawURL == "" || apiKey == "" {
 		return nil, fmt.Errorf("TRUENAS_URL and TRUENAS_API_KEY must be set")
 	}
+	if err := assertNotProd(rawURL); err != nil {
+		return nil, err
+	}
 	insecure := os.Getenv("TRUENAS_INSECURE_SKIP_VERIFY") == "true"
-	return client.NewWithOptions(url, apiKey, insecure)
+	return client.NewWithOptions(rawURL, apiKey, insecure)
+}
+
+// assertNotProd returns an error if rawURL's hostname appears in the
+// effective TRUENAS_PROD_DENY list. Exported via Client() above; not
+// callable from outside the package because the only legitimate
+// reason to construct a client at acc-test time is _disappears
+// behavior, which goes through Client().
+//
+// The denylist source-of-truth:
+//   1. The TRUENAS_PROD_DENY env var, if set (including explicit empty
+//      string, which disables the check).
+//   2. Otherwise, DefaultProdDeny.
+func assertNotProd(rawURL string) error {
+	deny, override := os.LookupEnv("TRUENAS_PROD_DENY")
+	if !override {
+		deny = DefaultProdDeny
+	}
+	if deny == "" {
+		// Operator explicitly disabled the check. We do not nag — the
+		// shell-side runner already does that, and forcing a noisy
+		// override here would just push contributors to comment this
+		// out instead of using the env var.
+		return nil
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("acctest: TRUENAS_URL=%q is not a valid URL: %w", rawURL, err)
+	}
+	host := strings.ToLower(parsed.Hostname())
+	if host == "" {
+		return fmt.Errorf("acctest: TRUENAS_URL=%q has no hostname", rawURL)
+	}
+	for _, entry := range strings.FieldsFunc(deny, func(r rune) bool {
+		return r == ',' || r == ' ' || r == '\t'
+	}) {
+		if strings.EqualFold(entry, host) {
+			return fmt.Errorf("acctest: TRUENAS_URL points at %q, which is in "+
+				"TRUENAS_PROD_DENY. The acceptance suite creates and destroys real "+
+				"resources; running it against this host would damage production. "+
+				"Set TRUENAS_URL to your TEST TrueNAS instance and re-run. To "+
+				"intentionally target this host (very rare), explicitly set "+
+				"TRUENAS_PROD_DENY=\"\" first.", host)
+		}
+	}
+	return nil
 }
 
 // Ctx returns a short-lived context suitable for out-of-band API calls

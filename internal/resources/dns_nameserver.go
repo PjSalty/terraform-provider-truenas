@@ -17,15 +17,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	tnstypes "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
-
-// dnsNameserverClient is the transport-agnostic surface this resource needs.
-// Both internal/client/*Client and internal/wsclient/*Client satisfy it.
-type dnsNameserverClient interface {
-	GetNetworkConfig(ctx context.Context) (*tnstypes.NetworkConfig, error)
-	UpdateNetworkConfig(ctx context.Context, req *tnstypes.NetworkConfigUpdateRequest) (*tnstypes.NetworkConfig, error)
-}
 
 // ipRegex matches IPv4 or simple IPv6 addresses. Intentionally permissive —
 // server-side validation is authoritative; we only reject obvious garbage.
@@ -38,7 +31,7 @@ var (
 
 // DNSNameserverResource manages DNS nameserver configuration on TrueNAS.
 type DNSNameserverResource struct {
-	client dnsNameserverClient
+	client *client.Client
 }
 
 // DNSNameserverResourceModel describes the resource data model.
@@ -110,11 +103,11 @@ func (r *DNSNameserverResource) Configure(_ context.Context, req resource.Config
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(dnsNameserverClient)
+	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected dnsNameserverClient implementation, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -210,7 +203,7 @@ func (r *DNSNameserverResource) Delete(ctx context.Context, req resource.DeleteR
 
 	// For a singleton resource, "delete" clears the nameservers to empty.
 	empty := ""
-	updateReq := &tnstypes.NetworkConfigUpdateRequest{
+	updateReq := &client.NetworkConfigUpdateRequest{
 		Nameserver1: &empty,
 		Nameserver2: &empty,
 		Nameserver3: &empty,
@@ -233,8 +226,8 @@ func (r *DNSNameserverResource) ImportState(ctx context.Context, req resource.Im
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *DNSNameserverResource) buildUpdateRequest(model *DNSNameserverResourceModel) *tnstypes.NetworkConfigUpdateRequest {
-	req := &tnstypes.NetworkConfigUpdateRequest{}
+func (r *DNSNameserverResource) buildUpdateRequest(model *DNSNameserverResourceModel) *client.NetworkConfigUpdateRequest {
+	req := &client.NetworkConfigUpdateRequest{}
 
 	if !model.Nameserver1.IsNull() {
 		ns := model.Nameserver1.ValueString()
@@ -252,7 +245,7 @@ func (r *DNSNameserverResource) buildUpdateRequest(model *DNSNameserverResourceM
 	return req
 }
 
-func (r *DNSNameserverResource) mapResponseToModel(config *tnstypes.NetworkConfig, model *DNSNameserverResourceModel) {
+func (r *DNSNameserverResource) mapResponseToModel(config *client.NetworkConfig, model *DNSNameserverResourceModel) {
 	model.ID = types.StringValue("network_config")
 	model.Nameserver1 = types.StringValue(config.Nameserver1)
 	model.Nameserver2 = types.StringValue(config.Nameserver2)

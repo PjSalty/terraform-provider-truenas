@@ -6,19 +6,37 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// NFSConfig, NFSConfigUpdateRequest moved to internal/types/nfs_config.go
-// in the v2.0 transport-migration prep.
-type (
-	NFSConfig              = types.NFSConfig
-	NFSConfigUpdateRequest = types.NFSConfigUpdateRequest
-)
+// NFSConfig represents the NFS service configuration.
+type NFSConfig struct {
+	ID           int      `json:"id"`
+	Servers      int      `json:"servers"`
+	AllowNonroot bool     `json:"allow_nonroot"`
+	Protocols    []string `json:"protocols"`
+	V4Krb        bool     `json:"v4_krb"`
+	V4Domain     string   `json:"v4_domain"`
+	BindIP       []string `json:"bindip"`
+	MountdPort   *int     `json:"mountd_port"`
+	RpcstatdPort *int     `json:"rpcstatd_port"`
+	RpclockdPort *int     `json:"rpclockd_port"`
+}
+
+// NFSConfigUpdateRequest represents the request to update NFS configuration.
+type NFSConfigUpdateRequest struct {
+	Servers      *int     `json:"servers,omitempty"`
+	AllowNonroot *bool    `json:"allow_nonroot,omitempty"`
+	Protocols    []string `json:"protocols,omitempty"`
+	V4Krb        *bool    `json:"v4_krb,omitempty"`
+	V4Domain     *string  `json:"v4_domain,omitempty"`
+	BindIP       []string `json:"bindip,omitempty"`
+	MountdPort   *int     `json:"mountd_port,omitempty"`
+	RpcstatdPort *int     `json:"rpcstatd_port,omitempty"`
+	RpclockdPort *int     `json:"rpclockd_port,omitempty"`
+}
 
 // GetNFSConfig retrieves the NFS service configuration.
-func (c *Client) GetNFSConfig(ctx context.Context) (*types.NFSConfig, error) {
+func (c *Client) GetNFSConfig(ctx context.Context) (*NFSConfig, error) {
 	tflog.Trace(ctx, "GetNFSConfig start")
 
 	resp, err := c.Get(ctx, "/nfs")
@@ -26,7 +44,7 @@ func (c *Client) GetNFSConfig(ctx context.Context) (*types.NFSConfig, error) {
 		return nil, fmt.Errorf("getting NFS config: %w", err)
 	}
 
-	var config types.NFSConfig
+	var config NFSConfig
 	if err := json.Unmarshal(resp, &config); err != nil {
 		return nil, fmt.Errorf("parsing NFS config response: %w", err)
 	}
@@ -36,7 +54,7 @@ func (c *Client) GetNFSConfig(ctx context.Context) (*types.NFSConfig, error) {
 }
 
 // UpdateNFSConfig updates the NFS service configuration.
-func (c *Client) UpdateNFSConfig(ctx context.Context, req *types.NFSConfigUpdateRequest) (*types.NFSConfig, error) {
+func (c *Client) UpdateNFSConfig(ctx context.Context, req *NFSConfigUpdateRequest) (*NFSConfig, error) {
 	tflog.Trace(ctx, "UpdateNFSConfig start")
 
 	resp, err := c.Put(ctx, "/nfs", req)
@@ -44,7 +62,7 @@ func (c *Client) UpdateNFSConfig(ctx context.Context, req *types.NFSConfigUpdate
 		return nil, fmt.Errorf("updating NFS config: %w", err)
 	}
 
-	var config types.NFSConfig
+	var config NFSConfig
 	if err := json.Unmarshal(resp, &config); err != nil {
 		return nil, fmt.Errorf("parsing NFS config update response: %w", err)
 	}
