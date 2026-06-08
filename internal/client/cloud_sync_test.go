@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
@@ -205,6 +206,40 @@ func TestCloudSync_CRUD(t *testing.T) {
 		}
 		if !client.IsNotFound(err) {
 			t.Errorf("IsNotFound false")
+		}
+	})
+
+	// Coverage closers for the UnmarshalJSON branches that the regular
+	// CRUD round-trips don't hit on every API response shape.
+
+	t.Run("UnmarshalJSON empty credentials field leaves zero", func(t *testing.T) {
+		body := `{"id": 4, "path": "/mnt/q"}`
+		var cs client.CloudSync
+		if err := json.Unmarshal([]byte(body), &cs); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cs.Credentials != 0 {
+			t.Errorf("Credentials = %d, want 0", cs.Credentials)
+		}
+	})
+
+	t.Run("UnmarshalJSON malformed credentials returns wrapped error", func(t *testing.T) {
+		body := `{"id": 5, "credentials": "not-a-number-not-an-object"}`
+		var cs client.CloudSync
+		err := json.Unmarshal([]byte(body), &cs)
+		if err == nil {
+			t.Fatal("expected error on string credentials, got nil")
+		}
+		if !strings.Contains(err.Error(), "credentials field") {
+			t.Errorf("expected wrapped 'credentials field' error, got: %v", err)
+		}
+	})
+
+	t.Run("UnmarshalJSON direct-call malformed bytes", func(t *testing.T) {
+		var cs client.CloudSync
+		err := cs.UnmarshalJSON([]byte(`{not valid json`))
+		if err == nil {
+			t.Fatal("expected error on direct call with malformed bytes")
 		}
 	})
 }
