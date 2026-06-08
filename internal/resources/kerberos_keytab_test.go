@@ -12,13 +12,29 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 )
 
-// validKeytabB64 is a minimal MIT-format keytab fixture that parses as
-// real keytab data. SCALE 25.04 accepted any base64 blob; 25.10+ validates
-// the parse and rejects garbage. Contents are dummy (principal
-// testuser@EXAMPLE.COM.INVALID, zero key); fine for fixture use, the
-// keytab is never actually exercised for auth in the test path.
-const validKeytabB64 = "BQIAAABFAAEAEUVYQU1QTEUuQ09NLklOVkFMSUQAB3Rlc3R1c2VyAAAAAVwOJWQBABIAIN5w" +
-	"M+JFu6n9P3JfDe5N9bDM3JIuVxoVNvBYdVu8/JqLAAAAAg=="
+// validKeytabB64 is a minimal MIT keytab v2 fixture that TrueNAS
+// SCALE 25.10's keytab parser accepts. SCALE 25.04 accepted any
+// base64 blob; 25.10+ validates the structure and rejects garbage
+// with "File does not contain any keytab entries".
+//
+// Wire layout (constructed in scripts/gen_test_keytab.py, kept in
+// sync if you regenerate):
+//
+//	magic       = 0x05 0x02                (MIT keytab v2)
+//	entry_size  = int32 BE                  (signed; len of payload)
+//	payload:
+//	    num_components       = 1            (excludes realm)
+//	    realm                = "EXAMPLE.COM"
+//	    component            = "testuser"
+//	    name_type            = 1            (NT-PRINCIPAL)
+//	    timestamp            = 0
+//	    vno8                 = 1
+//	    enctype              = 18           (AES256-CTS-HMAC-SHA1-96)
+//	    key                  = 32 bytes of zeros
+//
+// The key is all zeros — fine for a fixture; the test path never
+// actually authenticates with this keytab.
+const validKeytabB64 = "BQIAAABGAAEAC0VYQU1QTEUuQ09NAAh0ZXN0dXNlcgAAAAEAAAAAAQASACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
 
 func TestAccKerberosKeytab_basic(t *testing.T) {
 	resourceName := "truenas_kerberos_keytab.test"
