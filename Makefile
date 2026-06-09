@@ -35,7 +35,7 @@ install: build
 	mkdir -p $(PLUGIN_DIR)
 	cp $(BINARY) $(PLUGIN_DIR)/$(BINARY)_v$(VERSION)
 
-## test: Run unit tests (httptest-mocked, no live infrastructure).
+## test: Run unit tests with race detection (no live infrastructure). Includes the tiered coverage gate enforced by acc.sh.
 test:
 	$(GO) test -v -count=1 -race -coverprofile=coverage.out $(INTERNAL)
 
