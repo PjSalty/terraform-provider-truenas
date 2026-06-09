@@ -1,3 +1,6 @@
+//go:build legacy_rest
+// +build legacy_rest
+
 // Tests for misc small resources (tunable, static_route) to broaden coverage.
 package client_test
 

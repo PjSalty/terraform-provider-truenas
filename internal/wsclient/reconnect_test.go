@@ -82,7 +82,7 @@ func TestReconnectIfNeeded_dialFailure(t *testing.T) {
 		pending:        make(map[uint64]chan *rpcResponse),
 		dialTimeout:    100 * time.Millisecond,
 		requestTimeout: time.Second,
-		retryPolicy:    RetryPolicy{MaxAttempts: 2, BaseDelay: 10 * time.Millisecond, MaxDelay: 50 * time.Millisecond},
+		RetryPolicy:    RetryPolicy{MaxAttempts: 2, BaseDelay: 10 * time.Millisecond, MaxDelay: 50 * time.Millisecond},
 	}
 	c.lifetime, c.lifetimeCancel = context.WithCancel(context.Background())
 
@@ -105,7 +105,7 @@ func TestReconnectIfNeeded_ctxCanceled(t *testing.T) {
 		pending:        make(map[uint64]chan *rpcResponse),
 		dialTimeout:    10 * time.Second,
 		requestTimeout: time.Second,
-		retryPolicy:    RetryPolicy{MaxAttempts: 5, BaseDelay: 50 * time.Millisecond, MaxDelay: 200 * time.Millisecond},
+		RetryPolicy:    RetryPolicy{MaxAttempts: 5, BaseDelay: 50 * time.Millisecond, MaxDelay: 200 * time.Millisecond},
 	}
 	c.lifetime, c.lifetimeCancel = context.WithCancel(context.Background())
 
@@ -134,7 +134,7 @@ func TestReconnectIfNeeded_deadlineExceeded(t *testing.T) {
 		dialTimeout:    50 * time.Millisecond,
 		requestTimeout: time.Second,
 		// Short backoff so we cycle several times before the deadline.
-		retryPolicy: RetryPolicy{MaxAttempts: 10, BaseDelay: 5 * time.Millisecond, MaxDelay: 15 * time.Millisecond},
+		RetryPolicy: RetryPolicy{MaxAttempts: 10, BaseDelay: 5 * time.Millisecond, MaxDelay: 15 * time.Millisecond},
 	}
 	c.lifetime, c.lifetimeCancel = context.WithCancel(context.Background())
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -176,7 +176,7 @@ func TestReconnectIfNeeded_authFailure(t *testing.T) {
 		pending:        make(map[uint64]chan *rpcResponse),
 		dialTimeout:    1 * time.Second,
 		requestTimeout: time.Second,
-		retryPolicy:    RetryPolicy{MaxAttempts: 1, BaseDelay: 10 * time.Millisecond, MaxDelay: 50 * time.Millisecond},
+		RetryPolicy:    RetryPolicy{MaxAttempts: 1, BaseDelay: 10 * time.Millisecond, MaxDelay: 50 * time.Millisecond},
 	}
 	c.lifetime, c.lifetimeCancel = context.WithCancel(context.Background())
 
@@ -201,7 +201,7 @@ func TestReconnectIfNeeded_dialDeadlineExceeded(t *testing.T) {
 		pending:        make(map[uint64]chan *rpcResponse),
 		dialTimeout:    20 * time.Millisecond,
 		requestTimeout: time.Second,
-		retryPolicy:    RetryPolicy{MaxAttempts: 1, BaseDelay: 5 * time.Millisecond, MaxDelay: 10 * time.Millisecond},
+		RetryPolicy:    RetryPolicy{MaxAttempts: 1, BaseDelay: 5 * time.Millisecond, MaxDelay: 10 * time.Millisecond},
 	}
 	c.lifetime, c.lifetimeCancel = context.WithCancel(context.Background())
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

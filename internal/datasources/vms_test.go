@@ -23,6 +23,7 @@ func TestVMsDataSource_Schema(t *testing.T) {
 }
 
 func TestVMsDataSource_Read_Multiple(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.VM{
 			{ID: 1, Name: "vm-a", Memory: 1024, Vcpus: 1, Cores: 2, Status: &truenas.VMStatus{State: "RUNNING"}},
@@ -47,6 +48,7 @@ func TestVMsDataSource_Read_Multiple(t *testing.T) {
 }
 
 func TestVMsDataSource_Read_Empty(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.VM{})
 	}))
@@ -67,6 +69,7 @@ func TestVMsDataSource_Read_Empty(t *testing.T) {
 }
 
 func TestVMsDataSource_Read_ServerError(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
 	}))

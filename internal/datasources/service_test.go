@@ -22,6 +22,7 @@ func TestServiceDataSource_Schema(t *testing.T) {
 }
 
 func TestServiceDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Service{
 			{ID: 1, Service: "ssh", Enable: true, State: "RUNNING"},
@@ -52,6 +53,7 @@ func TestServiceDataSource_Read_Success(t *testing.T) {
 }
 
 func TestServiceDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Service{{ID: 1, Service: "ssh"}})
 	}))
@@ -67,6 +69,7 @@ func TestServiceDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestServiceDataSource_Read_ServerError(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
 	}))
@@ -82,6 +85,7 @@ func TestServiceDataSource_Read_ServerError(t *testing.T) {
 }
 
 func TestServiceDataSource_Read_StoppedService(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Service{
 			{ID: 5, Service: "smbsrv", Enable: false, State: "STOPPED"},

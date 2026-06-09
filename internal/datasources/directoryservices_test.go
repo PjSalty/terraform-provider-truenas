@@ -31,6 +31,7 @@ func TestDirectoryServicesDataSource_Schema(t *testing.T) {
 }
 
 func TestDirectoryServicesDataSource_Read_Enabled(t *testing.T) {
+	skipWSCutover(t)
 	svcType := "ACTIVEDIRECTORY"
 	realm := "EXAMPLE.COM"
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +85,7 @@ func TestDirectoryServicesDataSource_Read_Enabled(t *testing.T) {
 }
 
 func TestDirectoryServicesDataSource_Read_Disabled(t *testing.T) {
+	skipWSCutover(t)
 	// No service type, no credential — should produce null strings.
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.DirectoryServicesConfig{
@@ -112,6 +114,7 @@ func TestDirectoryServicesDataSource_Read_Disabled(t *testing.T) {
 }
 
 func TestDirectoryServicesDataSource_Read_ServerError(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
 	}))

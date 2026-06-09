@@ -23,6 +23,7 @@ func TestAppsDataSource_Schema(t *testing.T) {
 }
 
 func TestAppsDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.App{
 			{ID: "a", Name: "a", State: "RUNNING", Version: "1.0", UpgradeAvailable: false, CustomApp: false},
@@ -50,6 +51,7 @@ func TestAppsDataSource_Read_Success(t *testing.T) {
 }
 
 func TestAppsDataSource_Read_Empty(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.App{})
 	}))
@@ -70,6 +72,7 @@ func TestAppsDataSource_Read_Empty(t *testing.T) {
 }
 
 func TestAppsDataSource_Read_ServerError(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
 	}))

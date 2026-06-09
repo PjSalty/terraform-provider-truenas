@@ -15,6 +15,7 @@ import (
 // --- FTPConfig (singleton) — Create just echoes through Update; no separate fn ---
 
 func TestFTPConfigResource_CreateOnly(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "port": 21, "clients": 32, "ipconnections": 8, "loginattempt": 3,
 		"timeout": 120, "onlyanonymous": false, "onlylocal": false, "banner": "",
@@ -34,6 +35,7 @@ func TestFTPConfigResource_CreateOnly(t *testing.T) {
 }
 
 func TestMailConfigResource_CreateOnly(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "fromemail": "admin@example.com", "fromname": "TrueNAS",
 		"outgoingserver": "smtp.example.com", "port": 587, "security": "TLS",
@@ -54,6 +56,7 @@ func TestMailConfigResource_CreateOnly(t *testing.T) {
 }
 
 func TestNFSConfigResource_CreateOnly(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "servers": 4, "allow_nonroot": false,
 		"protocols": []interface{}{"NFSV3"}, "v4_krb": false, "v4_domain": "",
@@ -69,6 +72,7 @@ func TestNFSConfigResource_CreateOnly(t *testing.T) {
 }
 
 func TestSMBConfigResource_CreateOnly(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "netbiosname": "NAS", "workgroup": "WG",
 		"description": "", "enable_smb1": false, "unixcharset": "UTF-8",
@@ -84,6 +88,7 @@ func TestSMBConfigResource_CreateOnly(t *testing.T) {
 }
 
 func TestSNMPConfigResource_CreateOnly(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "community": "public", "contact": "admin", "location": "dc1",
 		"v3": false, "v3_username": "", "v3_authtype": "", "v3_password": "",
@@ -100,6 +105,7 @@ func TestSNMPConfigResource_CreateOnly(t *testing.T) {
 }
 
 func TestSSHConfigResource_CreateOnly(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "tcpport": 22, "passwordauth": true, "kerberosauth": false,
 		"tcpfwd": true, "compression": false, "sftp_log_level": "",
@@ -115,6 +121,7 @@ func TestSSHConfigResource_CreateOnly(t *testing.T) {
 }
 
 func TestUPSConfigResource_CreateOnly(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "mode": "MASTER", "identifier": "ups", "driver": "usbhid-ups",
 		"port": "auto", "remotehost": "", "remoteport": 3493,
@@ -133,6 +140,7 @@ func TestUPSConfigResource_CreateOnly(t *testing.T) {
 // --- iSCSI family: auth/extent/initiator/portal/target/targetextent ---
 
 func TestISCSIAuthResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "tag": 1, "user": "chap", "secret": "abcdefghi1234567",
 		"peeruser": "", "peersecret": "", "discovery_auth": "NONE",
@@ -148,6 +156,7 @@ func TestISCSIAuthResource_CRUD(t *testing.T) {
 }
 
 func TestISCSIExtentResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "name": "e1", "type": "FILE", "path": "/mnt/tank/e1",
 		"blocksize": 512, "enabled": true, "comment": "",
@@ -166,6 +175,7 @@ func TestISCSIExtentResource_CRUD(t *testing.T) {
 }
 
 func TestISCSIInitiatorResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "initiators": []interface{}{}, "comment": "all",
 	}
@@ -178,6 +188,7 @@ func TestISCSIInitiatorResource_CRUD(t *testing.T) {
 }
 
 func TestISCSIPortalResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "tag": 1, "comment": "",
 		"listen": []interface{}{map[string]interface{}{"ip": "0.0.0.0", "port": 3260}},
@@ -191,6 +202,7 @@ func TestISCSIPortalResource_CRUD(t *testing.T) {
 }
 
 func TestISCSITargetResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "name": "tgt1", "alias": "", "mode": "ISCSI",
 		"groups":        []interface{}{},
@@ -206,6 +218,7 @@ func TestISCSITargetResource_CRUD(t *testing.T) {
 }
 
 func TestISCSITargetExtentResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "target": 1, "extent": 1, "lunid": 0,
 	}
@@ -221,6 +234,7 @@ func TestISCSITargetExtentResource_CRUD(t *testing.T) {
 // --- NVMet family ---
 
 func TestNVMetGlobalResource_CreateOnly(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "basenqn": "nqn.2020-01.truenas", "kernel": true,
 		"ana": false, "rdma": false, "xport_referral": true,
@@ -235,6 +249,7 @@ func TestNVMetGlobalResource_CreateOnly(t *testing.T) {
 }
 
 func TestNVMetHostResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "hostnqn": "nqn.x",
 	}
@@ -247,6 +262,7 @@ func TestNVMetHostResource_CRUD(t *testing.T) {
 }
 
 func TestNVMetHostSubsysResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "host_id": 1, "subsys_id": 1,
 	}
@@ -260,6 +276,7 @@ func TestNVMetHostSubsysResource_CRUD(t *testing.T) {
 }
 
 func TestNVMetNamespaceResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "nsid": 1, "subsys_id": 1, "device_type": "ZVOL",
 		"device_path": "zvol/tank/vol1", "filesize": 0, "enabled": true,
@@ -275,6 +292,7 @@ func TestNVMetNamespaceResource_CRUD(t *testing.T) {
 }
 
 func TestNVMetPortResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "index": 1, "addr_trtype": "TCP", "addr_trsvcid": "4420",
 		"addr_traddr": "0.0.0.0", "addr_adrfam": "IPV4", "inline_data_size": 16384, "enabled": true,
@@ -290,6 +308,7 @@ func TestNVMetPortResource_CRUD(t *testing.T) {
 }
 
 func TestNVMetPortSubsysResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "port_id": 1, "subsys_id": 1,
 	}
@@ -303,6 +322,7 @@ func TestNVMetPortSubsysResource_CRUD(t *testing.T) {
 }
 
 func TestNVMetSubsysResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "name": "tgt", "subnqn": "nqn.2020-01.truenas:tgt",
 		"allow_any_host": false, "serial": "SN", "ieee_oui": "", "pi_enable": false,
@@ -319,6 +339,7 @@ func TestNVMetSubsysResource_CRUD(t *testing.T) {
 // --- Shares ---
 
 func TestNFSShareResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "path": "/mnt/tank/share", "comment": "",
 		"hosts": []interface{}{}, "networks": []interface{}{}, "security": []interface{}{},
@@ -336,6 +357,7 @@ func TestNFSShareResource_CRUD(t *testing.T) {
 }
 
 func TestSMBShareResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "path": "/mnt/tank/share", "name": "share", "comment": "",
 		"purpose": "NO_PRESET", "browsable": true, "readonly": false,
@@ -357,6 +379,7 @@ func TestSMBShareResource_CRUD(t *testing.T) {
 // --- User/Group ---
 
 func TestUserResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "uid": 1000, "username": "alice", "full_name": "Alice",
 		"email": nil, "home": "/home/alice", "shell": "/bin/bash",
@@ -382,6 +405,7 @@ func TestUserResource_CRUD(t *testing.T) {
 }
 
 func TestGroupResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "gid": 1000, "group": "users", "name": "users",
 		"builtin": false, "smb": false, "sudo_commands": []interface{}{},

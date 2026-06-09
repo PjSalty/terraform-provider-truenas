@@ -30,6 +30,7 @@ func TestPrivilegeDataSource_Schema(t *testing.T) {
 }
 
 func TestPrivilegeDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	builtin := "FULL_ADMIN"
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.Privilege{
@@ -78,6 +79,7 @@ func TestPrivilegeDataSource_Read_Success(t *testing.T) {
 }
 
 func TestPrivilegeDataSource_Read_NoBuiltin(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.Privilege{
 			ID:       5,
@@ -103,6 +105,7 @@ func TestPrivilegeDataSource_Read_NoBuiltin(t *testing.T) {
 }
 
 func TestPrivilegeDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))

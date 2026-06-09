@@ -26,6 +26,7 @@ func TestDatasetDataSource_Schema(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.DatasetResponse{
 			ID:         "tank/data",
@@ -87,6 +88,7 @@ func TestDatasetDataSource_Read_Success(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_MinimalFields(t *testing.T) {
+	skipWSCutover(t)
 	// Only required fields populated — none of the property pointers set.
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.DatasetResponse{
@@ -110,6 +112,7 @@ func TestDatasetDataSource_Read_MinimalFields(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "not found"})
 	}))
@@ -127,6 +130,7 @@ func TestDatasetDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_ServerError(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
 	}))

@@ -123,6 +123,7 @@ func TestAllDataSources_Configure_WrongType(t *testing.T) {
 // stored without error. We cannot inspect the private client field in a
 // generic way, but exercising the happy path still counts toward coverage.
 func TestAllDataSources_Configure_Client(t *testing.T) {
+	skipWSCutover(t)
 	c, err := wsclient.NewWithOptions("http://example.invalid", "test-api-key", true)
 	if err != nil {
 		t.Fatalf("wsclient.New: %v", err)

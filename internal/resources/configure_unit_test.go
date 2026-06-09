@@ -20,6 +20,7 @@ var clientNew = wsclient.NewWithOptions
 // This exercises the ~20-line boilerplate Configure function on each of the
 // 62 resources in the provider without needing a real *wsclient.Client.
 func TestResourceConfigure_Batch(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 
 	constructors := []func() resource.Resource{

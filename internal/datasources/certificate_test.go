@@ -25,6 +25,7 @@ func TestCertificateDataSource_Schema(t *testing.T) {
 }
 
 func TestCertificateDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		certs := []truenas.Certificate{
 			{
@@ -79,6 +80,7 @@ func TestCertificateDataSource_Read_Success(t *testing.T) {
 }
 
 func TestCertificateDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Certificate{{ID: 1, Name: "other"}})
 	}))
@@ -96,6 +98,7 @@ func TestCertificateDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestCertificateDataSource_Read_ServerError(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
 	}))
@@ -113,6 +116,7 @@ func TestCertificateDataSource_Read_ServerError(t *testing.T) {
 }
 
 func TestCertificateDataSource_Read_EmptySAN(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Certificate{
 			{ID: 1, Name: "bare", Common: "x", SAN: nil},

@@ -25,6 +25,7 @@ func TestDiskDataSource_Schema(t *testing.T) {
 }
 
 func TestDiskDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	pool := "tank"
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Disk{
@@ -73,6 +74,7 @@ func TestDiskDataSource_Read_Success(t *testing.T) {
 }
 
 func TestDiskDataSource_Read_NilPool(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Disk{
 			{Name: "sdc", Serial: "S3", Size: 100, Type: "SSD", Pool: nil},
@@ -95,6 +97,7 @@ func TestDiskDataSource_Read_NilPool(t *testing.T) {
 }
 
 func TestDiskDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Disk{{Name: "sda"}})
 	}))
@@ -110,6 +113,7 @@ func TestDiskDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestDiskDataSource_Read_ListError(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
 	}))

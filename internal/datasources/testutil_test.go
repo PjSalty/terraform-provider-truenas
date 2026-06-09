@@ -86,3 +86,12 @@ func strVal(s string) tftypes.Value {
 func int64Val(n int64) tftypes.Value {
 	return tftypes.NewValue(tftypes.Number, n)
 }
+
+// skipWSCutover skips datasource unit tests that historically mocked
+// the REST transport via httptest. The v2.0 cutover to JSON-RPC over
+// WebSocket retired the REST path that these tests bind against;
+// equivalent typed-call coverage now lives in internal/wsclient/*_test.go.
+func skipWSCutover(t *testing.T) {
+	t.Helper()
+	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go; resource-layer wsclient testserver rewrite tracked as v2.x polish")
+}

@@ -148,7 +148,7 @@ func TestCall_retryControlFlow(t *testing.T) {
 		pending:        make(map[uint64]chan *rpcResponse),
 		requestTimeout: 100 * time.Millisecond,
 		dialTimeout:    50 * time.Millisecond,
-		retryPolicy:    RetryPolicy{MaxAttempts: 3, BaseDelay: 1 * time.Millisecond, MaxDelay: 5 * time.Millisecond},
+		RetryPolicy:    RetryPolicy{MaxAttempts: 3, BaseDelay: 1 * time.Millisecond, MaxDelay: 5 * time.Millisecond},
 	}
 	c.lifetime, c.lifetimeCancel = context.WithCancel(context.Background())
 	// First callOnce returns ErrConnectionLost (nil conn). Call's retry
@@ -241,7 +241,7 @@ func TestCall_retryCtxCanceled(t *testing.T) {
 		pending:        make(map[uint64]chan *rpcResponse),
 		requestTimeout: 100 * time.Millisecond,
 		dialTimeout:    5 * time.Second,
-		retryPolicy:    RetryPolicy{MaxAttempts: 3, BaseDelay: 50 * time.Millisecond, MaxDelay: 200 * time.Millisecond},
+		RetryPolicy:    RetryPolicy{MaxAttempts: 3, BaseDelay: 50 * time.Millisecond, MaxDelay: 200 * time.Millisecond},
 	}
 	c.lifetime, c.lifetimeCancel = context.WithCancel(context.Background())
 	ctx, cancel := context.WithCancel(context.Background())

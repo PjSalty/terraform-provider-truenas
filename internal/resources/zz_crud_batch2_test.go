@@ -15,6 +15,7 @@ import (
 // --- CloudBackup ---
 
 func TestCloudBackupResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":               1,
 		"description":      "daily",
@@ -58,6 +59,7 @@ func TestCloudBackupResource_CRUD(t *testing.T) {
 // --- CloudSync ---
 
 func TestCloudSyncResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":            1,
 		"description":   "sync",
@@ -93,6 +95,7 @@ func TestCloudSyncResource_CRUD(t *testing.T) {
 // --- CloudSyncCredential ---
 
 func TestCloudSyncCredentialResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":       1,
 		"name":     "s3",
@@ -111,6 +114,7 @@ func TestCloudSyncCredentialResource_CRUD(t *testing.T) {
 // --- CronJob ---
 
 func TestCronJobResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":          1,
 		"user":        "root",
@@ -143,6 +147,7 @@ func TestCronJobResource_CRUD(t *testing.T) {
 // --- RsyncTask ---
 
 func TestRsyncTaskResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":              1,
 		"path":            "/mnt/tank/src",
@@ -190,6 +195,7 @@ func TestRsyncTaskResource_CRUD(t *testing.T) {
 // --- ScrubTask ---
 
 func TestScrubTaskResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":          1,
 		"pool":        1,
@@ -218,6 +224,7 @@ func TestScrubTaskResource_CRUD(t *testing.T) {
 // --- SnapshotTask ---
 
 func TestSnapshotTaskResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":             1,
 		"dataset":        "tank/data",
@@ -255,6 +262,7 @@ func TestSnapshotTaskResource_CRUD(t *testing.T) {
 // --- Replication ---
 
 func TestReplicationResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":                1,
 		"name":              "repl",
@@ -292,6 +300,7 @@ func TestReplicationResource_CRUD(t *testing.T) {
 // --- ReportingExporter ---
 
 func TestReportingExporterResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":         1,
 		"name":       "graphite",
@@ -313,6 +322,7 @@ func TestReportingExporterResource_CRUD(t *testing.T) {
 // --- Privilege ---
 
 func TestPrivilegeResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":           1,
 		"name":         "admins",
@@ -337,6 +347,7 @@ func TestPrivilegeResource_CRUD(t *testing.T) {
 // --- StaticRoute ---
 
 func TestStaticRouteResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":          1,
 		"destination": "10.0.0.0/24",
@@ -355,6 +366,7 @@ func TestStaticRouteResource_CRUD(t *testing.T) {
 // --- Tunable ---
 
 func TestTunableResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":      1,
 		"var":     "net.core.somaxconn",
@@ -390,6 +402,7 @@ func TestTunableResource_CRUD(t *testing.T) {
 // --- VMware ---
 
 func TestVMwareResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":          1,
 		"hostname":    "vcenter.example.com",

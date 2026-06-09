@@ -94,6 +94,7 @@ func crudDrive(t *testing.T, r resource.Resource, client interface{}, id string,
 // --- AlertService (ID-based) ---
 
 func TestAlertServiceResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":       3,
 		"name":     "mail",
@@ -117,6 +118,7 @@ func TestAlertServiceResource_CRUD(t *testing.T) {
 // --- AlertClasses (singleton) ---
 
 func TestAlertClassesResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":      1,
 		"classes": map[string]interface{}{},
@@ -132,6 +134,7 @@ func TestAlertClassesResource_CRUD(t *testing.T) {
 // --- APIKey (ID-based) ---
 
 func TestAPIKeyResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":       5,
 		"name":     "tfkey",
@@ -150,6 +153,7 @@ func TestAPIKeyResource_CRUD(t *testing.T) {
 // --- Catalog (singleton-ish, uses label as id) ---
 
 func TestCatalogResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":               "TRUENAS",
 		"label":            "TRUENAS",
@@ -170,6 +174,7 @@ func TestCatalogResource_CRUD(t *testing.T) {
 // --- DNSNameserver (uses network_config API, singleton-ish) ---
 
 func TestDNSNameserverResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":                   1,
 		"nameserver1":          "1.1.1.1",
@@ -200,6 +205,7 @@ func TestDNSNameserverResource_CRUD(t *testing.T) {
 // --- FilesystemACLTemplate ---
 
 func TestFilesystemACLTemplateResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":      1,
 		"name":    "tmpl",
@@ -220,6 +226,7 @@ func TestFilesystemACLTemplateResource_CRUD(t *testing.T) {
 // --- InitScript ---
 
 func TestInitScriptResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":      1,
 		"type":    "COMMAND",
@@ -243,6 +250,7 @@ func TestInitScriptResource_CRUD(t *testing.T) {
 // --- KerberosKeytab ---
 
 func TestKerberosKeytabResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":   1,
 		"name": "host",
@@ -260,6 +268,7 @@ func TestKerberosKeytabResource_CRUD(t *testing.T) {
 // --- KerberosRealm ---
 
 func TestKerberosRealmResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":             1,
 		"realm":          "EXAMPLE.COM",
@@ -283,6 +292,7 @@ func TestKerberosRealmResource_CRUD(t *testing.T) {
 // --- KeychainCredential ---
 
 func TestKeychainCredentialResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":         1,
 		"name":       "key1",

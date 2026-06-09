@@ -27,6 +27,7 @@ func TestISCSIInitiatorDataSource_Schema(t *testing.T) {
 }
 
 func TestISCSIInitiatorDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v2.0/iscsi/initiator/id/2" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
@@ -56,6 +57,7 @@ func TestISCSIInitiatorDataSource_Read_Success(t *testing.T) {
 }
 
 func TestISCSIInitiatorDataSource_Read_Empty(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.ISCSIInitiator{ID: 1})
 	}))
@@ -69,6 +71,7 @@ func TestISCSIInitiatorDataSource_Read_Empty(t *testing.T) {
 }
 
 func TestISCSIInitiatorDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))

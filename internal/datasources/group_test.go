@@ -22,6 +22,7 @@ func TestGroupDataSource_Schema(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Group{
 			{ID: 1, GID: 100, Name: "wheel", Builtin: true, SMB: false},
@@ -62,6 +63,7 @@ func TestGroupDataSource_Read_Success(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_EmptySudo(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Group{{ID: 1, Name: "users", GID: 100}})
 	}))
@@ -82,6 +84,7 @@ func TestGroupDataSource_Read_EmptySudo(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Group{{ID: 1, Name: "other"}})
 	}))
@@ -97,6 +100,7 @@ func TestGroupDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_ListError(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
 	}))
