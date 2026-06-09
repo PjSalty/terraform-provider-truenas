@@ -127,25 +127,49 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
     [github.com/PjSalty/terraform-provider-truenas/internal/fwresource]=80
   )
 
+  # Aggregate per-package coverage from coverage.out (a real run's
+  # data, not -count=0 dry-run output which reports 0% across the
+  # board). For each tracked package, sum the covered vs total
+  # statements across its .go files.
   fail=0
-  while IFS= read -r line; do
-    pkg=$(awk '{print $2}' <<<"$line")
-    cov=$(awk '{print $5}' <<<"$line" | tr -d '%')
-    cov_int=${cov%.*}
+  declare -A PKG_COV
+  while IFS= read -r row; do
+    # coverage.out file paths are ALREADY the full module-qualified
+    # package path (github.com/PjSalty/.../internal/types/foo.go)
+    # so dirname alone yields the canonical package key.
+    pkg=$(awk -F: '{print $1}' <<<"$row" | xargs dirname)
+    # coverage.out lines: <file>:<startLine>.<col>,<endLine>.<col> <numStmts> <covered>
+    stmts=$(awk '{print $2}' <<<"$row")
+    covered=$(awk '{print $3}' <<<"$row")
+    if [ -z "${PKG_COV[$pkg]:-}" ]; then
+      PKG_COV[$pkg]="0 0"
+    fi
+    s=$(awk '{print $1}' <<<"${PKG_COV[$pkg]}")
+    c=$(awk '{print $2}' <<<"${PKG_COV[$pkg]}")
+    s=$((s + stmts))
+    if [ "$covered" -gt 0 ]; then c=$((c + stmts)); fi
+    PKG_COV[$pkg]="$s $c"
+  done < <(tail -n +2 coverage.out)
+
+  for pkg in "${!PKG_COV[@]}"; do
+    s=$(awk '{print $1}' <<<"${PKG_COV[$pkg]}")
+    c=$(awk '{print $2}' <<<"${PKG_COV[$pkg]}")
+    if [ "$s" -eq 0 ]; then continue; fi
+    cov_int=$((c * 100 / s))
     if [ -n "${TIER1[$pkg]:-}" ]; then
       floor=${TIER1[$pkg]}
       if [ "$cov_int" -lt "$floor" ]; then
-        acc_info "  TIER1 $pkg: ${cov}% < ${floor}% floor"
+        acc_info "  TIER1 $pkg: ${cov_int}% < ${floor}% floor"
         fail=$((fail + 1))
       fi
     elif [ -n "${TIER2_FLOOR[$pkg]:-}" ]; then
       floor=${TIER2_FLOOR[$pkg]}
       if [ "$cov_int" -lt "$floor" ]; then
-        acc_info "  TIER2 $pkg: ${cov}% < ${floor}% floor"
+        acc_info "  TIER2 $pkg: ${cov_int}% < ${floor}% floor"
         fail=$((fail + 1))
       fi
     fi
-  done < <(go test -count=0 -cover ./... 2>&1 | grep -E "^ok\s+github\.com.*\s+[0-9]+\.[0-9]+%\s+of\s+statements")
+  done
 
   if [ "$fail" -gt 0 ]; then
     acc_die "${fail} package(s) below their coverage floor"
