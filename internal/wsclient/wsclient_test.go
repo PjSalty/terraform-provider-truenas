@@ -68,7 +68,7 @@ func TestSetRequestTimeout(t *testing.T) {
 }
 
 func TestSetRetryPolicy(t *testing.T) {
-	c := &Client{RetryPolicy:        DefaultRetryPolicy()}
+	c := &Client{RetryPolicy: DefaultRetryPolicy()}
 	c.SetRetryPolicy(RetryPolicy{MaxAttempts: 3, BaseDelay: time.Second, MaxDelay: 5 * time.Second})
 	if c.RetryPolicy.MaxAttempts != 3 || c.RetryPolicy.BaseDelay != time.Second || c.RetryPolicy.MaxDelay != 5*time.Second {
 		t.Errorf("SetRetryPolicy: got %+v", c.RetryPolicy)

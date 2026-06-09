@@ -21,8 +21,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (

@@ -21,11 +21,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
-	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planmodifiers"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (

@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"github.com/PjSalty/terraform-provider-truenas/internal/provider"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	tfproviderserver "github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"

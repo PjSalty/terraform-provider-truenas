@@ -21,10 +21,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
-	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	tnvalidators "github.com/PjSalty/terraform-provider-truenas/internal/validators"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (

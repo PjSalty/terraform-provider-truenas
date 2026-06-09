@@ -19,9 +19,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
-	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
