@@ -5,8 +5,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"github.com/PjSalty/terraform-provider-truenas/internal/fwresource"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestConfigureClient_Nil(t *testing.T) {
