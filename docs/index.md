@@ -2,7 +2,7 @@
 page_title: "Provider: TrueNAS"
 description: |-
   The TrueNAS provider is used to manage storage, network, and virtualization
-  resources on a TrueNAS SCALE system through its REST API v2.0.
+  resources on a TrueNAS SCALE system through its JSON-RPC 2.0 API over WebSocket.
 ---
 
 # TrueNAS Provider
