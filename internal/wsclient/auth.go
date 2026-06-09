@@ -5,9 +5,27 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"strings"
 	"time"
 )
+
+// authJitterDelay returns a uniformly-jittered backoff in the range
+// [base, base*3) capped at max. Used by authenticate() to spread
+// concurrent retries off the rate-limit window when multiple acc
+// tests dial the same TrueNAS simultaneously.
+func authJitterDelay(base, max time.Duration) time.Duration {
+	if base <= 0 {
+		return 0
+	}
+	// rand.Float64 ∈ [0, 1); scale into [1, 3) so the jittered delay
+	// straddles `base` rather than just adding a fraction on top.
+	d := time.Duration(float64(base) * (1 + rand.Float64()*2)) //nolint:gosec // jitter doesn't need crypto rand
+	if d > max {
+		return max
+	}
+	return d
+}
 
 // authenticate performs the post-dial JSON-RPC handshake that turns an
 // anonymous WebSocket into an authenticated session. TrueNAS exposes
@@ -20,16 +38,23 @@ import (
 // classified as mutating for the read-only gate's purposes — a read-
 // only client still needs to authenticate before it can read.
 func (c *Client) authenticate(ctx context.Context) error {
-	// TrueNAS' authentication middleware throttles concurrent or
-	// rapid-fire auth calls; the acceptance suite hammers the
-	// endpoint hundreds of times in a single run as each per-test
-	// provider.Configure() rebuilds a fresh client. The server
-	// surfaces this as [EBUSY] Rate Limit Exceeded under
-	// CodeMethodCallError. Back off exponentially up to 8 attempts
-	// — the rate limit window is short and almost always clears
-	// within a few seconds.
-	const maxAttempts = 8
-	delay := 250 * time.Millisecond
+	// TrueNAS' authentication middleware throttles rapid-fire auth
+	// calls; the acceptance suite hammers the endpoint as each
+	// per-test provider.Configure() rebuilds a fresh client. The
+	// server surfaces this as [EBUSY] Rate Limit Exceeded under
+	// CodeMethodCallError. Back off with capped exponential delay
+	// plus per-attempt jitter so when N concurrent acc tests hit
+	// the gate simultaneously they don't redial in lockstep.
+	//
+	// The 12-attempt budget + 6s ceiling gives ~30s of total wait
+	// under worst-case retry, which is comfortably under the
+	// Configure ctx deadline (5 min default) and the framework's
+	// per-step deadline.
+	const (
+		maxAttempts = 12
+		maxDelay    = 6 * time.Second
+	)
+	delay := 200 * time.Millisecond
 	var result json.RawMessage
 	var err error
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
@@ -43,14 +68,19 @@ func (c *Client) authenticate(ctx context.Context) error {
 		if !isAuthRateLimited(err) || attempt == maxAttempts {
 			break
 		}
+		// Decorrelated jitter: pick a delay uniformly from
+		// [base, base * 3) capped at maxDelay. Spreads concurrent
+		// retries so the next round doesn't pile back into the
+		// rate limit window in lockstep.
+		jittered := authJitterDelay(delay, maxDelay)
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("authenticate: %w (last error: %v)", ctx.Err(), err)
-		case <-time.After(delay):
+		case <-time.After(jittered):
 		}
 		delay *= 2
-		if delay > 4*time.Second {
-			delay = 4 * time.Second
+		if delay > maxDelay {
+			delay = maxDelay
 		}
 	}
 	if err != nil {
