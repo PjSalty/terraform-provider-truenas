@@ -67,10 +67,18 @@ func TestSetFilesystemACL(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	ts := NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *RPCError) {
-		if method != "filesystem.setacl" {
-			return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
+		switch method {
+		case "filesystem.setacl":
+			return int64(77), nil // job ID
+		case "core.get_jobs":
+			return []interface{}{map[string]interface{}{
+				"id":     int64(77),
+				"state":  "SUCCESS",
+				"result": nil,
+				"error":  "",
+			}}, nil
 		}
-		return true, nil
+		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
 	err := c.SetFilesystemACL(ctx, &types.SetACLRequest{
