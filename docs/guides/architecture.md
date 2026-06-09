@@ -39,7 +39,8 @@ REST client to mutate TrueNAS, and writes results back into state.
 
 ```
 internal/
-├── client/          TrueNAS REST client, per-domain file per API family
+├── wsclient/        TrueNAS JSON-RPC 2.0 WebSocket client, per-domain
+├── types/           Shared request/response struct definitions
 ├── datasources/     Terraform data sources (read-only)
 ├── resources/       Terraform resources (full CRUD + ImportState)
 ├── provider/        Provider registration and acceptance tests
@@ -48,29 +49,47 @@ internal/
 ├── flex/            Framework <-> Go type conversion helpers
 ├── fwresource/      Framework resource base helpers (Configure boilerplate)
 ├── acctest/         Shared acceptance test helpers
+├── recordreplay/    HTTP record/replay proxy for live-API-free CI
 └── sweep/           Acceptance test sweeper infrastructure
 ```
 
-### `internal/client`
+### `internal/wsclient`
 
-Implements the TrueNAS REST API as a typed Go client. One file per API
-domain (`dataset.go`, `share_nfs.go`, `iscsi_target.go`, etc.) — this keeps
-diffs small and matches the layout of `internal/resources`.
+Implements the TrueNAS JSON-RPC 2.0 API over a persistent WebSocket
+connection at `/api/current`. One file per API domain (`dataset.go`,
+`share_nfs.go`, `iscsi_target.go`, etc.) so diffs stay small and the
+layout mirrors `internal/resources`. v2.0 ships WebSocket as the
+*only* transport — the v1.x REST client was deleted as part of the
+cutover.
 
 Key types:
 
-- `Client` — holds base URL, API key, HTTP client, and retry policy.
-- `APIError` — wraps a non-2xx response, including status code, body, and
-  parsed error message. Use `errors.As(err, &apiErr)` to access fields.
-- `IsNotFound(err)` — returns true for HTTP 404 *or* TrueNAS's "422 does not
-  exist" responses (the API isn't consistent about which it returns). Every
-  resource Delete handler uses this to make `terraform destroy` idempotent.
+- `Client` — holds the base URL, API key, persistent WebSocket
+  connection, pending-call multiplexer, RetryPolicy, and the
+  ReadOnly + DestroyProtection safety rails.
+- `RPCError` — wraps a JSON-RPC 2.0 error frame. Use
+  `errors.As(err, &rpcErr)` to access `.Code`, `.Message`, and
+  `.Data`.
+- `IsNotFound(err)` — returns true for the three error shapes
+  TrueNAS uses to signal "this id doesn't exist":
+  `CodeMethodNotFound`, `CodeMethodCallError` with `errname=ENOENT`,
+  and `CodeInvalidParams` with `[ENOENT]` in the message body. Every
+  resource Delete handler uses this to make `terraform destroy`
+  idempotent across the surfaces.
 
-The client retries idempotent methods (GET / PUT / DELETE / HEAD) on
-transient failures (429 / 5xx / transport errors) with exponential backoff
-and `Retry-After` honoring. POST is not retried on HTTP errors — only on
-transport errors where we know the request body never reached the server —
-to avoid duplicate creates.
+The client retries calls flagged `Idempotent: true` on connection
+loss with exponential backoff. The `authenticate` path retries on
+TrueNAS' `[EBUSY] Rate Limit Exceeded` with decorrelated jitter so
+concurrent acc tests don't pile back into the rate-limit window in
+lockstep. Mutating calls are never retried automatically — the
+caller decides whether replay is safe.
+
+### `internal/types`
+
+Shared struct definitions for every request/response shape on the
+WebSocket surface. Resource code imports these as `truenas.X`
+(aliased) to avoid the namespace collision with the
+plugin-framework's `types` package.
 
 ### `internal/resources`
 
