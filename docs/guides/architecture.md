@@ -16,24 +16,23 @@ and read [Getting Started](getting-started.md) instead.
 
 ```
 ┌────────────────┐      ┌────────────────┐      ┌──────────────────┐
-│   Terraform    │ ───▶ │     Provider   │ ───▶ │   REST client    │
-│      core      │      │  (framework)   │      │   (httptest in   │
-│                │ ◀─── │                │ ◀─── │   tests, real    │
-└────────────────┘      └────────────────┘      │   in production) │
-                                                └──────────────────┘
+│   Terraform    │ ───▶ │     Provider   │ ───▶ │   wsclient       │
+│      core      │      │  (framework)   │      │  (WebSocket      │
+│                │ ◀─── │                │ ◀─── │   JSON-RPC 2.0)  │
+└────────────────┘      └────────────────┘      └──────────────────┘
                                                           │
                                                           ▼
                                                 ┌──────────────────┐
                                                 │  TrueNAS SCALE   │
-                                                │  REST /api/v2.0  │
+                                                │  WS /api/current │
                                                 └──────────────────┘
 ```
 
 Terraform core dispatches resource operations (`Create` / `Read` / `Update`
 / `Delete` / `ImportState`) into the provider binary via gRPC. The provider
 binary is a thin shim over the terraform-plugin-framework runtime. Each
-resource implementation decodes plan / state / config values, calls the
-REST client to mutate TrueNAS, and writes results back into state.
+resource implementation decodes plan / state / config values, calls
+wsclient to mutate TrueNAS, and writes results back into state.
 
 ## Package layout
 
@@ -135,7 +134,7 @@ User HCL        Plan            Config          State
           │                 │            │
           ▼                 ▼            ▼
     Schema validators   ModifyPlan   CRUD handlers
-    (per-attribute)     (cross-attr) (client calls)
+    (per-attribute)     (cross-attr) (wsclient calls)
 ```
 
 1. Terraform core decodes the user's HCL into a raw plan value.
@@ -144,7 +143,7 @@ User HCL        Plan            Config          State
 3. Resources implementing `ModifyPlan` get a chance to add cross-attribute
    diagnostics before apply.
 4. On apply, Terraform calls the appropriate CRUD method. The handler
-   decodes plan/state/config, calls the REST client, and writes results
+   decodes plan/state/config, calls the wsclient typed method, and writes results
    back into state.
 
 ## Error handling
@@ -157,17 +156,21 @@ All provider errors surface as Terraform diagnostics. The convention:
   This is how Terraform discovers out-of-band deletion and plans a recreate.
 - **404 on Delete** → silently return success. Idempotent destroy.
 
-The client's `IsNotFound(err)` wraps `errors.As` for `*APIError` and checks
-both HTTP 404 and TrueNAS's 422 "does not exist" responses.
+The client's `IsNotFound(err)` wraps `errors.As` for `*RPCError` and checks
+the three "does not exist" surfaces TrueNAS emits over JSON-RPC:
+`CodeMethodNotFound`, `CodeMethodCallError` with `errname=ENOENT`,
+and `CodeInvalidParams` with `[ENOENT]` in the message body.
 
 ## Retry and backoff
 
-Client-level retries are handled in `client.doRequest`:
+Client-level retries are handled in `wsclient.Call`:
 
-- Idempotent HTTP methods retry on 429/500/502/503/504 and transport errors.
-- POST retries only on transport errors that the server never saw.
-- 429/503 responses honor `Retry-After` (either seconds or HTTP-date).
-- Backoff is exponential with up to 25% jitter, capped at `policy.MaxDelay`.
+- Calls flagged `Idempotent: true` retry on `ErrConnectionLost` after a
+  reconnect+re-authenticate.
+- Mutating calls (the default) never retry automatically — the caller
+  decides whether replay is safe.
+- The `authenticate` handshake retries on TrueNAS' `[EBUSY] Rate Limit
+  Exceeded` with decorrelated jitter (up to 12 attempts, 200ms → 6s).
 - Context cancellation aborts the retry loop immediately.
 
 Resource-level retries are handled by `timeouts.Block` — long-running
@@ -187,7 +190,7 @@ schema tests. Lint policy: any attribute named `password`, `secret`,
 
 | Layer | Harness | What it verifies |
 |-------|---------|------------------|
-| Unit | `net/http/httptest` | REST client + resource CRUD handlers against mocked responses |
+| Unit | `internal/wsclient/testserver.go` | wsclient typed methods + low-level pure functions (validators, planmodifiers, etc.) |
 | Fuzz | Go native fuzzing | Parser/validator/serializer never panic |
 | Benchmark | `go test -bench` | Hot-path performance (map-to-model, client round-trip) |
 | Acceptance | Real TrueNAS VM | End-to-end CRUD + import + drift detection against SCALE |
