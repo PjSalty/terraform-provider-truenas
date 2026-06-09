@@ -19,7 +19,7 @@ This guide covers everything you need to know about moving from the v1.x release
 
 TrueNAS SCALE 25.04 introduced JSON-RPC 2.0 over WebSocket at `/api/current` and surfaced a "deprecated REST API was used" alert on every call against the legacy `/api/v2.0` endpoints. iX has scheduled REST removal for SCALE 26.04. Continuing on the REST default would mean the provider stops working the day a homelab box upgrades to 26.04.
 
-v2.0 swaps the default to WebSocket. The implementation has been in tree since v1.10.x as `transport = "websocket"`; v2.0 only flips the default — every resource and data source has been on the dual-transport path for at least a release.
+v2.0 cuts over to WebSocket exclusively. The wsclient implementation was in tree since v1.10.x as opt-in alpha; v2.0 promotes it to the only transport and removes the REST client entirely. Every resource and data source has been on the WebSocket-validated path for at least a release.
 
 ## What changed
 
@@ -73,62 +73,55 @@ If you see any resource diff that doesn't match a real intent change, see "Rollb
 
 ## Rollback
 
-If something goes wrong after the upgrade — unexpected diffs, dial errors, or any other regression — fall back to REST instantly without touching state:
+If something goes wrong after the upgrade — unexpected diffs, dial errors, or any other regression — pin to the v1.x line:
 
 ```hcl
-provider "truenas" {
-  url     = "..."
-  api_key = "..."
-
-  # Pin to the v1.x transport to bypass any v2.0 behavior.
-  transport = "rest"
+terraform {
+  required_providers {
+    truenas = {
+      source  = "PjSalty/truenas"
+      version = "~> 1.10"
+    }
+  }
 }
 ```
 
-Or via environment:
-
-```sh
-export TRUENAS_TRANSPORT=rest
-```
-
-Either approach selects the REST client, which is the same code path as v1.10.x. Then re-run `terraform plan`. If that produces a clean plan, the issue is WebSocket-specific and worth filing as an issue with the offending resource type and `terraform plan` output.
-
-The REST option is supported through the entire v2.x line; v2.1 is the first release that drops it.
+Then `terraform init -upgrade`. The v1.x provider continues to support SCALE 24.04 over REST. If you can reproduce the issue against the v2.0 line, file it with the resource type and `terraform plan` output; v2.0 is the supported line going forward and the failure mode is fixable.
 
 ## Behavioral parity
 
-Every resource and data source has been verified to produce the same `terraform plan` output under both transports against the test VM. The schemas, IDs, and import paths are identical. If you find a case where REST and WebSocket disagree on a resource shape, that's a bug — please file an issue.
+Every resource and data source produces the same `terraform plan` output as v1.x against the test VM — IDs, attributes, validators, plan modifiers, and import paths are identical. If you find a case where v2.0 disagrees with v1.10.2 on a resource shape, that's a bug.
 
-Two areas where the transports differ in *implementation* but not user-visible behavior:
+Two areas where the wire shape differs from v1.x but the observable user behavior is identical:
 
-1. **Long-running operations** (pool create/export, certificate create/update/delete, app install/upgrade/uninstall, system_dataset move): both transports poll `core.get_jobs` until terminal state. The WebSocket implementation lets the connection survive multiple jobs without re-handshaking, so a long apply with many resources is somewhat faster, but each individual operation has identical observable semantics.
+1. **Long-running operations** (pool create/export, certificate create/update/delete, app install/upgrade/uninstall, system_dataset move): wsclient polls `core.get_jobs` until terminal state. The persistent WebSocket connection survives many job polls without re-handshaking, so a long apply with many resources is somewhat faster than v1.x.
 
-2. **`*ByName` lookups** (e.g. `GetCertificateByName`, `GetServiceByName`): the REST client lists all entries and filters client-side. The WebSocket client uses server-side filtering on the `*.query` method, which is faster on hosts with many entries but produces identical results.
+2. **`*ByName` lookups** (e.g. `GetCertificateByName`, `GetServiceByName`): wsclient uses server-side filtering on the `*.query` method. v1.x's REST client listed all entries and filtered client-side. The results are identical; v2.0 is faster on hosts with many entries.
 
 ## Concurrency and rate-limit behavior
 
 WebSocket multiplexes many in-flight calls over a single connection. The provider gates outgoing calls with a semaphore sized from the server's reported rate limit on connect, so `terraform apply -parallelism=N` continues to work without hitting `-32000 too many concurrent calls`.
 
-The REST client's per-request HTTP retry envelope (jittered backoff on 5xx and `Retry-After`) carries forward into the WebSocket client's reconnect logic. If the server restarts mid-apply, idempotent in-flight calls (reads, PUT-style updates) retry transparently after reconnect; non-idempotent calls (creates, deletes) error fast with the connection-lost context so the operator can rerun.
+The wsclient's reconnect logic transparently retries idempotent in-flight calls (reads, PUT-style updates) after a connection drop. Non-idempotent calls (creates, deletes) error fast with the connection-lost context so the operator can rerun. Auth-handshake throttling (TrueNAS surfaces this as `[EBUSY] Rate Limit Exceeded`) is retried with decorrelated jitter so concurrent terraform runs don't pile back into the same rate-limit window.
 
 ## What does NOT change
 
-- **Provider attributes**: `url`, `api_key`, `insecure_skip_verify`, `read_only`, `destroy_protection`, `request_timeout`, `transport` — all unchanged.
+- **Provider attributes**: `url`, `api_key`, `insecure_skip_verify`, `read_only`, `destroy_protection`, `request_timeout` — all unchanged.
 - **Resource and data source schemas**: every one of the 63 resources and their data sources keeps the same attributes, types, validators, plan modifiers, and import paths.
 - **State file format**: existing state files load directly into v2.0. No `terraform state` migration is required.
-- **Acceptance test coverage**: 100% line coverage gate held throughout the migration; the same test suite covers both transports.
+- **Acceptance test coverage**: the v2.0 acc suite runs the full resource matrix against live TrueNAS 25.10 over WebSocket. Tiered coverage gates protect the low-level packages at 100%.
 
 ## Stability guarantees (v2.x)
 
-Same shape as v1.x: schema-stable across the major version, breaking changes gated behind v3.0. The transport-default flip in v2.0 was *not* a schema break — schemas are byte-identical with v1.10.2.
+Same shape as v1.x: schema-stable across the major version, breaking changes gated behind v3.0. The transport cutover in v2.0 was *not* a schema break — schemas are byte-identical with v1.10.2.
 
-The only v2.x → v2.x change scheduled today is the v2.1 deletion of the `transport = "rest"` rollback path. That is documented as a deprecation in the v2.0 schema description; if you need REST past v2.x, pin to `~> 2.0` rather than `~> 2`.
+No further v2.x → v2.x breaking changes are scheduled. The acc suite gates the schema contract.
 
 ## Reporting issues
 
 If the upgrade surfaces anything unexpected:
 
-1. Set `transport = "rest"` to confirm the REST path still works for your config. If it does, the issue is WebSocket-specific.
-2. File an issue at https://github.com/PjSalty/terraform-provider-truenas/issues with the resource type, the unexpected diff or error, and the result of step 1.
+1. Pin to `~> 1.10` (see [Rollback](#rollback) above) to confirm the issue reproduces only against v2.0.
+2. File an issue at https://github.com/PjSalty/terraform-provider-truenas/issues with the resource type, the unexpected diff or error, and the v1.x vs v2.0 comparison.
 
 The original WebSocket migration request is [issue #8](https://github.com/PjSalty/terraform-provider-truenas/issues/8) for context on the cutover.
