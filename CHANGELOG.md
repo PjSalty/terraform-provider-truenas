@@ -47,26 +47,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Default transport flipped to WebSocket (Phase 4 cutover, prep for v2.0)** —
-  provider now defaults to JSON-RPC 2.0 over WebSocket at `/api/current`.
-  The legacy REST API at `/api/v2.0` remains available by setting
-  `transport = "rest"` in the provider block or `TRUENAS_TRANSPORT=rest`
-  in the environment, but is deprecated and will be removed in v2.1.
-  Existing Terraform configurations and state are unchanged — every
-  resource and data source supports both transports identically.
+- **WebSocket transport package (`internal/wsclient/`) shipped but
+  not yet wired into resource I/O paths.** v2.0 includes the full
+  JSON-RPC 2.0 over WebSocket client — call surface, reconnect/replay
+  chaos coverage, error matrix, redaction parity with the REST path
+  — but `provider.Configure()` currently still instantiates only the
+  REST `*client.Client`. Every resource and data source continues to
+  flow over REST against `/api/v2.0`.
 
-  This change addresses issue #8: TrueNAS SCALE 25.04+ surfaces a
-  "deprecated REST API was used" alert on every REST call. Switching
-  the default transport silences that alert for new users without
-  requiring action.
+  Why ship the package without wiring it: v2.0's resource surface
+  doesn't need to change shape to swap transports later. The
+  wsclient package validates against issue #8 (REST deprecation
+  alerts on SCALE 25.04+) and enables a downstream operator to
+  build against either transport. The actual provider-level cutover
+  is tracked as v2.1 scope so v2.0 ships the test surface + the
+  bug fixes without bundling a transport switch into the same
+  release.
 
-  **TrueNAS version requirement:** WebSocket transport requires
-  TrueNAS SCALE 25.04 or newer. Operators running 24.10 or older must
-  pin `transport = "rest"` until they upgrade, or stay on v1.x.
-
-  **Rollback:** if you encounter regressions, set
-  `transport = "rest"` (or `TRUENAS_TRANSPORT=rest`) and re-run
-  apply. REST-path code is unchanged from v1.10.x.
+  **Operator impact:** none. v2.0 behaviour vs v1.x is identical
+  on the wire. SCALE 25.10 keeps REST available; SCALE 25.04+
+  surfaces a "deprecated REST API was used" alert that operators
+  see today and will continue to see until the v2.1 transport
+  cutover.
 
 ### Fixed
 
@@ -346,6 +348,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The plan-shape assertion is what catches the regression at plan
   time. **50/50 non-excluded** acc tests now carry the check; 6
   documented exclusions cover the legitimate edge cases.
+
+### Added (continued — post-rc.2 push)
+
+- **Active Directory full-lifecycle acceptance test** —
+  `TestAccDirectoryServices_fullADLifecycle` in
+  `internal/resources/directoryservices_test.go` exercises the
+  complete kerberos_realm + directoryservices join + leave cycle
+  against a live AD DC. Env-gated by `TRUENAS_TEST_AD=1` +
+  `TRUENAS_TEST_AD_DC` / `_REALM` / `_ADMIN_PRINCIPAL`. Runs
+  against a throwaway Samba AD-DC container.
+
+- **Record/replay HTTP proxy** (`internal/recordreplay/`) for
+  live-API-free CI. Recorder mode captures every request/response
+  pair to disk indexed by a stable hash; Replayer mode serves
+  fixtures back. Lets the acc suite run against a recorded corpus
+  instead of a live test TrueNAS. JSON fixture format is portable
+  and reviewable — wire-shape regressions show up as diffs.
+
+- **HTTP path chaos suite** (`internal/client/chaos_full_test.go`)
+  with 5 e2e scenarios the existing wsclient reconnect/replay
+  coverage didn't reach for REST: mid-call TCP RST, TLS cert
+  rotation, random 30% connection drops over 20 iterations, slow
+  drip body deadline enforcement, repeated reconnect cycles.
+
+- **Scale benchmarks** (`internal/client/scale_bench_test.go`)
+  for 1k / 10k / 100k record JSON Unmarshal performance + a
+  100 MB heap-delta ceiling test for the 10k path. Regressions
+  in the parse pipeline (e.g. an O(n²) walker introduced by a
+  future redactor change) surface as benchmark time delta.
+
+- **Multi-version compat runner** —
+  `scripts/acc-matrix.sh` discovers `.envrc.local-<version>`
+  files and runs the acc suite against each in turn. Per-version
+  templates (`.envrc.local-25-04.template`,
+  `.envrc.local-26-beta.template`) document the credential
+  bootstrap flow.
+
+- **Provider-side fix: directoryservices Read preserves planned
+  values on API silent-revert.** TrueNAS' directoryservices.update
+  can silently revert kerberos_realm / enable / timeout /
+  service_type fields if a join attempt doesn't take. The
+  framework treats that as "inconsistent result after apply" and
+  aborts. The Read mapping now keeps the operator's planned value
+  when the API response disagrees AND the model already carries
+  a deliberate non-zero value. Next plan refresh surfaces real
+  drift correctly; the spurious join-failed inconsistency no
+  longer aborts apply.
+
+- **3 new static invariants** in the provider gate set:
+  - `TestCRUDDiscipline_ReadAlwaysWritesState` — every Read must
+    call resp.State.Set OR RemoveResource
+  - `TestCRUDDiscipline_CreateReadsBackResource` — every Create
+    must call resp.State.Set
+  - `TestCRUDDiscipline_DeleteHandlesNotFound` — every Delete
+    must tolerate the resource already being gone (singletons
+    exempted with rationale)
+  - `TestDiagnosticFormat_AddErrorSummaries` — every AddError /
+    AddAttributeError summary matches one of the canonical
+    shapes (Invalid X / Error Verbing X / Could not verb X /
+    Unable to verb X / Conflicting / Incomplete / X must Y /
+    Configuring X / Missing/Unexpected/Unsupported)
+
+  Provider invariant set now at 17 static gates.
+
+- **Mutation testing harness** (`make mutation`) wires
+  go-mutesting against high-leverage packages. Baselines pinned
+  in the Makefile target comment. Tooling has a sandboxing bug
+  where manually-applied mutants kill tests but go-mutesting
+  reports PASS — scores are nominal indicators, not gates.
+
+### Security (continued)
+
+- **History scrub of repo-internal hostnames** — the v2.0 history
+  before this push contained references to a specific test/prod
+  hostname pair used during development. Filter-repo'd out across
+  every commit message + every file. Zero matches in
+  `git log --all -p` for the scrubbed patterns. Force-pushed to
+  both `origin` and `github` remotes. Authorship metadata on the
+  community PR #12 cherry-pick preserved.
+
+### Notes
+
+- v2.0.0-rc.2 tagged at the cleaned-history HEAD. 7-day soak window
+  runs to 2026-06-15 16:35 CDT minimum. Multi-version validation
+  (25.04 REST fallback + 26-BETA forward compat) is queued to run
+  inside the soak window once the test VMs are installed.
 
 ## [1.10.2] - 2026-04-25
 
