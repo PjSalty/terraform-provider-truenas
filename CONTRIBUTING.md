@@ -109,7 +109,7 @@ any live infrastructure and are the fastest feedback loop:
 ```sh
 make test                          # all unit tests with race detector
 go test -cover ./internal/...      # with coverage
-go test -run TestCreateDataset ./internal/client/  # single test
+go test -run TestCreateDataset ./internal/wsclient/  # single test
 ```
 
 **Coverage requirement**: **100.0%** on every package. CI enforces this as a
@@ -149,7 +149,7 @@ can't delete a singleton).
 Fuzz targets live next to unit tests. Short smoke run:
 
 ```sh
-go test -run='^$' -fuzz='^FuzzParseRetryAfter$' -fuzztime=30s ./internal/client/
+go test -run='^$' -fuzz='^FuzzParseRetryAfter$' -fuzztime=30s  ./internal/wsclient/
 ```
 
 Long campaign (local only, until ctrl-c):
@@ -177,7 +177,7 @@ go run ./cmd/skaff resource my_new_thing
 go run ./cmd/skaff datasource my_new_thing
 ```
 
-This creates skeleton files under `internal/resources/`, `internal/client/`,
+This creates skeleton files under `internal/resources/`, `internal/wsclient/`,
 `docs/resources/`, and `examples/resources/truenas_my_new_thing/`. Fill in
 the schema, CRUD handlers, and client methods, then follow the manual
 checklist below.
@@ -186,9 +186,9 @@ checklist below.
 
 1. **Check the TrueNAS SCALE API reference** for the endpoint:
    <https://www.truenas.com/docs/scale/scaleapireference/>
-2. **Add client methods** in `internal/client/<name>.go`:
+2. **Add client methods** in `internal/wsclient/<name>.go`:
    - `Get<Name>(ctx, id)`, `Create<Name>(ctx, req)`, `Update<Name>(ctx, id, req)`, `Delete<Name>(ctx, id)`
-   - Unit tests in `internal/client/<name>_test.go` covering 200/404/500/invalid-JSON paths.
+   - Unit tests in `internal/wsclient/<name>_test.go` covering 200/404/500/invalid-JSON paths.
 3. **Add the resource** in `internal/resources/<name>.go`:
    - Implement `resource.Resource`, `resource.ResourceWithImportState`, and
      optionally `resource.ResourceWithModifyPlan` for cross-attribute validation.

@@ -13,9 +13,7 @@ This guide covers everything you need to know about moving from the v1.x release
 
 - **The default transport flips from REST to JSON-RPC 2.0 over WebSocket.** This is the *only* user-visible change.
 - **No schema changes.** Existing Terraform configurations and state files keep working — every resource and data source ID, attribute, and import path is identical to v1.x.
-- **TrueNAS SCALE 25.04 or newer is required for the default WebSocket transport.** Operators on 24.10 or older must pin `transport = "rest"` until they upgrade, or stay on v1.x.
-- **REST remains available as a rollback path through v2.x.** Set `transport = "rest"` (or `TRUENAS_TRANSPORT=rest`) and the legacy REST API is used. v2.1 deletes this option.
-- **Recommended upgrade flow:** bump the version constraint, run `terraform init -upgrade`, then `terraform plan`. A clean plan shows no drift. If anything looks wrong, set `transport = "rest"` to fall back instantly.
+- **Recommended upgrade flow:** bump the version constraint, run `terraform init -upgrade`, then `terraform plan`. A clean plan shows no drift.
 
 ## Why v2.0?
 
@@ -27,22 +25,16 @@ v2.0 swaps the default to WebSocket. The implementation has been in tree since v
 
 ### Default transport
 
-| Setting | v1.x | v2.0 |
-| --- | --- | --- |
-| `transport` (provider block, unset) | `"rest"` | `"websocket"` |
-| `TRUENAS_TRANSPORT` (env, unset) | `"rest"` | `"websocket"` |
-
-Explicitly setting `transport = "rest"` (or `TRUENAS_TRANSPORT=rest`) keeps the v1.x behavior bit-for-bit. The REST client code in `internal/client/` is unchanged from v1.10.x — only the default selector flipped.
+**REST is fully retired in v2.0.** The `internal/client/` package is gone; resource I/O flows exclusively over JSON-RPC over WebSocket at `/api/current`. There is no REST fallback. Operators on TrueNAS SCALE versions older than 25.04 (which is when WebSocket landed) must stay on the v1.x provider line until they upgrade their TrueNAS.
 
 ### TrueNAS version requirement
 
 | Provider | Minimum SCALE |
 | --- | --- |
 | v1.x | 24.04 (REST only) |
-| v2.0 (default WebSocket) | 25.04 |
-| v2.0 with `transport = "rest"` | 24.04 |
+| v2.0 (WebSocket only) | 25.04 |
 
-If the provider Configure step fails with a websocket dial error against a SCALE 24.10 (or older) host, that's the version mismatch. Either set `transport = "rest"` or upgrade SCALE.
+If the provider Configure step fails with a websocket dial error against a SCALE 24.10 (or older) host, that's the version mismatch. Upgrade SCALE to 25.04 or newer, or stay on the v1.x provider line.
 
 ### REST API deprecation timeline
 
@@ -53,9 +45,8 @@ iX's published timeline for the REST API at `/api/v2.0`:
 
 This provider's timeline:
 
-- **v1.x** — REST is the default. WebSocket is opt-in alpha.
-- **v2.0** — WebSocket is the default. REST remains as `transport = "rest"`.
-- **v2.1** — REST client deleted. Provider requires SCALE 25.04+ unconditionally. Estimated ~30 days after v2.0.0 ships, conditional on no rollback signals from production users.
+- **v1.x** — REST is the default. WebSocket is opt-in alpha via `transport = "websocket"`.
+- **v2.0** — WebSocket only. The REST client code has been deleted. Provider requires SCALE 25.04+ unconditionally.
 
 ## Upgrade procedure
 

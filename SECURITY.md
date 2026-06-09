@@ -38,7 +38,7 @@ if desired.
 
 In scope:
 
-- The provider binary and its client library (`internal/client`,
+- The provider binary and its client library (`internal/wsclient`,
   `internal/resources`, `internal/datasources`).
 - How the provider handles API keys, SOPS-encrypted credentials, and any
   sensitive Terraform attributes.
