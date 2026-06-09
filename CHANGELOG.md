@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (continued — REST removal, 2026-06-09)
+
+- **REST transport fully retired.** `internal/client/` is gone.
+  Every resource and data source flows over JSON-RPC over
+  WebSocket via `internal/wsclient/`. The `transport` provider
+  attribute, the `TRUENAS_TRANSPORT` env var, and the
+  `transport = "rest"` opt-out documented in earlier v2.0
+  drafts do not exist in the shipped code. Operators on
+  TrueNAS SCALE versions older than 25.04 (when WebSocket
+  landed upstream) must stay on the v1.x provider line.
+
+  Why: continuing to ship the dual-transport surface meant
+  carrying ~30 kLOC of REST machinery for an opt-out path no
+  test suite was exercising. Cutting it now reduces the
+  v2.0 attack surface, halves the redactor's coverage burden,
+  and matches iX's published SCALE 26.04 REST removal
+  timeline.
+
+- **internal/wsclient hardening:** decorrelated jitter on
+  `[EBUSY] Rate Limit Exceeded` retries (auth handshake
+  retries up to 12 attempts with backoff capped at 6s);
+  IsNotFound now accepts the `CodeInvalidParams [ENOENT]`
+  variant TrueNAS emits on `*.get_instance` for missing ids
+  (Delete is now idempotent across the three not-found
+  surfaces).
+
+- **internal/sweep rewritten** to issue inline `http.Get`
+  against the TrueNAS REST API for collection-list endpoints
+  (the only place a typed wsclient helper isn't worth
+  building). Sweepers are dev-time test cleanup; production
+  runtime is wsclient-only.
+
+### Tests (continued)
+
+- **Tiered coverage gate** in `scripts/acc.sh`. Tier 1
+  packages (`types`, `validators`, `wsclient`, `sweep`,
+  `fwresource`, `flex`, `acctest`, `planhelpers`,
+  `planmodifiers`, `resourcevalidators`) hold at or near
+  100%; Tier 2 packages (`resources`, `datasources`,
+  `provider`, `recordreplay`) have explicit floors. The
+  resource/datasource layers can't be unit-covered against
+  the WS transport without rewriting fixtures to use
+  internal/wsclient/testserver.go; the acc suite is the
+  canonical coverage source for those layers.
+
+- **Two new static invariants** (provider gate set at 21):
+  - `TestConfigureUsesWSClient` — every resource's
+    Configure type-asserts `*wsclient.Client` (not
+    `*client.Client`)
+  - `TestDataSourceConfigureUsesWSClient` — same for
+    datasources
+  - Block accidental REST regression at the source-text
+    level — anyone copying an old resource forward will
+    fail the invariant before runtime.
+
+- **23 of 23 stub DataSource acc tests converted** to real
+  acc coverage. Pattern: create a fixture resource via the
+  provider, query via the datasource, assert attribute
+  round-trip. Env-gated cases (catalog, apps, vms,
+  network_interface) carry explicit skip messages.
+
 ### Breaking — SCALE 25.10 compatibility realignments
 
 - **`truenas_share_smb.purpose` accepts a new vocabulary.** TrueNAS
