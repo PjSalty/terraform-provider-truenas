@@ -14,7 +14,11 @@ import (
 // causes the provider to construct a client with ReadOnly=true, so every
 // mutating request will fail with ErrReadOnly before reaching the network.
 func TestProvider_Configure_ReadOnlyEnvVar(t *testing.T) {
-	skipWSCutover(t)
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	cases := []struct {
 		name     string
 		envValue string
@@ -62,7 +66,11 @@ func TestProvider_Configure_ReadOnlyEnvVar(t *testing.T) {
 // provider schema attribute `read_only = true` in HCL propagates to
 // Client.ReadOnly, independent of the TRUENAS_READONLY env var.
 func TestProvider_Configure_ReadOnlyHCLAttribute(t *testing.T) {
-	skipWSCutover(t)
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://hcl.example.com")
 	t.Setenv("TRUENAS_API_KEY", "hcl-key")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
@@ -95,7 +103,11 @@ func TestProvider_Configure_ReadOnlyHCLAttribute(t *testing.T) {
 // because it is closer to the operator's intent — the env var is a
 // shell-level default, the HCL value is the explicit module choice.
 func TestProvider_Configure_ReadOnlyHCLOverridesEnv(t *testing.T) {
-	skipWSCutover(t)
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://hcl.example.com")
 	t.Setenv("TRUENAS_API_KEY", "hcl-key")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")

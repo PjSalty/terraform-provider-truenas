@@ -14,7 +14,15 @@ import (
 // TestProvider_Configure_RequestTimeoutEnvVar verifies that
 // TRUENAS_REQUEST_TIMEOUT=<duration> propagates to the httpClient.
 func TestProvider_Configure_RequestTimeoutEnvVar(t *testing.T) {
-	skipWSCutover(t)
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		// Mirror the relevant initialization wsclient.New does so the
+		// Configure path sees the same defaults a real dial would set.
+		c := &wsclient.Client{}
+		c.SetRequestTimeout(wsclient.DefaultRequestTimeout)
+		return c, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://example.com")
 	t.Setenv("TRUENAS_API_KEY", "k")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
@@ -40,7 +48,15 @@ func TestProvider_Configure_RequestTimeoutEnvVar(t *testing.T) {
 
 // TestProvider_Configure_RequestTimeoutHCL verifies the HCL attribute path.
 func TestProvider_Configure_RequestTimeoutHCL(t *testing.T) {
-	skipWSCutover(t)
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		// Mirror the relevant initialization wsclient.New does so the
+		// Configure path sees the same defaults a real dial would set.
+		c := &wsclient.Client{}
+		c.SetRequestTimeout(wsclient.DefaultRequestTimeout)
+		return c, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://example.com")
 	t.Setenv("TRUENAS_API_KEY", "k")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
@@ -67,7 +83,15 @@ func TestProvider_Configure_RequestTimeoutHCL(t *testing.T) {
 
 // TestProvider_Configure_RequestTimeoutHCLOverridesEnv asserts precedence.
 func TestProvider_Configure_RequestTimeoutHCLOverridesEnv(t *testing.T) {
-	skipWSCutover(t)
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		// Mirror the relevant initialization wsclient.New does so the
+		// Configure path sees the same defaults a real dial would set.
+		c := &wsclient.Client{}
+		c.SetRequestTimeout(wsclient.DefaultRequestTimeout)
+		return c, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://example.com")
 	t.Setenv("TRUENAS_API_KEY", "k")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
@@ -119,7 +143,15 @@ func TestProvider_Configure_RequestTimeoutInvalidDuration(t *testing.T) {
 // TestProvider_Configure_RequestTimeoutDefault verifies that with neither
 // env var nor HCL set, the client keeps the default 60s timeout.
 func TestProvider_Configure_RequestTimeoutDefault(t *testing.T) {
-	skipWSCutover(t)
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		// Mirror the relevant initialization wsclient.New does so the
+		// Configure path sees the same defaults a real dial would set.
+		c := &wsclient.Client{}
+		c.SetRequestTimeout(wsclient.DefaultRequestTimeout)
+		return c, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://example.com")
 	t.Setenv("TRUENAS_API_KEY", "k")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
