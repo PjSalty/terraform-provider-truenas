@@ -26,12 +26,11 @@ func TestConfigureClient_Nil(t *testing.T) {
 }
 
 func TestConfigureClient_OK(t *testing.T) {
-	t.Skip("v2.0 WS cutover: wsclient.NewWithOptions tries to actually dial; this unit test no longer applies in unit mode")
 	t.Parallel()
-	cli, err := wsclient.NewWithOptions("https://example.invalid", "key", true)
-	if err != nil {
-		t.Fatalf("build client: %v", err)
-	}
+	// No need to dial — ConfigureClient asserts the type, doesn't
+	// invoke any method on the client. An empty *wsclient.Client
+	// has the right concrete type.
+	cli := &wsclient.Client{}
 	req := resource.ConfigureRequest{ProviderData: cli}
 	resp := &resource.ConfigureResponse{}
 	got, ok := fwresource.ConfigureClient(req, resp)
