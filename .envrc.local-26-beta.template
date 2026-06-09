@@ -8,7 +8,6 @@ export TRUENAS_TEST_POOL="test"
 export TRUENAS_PROD_DENY="<your-prod-fqdn-here>"
 export TRUENAS_INSECURE_SKIP_VERIFY="true"
 
-# 26 has REST REMOVED. JSON-RPC over WebSocket is the only transport.
-# Provider v2.0 default is wsclient so no override needed; leaving
-# the var unset to confirm the default works.
-# export TRUENAS_TRANSPORT="wsclient"
+# 26 has REST REMOVED upstream. v2.0 ships wsclient as the only
+# transport so this run validates the forward-compat path against
+# whatever JSON-RPC vocabulary changes iX ships in the 26 beta.
