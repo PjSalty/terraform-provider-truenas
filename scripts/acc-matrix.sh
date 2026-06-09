@@ -52,12 +52,12 @@ for entry in "${VERSIONS[@]}"; do
   echo "===================================="
 
   # Run in a subshell so each version's env doesn't bleed into the next.
+  # ACC_ENV_FILE tells acc.sh's acc_load_env which env file to source —
+  # without it, acc.sh re-sources .envrc.local and silently re-targets
+  # the primary test VM.
   if (
-    set -a
-    # shellcheck disable=SC1090
-    source "${envfile}"
-    set +a
-    ./scripts/acc.sh
+    export ACC_ENV_FILE="${PWD}/${envfile}"
+    ./scripts/acc.sh --acc-only
   ) > "${logfile}" 2>&1; then
     echo "    ${label}: PASS"
     PASS=$((PASS + 1))
