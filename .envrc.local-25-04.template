@@ -14,6 +14,7 @@ export TRUENAS_TEST_POOL="test"
 export TRUENAS_PROD_DENY="<your-prod-fqdn-here>"
 export TRUENAS_INSECURE_SKIP_VERIFY="true"
 
-# 25.04 is the LAST REST-only release. Force REST transport here to
-# exercise the fallback path that 25.10's WebSocket default doesn't.
-export TRUENAS_TRANSPORT="rest"
+# 25.04 was the first SCALE release with JSON-RPC over WebSocket,
+# and is the v2.0 provider's minimum supported version. Running the
+# acc suite against 25.04 validates that the WS surface stayed
+# compatible across the minor-version range.
