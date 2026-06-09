@@ -3,13 +3,11 @@ package provider
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/sweep"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
@@ -66,23 +64,8 @@ func sweepLog(resourceType, action, name string, err error) {
 // equivalents on the wsclient call surface yet. Production runtime is
 // wsclient-only; sweep is dev-time infrastructure with a parallel
 // transport intentionally.
-func sweeperGetList(ctx context.Context, _ *wsclient.Client, path string, out interface{}) error {
-	rc, err := buildSweepRestClient()
-	if err != nil {
-		return err
-	}
-	return sweep.GetList(ctx, rc, path, out)
-}
-
-// buildSweepRestClient mints a transient REST client from the
-// TRUENAS_URL / TRUENAS_API_KEY / TRUENAS_INSECURE_SKIP_VERIFY env
-// vars that scripts/acc.sh + .envrc.local already set up. Only used
-// from sweeperGetList; not on any production code path.
-func buildSweepRestClient() (*client.Client, error) {
-	url := os.Getenv("TRUENAS_URL")
-	apiKey := os.Getenv("TRUENAS_API_KEY")
-	insecure := os.Getenv("TRUENAS_INSECURE_SKIP_VERIFY") == "true" || os.Getenv("TRUENAS_INSECURE_SKIP_VERIFY") == "1"
-	return client.NewWithOptions(url, apiKey, insecure)
+func sweeperGetList(ctx context.Context, c *wsclient.Client, path string, out interface{}) error {
+	return sweep.GetList(ctx, c, path, out)
 }
 
 // init registers every sweeper defined in this file. Dependency ordering is

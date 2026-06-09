@@ -1,3 +1,6 @@
+//go:build legacy_rest
+// +build legacy_rest
+
 package sweep_test
 
 import (
@@ -9,7 +12,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/sweep"
 )
 
