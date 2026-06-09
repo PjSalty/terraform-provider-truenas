@@ -121,7 +121,13 @@ func TestProvider_Resources(t *testing.T) {
 // TestProvider_Configure_FromConfig supplies url/api_key/insecure_skip_verify
 // via the provider config and expects a successful client creation.
 func TestProvider_Configure_FromConfig(t *testing.T) {
-	skipWSCutover(t)
+	// Stub newClientFn so Configure doesn't try to dial the live URL.
+	// We're testing the config-parsing path, not the dial.
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	// Clear env so config values are authoritative.
 	t.Setenv("TRUENAS_URL", "")
 	t.Setenv("TRUENAS_API_KEY", "")
@@ -151,7 +157,11 @@ func TestProvider_Configure_FromConfig(t *testing.T) {
 // via environment variables, also covering the TRUENAS_INSECURE_SKIP_VERIFY
 // env parse branch.
 func TestProvider_Configure_FromEnv(t *testing.T) {
-	skipWSCutover(t)
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://env.example.com")
 	t.Setenv("TRUENAS_API_KEY", "env-key")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
