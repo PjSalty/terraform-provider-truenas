@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -33,22 +34,30 @@ func (c *Client) GetTunable(ctx context.Context, id int) (*types.Tunable, error)
 	return &tun, nil
 }
 
-// CreateTunable creates a new tunable. The REST flow returned a
-// non-stable internal ID and required a follow-up FindTunableByVar to
-// resolve the real ID; the JSON-RPC create returns the Tunable object
-// directly so we can decode the canonical ID from the result.
+// tunablePollInterval is the cadence at which we poll core.get_jobs
+// for tunable.{create,update} completion. Tunables apply nearly
+// instantly server-side; 500ms is plenty of headroom without making
+// the operator wait an extra second per resource.
+const tunablePollInterval = 500 * time.Millisecond
+
+// CreateTunable creates a new tunable. SCALE 25.10 made tunable.create
+// a long-running job (the synchronous return from the REST era is
+// gone). CallJob polls core.get_jobs until terminal state and returns
+// the created Tunable from the job's result field.
 func (c *Client) CreateTunable(ctx context.Context, req *types.TunableCreateRequest) (*types.Tunable, error) {
 	tflog.Trace(ctx, "CreateTunable (ws) start")
 
-	result, err := c.Call(ctx, "tunable.create",
-		[]interface{}{req}, CallOptions{})
+	jobResult, err := c.CallJob(ctx, "tunable.create",
+		[]interface{}{req},
+		CallOptions{Job: true, Idempotent: false},
+		tunablePollInterval)
 	if err != nil {
 		return nil, fmt.Errorf("creating tunable: %w", err)
 	}
 
 	var tun types.Tunable
-	if err := json.Unmarshal(result, &tun); err != nil {
-		return nil, fmt.Errorf("parsing tunable create response: %w", err)
+	if err := json.Unmarshal(jobResult, &tun); err != nil {
+		return nil, fmt.Errorf("parsing tunable from job result: %w", err)
 	}
 
 	tflog.Trace(ctx, "CreateTunable (ws) success")
@@ -96,32 +105,37 @@ func (c *Client) ListTunables(ctx context.Context) ([]types.Tunable, error) {
 	return tunables, nil
 }
 
-// UpdateTunable updates an existing tunable. tunable.update takes
-// [id, partial-config] in the JSON-RPC params array.
+// UpdateTunable updates an existing tunable. Like create, SCALE 25.10
+// surfaced this as a long-running job on the WS path.
 func (c *Client) UpdateTunable(ctx context.Context, id int, req *types.TunableUpdateRequest) (*types.Tunable, error) {
 	tflog.Trace(ctx, "UpdateTunable (ws) start")
 
-	result, err := c.Call(ctx, "tunable.update",
-		[]interface{}{id, req}, CallOptions{})
+	jobResult, err := c.CallJob(ctx, "tunable.update",
+		[]interface{}{id, req},
+		CallOptions{Job: true, Idempotent: false},
+		tunablePollInterval)
 	if err != nil {
 		return nil, fmt.Errorf("updating tunable %d: %w", id, err)
 	}
 
 	var tun types.Tunable
-	if err := json.Unmarshal(result, &tun); err != nil {
-		return nil, fmt.Errorf("parsing tunable update response: %w", err)
+	if err := json.Unmarshal(jobResult, &tun); err != nil {
+		return nil, fmt.Errorf("parsing tunable from job result: %w", err)
 	}
 
 	tflog.Trace(ctx, "UpdateTunable (ws) success")
 	return &tun, nil
 }
 
-// DeleteTunable deletes a tunable by ID.
+// DeleteTunable deletes a tunable by ID. Same async-job pattern as
+// the rest of the tunable.* surface on SCALE 25.10.
 func (c *Client) DeleteTunable(ctx context.Context, id int) error {
 	tflog.Trace(ctx, "DeleteTunable (ws) start")
 
-	if _, err := c.Call(ctx, "tunable.delete",
-		[]interface{}{id}, CallOptions{}); err != nil {
+	if _, err := c.CallJob(ctx, "tunable.delete",
+		[]interface{}{id},
+		CallOptions{Job: true, Idempotent: true},
+		tunablePollInterval); err != nil {
 		return fmt.Errorf("deleting tunable %d: %w", id, err)
 	}
 

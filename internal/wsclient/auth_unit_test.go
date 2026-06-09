@@ -173,3 +173,78 @@ func TestIsNotFound_InvalidParamsENOENT(t *testing.T) {
 		})
 	}
 }
+
+// TestIsNotFound_MatchNotFound covers the v2.0 fix for the surface
+// TrueNAS surfaces when *.get_instance can't find the id: the
+// "MatchNotFound()" exception class name leaks into the RPC error
+// message under CodeMethodCallError without populating Data.
+//
+// Surfaced live on acc-ws-6 against SCALE 25.10 — destroyed Dataset
+// + Zvol + Cronjob fixtures all returned this shape, causing
+// 9 destroy-check failures.
+func TestIsNotFound_MatchNotFound(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"dataset.get_instance after delete (reason field)", &RPCError{
+			Code:    CodeMethodCallError,
+			Message: "Method call error",
+			Data:    json.RawMessage(`{"errname":"EINVAL","reason":"MatchNotFound()"}`),
+		}, true},
+		{"MatchNotFound text in message", &RPCError{
+			Code:    CodeMethodCallError,
+			Message: "MatchNotFound() (EINVAL)",
+		}, true},
+		{"MatchNotFound but wrong code", &RPCError{
+			Code: CodeInvalidParams,
+			Data: json.RawMessage(`{"errname":"EINVAL","reason":"MatchNotFound()"}`),
+		}, false}, // code is wrong; don't swallow
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsNotFound(tc.err); got != tc.want {
+				t.Errorf("IsNotFound = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestIsNotFound_CallJobENOENT covers the long-running-job ENOENT
+// shape. certificate.delete and pool.delete are CallJob methods —
+// the inner job result error is wrapped in a "CallJob X failed:"
+// prefix that hides the [ENOENT] from the Data block.
+func TestIsNotFound_CallJobENOENT(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"certificate.delete missing id", &RPCError{
+			Code:    CodeMethodCallError,
+			Message: "CallJob certificate.delete (id=1875) failed: [ENOENT] None: Certificate 53 does not exist",
+		}, true},
+		{"pool.delete missing id", &RPCError{
+			Code:    CodeMethodCallError,
+			Message: "CallJob pool.delete (id=42) failed: [ENOENT] None: Pool 7 does not exist",
+		}, true},
+		{"CallJob with other failure", &RPCError{
+			Code:    CodeMethodCallError,
+			Message: "CallJob pool.create (id=99) failed: [EIO] disk error",
+		}, false}, // missing both ENOENT prefix and 'does not exist'
+		{"plain message saying does not exist", &RPCError{
+			Code:    CodeMethodCallError,
+			Message: "Certificate 53 does not exist",
+		}, true}, // catch-all branch 4
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsNotFound(tc.err); got != tc.want {
+				t.Errorf("IsNotFound = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

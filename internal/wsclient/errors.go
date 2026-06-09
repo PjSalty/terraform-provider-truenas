@@ -175,13 +175,48 @@ func IsNotFound(err error) bool {
 			return true
 		}
 	}
-	// Last-resort text scan for the InvalidParams case where errname
-	// isn't populated in data but the Message itself carries the
-	// not-found signature. Conservative — only match the bracketed
-	// [ENOENT] prefix so EINVAL-validations on other params don't get
-	// swallowed.
-	if rpcErr.Code == CodeInvalidParams &&
-		strings.Contains(rpcErr.Message, "[ENOENT]") {
+	// Text-scan fallbacks for the cases where errname isn't populated
+	// in Data but the Message itself carries the not-found signature.
+	// All conservative — gated on very specific markers so general
+	// EINVAL / validation errors don't get swallowed.
+	msg := rpcErr.Message
+	msgLow := strings.ToLower(msg)
+	// 1. CodeInvalidParams + "[ENOENT]" — TrueNAS' validator surfaces
+	//    a missing id through this prefix on cronjob.get_instance and
+	//    similar id-validated methods.
+	if rpcErr.Code == CodeInvalidParams && strings.Contains(msg, "[ENOENT]") {
+		return true
+	}
+	// 2. CodeMethodCallError + "MatchNotFound()" — TrueNAS' query.* and
+	//    *.get_instance paths surface a no-match-found result by raising
+	//    a MatchNotFound exception class whose name leaks into the
+	//    error's reason field (not the static Message label). Seen live
+	//    on dataset/zvol/cronjob .get_instance after the resource was
+	//    deleted out of band; RPCError formats as
+	//    "truenas rpc error -32001: Method call error: MatchNotFound() (EINVAL)"
+	//    where reason="MatchNotFound()" and errname="EINVAL".
+	if rpcErr.Code == CodeMethodCallError &&
+		(strings.Contains(msg, "MatchNotFound") ||
+			strings.Contains(reason, "MatchNotFound")) {
+		return true
+	}
+	// 3. CodeMethodCallError + the job-result ENOENT shape. Long-running
+	//    Job methods (certificate.delete, pool.delete) wrap the inner
+	//    job result error in a "CallJob X failed: …" prefix that hides
+	//    the [ENOENT] from the data block:
+	//    "CallJob certificate.delete (id=N) failed: [ENOENT] None:
+	//     Certificate 53 does not exist"
+	if rpcErr.Code == CodeMethodCallError &&
+		strings.Contains(msg, "CallJob ") &&
+		strings.Contains(msg, "[ENOENT]") {
+		return true
+	}
+	// 4. Catch-all for CodeMethodCallError where the message body
+	//    literally says "does not exist" — covers one-off TrueNAS
+	//    exception classes (ValidationError raised with reason text
+	//    and no errname populated in Data).
+	if rpcErr.Code == CodeMethodCallError &&
+		strings.Contains(msgLow, "does not exist") {
 		return true
 	}
 	return false
