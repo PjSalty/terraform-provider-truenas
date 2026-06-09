@@ -51,17 +51,24 @@ acc_repo_root() {
   dirname "$(dirname "$(dirname "${self}")")"
 }
 
-# acc_load_env sources .envrc.local if present, then asserts the
+# acc_load_env sources an env file if present, then asserts the
 # required vars are set. Exits non-zero with a clear message on any
 # missing piece so an operator who forgot to source .envrc.local gets
 # a hint instead of a confusing dial failure 30 minutes into the run.
+#
+# ACC_ENV_FILE overrides which file is sourced — the multi-version
+# matrix points it at .envrc.local-25-04 / .envrc.local-26-beta per
+# leg so each run targets the right test VM. Without the override,
+# sourcing .envrc.local here would silently clobber the caller's
+# exported TRUENAS_URL with the primary VM's.
 acc_load_env() {
-  local root
+  local root envfile
   root="$(acc_repo_root)"
-  if [ -f "${root}/.envrc.local" ]; then
-    # shellcheck disable=SC1091
+  envfile="${ACC_ENV_FILE:-${root}/.envrc.local}"
+  if [ -f "${envfile}" ]; then
+    # shellcheck disable=SC1090,SC1091
     set -a
-    . "${root}/.envrc.local"
+    . "${envfile}"
     set +a
   fi
   if [ -z "${TRUENAS_URL:-}" ]; then
