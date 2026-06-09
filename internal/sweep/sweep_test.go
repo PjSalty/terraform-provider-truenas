@@ -116,3 +116,47 @@ func TestLog_OK(t *testing.T) {
 	sweep.Log("cronjob", "destroy", "tf-acc-foo", nil)
 	sweep.Log("cronjob", "destroy", "tf-acc-bar", context.Canceled)
 }
+
+func TestGetList_BadURL(t *testing.T) {
+	// A control character forces http.NewRequest to error before
+	// any HTTP call. Exercises the build-request error path.
+	t.Setenv("TRUENAS_URL", "http://example.com")
+	t.Setenv("TRUENAS_API_KEY", "k")
+	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
+
+	// Embedded newline character in the path triggers
+	// "net/http: invalid path" from http.NewRequestWithContext.
+	err := sweep.GetList(context.Background(), nil, "/bad\npath", &struct{}{})
+	if err == nil || !strings.Contains(err.Error(), "build request") {
+		t.Errorf("want build-request error, got: %v", err)
+	}
+}
+
+func TestGetList_BadJSON(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`not valid json`))
+	}))
+	defer srv.Close()
+	t.Setenv("TRUENAS_URL", srv.URL)
+	t.Setenv("TRUENAS_API_KEY", "k")
+	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
+
+	err := sweep.GetList(context.Background(), nil, "/anything", &struct{}{})
+	if err == nil || !strings.Contains(err.Error(), "decode") {
+		t.Errorf("want decode error, got: %v", err)
+	}
+}
+
+func TestGetList_DialFail(t *testing.T) {
+	// Point at an unreachable address — the http.Client's Do call
+	// will return a dial error which exercises the GET-failure branch.
+	t.Setenv("TRUENAS_URL", "https://127.0.0.1:1")
+	t.Setenv("TRUENAS_API_KEY", "k")
+	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
+
+	err := sweep.GetList(context.Background(), nil, "/anything", &struct{}{})
+	if err == nil || !strings.Contains(err.Error(), "GET /anything") {
+		t.Errorf("want GET path error, got: %v", err)
+	}
+}
