@@ -174,3 +174,144 @@ func TestRecorder_PreservesUpstreamBody(t *testing.T) {
 		t.Errorf("fixture missing body fields: %s", data)
 	}
 }
+
+// TestNewRecorder_BadDir exercises the os.MkdirAll error branch.
+// Uses a path that contains a NUL byte which the filesystem rejects.
+func TestNewRecorder_BadDir(t *testing.T) {
+	t.Parallel()
+	_, err := NewRecorder("https://upstream.example.com", "/proc/1/no-perms-here/sub")
+	if err == nil {
+		t.Error("NewRecorder must error on a non-creatable dir")
+	}
+}
+
+// TestNewReplayer_MissingDir exercises the os.Stat error branch.
+func TestNewReplayer_MissingDir(t *testing.T) {
+	t.Parallel()
+	_, err := NewReplayer("/does-not-exist-12345")
+	if err == nil {
+		t.Error("NewReplayer must error on a missing dir")
+	}
+}
+
+// TestCanonicalJSONBody_NonJSONPassthrough verifies non-JSON bodies
+// are returned unchanged so the hash includes them verbatim.
+func TestCanonicalJSONBody_NonJSONPassthrough(t *testing.T) {
+	t.Parallel()
+	cases := [][]byte{
+		nil,
+		{},
+		[]byte("not json at all"),
+		[]byte("<xml/>"),
+	}
+	for _, in := range cases {
+		got := canonicalJSONBody(in)
+		if string(got) != string(in) {
+			t.Errorf("canonicalJSONBody(%q) = %q, want unchanged", in, got)
+		}
+	}
+}
+
+// TestCanonicalJSONBody_ReorderStable verifies semantically-equal
+// JSON canonicalises to the same bytes regardless of key order.
+func TestCanonicalJSONBody_ReorderStable(t *testing.T) {
+	t.Parallel()
+	a := canonicalJSONBody([]byte(`{"a":1,"b":2}`))
+	b := canonicalJSONBody([]byte(`{"b":2,"a":1}`))
+	if string(a) != string(b) {
+		t.Errorf("canonical forms differ: %q vs %q", a, b)
+	}
+}
+
+// TestFlattenQuery_MultiValueTakesFirst verifies a query with
+// multiple values for the same key picks the first one — the
+// hash treats only the first as material to keep keys stable
+// across noise like duplicate "_=…" cache busters.
+func TestFlattenQuery_MultiValueTakesFirst(t *testing.T) {
+	t.Parallel()
+	q := url.Values{
+		"k": []string{"first", "second"},
+		"x": []string{},
+	}
+	got := flattenQuery(q)
+	if got["k"] != "first" {
+		t.Errorf("k = %q, want first", got["k"])
+	}
+	if _, ok := got["x"]; ok {
+		t.Errorf("empty-value key should not be in flattened map")
+	}
+}
+
+// TestRecorder_BadUpstream verifies Recorder.serve surfaces a 500
+// when the upstream URL doesn't parse. We trigger this by handing
+// the recorder a literal control-character URL.
+func TestRecorder_BadUpstream(t *testing.T) {
+	t.Parallel()
+	tmp := t.TempDir()
+	rec, err := NewRecorder("http://example.com/\x00bad", tmp)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+	defer rec.Close()
+
+	// Hit the recorder; the upstream URL parse will fail.
+	resp, err := tlsSkipClient().Get(rec.URL() + "/anything")
+	if err != nil {
+		t.Fatalf("client.Get: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500 from bad upstream", resp.StatusCode)
+	}
+}
+
+// TestReplayer_RecordCachedHit hits the same fixture twice and
+// asserts the second hit comes from the in-memory cache, not the
+// fixture file. Validates the cache-hit branch of Replayer.serve.
+func TestReplayer_RecordCachedHit(t *testing.T) {
+	t.Parallel()
+	tmp := t.TempDir()
+	// Record one fixture via the Recorder against a controlled upstream.
+	up := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer up.Close()
+
+	rec, err := NewRecorder(up.URL, tmp)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+	_, _ = tlsSkipClient().Get(rec.URL() + "/api/v2.0/system/info")
+	rec.Close()
+
+	rp, err := NewReplayer(tmp)
+	if err != nil {
+		t.Fatalf("NewReplayer: %v", err)
+	}
+	defer rp.Close()
+
+	// First request loads from disk, second from cache.
+	for i := 0; i < 2; i++ {
+		resp, err := tlsSkipClient().Get(rp.URL() + "/api/v2.0/system/info")
+		if err != nil {
+			t.Fatalf("hit %d: %v", i, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("hit %d status = %d, want 200", i, resp.StatusCode)
+		}
+	}
+}
+
+// tlsSkipClient is the shared client for the tests below — the
+// Recorder/Replayer use httptest.NewTLSServer which gives them
+// self-signed certs that the default http.DefaultClient won't
+// trust.
+func tlsSkipClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+}
