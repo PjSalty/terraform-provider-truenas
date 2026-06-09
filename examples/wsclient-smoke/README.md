@@ -42,22 +42,23 @@ Plan: 0 to add, 0 to change, 0 to destroy.
 
 ## When to use this
 
-- Phase 0 acceptance check: before merging the wsclient package,
-  run this against the test VM to prove the transport works
-  end-to-end.
-- Triage: when a Phase 1+ resource shows unexpected diffs over
-  WebSocket, run this first to rule out transport-layer
-  regressions. If this is green, the issue is in the per-resource
-  code path, not the wire.
-- Pre-cutover: before flipping `transport = "websocket"` in a
-  workspace that's been on REST, run this once to confirm the
-  target host accepts the new transport.
+- First contact: before pointing a real workspace at a new
+  TrueNAS host, run this to prove the WebSocket dial +
+  handshake + system.info call all succeed end-to-end.
+- Triage: when a per-resource acc test shows unexpected diffs,
+  run this first to rule out a connectivity / proxy / TLS issue.
+  If this is green, the issue is in the per-resource code path,
+  not the wire.
+- Upgrade verification: after upgrading TrueNAS SCALE (especially
+  the 25.04 → 25.10 jump or any minor with API touch), run this
+  to confirm /api/current still accepts the v2.0 provider's
+  handshake.
 
 ## Failure modes
 
 | Symptom | Likely cause |
 | --- | --- |
-| `failed to WebSocket dial: ... 404` | TrueNAS host is on SCALE 24.x. WebSocket isn't exposed. |
+| `failed to WebSocket dial: ... 404` | TrueNAS host is on SCALE 24.x or older. /api/current isn't exposed; v2.0 requires SCALE 25.04+. Either upgrade SCALE or pin the provider to `~> 1.10`. |
 | `failed to WebSocket dial: ... 401` | API key is invalid or revoked. |
 | Connection hangs at "Refreshing state..." | Load balancer or proxy in front of TrueNAS isn't passing the WebSocket Upgrade header. Verify with `curl -I -H 'Upgrade: websocket' -H 'Connection: upgrade' https://<host>/api/current` outside of Terraform. |
 | Plan succeeds but `truenas_version` is empty | The provider read code path got a successful response with no version field. File an issue. |
