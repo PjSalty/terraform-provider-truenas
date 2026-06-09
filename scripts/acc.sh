@@ -113,7 +113,9 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
     [github.com/PjSalty/terraform-provider-truenas/internal/planmodifiers]=100
     [github.com/PjSalty/terraform-provider-truenas/internal/flex]=100
     [github.com/PjSalty/terraform-provider-truenas/internal/acctest]=100
-    [github.com/PjSalty/terraform-provider-truenas/internal/wsclient]=98
+    [github.com/PjSalty/terraform-provider-truenas/internal/wsclient]=99
+    [github.com/PjSalty/terraform-provider-truenas/internal/sweep]=95
+    [github.com/PjSalty/terraform-provider-truenas/internal/fwresource]=100
   )
 
   # Tier 2 — packages with degraded unit coverage post-WS-cutover; acc
@@ -122,9 +124,8 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
   declare -A TIER2_FLOOR=(
     [github.com/PjSalty/terraform-provider-truenas/internal/resources]=40
     [github.com/PjSalty/terraform-provider-truenas/internal/datasources]=35
-    [github.com/PjSalty/terraform-provider-truenas/internal/provider]=45
-    [github.com/PjSalty/terraform-provider-truenas/internal/recordreplay]=80
-    [github.com/PjSalty/terraform-provider-truenas/internal/fwresource]=80
+    [github.com/PjSalty/terraform-provider-truenas/internal/provider]=90
+    [github.com/PjSalty/terraform-provider-truenas/internal/recordreplay]=90
   )
 
   # Aggregate per-package coverage from coverage.out (a real run's
