@@ -91,7 +91,7 @@ func TestScaffoldResource_Success(t *testing.T) {
 		}
 		for _, want := range []string{
 			filepath.Join("internal", "resources", "test_resource.go"),
-			filepath.Join("internal", "client", "test_resource.go"),
+			filepath.Join("internal", "wsclient", "test_resource.go"),
 			filepath.Join("docs", "resources", "test_resource.md"),
 			filepath.Join("examples", "resources", "truenas_test_resource", "resource.tf"),
 			filepath.Join("examples", "resources", "truenas_test_resource", "import.sh"),
