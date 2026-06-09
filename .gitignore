@@ -41,3 +41,4 @@ report.json
 go-mutesting-*
 .envrc.local-25-04
 .envrc.local-26-beta
+skaff
