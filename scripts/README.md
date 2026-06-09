@@ -41,7 +41,7 @@ Runs the full six-stage pipeline:
 | 1 | Pre-flight | ~5s | Bad URL, expired API key, missing pool |
 | 2 | `go build ./...` | ~5s | Syntax / unresolved imports |
 | 3 | `gofmt -l` + `go vet` | ~5s | Format drift, vet warnings |
-| 4 | Unit tests + 100% coverage gate | ~7m | Logic bugs in non-acc code |
+| 4 | Unit tests + tiered coverage gate | ~7m | Logic bugs in non-acc code |
 | 5 | Static invariants | ~1s | Missing PreCheck / CheckDestroy / ImportState / Read-on-404 |
 | 6 | Live acceptance suite (TF_ACC=1) | ~30-90m | Wire-format drift, real resource lifecycle bugs |
 
