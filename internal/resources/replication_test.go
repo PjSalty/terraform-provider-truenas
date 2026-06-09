@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestAccReplication_local(t *testing.T) {
@@ -59,7 +59,7 @@ func testAccCheckReplicationDestroy(resourceName string) resource.TestCheckFunc 
 		if err == nil {
 			return fmt.Errorf("replication %d still exists upstream after Terraform removed it", id)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking removal of replication %d: %w", id, err)
 		}
 		return nil

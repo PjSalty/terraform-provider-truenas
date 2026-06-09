@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewDatasetsDataSource(t *testing.T) {
@@ -27,8 +27,8 @@ func TestDatasetsDataSource_Schema(t *testing.T) {
 	}
 }
 
-func datasetsFixture() []client.DatasetResponse {
-	return []client.DatasetResponse{
+func datasetsFixture() []truenas.DatasetResponse {
+	return []truenas.DatasetResponse{
 		{ID: "tank", Name: "tank", Pool: "tank", Type: "FILESYSTEM", MountPoint: "/mnt/tank"},
 		{ID: "tank/data", Name: "data", Pool: "tank", Type: "FILESYSTEM", MountPoint: "/mnt/tank/data"},
 		{ID: "tank/data/sub", Name: "sub", Pool: "tank", Type: "FILESYSTEM", MountPoint: "/mnt/tank/data/sub"},

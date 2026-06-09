@@ -19,7 +19,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
@@ -31,7 +32,7 @@ var (
 
 // VMDeviceResource manages a device attached to a TrueNAS SCALE virtual machine.
 type VMDeviceResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // VMDeviceResourceModel describes the resource data model. The `attributes` map
@@ -123,11 +124,11 @@ func (r *VMDeviceResource) Configure(_ context.Context, req resource.ConfigureRe
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -182,7 +183,7 @@ func (r *VMDeviceResource) Create(ctx context.Context, req resource.CreateReques
 
 	attrs := vmDeviceAttrsToAPI(ctx, plan.Dtype.ValueString(), plan.Attributes)
 
-	createReq := &client.VMDeviceCreateRequest{
+	createReq := &truenas.VMDeviceCreateRequest{
 		VM:         int(plan.VM.ValueInt64()),
 		Attributes: attrs,
 	}
@@ -228,7 +229,7 @@ func (r *VMDeviceResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	dev, err := r.client.GetVMDevice(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -270,7 +271,7 @@ func (r *VMDeviceResource) Update(ctx context.Context, req resource.UpdateReques
 	attrs := vmDeviceAttrsToAPI(ctx, plan.Dtype.ValueString(), plan.Attributes)
 
 	vm := int(plan.VM.ValueInt64())
-	updateReq := &client.VMDeviceUpdateRequest{
+	updateReq := &truenas.VMDeviceUpdateRequest{
 		VM:         &vm,
 		Attributes: attrs,
 	}
@@ -312,7 +313,7 @@ func (r *VMDeviceResource) Delete(ctx context.Context, req resource.DeleteReques
 	tflog.Debug(ctx, "Deleting VM device", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteVMDevice(ctx, id); err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "VM device already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -338,7 +339,7 @@ func (r *VMDeviceResource) ImportState(ctx context.Context, req resource.ImportS
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *VMDeviceResource) mapResponseToModel(ctx context.Context, dev *client.VMDevice, model *VMDeviceResourceModel) {
+func (r *VMDeviceResource) mapResponseToModel(ctx context.Context, dev *truenas.VMDevice, model *VMDeviceResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(dev.ID))
 	model.VM = types.Int64Value(int64(dev.VM))
 	if dev.Order != nil {

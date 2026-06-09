@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func strPtr(s string) *string { return &s }
@@ -17,7 +17,7 @@ func TestUserResource_MapResponseToModel_Cases(t *testing.T) {
 
 	cases := []struct {
 		name         string
-		user         *client.User
+		user         *truenas.User
 		wantID       string
 		wantUsername string
 		wantEmail    string
@@ -29,14 +29,14 @@ func TestUserResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name: "minimal user with nil email and sshpubkey",
-			user: &client.User{
+			user: &truenas.User{
 				ID:       1,
 				UID:      1000,
 				Username: "alice",
 				FullName: "Alice",
 				Home:     "/home/alice",
 				Shell:    "/bin/bash",
-				Group:    client.UserGroup{ID: 42},
+				Group:    truenas.UserGroup{ID: 42},
 			},
 			wantID:       "1",
 			wantUsername: "alice",
@@ -49,7 +49,7 @@ func TestUserResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "locked user with email and groups",
-			user: &client.User{
+			user: &truenas.User{
 				ID:           7,
 				UID:          1007,
 				Username:     "bob",
@@ -59,7 +59,7 @@ func TestUserResource_MapResponseToModel_Cases(t *testing.T) {
 				Shell:        "/usr/sbin/nologin",
 				Locked:       true,
 				SMB:          true,
-				Group:        client.UserGroup{ID: 100},
+				Group:        truenas.UserGroup{ID: 100},
 				Groups:       []int{10, 20, 30},
 				SudoCommands: []string{"/bin/ls", "/bin/cat"},
 			},
@@ -74,13 +74,13 @@ func TestUserResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "user with ssh pubkey",
-			user: &client.User{
+			user: &truenas.User{
 				ID:        11,
 				UID:       2000,
 				Username:  "carol",
 				FullName:  "Carol",
 				SSHPubKey: strPtr("ssh-rsa AAAA..."),
-				Group:     client.UserGroup{ID: 1},
+				Group:     truenas.UserGroup{ID: 1},
 			},
 			wantID:       "11",
 			wantUsername: "carol",
@@ -92,12 +92,12 @@ func TestUserResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "zero id user",
-			user: &client.User{
+			user: &truenas.User{
 				ID:       0,
 				UID:      0,
 				Username: "root",
 				FullName: "root",
-				Group:    client.UserGroup{ID: 0},
+				Group:    truenas.UserGroup{ID: 0},
 			},
 			wantID:       "0",
 			wantUsername: "root",
@@ -108,12 +108,12 @@ func TestUserResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "user with many secondary groups",
-			user: &client.User{
+			user: &truenas.User{
 				ID:       100,
 				UID:      3000,
 				Username: "poweruser",
 				FullName: "Power User",
-				Group:    client.UserGroup{ID: 100},
+				Group:    truenas.UserGroup{ID: 100},
 				Groups:   []int{10, 20, 30, 40, 50, 60},
 			},
 			wantID:       "100",
@@ -124,13 +124,13 @@ func TestUserResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "user with empty email pointer",
-			user: &client.User{
+			user: &truenas.User{
 				ID:       50,
 				UID:      2050,
 				Username: "nomail",
 				FullName: "No Mail",
 				Email:    strPtr(""),
-				Group:    client.UserGroup{ID: 100},
+				Group:    truenas.UserGroup{ID: 100},
 			},
 			wantID:       "50",
 			wantUsername: "nomail",
@@ -139,12 +139,12 @@ func TestUserResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "user with many sudo commands",
-			user: &client.User{
+			user: &truenas.User{
 				ID:           77,
 				UID:          2077,
 				Username:     "sudoer",
 				FullName:     "Sudoer",
-				Group:        client.UserGroup{ID: 0},
+				Group:        truenas.UserGroup{ID: 0},
 				SudoCommands: []string{"/bin/ls", "/bin/cat", "/bin/grep", "/bin/find", "/bin/tail"},
 			},
 			wantID:       "77",
@@ -154,7 +154,7 @@ func TestUserResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "SMB user with bash shell",
-			user: &client.User{
+			user: &truenas.User{
 				ID:       33,
 				UID:      2033,
 				Username: "smbuser",
@@ -162,7 +162,7 @@ func TestUserResource_MapResponseToModel_Cases(t *testing.T) {
 				SMB:      true,
 				Home:     "/home/smbuser",
 				Shell:    "/bin/bash",
-				Group:    client.UserGroup{ID: 200},
+				Group:    truenas.UserGroup{ID: 200},
 			},
 			wantID:       "33",
 			wantUsername: "smbuser",

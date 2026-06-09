@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- ISCSI Portal ---
@@ -16,7 +16,7 @@ func TestISCSIPortalResource_MapResponseToModel_Cases(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name       string
-		portal     *client.ISCSIPortal
+		portal     *truenas.ISCSIPortal
 		wantID     string
 		wantCmt    string
 		wantTag    int64
@@ -24,22 +24,22 @@ func TestISCSIPortalResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name:   "minimal portal",
-			portal: &client.ISCSIPortal{ID: 1, Tag: 1, Comment: "default"},
+			portal: &truenas.ISCSIPortal{ID: 1, Tag: 1, Comment: "default"},
 			wantID: "1", wantCmt: "default", wantTag: 1, wantListen: 0,
 		},
 		{
 			name: "portal with one listen",
-			portal: &client.ISCSIPortal{
+			portal: &truenas.ISCSIPortal{
 				ID: 2, Tag: 3, Comment: "one",
-				Listen: []client.ISCSIPortalListen{{IP: "0.0.0.0", Port: 3260}},
+				Listen: []truenas.ISCSIPortalListen{{IP: "0.0.0.0", Port: 3260}},
 			},
 			wantID: "2", wantCmt: "one", wantTag: 3, wantListen: 1,
 		},
 		{
 			name: "portal with multiple listens",
-			portal: &client.ISCSIPortal{
+			portal: &truenas.ISCSIPortal{
 				ID: 5, Tag: 10,
-				Listen: []client.ISCSIPortalListen{
+				Listen: []truenas.ISCSIPortalListen{
 					{IP: "10.0.0.1", Port: 3260},
 					{IP: "10.0.0.2", Port: 3260},
 				},
@@ -48,22 +48,22 @@ func TestISCSIPortalResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name:   "empty portal",
-			portal: &client.ISCSIPortal{ID: 0, Tag: 0},
+			portal: &truenas.ISCSIPortal{ID: 0, Tag: 0},
 			wantID: "0",
 		},
 		{
 			name: "portal with ipv6 listen",
-			portal: &client.ISCSIPortal{
+			portal: &truenas.ISCSIPortal{
 				ID: 10, Tag: 100, Comment: "v6",
-				Listen: []client.ISCSIPortalListen{{IP: "::", Port: 3260}},
+				Listen: []truenas.ISCSIPortalListen{{IP: "::", Port: 3260}},
 			},
 			wantID: "10", wantCmt: "v6", wantTag: 100, wantListen: 1,
 		},
 		{
 			name: "portal mixed v4/v6",
-			portal: &client.ISCSIPortal{
+			portal: &truenas.ISCSIPortal{
 				ID: 11, Tag: 11,
-				Listen: []client.ISCSIPortalListen{
+				Listen: []truenas.ISCSIPortalListen{
 					{IP: "0.0.0.0", Port: 3260},
 					{IP: "::", Port: 3260},
 				},
@@ -72,9 +72,9 @@ func TestISCSIPortalResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "portal three listens",
-			portal: &client.ISCSIPortal{
+			portal: &truenas.ISCSIPortal{
 				ID: 12, Tag: 12,
-				Listen: []client.ISCSIPortalListen{
+				Listen: []truenas.ISCSIPortalListen{
 					{IP: "10.0.0.1"}, {IP: "10.0.0.2"}, {IP: "10.0.0.3"},
 				},
 			},
@@ -124,7 +124,7 @@ func TestISCSITargetResource_MapResponseToModel_Cases(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name       string
-		target     *client.ISCSITarget
+		target     *truenas.ISCSITarget
 		wantID     string
 		wantName   string
 		wantAlias  string
@@ -133,16 +133,16 @@ func TestISCSITargetResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name:     "minimal target",
-			target:   &client.ISCSITarget{ID: 1, Name: "tgt1", Mode: "ISCSI"},
+			target:   &truenas.ISCSITarget{ID: 1, Name: "tgt1", Mode: "ISCSI"},
 			wantID:   "1",
 			wantName: "tgt1",
 			wantMode: "ISCSI",
 		},
 		{
 			name: "target with groups",
-			target: &client.ISCSITarget{
+			target: &truenas.ISCSITarget{
 				ID: 2, Name: "tgt2", Alias: "Alias", Mode: "ISCSI",
-				Groups: []client.ISCSITargetGroup{
+				Groups: []truenas.ISCSITargetGroup{
 					{Portal: 1, Initiator: 1, AuthMethod: "NONE", Auth: 0},
 					{Portal: 2, Initiator: 2, AuthMethod: "CHAP", Auth: 1},
 				},
@@ -151,19 +151,19 @@ func TestISCSITargetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name:   "target FC mode",
-			target: &client.ISCSITarget{ID: 3, Name: "fctgt", Mode: "FC"},
+			target: &truenas.ISCSITarget{ID: 3, Name: "fctgt", Mode: "FC"},
 			wantID: "3", wantName: "fctgt", wantMode: "FC",
 		},
 		{
 			name:   "target with only alias",
-			target: &client.ISCSITarget{ID: 4, Name: "tgt4", Alias: "friendly", Mode: "ISCSI"},
+			target: &truenas.ISCSITarget{ID: 4, Name: "tgt4", Alias: "friendly", Mode: "ISCSI"},
 			wantID: "4", wantName: "tgt4", wantAlias: "friendly", wantMode: "ISCSI",
 		},
 		{
 			name: "target with 3 groups",
-			target: &client.ISCSITarget{
+			target: &truenas.ISCSITarget{
 				ID: 5, Name: "tgt5", Mode: "ISCSI",
-				Groups: []client.ISCSITargetGroup{
+				Groups: []truenas.ISCSITargetGroup{
 					{Portal: 1, Initiator: 1, AuthMethod: "NONE"},
 					{Portal: 2, Initiator: 2, AuthMethod: "CHAP", Auth: 1},
 					{Portal: 3, Initiator: 3, AuthMethod: "CHAP_MUTUAL", Auth: 2},
@@ -173,7 +173,7 @@ func TestISCSITargetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name:   "target FC mode with alias",
-			target: &client.ISCSITarget{ID: 6, Name: "fc1", Alias: "fiberchannel", Mode: "FC"},
+			target: &truenas.ISCSITarget{ID: 6, Name: "fc1", Alias: "fiberchannel", Mode: "FC"},
 			wantID: "6", wantName: "fc1", wantAlias: "fiberchannel", wantMode: "FC",
 		},
 	}
@@ -229,7 +229,7 @@ func TestISCSIExtentResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &ISCSIExtentResource{}
 	cases := []struct {
 		name     string
-		extent   *client.ISCSIExtent
+		extent   *truenas.ISCSIExtent
 		wantID   string
 		wantType string
 		wantBS   int64
@@ -237,48 +237,48 @@ func TestISCSIExtentResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name:     "file extent",
-			extent:   &client.ISCSIExtent{ID: 1, Name: "e1", Type: "FILE", Path: "/mnt/tank/e1.img", Blocksize: 512},
+			extent:   &truenas.ISCSIExtent{ID: 1, Name: "e1", Type: "FILE", Path: "/mnt/tank/e1.img", Blocksize: 512},
 			wantID:   "1",
 			wantType: "FILE",
 			wantBS:   512,
 		},
 		{
 			name:     "disk extent",
-			extent:   &client.ISCSIExtent{ID: 2, Name: "e2", Type: "DISK", Blocksize: 4096},
+			extent:   &truenas.ISCSIExtent{ID: 2, Name: "e2", Type: "DISK", Blocksize: 4096},
 			wantID:   "2",
 			wantType: "DISK",
 			wantBS:   4096,
 		},
 		{
 			name:     "readonly extent",
-			extent:   &client.ISCSIExtent{ID: 3, Name: "e3", Type: "FILE", ReadOnly: true},
+			extent:   &truenas.ISCSIExtent{ID: 3, Name: "e3", Type: "FILE", ReadOnly: true},
 			wantID:   "3",
 			wantType: "FILE",
 			wantRO:   true,
 		},
 		{
 			name:     "extent with comment",
-			extent:   &client.ISCSIExtent{ID: 4, Name: "e4", Type: "DISK", Comment: "test", Enabled: true},
+			extent:   &truenas.ISCSIExtent{ID: 4, Name: "e4", Type: "DISK", Comment: "test", Enabled: true},
 			wantID:   "4",
 			wantType: "DISK",
 		},
 		{
 			name:     "extent with xen flag",
-			extent:   &client.ISCSIExtent{ID: 5, Name: "xen", Type: "DISK", Xen: true, Enabled: true, Blocksize: 512},
+			extent:   &truenas.ISCSIExtent{ID: 5, Name: "xen", Type: "DISK", Xen: true, Enabled: true, Blocksize: 512},
 			wantID:   "5",
 			wantType: "DISK",
 			wantBS:   512,
 		},
 		{
 			name:     "extent with insecure_tpc",
-			extent:   &client.ISCSIExtent{ID: 6, Name: "tpc", Type: "FILE", InsecureTPC: true, Blocksize: 4096},
+			extent:   &truenas.ISCSIExtent{ID: 6, Name: "tpc", Type: "FILE", InsecureTPC: true, Blocksize: 4096},
 			wantID:   "6",
 			wantType: "FILE",
 			wantBS:   4096,
 		},
 		{
 			name:     "extent with RPM",
-			extent:   &client.ISCSIExtent{ID: 7, Name: "rpm", Type: "DISK", RPM: "SSD", Blocksize: 512},
+			extent:   &truenas.ISCSIExtent{ID: 7, Name: "rpm", Type: "DISK", RPM: "SSD", Blocksize: 512},
 			wantID:   "7",
 			wantType: "DISK",
 			wantBS:   512,
@@ -332,7 +332,7 @@ func TestISCSIAuthResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &ISCSIAuthResource{}
 	cases := []struct {
 		name     string
-		auth     *client.ISCSIAuth
+		auth     *truenas.ISCSIAuth
 		wantID   string
 		wantTag  int64
 		wantUser string
@@ -340,32 +340,32 @@ func TestISCSIAuthResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name:   "chap auth",
-			auth:   &client.ISCSIAuth{ID: 1, Tag: 1, User: "chapuser", Secret: "[REDACTED]"},
+			auth:   &truenas.ISCSIAuth{ID: 1, Tag: 1, User: "chapuser", Secret: "[REDACTED]"},
 			wantID: "1", wantTag: 1, wantUser: "chapuser", wantDisc: "NONE",
 		},
 		{
 			name:   "mutual chap",
-			auth:   &client.ISCSIAuth{ID: 2, Tag: 2, User: "u", Peeruser: "p", DiscoveryAuth: "CHAP_MUTUAL"},
+			auth:   &truenas.ISCSIAuth{ID: 2, Tag: 2, User: "u", Peeruser: "p", DiscoveryAuth: "CHAP_MUTUAL"},
 			wantID: "2", wantTag: 2, wantUser: "u", wantDisc: "CHAP_MUTUAL",
 		},
 		{
 			name:   "auth empty discovery",
-			auth:   &client.ISCSIAuth{ID: 3, Tag: 3, User: "u3"},
+			auth:   &truenas.ISCSIAuth{ID: 3, Tag: 3, User: "u3"},
 			wantID: "3", wantTag: 3, wantUser: "u3", wantDisc: "NONE",
 		},
 		{
 			name:   "auth high tag",
-			auth:   &client.ISCSIAuth{ID: 4, Tag: 100, User: "u4", DiscoveryAuth: "CHAP"},
+			auth:   &truenas.ISCSIAuth{ID: 4, Tag: 100, User: "u4", DiscoveryAuth: "CHAP"},
 			wantID: "4", wantTag: 100, wantUser: "u4", wantDisc: "CHAP",
 		},
 		{
 			name:   "auth with long username",
-			auth:   &client.ISCSIAuth{ID: 5, Tag: 5, User: "verylongchapuser", DiscoveryAuth: "NONE"},
+			auth:   &truenas.ISCSIAuth{ID: 5, Tag: 5, User: "verylongchapuser", DiscoveryAuth: "NONE"},
 			wantID: "5", wantTag: 5, wantUser: "verylongchapuser", wantDisc: "NONE",
 		},
 		{
 			name:   "auth tag boundary max",
-			auth:   &client.ISCSIAuth{ID: 6, Tag: 65535, User: "mx", DiscoveryAuth: "NONE"},
+			auth:   &truenas.ISCSIAuth{ID: 6, Tag: 65535, User: "mx", DiscoveryAuth: "NONE"},
 			wantID: "6", wantTag: 65535, wantUser: "mx", wantDisc: "NONE",
 		},
 	}
@@ -396,27 +396,27 @@ func TestISCSIInitiatorResource_MapResponseToModel_Cases(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name           string
-		init           *client.ISCSIInitiator
+		init           *truenas.ISCSIInitiator
 		wantID         string
 		wantComment    string
 		wantInitiators int
 	}{
 		{
 			name:        "empty allow all",
-			init:        &client.ISCSIInitiator{ID: 1, Comment: "allow all"},
+			init:        &truenas.ISCSIInitiator{ID: 1, Comment: "allow all"},
 			wantID:      "1",
 			wantComment: "allow all",
 		},
 		{
 			name:           "single initiator",
-			init:           &client.ISCSIInitiator{ID: 2, Comment: "one", Initiators: []string{"iqn.1991-05.com.microsoft:host1"}},
+			init:           &truenas.ISCSIInitiator{ID: 2, Comment: "one", Initiators: []string{"iqn.1991-05.com.microsoft:host1"}},
 			wantID:         "2",
 			wantComment:    "one",
 			wantInitiators: 1,
 		},
 		{
 			name: "multiple initiators",
-			init: &client.ISCSIInitiator{
+			init: &truenas.ISCSIInitiator{
 				ID:      3,
 				Comment: "multi",
 				Initiators: []string{
@@ -429,7 +429,7 @@ func TestISCSIInitiatorResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name:        "zero ID",
-			init:        &client.ISCSIInitiator{ID: 0},
+			init:        &truenas.ISCSIInitiator{ID: 0},
 			wantID:      "0",
 			wantComment: "",
 		},

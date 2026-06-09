@@ -22,7 +22,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 )
 
 type AlertClassesResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 type AlertClassesResourceModel struct {
@@ -112,11 +113,11 @@ func (r *AlertClassesResource) Configure(_ context.Context, req resource.Configu
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -203,8 +204,8 @@ func (r *AlertClassesResource) Delete(ctx context.Context, _ resource.DeleteRequ
 
 	tflog.Debug(ctx, "Deleting alertclasses config (resetting to empty)")
 
-	_, err := r.client.UpdateAlertClassesConfig(ctx, &client.AlertClassesUpdateRequest{
-		Classes: map[string]client.AlertClassEntry{},
+	_, err := r.client.UpdateAlertClassesConfig(ctx, &truenas.AlertClassesUpdateRequest{
+		Classes: map[string]truenas.AlertClassEntry{},
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Error Resetting Alert Classes", fmt.Sprintf("Could not reset alert classes: %s", err))
@@ -217,11 +218,11 @@ func (r *AlertClassesResource) ImportState(ctx context.Context, req resource.Imp
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *AlertClassesResource) buildUpdateRequest(ctx context.Context, plan *AlertClassesResourceModel) *client.AlertClassesUpdateRequest {
-	out := map[string]client.AlertClassEntry{}
+func (r *AlertClassesResource) buildUpdateRequest(ctx context.Context, plan *AlertClassesResourceModel) *truenas.AlertClassesUpdateRequest {
+	out := map[string]truenas.AlertClassEntry{}
 
 	if plan.Classes.IsNull() || plan.Classes.IsUnknown() {
-		return &client.AlertClassesUpdateRequest{Classes: out}
+		return &truenas.AlertClassesUpdateRequest{Classes: out}
 	}
 
 	// ElementsAs cannot fail: schema guarantees the map element type matches
@@ -230,7 +231,7 @@ func (r *AlertClassesResource) buildUpdateRequest(ctx context.Context, plan *Ale
 	_ = plan.Classes.ElementsAs(ctx, &raw, false)
 
 	for k, v := range raw {
-		entry := client.AlertClassEntry{}
+		entry := truenas.AlertClassEntry{}
 		if !v.Level.IsNull() && !v.Level.IsUnknown() {
 			entry.Level = v.Level.ValueString()
 		}
@@ -244,10 +245,10 @@ func (r *AlertClassesResource) buildUpdateRequest(ctx context.Context, plan *Ale
 		out[k] = entry
 	}
 
-	return &client.AlertClassesUpdateRequest{Classes: out}
+	return &truenas.AlertClassesUpdateRequest{Classes: out}
 }
 
-func (r *AlertClassesResource) mapResponseToModel(ctx context.Context, cfg *client.AlertClassesConfig, model *AlertClassesResourceModel, d interface{}) {
+func (r *AlertClassesResource) mapResponseToModel(ctx context.Context, cfg *truenas.AlertClassesConfig, model *AlertClassesResourceModel, d interface{}) {
 	model.ID = types.StringValue("alertclasses")
 
 	objs := map[string]attr.Value{}

@@ -19,7 +19,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
@@ -32,7 +33,7 @@ var (
 
 // CronJobResource manages a TrueNAS cron job.
 type CronJobResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // CronJobResourceModel describes the resource data model.
@@ -154,11 +155,11 @@ func (r *CronJobResource) Configure(_ context.Context, req resource.ConfigureReq
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -175,13 +176,13 @@ func (r *CronJobResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	createReq := &client.CronJobCreateRequest{
+	createReq := &truenas.CronJobCreateRequest{
 		User:    plan.User.ValueString(),
 		Command: plan.Command.ValueString(),
 		Enabled: plan.Enabled.ValueBool(),
 		Stdout:  plan.Stdout.ValueBool(),
 		Stderr:  plan.Stderr.ValueBool(),
-		Schedule: client.Schedule{
+		Schedule: truenas.Schedule{
 			Minute: plan.Minute.ValueString(),
 			Hour:   plan.Hour.ValueString(),
 			Dom:    plan.Dom.ValueString(),
@@ -232,7 +233,7 @@ func (r *CronJobResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	job, err := r.client.GetCronJob(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -276,7 +277,7 @@ func (r *CronJobResource) Update(ctx context.Context, req resource.UpdateRequest
 	enabled := plan.Enabled.ValueBool()
 	stdout := plan.Stdout.ValueBool()
 	stderr := plan.Stderr.ValueBool()
-	schedule := &client.Schedule{
+	schedule := &truenas.Schedule{
 		Minute: plan.Minute.ValueString(),
 		Hour:   plan.Hour.ValueString(),
 		Dom:    plan.Dom.ValueString(),
@@ -284,7 +285,7 @@ func (r *CronJobResource) Update(ctx context.Context, req resource.UpdateRequest
 		Dow:    plan.Dow.ValueString(),
 	}
 
-	updateReq := &client.CronJobUpdateRequest{
+	updateReq := &truenas.CronJobUpdateRequest{
 		User:     plan.User.ValueString(),
 		Command:  plan.Command.ValueString(),
 		Enabled:  &enabled,
@@ -333,7 +334,7 @@ func (r *CronJobResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 	err = r.client.DeleteCronJob(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Cron job already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -412,7 +413,7 @@ func (r *CronJobResource) UpgradeState(ctx context.Context) map[int64]resource.S
 	}
 }
 
-func (r *CronJobResource) mapResponseToModel(job *client.CronJob, model *CronJobResourceModel) {
+func (r *CronJobResource) mapResponseToModel(job *truenas.CronJob, model *CronJobResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(job.ID))
 	model.User = types.StringValue(job.User)
 	model.Command = types.StringValue(job.Command)

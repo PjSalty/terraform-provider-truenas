@@ -18,7 +18,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	tnvalidators "github.com/PjSalty/terraform-provider-truenas/internal/validators"
 )
 
@@ -29,7 +30,7 @@ var (
 
 // StaticRouteResource manages a TrueNAS static route.
 type StaticRouteResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // StaticRouteResourceModel describes the resource data model.
@@ -92,11 +93,11 @@ func (r *StaticRouteResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -113,7 +114,7 @@ func (r *StaticRouteResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createReq := &client.StaticRouteCreateRequest{
+	createReq := &truenas.StaticRouteCreateRequest{
 		Destination: plan.Destination.ValueString(),
 		Gateway:     plan.Gateway.ValueString(),
 	}
@@ -161,7 +162,7 @@ func (r *StaticRouteResource) Read(ctx context.Context, req resource.ReadRequest
 
 	route, err := r.client.GetStaticRoute(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -202,7 +203,7 @@ func (r *StaticRouteResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	updateReq := &client.StaticRouteUpdateRequest{
+	updateReq := &truenas.StaticRouteUpdateRequest{
 		Destination: plan.Destination.ValueString(),
 		Gateway:     plan.Gateway.ValueString(),
 	}
@@ -249,7 +250,7 @@ func (r *StaticRouteResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err = r.client.DeleteStaticRoute(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Static route already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -270,7 +271,7 @@ func (r *StaticRouteResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *StaticRouteResource) mapResponseToModel(route *client.StaticRoute, model *StaticRouteResourceModel) {
+func (r *StaticRouteResource) mapResponseToModel(route *truenas.StaticRoute, model *StaticRouteResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(route.ID))
 	model.Destination = types.StringValue(route.Destination)
 	model.Gateway = types.StringValue(route.Gateway)

@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewShareNFSDataSource(t *testing.T) {
@@ -33,7 +33,7 @@ func TestShareNFSDataSource_Schema(t *testing.T) {
 
 func TestShareNFSDataSource_Read_Success(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.NFSShare{
+		writeJSON(w, http.StatusOK, truenas.NFSShare{
 			ID:           42,
 			Path:         "/mnt/tank/exports",
 			Aliases:      []string{"/exports"},
@@ -78,7 +78,7 @@ func TestShareNFSDataSource_Read_Success(t *testing.T) {
 
 func TestShareNFSDataSource_Read_EmptyLists(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.NFSShare{ID: 1, Path: "/mnt/tank/x", Enabled: false})
+		writeJSON(w, http.StatusOK, truenas.NFSShare{ID: 1, Path: "/mnt/tank/x", Enabled: false})
 	}))
 
 	ds := NewShareNFSDataSource().(*ShareNFSDataSource)

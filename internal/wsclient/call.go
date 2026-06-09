@@ -53,7 +53,7 @@ func (c *Client) Call(ctx context.Context, method string, params []interface{}, 
 	logCtx := tflog.SetField(ctx, "ws_correlation_id", correlationID)
 	logCtx = tflog.SetField(logCtx, "ws_method", method)
 
-	policy := c.retryPolicy
+	policy := c.RetryPolicy
 	if !opts.Idempotent {
 		// Non-idempotent calls get exactly one attempt: a transport
 		// drop must surface to the caller for explicit replay

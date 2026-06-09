@@ -6,19 +6,19 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // clientNew is a thin wrapper so the test file doesn't need to import
 // client under a name that would collide with the parameter-typed usage.
-var clientNew = client.New
+var clientNew = wsclient.NewWithOptions
 
 // TestResourceConfigure_Batch calls Configure on every resource with:
 //   - nil ProviderData (should be a no-op success path)
 //   - wrong-type ProviderData (should produce an error diagnostic)
 //
 // This exercises the ~20-line boilerplate Configure function on each of the
-// 62 resources in the provider without needing a real *client.Client.
+// 62 resources in the provider without needing a real *wsclient.Client.
 func TestResourceConfigure_Batch(t *testing.T) {
 	ctx := context.Background()
 
@@ -116,11 +116,11 @@ func TestResourceConfigure_Batch(t *testing.T) {
 			if !resp2.Diagnostics.HasError() {
 				t.Errorf("Configure(wrong-type) should have error")
 			}
-			// Case 3: valid *client.Client — exercises the success path that
+			// Case 3: valid *wsclient.Client — exercises the success path that
 			// assigns r.client. Use a throwaway in-memory client.
-			validClient, err := clientNew("http://localhost", "test")
+			validClient, err := clientNew("http://localhost", "test", true)
 			if err != nil {
-				t.Fatalf("client.New: %v", err)
+				t.Fatalf("wsclient.New: %v", err)
 			}
 			resp3 := &resource.ConfigureResponse{}
 			conf.Configure(ctx, resource.ConfigureRequest{ProviderData: validClient}, resp3)

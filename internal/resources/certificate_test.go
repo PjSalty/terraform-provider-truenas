@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // generateSelfSignedCert generates a PEM-encoded self-signed certificate and private key.
@@ -132,7 +132,7 @@ func testAccCheckCertificateDestroy(resourceName string) resource.TestCheckFunc 
 		if err == nil {
 			return fmt.Errorf("certificate %d still exists upstream after Terraform removed it", id)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking removal of certificate %d: %w", id, err)
 		}
 		return nil

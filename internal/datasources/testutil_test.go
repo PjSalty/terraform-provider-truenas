@@ -11,18 +11,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // newTestServer returns an httptest server and a Client pointed at it.
-func newTestServer(t *testing.T, handler http.Handler) (*httptest.Server, *client.Client) {
+func newTestServer(t *testing.T, handler http.Handler) (*httptest.Server, *wsclient.Client) {
 	t.Helper()
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	c, err := client.New(srv.URL, "test-api-key")
+	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
 	if err != nil {
-		t.Fatalf("client.New: %v", err)
+		t.Fatalf("wsclient.New: %v", err)
 	}
 	return srv, c
 }

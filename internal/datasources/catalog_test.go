@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewCatalogDataSource(t *testing.T) {
@@ -27,7 +27,7 @@ func TestCatalogDataSource_Schema(t *testing.T) {
 
 func TestCatalogDataSource_Read_Success(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.Catalog{
+		writeJSON(w, http.StatusOK, truenas.Catalog{
 			ID:              "TRUENAS",
 			Label:           "TRUENAS",
 			PreferredTrains: []string{"stable", "community"},
@@ -60,7 +60,7 @@ func TestCatalogDataSource_Read_Success(t *testing.T) {
 func TestCatalogDataSource_Read_EmptyID(t *testing.T) {
 	// Should default ID to "catalog" when blank.
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.Catalog{
+		writeJSON(w, http.StatusOK, truenas.Catalog{
 			ID:              "",
 			Label:           "TRUENAS",
 			PreferredTrains: []string{},

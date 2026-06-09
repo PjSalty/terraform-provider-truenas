@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // testAccScrubTaskCleanup deletes the existing scrub task for pool 1 if it exists,
@@ -86,7 +86,7 @@ func testAccCheckScrubTaskDestroy(resourceName string) resource.TestCheckFunc {
 		if err == nil {
 			return fmt.Errorf("scrub task %d still exists upstream after Terraform removed it", id)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking removal of scrub task %d: %w", id, err)
 		}
 		return nil

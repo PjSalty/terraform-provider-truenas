@@ -13,9 +13,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/datasources"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resources"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var _ provider.Provider = &TrueNASProvider{}
@@ -23,7 +23,12 @@ var _ provider.Provider = &TrueNASProvider{}
 // newClientFn is the constructor used by Configure to build the TrueNAS API
 // client.  It is a package-level variable so tests can substitute a fake that
 // returns an error and exercise the error-handling branch.
-var newClientFn = client.NewWithOptions
+//
+// v2.0 ships JSON-RPC over WebSocket only — REST was retired ahead of
+// SCALE 26 (which removes REST entirely from the upstream API). The
+// constructor takes a ctx for the dial+auth handshake; the lifetime
+// of the resulting *wsclient.Client is independent of that ctx.
+var newClientFn = wsclient.New
 
 // TrueNASProvider implements the TrueNAS SCALE Terraform provider.
 type TrueNASProvider struct {
@@ -167,8 +172,10 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 		return
 	}
 
-	// Create the API client
-	c, err := newClientFn(url, apiKey, insecureSkipVerify)
+	// Create the API client. v2.0 ships the JSON-RPC over WebSocket
+	// transport only — the dial+auth handshake runs under the Configure
+	// ctx so a Terraform-side timeout cancels it cleanly.
+	c, err := newClientFn(ctx, url, apiKey, insecureSkipVerify)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Create TrueNAS API Client",

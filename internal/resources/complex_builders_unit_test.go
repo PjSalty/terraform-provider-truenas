@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- AlertClasses ---
@@ -17,15 +17,15 @@ func TestAlertClassesResource_MapResponseToModel(t *testing.T) {
 	r := &AlertClassesResource{}
 	ctx := context.Background()
 	proactiveTrue := true
-	cases := []*client.AlertClassesConfig{
-		{ID: 1, Classes: map[string]client.AlertClassEntry{
+	cases := []*truenas.AlertClassesConfig{
+		{ID: 1, Classes: map[string]truenas.AlertClassEntry{
 			"SystemPoolCritical": {Level: "CRITICAL", Policy: "IMMEDIATELY", ProactiveSupport: &proactiveTrue},
 			"DataPoolOffline":    {Level: "WARNING", Policy: "HOURLY"},
 		}},
-		{ID: 1, Classes: map[string]client.AlertClassEntry{
+		{ID: 1, Classes: map[string]truenas.AlertClassEntry{
 			"UPSOnBattery": {Level: "INFO", Policy: "IMMEDIATELY"},
 		}},
-		{ID: 1, Classes: map[string]client.AlertClassEntry{}},
+		{ID: 1, Classes: map[string]truenas.AlertClassEntry{}},
 	}
 	for i, cfg := range cases {
 		t.Run("case", func(t *testing.T) {
@@ -93,14 +93,14 @@ func TestFilesystemACLResource_MapResponseToModel(t *testing.T) {
 	r := &FilesystemACLResource{}
 	ctx := context.Background()
 	who := "root"
-	cases := []*client.FilesystemACL{
+	cases := []*truenas.FilesystemACL{
 		{
 			Path: "/mnt/tank/data", UID: 0, GID: 0, ACLType: "POSIX1E",
 			User: &who, Group: &who,
-			ACL: []client.ACLEntry{
-				{Tag: "USER_OBJ", ID: -1, Perms: client.ACLPerms{Read: true, Write: true, Execute: true}},
-				{Tag: "GROUP_OBJ", ID: -1, Perms: client.ACLPerms{Read: true, Write: false, Execute: true}},
-				{Tag: "OTHER", ID: -1, Perms: client.ACLPerms{Read: true}},
+			ACL: []truenas.ACLEntry{
+				{Tag: "USER_OBJ", ID: -1, Perms: truenas.ACLPerms{Read: true, Write: true, Execute: true}},
+				{Tag: "GROUP_OBJ", ID: -1, Perms: truenas.ACLPerms{Read: true, Write: false, Execute: true}},
+				{Tag: "OTHER", ID: -1, Perms: truenas.ACLPerms{Read: true}},
 			},
 		},
 		{
@@ -108,8 +108,8 @@ func TestFilesystemACLResource_MapResponseToModel(t *testing.T) {
 		},
 		{
 			Path: "/mnt/tank/nfs4", UID: 100, GID: 100, ACLType: "NFS4",
-			ACL: []client.ACLEntry{
-				{Tag: "everyone@", ID: -1, Perms: client.ACLPerms{Read: true}, Default: false},
+			ACL: []truenas.ACLEntry{
+				{Tag: "everyone@", ID: -1, Perms: truenas.ACLPerms{Read: true}, Default: false},
 			},
 		},
 	}

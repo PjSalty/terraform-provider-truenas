@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestServiceDataSource_Schema(t *testing.T) {
@@ -23,7 +23,7 @@ func TestServiceDataSource_Schema(t *testing.T) {
 
 func TestServiceDataSource_Read_Success(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Service{
+		writeJSON(w, http.StatusOK, []truenas.Service{
 			{ID: 1, Service: "ssh", Enable: true, State: "RUNNING"},
 			{ID: 2, Service: "nfs", Enable: false, State: "STOPPED"},
 		})
@@ -53,7 +53,7 @@ func TestServiceDataSource_Read_Success(t *testing.T) {
 
 func TestServiceDataSource_Read_NotFound(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Service{{ID: 1, Service: "ssh"}})
+		writeJSON(w, http.StatusOK, []truenas.Service{{ID: 1, Service: "ssh"}})
 	}))
 
 	ds := NewServiceDataSource().(*ServiceDataSource)
@@ -83,7 +83,7 @@ func TestServiceDataSource_Read_ServerError(t *testing.T) {
 
 func TestServiceDataSource_Read_StoppedService(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Service{
+		writeJSON(w, http.StatusOK, []truenas.Service{
 			{ID: 5, Service: "smbsrv", Enable: false, State: "STOPPED"},
 		})
 	}))

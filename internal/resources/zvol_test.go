@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestAccZvol_basic(t *testing.T) {
@@ -90,7 +90,7 @@ func testAccCheckZvolDestroy(resourceName string) resource.TestCheckFunc {
 		if err == nil {
 			return fmt.Errorf("zvol %q still exists upstream after Terraform removed it", rs.Primary.ID)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking removal of zvol %q: %w", rs.Primary.ID, err)
 		}
 		return nil

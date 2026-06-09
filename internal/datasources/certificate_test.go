@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestCertificateDataSource_Schema(t *testing.T) {
@@ -26,7 +26,7 @@ func TestCertificateDataSource_Schema(t *testing.T) {
 
 func TestCertificateDataSource_Read_Success(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		certs := []client.Certificate{
+		certs := []truenas.Certificate{
 			{
 				ID:              7,
 				Name:            "wildcard",
@@ -80,7 +80,7 @@ func TestCertificateDataSource_Read_Success(t *testing.T) {
 
 func TestCertificateDataSource_Read_NotFound(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Certificate{{ID: 1, Name: "other"}})
+		writeJSON(w, http.StatusOK, []truenas.Certificate{{ID: 1, Name: "other"}})
 	}))
 
 	ds := NewCertificateDataSource().(*CertificateDataSource)
@@ -114,7 +114,7 @@ func TestCertificateDataSource_Read_ServerError(t *testing.T) {
 
 func TestCertificateDataSource_Read_EmptySAN(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Certificate{
+		writeJSON(w, http.StatusOK, []truenas.Certificate{
 			{ID: 1, Name: "bare", Common: "x", SAN: nil},
 		})
 	}))

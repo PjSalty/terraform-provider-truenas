@@ -150,7 +150,15 @@ func IsNotFound(err error) bool {
 	if rpcErr.Code == CodeMethodNotFound {
 		return true
 	}
-	if rpcErr.Code != CodeMethodCallError {
+	// TrueNAS surfaces "this id doesn't exist" through multiple JSON-RPC
+	// error codes depending on the call shape:
+	//   -32001 CodeMethodCallError   — typical Get failure
+	//   -32602 CodeInvalidParams     — when middlewared validates the id
+	//          parameter against an ID-existence check and reports back
+	//          via [ENOENT]. Example seen live on cronjob.get_instance:
+	//          "Invalid params: [ENOENT] None: CronJob 45 does not exist"
+	// Accept both so resource Delete is idempotent across the surfaces.
+	if rpcErr.Code != CodeMethodCallError && rpcErr.Code != CodeInvalidParams {
 		return false
 	}
 	errname, reason := rpcErr.errnameAndReason()
@@ -166,6 +174,15 @@ func IsNotFound(err error) bool {
 			strings.Contains(low, "no such") {
 			return true
 		}
+	}
+	// Last-resort text scan for the InvalidParams case where errname
+	// isn't populated in data but the Message itself carries the
+	// not-found signature. Conservative — only match the bracketed
+	// [ENOENT] prefix so EINVAL-validations on other params don't get
+	// swallowed.
+	if rpcErr.Code == CodeInvalidParams &&
+		strings.Contains(rpcErr.Message, "[ENOENT]") {
+		return true
 	}
 	return false
 }

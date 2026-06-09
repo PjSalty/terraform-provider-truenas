@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewVMsDataSource(t *testing.T) {
@@ -24,8 +24,8 @@ func TestVMsDataSource_Schema(t *testing.T) {
 
 func TestVMsDataSource_Read_Multiple(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.VM{
-			{ID: 1, Name: "vm-a", Memory: 1024, Vcpus: 1, Cores: 2, Status: &client.VMStatus{State: "RUNNING"}},
+		writeJSON(w, http.StatusOK, []truenas.VM{
+			{ID: 1, Name: "vm-a", Memory: 1024, Vcpus: 1, Cores: 2, Status: &truenas.VMStatus{State: "RUNNING"}},
 			{ID: 2, Name: "vm-b", Memory: 2048, Vcpus: 2, Cores: 4},
 		})
 	}))
@@ -48,7 +48,7 @@ func TestVMsDataSource_Read_Multiple(t *testing.T) {
 
 func TestVMsDataSource_Read_Empty(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.VM{})
+		writeJSON(w, http.StatusOK, []truenas.VM{})
 	}))
 
 	ds := NewVMsDataSource().(*VMsDataSource)

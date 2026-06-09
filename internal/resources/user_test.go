@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestAccUser_basic(t *testing.T) {
@@ -92,7 +92,7 @@ func testAccCheckUserDestroy(resourceName string) resource.TestCheckFunc {
 		if err == nil {
 			return fmt.Errorf("user %d still exists upstream after Terraform removed it", id)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking removal of user %d: %w", id, err)
 		}
 		return nil

@@ -8,7 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 var _ datasource.DataSource = &CloudSyncCredentialDataSource{}
@@ -17,7 +18,7 @@ var _ datasource.DataSource = &CloudSyncCredentialDataSource{}
 // The credential's provider attributes (access keys, secrets) are intentionally
 // NOT exposed to avoid leaking secrets into plan output and state.
 type CloudSyncCredentialDataSource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // CloudSyncCredentialDataSourceModel describes the data source model.
@@ -62,11 +63,11 @@ func (d *CloudSyncCredentialDataSource) Configure(_ context.Context, req datasou
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected DataSource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -92,7 +93,7 @@ func (d *CloudSyncCredentialDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 
-	var cred *client.CloudSyncCredential
+	var cred *truenas.CloudSyncCredential
 	var err error
 
 	switch {

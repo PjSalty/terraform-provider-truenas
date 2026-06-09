@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // TestParseQuotaValue exercises quota-string parsing which is used by both
@@ -82,20 +82,20 @@ func TestExtractCredentialsID(t *testing.T) {
 func TestDatasetResponse_GetComments(t *testing.T) {
 	cases := []struct {
 		name string
-		ds   *client.DatasetResponse
+		ds   *truenas.DatasetResponse
 		want string
 	}{
 		{
 			name: "25.04 top-level comments",
-			ds: &client.DatasetResponse{
-				Comments: &client.PropertyValue{Value: "legacy note"},
+			ds: &truenas.DatasetResponse{
+				Comments: &truenas.PropertyValue{Value: "legacy note"},
 			},
 			want: "legacy note",
 		},
 		{
 			name: "25.10 user_properties comments",
-			ds: &client.DatasetResponse{
-				UserProperties: map[string]*client.PropertyValue{
+			ds: &truenas.DatasetResponse{
+				UserProperties: map[string]*truenas.PropertyValue{
 					"comments": {Value: "new shape note"},
 				},
 			},
@@ -103,9 +103,9 @@ func TestDatasetResponse_GetComments(t *testing.T) {
 		},
 		{
 			name: "25.10 preferred when both present",
-			ds: &client.DatasetResponse{
-				Comments: &client.PropertyValue{Value: "old"},
-				UserProperties: map[string]*client.PropertyValue{
+			ds: &truenas.DatasetResponse{
+				Comments: &truenas.PropertyValue{Value: "old"},
+				UserProperties: map[string]*truenas.PropertyValue{
 					"comments": {Value: "new"},
 				},
 			},
@@ -113,9 +113,9 @@ func TestDatasetResponse_GetComments(t *testing.T) {
 		},
 		{
 			name: "25.10 empty value falls back to 25.04",
-			ds: &client.DatasetResponse{
-				Comments: &client.PropertyValue{Value: "fallback"},
-				UserProperties: map[string]*client.PropertyValue{
+			ds: &truenas.DatasetResponse{
+				Comments: &truenas.PropertyValue{Value: "fallback"},
+				UserProperties: map[string]*truenas.PropertyValue{
 					"comments": {Value: ""},
 				},
 			},
@@ -123,22 +123,22 @@ func TestDatasetResponse_GetComments(t *testing.T) {
 		},
 		{
 			name: "neither returns empty",
-			ds:   &client.DatasetResponse{},
+			ds:   &truenas.DatasetResponse{},
 			want: "",
 		},
 		{
 			name: "nil user_properties entry ignored",
-			ds: &client.DatasetResponse{
-				UserProperties: map[string]*client.PropertyValue{"comments": nil},
-				Comments:       &client.PropertyValue{Value: "fallback"},
+			ds: &truenas.DatasetResponse{
+				UserProperties: map[string]*truenas.PropertyValue{"comments": nil},
+				Comments:       &truenas.PropertyValue{Value: "fallback"},
 			},
 			want: "fallback",
 		},
 		{
 			name: "unrelated user_properties key ignored",
-			ds: &client.DatasetResponse{
-				UserProperties: map[string]*client.PropertyValue{"other": {Value: "x"}},
-				Comments:       &client.PropertyValue{Value: "back"},
+			ds: &truenas.DatasetResponse{
+				UserProperties: map[string]*truenas.PropertyValue{"other": {Value: "x"}},
+				Comments:       &truenas.PropertyValue{Value: "back"},
 			},
 			want: "back",
 		},
@@ -157,15 +157,15 @@ func TestDatasetResponse_GetComments(t *testing.T) {
 func TestDatasetResponse_GetVolsize(t *testing.T) {
 	cases := []struct {
 		name string
-		ds   *client.DatasetResponse
+		ds   *truenas.DatasetResponse
 		want int64
 	}{
-		{name: "nil volsize returns 0", ds: &client.DatasetResponse{}, want: 0},
-		{name: "empty rawvalue returns 0", ds: &client.DatasetResponse{Volsize: &client.PropertyRawVal{Rawvalue: ""}}, want: 0},
-		{name: "16 MiB", ds: &client.DatasetResponse{Volsize: &client.PropertyRawVal{Rawvalue: "16777216"}}, want: 16777216},
-		{name: "1 GiB", ds: &client.DatasetResponse{Volsize: &client.PropertyRawVal{Rawvalue: "1073741824"}}, want: 1073741824},
-		{name: "zero string", ds: &client.DatasetResponse{Volsize: &client.PropertyRawVal{Rawvalue: "0"}}, want: 0},
-		{name: "invalid returns 0", ds: &client.DatasetResponse{Volsize: &client.PropertyRawVal{Rawvalue: "not-a-number"}}, want: 0},
+		{name: "nil volsize returns 0", ds: &truenas.DatasetResponse{}, want: 0},
+		{name: "empty rawvalue returns 0", ds: &truenas.DatasetResponse{Volsize: &truenas.PropertyRawVal{Rawvalue: ""}}, want: 0},
+		{name: "16 MiB", ds: &truenas.DatasetResponse{Volsize: &truenas.PropertyRawVal{Rawvalue: "16777216"}}, want: 16777216},
+		{name: "1 GiB", ds: &truenas.DatasetResponse{Volsize: &truenas.PropertyRawVal{Rawvalue: "1073741824"}}, want: 1073741824},
+		{name: "zero string", ds: &truenas.DatasetResponse{Volsize: &truenas.PropertyRawVal{Rawvalue: "0"}}, want: 0},
+		{name: "invalid returns 0", ds: &truenas.DatasetResponse{Volsize: &truenas.PropertyRawVal{Rawvalue: "not-a-number"}}, want: 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -181,13 +181,13 @@ func TestDatasetResponse_GetVolsize(t *testing.T) {
 func TestDatasetResponse_GetVolblocksize(t *testing.T) {
 	cases := []struct {
 		name string
-		ds   *client.DatasetResponse
+		ds   *truenas.DatasetResponse
 		want string
 	}{
-		{name: "nil returns empty", ds: &client.DatasetResponse{}, want: ""},
-		{name: "16K", ds: &client.DatasetResponse{Volblocksize: &client.PropertyValue{Value: "16K"}}, want: "16K"},
-		{name: "128K", ds: &client.DatasetResponse{Volblocksize: &client.PropertyValue{Value: "128K"}}, want: "128K"},
-		{name: "4K", ds: &client.DatasetResponse{Volblocksize: &client.PropertyValue{Value: "4K"}}, want: "4K"},
+		{name: "nil returns empty", ds: &truenas.DatasetResponse{}, want: ""},
+		{name: "16K", ds: &truenas.DatasetResponse{Volblocksize: &truenas.PropertyValue{Value: "16K"}}, want: "16K"},
+		{name: "128K", ds: &truenas.DatasetResponse{Volblocksize: &truenas.PropertyValue{Value: "128K"}}, want: "128K"},
+		{name: "4K", ds: &truenas.DatasetResponse{Volblocksize: &truenas.PropertyValue{Value: "4K"}}, want: "4K"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -217,7 +217,7 @@ func TestISCSIExtent_GetDisk(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			e := &client.ISCSIExtent{Disk: tc.raw}
+			e := &truenas.ISCSIExtent{Disk: tc.raw}
 			got := e.GetDisk()
 			if got != tc.want {
 				t.Errorf("GetDisk(%s) = %q, want %q", string(tc.raw), got, tc.want)
@@ -246,7 +246,7 @@ func TestISCSIExtent_GetFilesize(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			e := &client.ISCSIExtent{Filesize: tc.raw}
+			e := &truenas.ISCSIExtent{Filesize: tc.raw}
 			got := e.GetFilesize()
 			if got != tc.want {
 				t.Errorf("GetFilesize(%s) = %d, want %d", string(tc.raw), got, tc.want)

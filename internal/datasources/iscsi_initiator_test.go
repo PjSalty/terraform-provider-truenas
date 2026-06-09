@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewISCSIInitiatorDataSource(t *testing.T) {
@@ -31,7 +31,7 @@ func TestISCSIInitiatorDataSource_Read_Success(t *testing.T) {
 		if r.URL.Path != "/api/v2.0/iscsi/initiator/id/2" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		writeJSON(w, http.StatusOK, client.ISCSIInitiator{
+		writeJSON(w, http.StatusOK, truenas.ISCSIInitiator{
 			ID:         2,
 			Initiators: []string{"iqn.2024-01.com.example:host1"},
 			Comment:    "k8s nodes",
@@ -57,7 +57,7 @@ func TestISCSIInitiatorDataSource_Read_Success(t *testing.T) {
 
 func TestISCSIInitiatorDataSource_Read_Empty(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, client.ISCSIInitiator{ID: 1})
+		writeJSON(w, http.StatusOK, truenas.ISCSIInitiator{ID: 1})
 	}))
 	ds := NewISCSIInitiatorDataSource().(*ISCSIInitiatorDataSource)
 	ds.client = c

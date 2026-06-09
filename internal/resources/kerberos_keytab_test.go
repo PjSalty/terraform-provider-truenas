@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // validKeytabB64 is a minimal MIT keytab v2 fixture that TrueNAS
@@ -87,7 +87,7 @@ func testAccCheckKerberosKeytabDestroy(resourceName string) resource.TestCheckFu
 		if err == nil {
 			return fmt.Errorf("kerberos keytab %d still exists upstream after Terraform removed it", id)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking removal of kerberos keytab %d: %w", id, err)
 		}
 		return nil

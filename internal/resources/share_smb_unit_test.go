@@ -6,26 +6,26 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestSMBShareResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &SMBShareResource{}
 	cases := []struct {
 		name  string
-		share *client.SMBShare
+		share *truenas.SMBShare
 		want  SMBShareResourceModel
 	}{
 		{
 			name: "minimal share",
-			share: &client.SMBShare{
+			share: &truenas.SMBShare{
 				ID: 1, Path: "/mnt/tank/smb", Name: "smb1",
 				Browsable: true, Enabled: true,
 			},
 		},
 		{
 			name: "readonly share with comment",
-			share: &client.SMBShare{
+			share: &truenas.SMBShare{
 				ID: 3, Path: "/mnt/tank/ro", Name: "ro", Comment: "read only",
 				ReadOnly: true, Browsable: true, ABE: true, Enabled: true,
 				Purpose: "NO_PRESET",
@@ -33,18 +33,18 @@ func TestSMBShareResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "hidden share",
-			share: &client.SMBShare{
+			share: &truenas.SMBShare{
 				ID: 7, Path: "/mnt/tank/hid", Name: "hid$",
 				Browsable: false, Enabled: true,
 			},
 		},
 		{
 			name:  "disabled share",
-			share: &client.SMBShare{ID: 9, Path: "/mnt/x", Name: "x"},
+			share: &truenas.SMBShare{ID: 9, Path: "/mnt/x", Name: "x"},
 		},
 		{
 			name: "share with recycle purpose",
-			share: &client.SMBShare{
+			share: &truenas.SMBShare{
 				ID: 11, Path: "/mnt/tank/recycle", Name: "recycle",
 				Browsable: true, Enabled: true, Purpose: "NO_PRESET",
 				Comment: "recycle-enabled",
@@ -52,21 +52,21 @@ func TestSMBShareResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "share with access based enumeration",
-			share: &client.SMBShare{
+			share: &truenas.SMBShare{
 				ID: 12, Path: "/mnt/tank/abe", Name: "abeshare",
 				Browsable: true, ABE: true, Enabled: true,
 			},
 		},
 		{
 			name: "share with multiple booleans",
-			share: &client.SMBShare{
+			share: &truenas.SMBShare{
 				ID: 13, Path: "/mnt/tank/multi", Name: "multi",
 				Browsable: true, ReadOnly: false, ABE: true, Enabled: true,
 			},
 		},
 		{
 			name: "share with special characters in name",
-			share: &client.SMBShare{
+			share: &truenas.SMBShare{
 				ID: 14, Path: "/mnt/tank/special", Name: "with space",
 				Browsable: true, Enabled: true, Comment: "special chars $",
 			},

@@ -16,7 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
@@ -28,7 +29,7 @@ var (
 
 // KerberosKeytabResource manages a Kerberos keytab entry on TrueNAS.
 type KerberosKeytabResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 type KerberosKeytabResourceModel struct {
@@ -91,11 +92,11 @@ func (r *KerberosKeytabResource) Configure(_ context.Context, req resource.Confi
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -111,7 +112,7 @@ func (r *KerberosKeytabResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	createReq := &client.KerberosKeytabCreateRequest{
+	createReq := &truenas.KerberosKeytabCreateRequest{
 		Name: plan.Name.ValueString(),
 		File: plan.File.ValueString(),
 	}
@@ -152,7 +153,7 @@ func (r *KerberosKeytabResource) Read(ctx context.Context, req resource.ReadRequ
 
 	keytab, err := r.client.GetKerberosKeytab(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -197,7 +198,7 @@ func (r *KerberosKeytabResource) Update(ctx context.Context, req resource.Update
 
 	name := plan.Name.ValueString()
 	file := plan.File.ValueString()
-	updateReq := &client.KerberosKeytabUpdateRequest{
+	updateReq := &truenas.KerberosKeytabUpdateRequest{
 		Name: &name,
 		File: &file,
 	}
@@ -235,7 +236,7 @@ func (r *KerberosKeytabResource) Delete(ctx context.Context, req resource.Delete
 
 	tflog.Debug(ctx, "Deleting kerberos keytab", map[string]interface{}{"id": id})
 	if err := r.client.DeleteKerberosKeytab(ctx, id); err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Kerberos keytab already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -263,7 +264,7 @@ func (r *KerberosKeytabResource) ImportState(ctx context.Context, req resource.I
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *KerberosKeytabResource) mapResponseToModel(keytab *client.KerberosKeytab, model *KerberosKeytabResourceModel) {
+func (r *KerberosKeytabResource) mapResponseToModel(keytab *truenas.KerberosKeytab, model *KerberosKeytabResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(keytab.ID))
 	model.Name = types.StringValue(keytab.Name)
 }

@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewISCSIExtentDataSource(t *testing.T) {
@@ -32,7 +32,7 @@ func TestISCSIExtentDataSource_Read_Success(t *testing.T) {
 		if r.URL.Path != "/api/v2.0/iscsi/extent/id/4" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		writeJSON(w, http.StatusOK, client.ISCSIExtent{
+		writeJSON(w, http.StatusOK, truenas.ISCSIExtent{
 			ID:        4,
 			Name:      "ext1",
 			Type:      "DISK",

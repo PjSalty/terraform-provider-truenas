@@ -20,7 +20,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 var (
@@ -30,7 +31,7 @@ var (
 
 // MailConfigResource manages the TrueNAS mail/SMTP configuration.
 type MailConfigResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // MailConfigResourceModel describes the resource data model.
@@ -146,11 +147,11 @@ func (r *MailConfigResource) Configure(_ context.Context, req resource.Configure
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -255,7 +256,7 @@ func (r *MailConfigResource) Delete(ctx context.Context, _ resource.DeleteReques
 	pass := ""
 
 	// fromemail is not reset because the API rejects empty values
-	_, err := r.client.UpdateMailConfig(ctx, &client.MailConfigUpdateRequest{
+	_, err := r.client.UpdateMailConfig(ctx, &truenas.MailConfigUpdateRequest{
 		FromName:       &fromname,
 		OutgoingServer: &outgoingserver,
 		Port:           &port,
@@ -278,8 +279,8 @@ func (r *MailConfigResource) ImportState(ctx context.Context, req resource.Impor
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *MailConfigResource) buildUpdateRequest(plan *MailConfigResourceModel) *client.MailConfigUpdateRequest {
-	updateReq := &client.MailConfigUpdateRequest{}
+func (r *MailConfigResource) buildUpdateRequest(plan *MailConfigResourceModel) *truenas.MailConfigUpdateRequest {
+	updateReq := &truenas.MailConfigUpdateRequest{}
 
 	if !plan.FromEmail.IsNull() && !plan.FromEmail.IsUnknown() {
 		v := plan.FromEmail.ValueString()
@@ -319,7 +320,7 @@ func (r *MailConfigResource) buildUpdateRequest(plan *MailConfigResourceModel) *
 	return updateReq
 }
 
-func (r *MailConfigResource) mapResponseToModel(config *client.MailConfig, model *MailConfigResourceModel) {
+func (r *MailConfigResource) mapResponseToModel(config *truenas.MailConfig, model *MailConfigResourceModel) {
 	model.ID = types.StringValue("1")
 	model.FromEmail = types.StringValue(config.FromEmail)
 	model.FromName = types.StringValue(config.FromName)

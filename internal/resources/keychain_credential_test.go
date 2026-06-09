@@ -15,7 +15,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // generateSSHKeyPair generates an SSH key pair (OpenSSH-format public key, PEM private key).
@@ -117,7 +117,7 @@ func testAccCheckKeychainCredentialDestroy(resourceName string) resource.TestChe
 		if err == nil {
 			return fmt.Errorf("keychain credential %d still exists upstream after Terraform removed it", id)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking removal of keychain credential %d: %w", id, err)
 		}
 		return nil

@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // dataSourceCase describes a data source under test.
@@ -99,7 +99,7 @@ func TestAllDataSources_Configure_Nil(t *testing.T) {
 }
 
 // TestAllDataSources_Configure_WrongType asserts that passing a ProviderData
-// that is not a *client.Client produces an error diagnostic.
+// that is not a *wsclient.Client produces an error diagnostic.
 func TestAllDataSources_Configure_WrongType(t *testing.T) {
 	for _, tc := range allDataSources() {
 		t.Run(tc.name, func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestAllDataSources_Configure_WrongType(t *testing.T) {
 			if !ok {
 				t.Fatalf("data source %s does not implement DataSourceWithConfigure", tc.name)
 			}
-			// int is unambiguously not *client.Client.
+			// int is unambiguously not *wsclient.Client.
 			req := datasource.ConfigureRequest{ProviderData: 42}
 			resp := datasource.ConfigureResponse{}
 			cfg.Configure(context.Background(), req, &resp)
@@ -119,13 +119,13 @@ func TestAllDataSources_Configure_WrongType(t *testing.T) {
 	}
 }
 
-// TestAllDataSources_Configure_Client asserts that a valid *client.Client is
+// TestAllDataSources_Configure_Client asserts that a valid *wsclient.Client is
 // stored without error. We cannot inspect the private client field in a
 // generic way, but exercising the happy path still counts toward coverage.
 func TestAllDataSources_Configure_Client(t *testing.T) {
-	c, err := client.New("http://example.invalid", "test-api-key")
+	c, err := wsclient.NewWithOptions("http://example.invalid", "test-api-key", true)
 	if err != nil {
-		t.Fatalf("client.New: %v", err)
+		t.Fatalf("wsclient.New: %v", err)
 	}
 	for _, tc := range allDataSources() {
 		t.Run(tc.name, func(t *testing.T) {

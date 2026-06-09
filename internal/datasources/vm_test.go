@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewVMDataSource(t *testing.T) {
@@ -37,7 +37,7 @@ func TestVMDataSource_Read_Success(t *testing.T) {
 	cpuModel := "host"
 	minMem := int64(1073741824)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.VM{
+		writeJSON(w, http.StatusOK, truenas.VM{
 			ID:               12,
 			Name:             "vm1",
 			Description:      "test vm",
@@ -55,7 +55,7 @@ func TestVMDataSource_Read_Success(t *testing.T) {
 			CPUModel:         &cpuModel,
 			EnableSecureBoot: true,
 			UUID:             &uuid,
-			Status:           &client.VMStatus{State: "RUNNING"},
+			Status:           &truenas.VMStatus{State: "RUNNING"},
 		})
 	}))
 
@@ -92,7 +92,7 @@ func TestVMDataSource_Read_Success(t *testing.T) {
 
 func TestVMDataSource_Read_NoStatus(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.VM{ID: 1, Name: "vm", Memory: 1024})
+		writeJSON(w, http.StatusOK, truenas.VM{ID: 1, Name: "vm", Memory: 1024})
 	}))
 
 	ds := NewVMDataSource().(*VMDataSource)

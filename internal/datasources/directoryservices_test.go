@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewDirectoryServicesDataSource(t *testing.T) {
@@ -34,7 +34,7 @@ func TestDirectoryServicesDataSource_Read_Enabled(t *testing.T) {
 	svcType := "ACTIVEDIRECTORY"
 	realm := "EXAMPLE.COM"
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.DirectoryServicesConfig{
+		writeJSON(w, http.StatusOK, truenas.DirectoryServicesConfig{
 			ID:                 1,
 			ServiceType:        &svcType,
 			Enable:             true,
@@ -86,7 +86,7 @@ func TestDirectoryServicesDataSource_Read_Enabled(t *testing.T) {
 func TestDirectoryServicesDataSource_Read_Disabled(t *testing.T) {
 	// No service type, no credential — should produce null strings.
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.DirectoryServicesConfig{
+		writeJSON(w, http.StatusOK, truenas.DirectoryServicesConfig{
 			ID:     1,
 			Enable: false,
 		})

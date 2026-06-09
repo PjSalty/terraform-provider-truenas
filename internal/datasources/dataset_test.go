@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestDatasetDataSource_Schema(t *testing.T) {
@@ -27,29 +27,29 @@ func TestDatasetDataSource_Schema(t *testing.T) {
 
 func TestDatasetDataSource_Read_Success(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.DatasetResponse{
+		writeJSON(w, http.StatusOK, truenas.DatasetResponse{
 			ID:         "tank/data",
 			Name:       "data",
 			Pool:       "tank",
 			Type:       "FILESYSTEM",
 			MountPoint: "/mnt/tank/data",
-			Compression: &client.PropertyValue{
+			Compression: &truenas.PropertyValue{
 				Value: "lz4",
 			},
-			Atime: &client.PropertyValue{Value: "on"},
-			Quota: &client.PropertyRawVal{
+			Atime: &truenas.PropertyValue{Value: "on"},
+			Quota: &truenas.PropertyRawVal{
 				Value:    "10G",
 				Rawvalue: "10737418240",
 			},
-			Refquota: &client.PropertyRawVal{
+			Refquota: &truenas.PropertyRawVal{
 				Value:    "5G",
 				Rawvalue: "5368709120",
 			},
-			Sync:          &client.PropertyValue{Value: "standard"},
-			Readonly:      &client.PropertyValue{Value: "off"},
-			RecordSize:    &client.PropertyValue{Value: "128K"},
-			Deduplication: &client.PropertyValue{Value: "off"},
-			Comments:      &client.PropertyValue{Value: "hello"},
+			Sync:          &truenas.PropertyValue{Value: "standard"},
+			Readonly:      &truenas.PropertyValue{Value: "off"},
+			RecordSize:    &truenas.PropertyValue{Value: "128K"},
+			Deduplication: &truenas.PropertyValue{Value: "off"},
+			Comments:      &truenas.PropertyValue{Value: "hello"},
 		})
 	}))
 
@@ -89,7 +89,7 @@ func TestDatasetDataSource_Read_Success(t *testing.T) {
 func TestDatasetDataSource_Read_MinimalFields(t *testing.T) {
 	// Only required fields populated — none of the property pointers set.
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.DatasetResponse{
+		writeJSON(w, http.StatusOK, truenas.DatasetResponse{
 			ID:   "tank/minimal",
 			Name: "minimal",
 			Pool: "tank",

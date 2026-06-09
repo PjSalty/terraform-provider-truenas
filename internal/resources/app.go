@@ -20,7 +20,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 var (
@@ -30,7 +31,7 @@ var (
 
 // AppResource manages a TrueNAS SCALE deployed application.
 type AppResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // AppResourceModel describes the resource data model.
@@ -183,11 +184,11 @@ func (r *AppResource) Configure(_ context.Context, req resource.ConfigureRequest
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -210,7 +211,7 @@ func (r *AppResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
-	createReq := &client.AppCreateRequest{
+	createReq := &truenas.AppCreateRequest{
 		AppName:    plan.AppName.ValueString(),
 		CatalogApp: plan.CatalogApp.ValueString(),
 		Train:      plan.Train.ValueString(),
@@ -260,7 +261,7 @@ func (r *AppResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 
 	app, err := r.client.GetApp(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -301,7 +302,7 @@ func (r *AppResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 
-	updateReq := &client.AppUpdateRequest{
+	updateReq := &truenas.AppUpdateRequest{
 		Values: values,
 	}
 
@@ -331,7 +332,7 @@ func (r *AppResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 		return
 	}
 
-	delReq := &client.AppDeleteRequest{
+	delReq := &truenas.AppDeleteRequest{
 		RemoveImages:    boolOrDefault(state.RemoveImages, true),
 		RemoveIxVolumes: boolOrDefault(state.RemoveIxVolumes, false),
 	}
@@ -343,7 +344,7 @@ func (r *AppResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 	})
 
 	if err := r.client.DeleteApp(ctx, state.ID.ValueString(), delReq); err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "App already deleted, removing from state", map[string]interface{}{"id": state.ID.ValueString()})
 			return
 		}
@@ -365,7 +366,7 @@ func (r *AppResource) ImportState(ctx context.Context, req resource.ImportStateR
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("train"), types.StringValue("stable"))...)
 }
 
-func (r *AppResource) mapResponseToModel(app *client.App, model *AppResourceModel) {
+func (r *AppResource) mapResponseToModel(app *truenas.App, model *AppResourceModel) {
 	model.ID = types.StringValue(app.ID)
 	model.AppName = types.StringValue(app.Name)
 	model.State = types.StringValue(app.State)

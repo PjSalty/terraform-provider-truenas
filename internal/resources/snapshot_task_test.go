@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestAccSnapshotTask_basic(t *testing.T) {
@@ -67,7 +67,7 @@ func testAccCheckSnapshotTaskDestroy(resourceName string) resource.TestCheckFunc
 		if err == nil {
 			return fmt.Errorf("snapshot task %d still exists upstream after Terraform removed it", id)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking removal of snapshot task %d: %w", id, err)
 		}
 		return nil

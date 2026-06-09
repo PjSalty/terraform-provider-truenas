@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // DefaultProdDeny lists hostnames that the acceptance suite must
@@ -75,7 +75,7 @@ func SkipIfNoAcc(t *testing.T) bool {
 // counterpart to the same check in scripts/lib/_env.sh — defense in
 // depth so even an operator who bypasses the shell runner can't
 // accidentally point an _disappears test at production.
-func Client() (*client.Client, error) {
+func Client() (*wsclient.Client, error) {
 	rawURL := os.Getenv("TRUENAS_URL")
 	apiKey := os.Getenv("TRUENAS_API_KEY")
 	if rawURL == "" || apiKey == "" {
@@ -85,7 +85,7 @@ func Client() (*client.Client, error) {
 		return nil, err
 	}
 	insecure := os.Getenv("TRUENAS_INSECURE_SKIP_VERIFY") == "true"
-	return client.NewWithOptions(rawURL, apiKey, insecure)
+	return wsclient.NewWithOptions(rawURL, apiKey, insecure)
 }
 
 // assertNotProd returns an error if rawURL's hostname appears in the
