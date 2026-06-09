@@ -61,7 +61,7 @@ func (p *TrueNASProvider) Metadata(_ context.Context, _ provider.MetadataRequest
 
 func (p *TrueNASProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Terraform provider for managing TrueNAS SCALE resources via the REST API v2.0.",
+		Description: "Terraform provider for managing TrueNAS SCALE resources via the JSON-RPC 2.0 API over WebSocket.",
 		Attributes: map[string]schema.Attribute{
 			"url": schema.StringAttribute{
 				Description: "The base URL of the TrueNAS SCALE instance (e.g., https://truenas.example.com). " +
