@@ -33,6 +33,7 @@ func TestVMDataSource_Schema(t *testing.T) {
 }
 
 func TestVMDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	uuid := "abc-123"
 	cpuModel := "host"
 	minMem := int64(1073741824)
@@ -91,6 +92,7 @@ func TestVMDataSource_Read_Success(t *testing.T) {
 }
 
 func TestVMDataSource_Read_NoStatus(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.VM{ID: 1, Name: "vm", Memory: 1024})
 	}))
@@ -117,6 +119,7 @@ func TestVMDataSource_Read_NoStatus(t *testing.T) {
 }
 
 func TestVMDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))

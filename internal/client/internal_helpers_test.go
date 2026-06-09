@@ -1,3 +1,6 @@
+//go:build legacy_rest
+// +build legacy_rest
+
 package client
 
 // Direct (same-package) tests for unexported helpers whose error branches

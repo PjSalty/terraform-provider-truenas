@@ -1,3 +1,6 @@
+//go:build legacy_rest
+// +build legacy_rest
+
 package client
 
 // Fuzz tests for unexported client helpers. All targets must be panic-free

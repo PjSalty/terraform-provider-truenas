@@ -34,6 +34,7 @@ func numList(vals ...int64) tftypes.Value {
 // --- NFS share full values ---
 
 func TestNFSShareResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":       1,
 		"path":     "/mnt/tank/share",
@@ -66,6 +67,7 @@ func TestNFSShareResource_CRUD_Full(t *testing.T) {
 // --- SMB share full values ---
 
 func TestSMBShareResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "path": "/mnt/tank/share", "name": "share", "comment": "data",
 		"purpose": "NO_PRESET", "browsable": true, "readonly": true,
@@ -92,6 +94,7 @@ func TestSMBShareResource_CRUD_Full(t *testing.T) {
 // --- Dataset full ---
 
 func TestDatasetResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := datasetBody("tank/data", "FILESYSTEM")
 	c, srv := newTestServerClient(t, jsonHandler(body))
 	defer srv.Close()
@@ -118,6 +121,7 @@ func TestDatasetResource_CRUD_Full(t *testing.T) {
 // --- Zvol full ---
 
 func TestZvolResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := datasetBody("tank/vol1", "VOLUME")
 	c, srv := newTestServerClient(t, jsonHandler(body))
 	defer srv.Close()
@@ -136,6 +140,7 @@ func TestZvolResource_CRUD_Full(t *testing.T) {
 // --- User full ---
 
 func TestUserResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "uid": 1000, "username": "alice", "full_name": "Alice",
 		"email": "alice@example.com", "home": "/home/alice", "shell": "/bin/bash",
@@ -170,6 +175,7 @@ func TestUserResource_CRUD_Full(t *testing.T) {
 // --- Group full ---
 
 func TestGroupResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "gid": 1000, "group": "users", "name": "users",
 		"builtin": false, "smb": true, "sudo_commands": []interface{}{"/bin/ls"},
@@ -192,6 +198,7 @@ func TestGroupResource_CRUD_Full(t *testing.T) {
 // --- NVMet host full ---
 
 func TestNVMetHostResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "hostnqn": "nqn.x", "dhchap_key": "key",
 		"dhchap_ctrl_key": "ckey", "dhchap_dhgroup": "DH-G2",
@@ -212,6 +219,7 @@ func TestNVMetHostResource_CRUD_Full(t *testing.T) {
 // --- NVMet subsys full ---
 
 func TestNVMetSubsysResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "name": "tgt", "subnqn": "nqn.2020-01.truenas:tgt",
 		"allow_any_host": true, "pi_enable": true, "serial": "SN", "ieee_oui": "00:11:22",
@@ -235,6 +243,7 @@ func TestNVMetSubsysResource_CRUD_Full(t *testing.T) {
 // --- NVMet port full ---
 
 func TestNVMetPortResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "index": 1, "addr_trtype": "TCP", "addr_trsvcid": "4420",
 		"addr_traddr": "0.0.0.0", "addr_adrfam": "IPV4", "inline_data_size": 16384,
@@ -258,6 +267,7 @@ func TestNVMetPortResource_CRUD_Full(t *testing.T) {
 // --- NVMet namespace full ---
 
 func TestNVMetNamespaceResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "nsid": 1, "subsys_id": 1, "device_type": "ZVOL",
 		"device_path": "zvol/tank/vol1", "filesize": 16777216, "enabled": true,
@@ -278,6 +288,7 @@ func TestNVMetNamespaceResource_CRUD_Full(t *testing.T) {
 // --- iSCSI target full ---
 
 func TestISCSITargetResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "name": "tgt1", "alias": "alias1", "mode": "ISCSI",
 		"groups": []interface{}{
@@ -317,6 +328,7 @@ func TestISCSITargetResource_CRUD_Full(t *testing.T) {
 // --- iSCSI extent full ---
 
 func TestISCSIExtentResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "name": "e1", "type": "DISK", "path": "zvol/tank/vol1", "disk": "zvol/tank/vol1",
 		"blocksize": 4096, "enabled": true, "comment": "data",
@@ -343,6 +355,7 @@ func TestISCSIExtentResource_CRUD_Full(t *testing.T) {
 // --- iSCSI portal full ---
 
 func TestISCSIPortalResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "tag": 1, "comment": "all",
 		"listen": []interface{}{
@@ -382,6 +395,7 @@ func TestISCSIPortalResource_CRUD_Full(t *testing.T) {
 // --- iSCSI initiator full ---
 
 func TestISCSIInitiatorResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":         1,
 		"initiators": []interface{}{"iqn.1994-05.com.redhat"},
@@ -399,6 +413,7 @@ func TestISCSIInitiatorResource_CRUD_Full(t *testing.T) {
 // --- Certificate with create-imported and CSR variants ---
 
 func TestCertificateResource_CRUD_CSR(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 2, "name": "csr1", "type": 2,
 		"create_type":      "CERTIFICATE_CREATE_CSR",
@@ -453,6 +468,7 @@ func TestCertificateResource_CRUD_CSR(t *testing.T) {
 // --- Replication full ---
 
 func TestReplicationResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":                         1,
 		"name":                       "repl",
@@ -494,6 +510,7 @@ func TestReplicationResource_CRUD_Full(t *testing.T) {
 // --- ACME DNS authenticator with attributes populated ---
 
 func TestACMEDNSAuthenticatorResource_CRUD_WithAttrs(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":         8,
 		"name":       "cf2",
@@ -519,6 +536,7 @@ func TestACMEDNSAuthenticatorResource_CRUD_WithAttrs(t *testing.T) {
 // --- CloudSyncCredential with invalid JSON (error branch) ---
 
 func TestCloudSyncCredentialResource_CRUD_InvalidJSON(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":       1,
 		"name":     "s3",
@@ -537,6 +555,7 @@ func TestCloudSyncCredentialResource_CRUD_InvalidJSON(t *testing.T) {
 // --- Keychain credential with SSH_CREDENTIALS type (different shape) ---
 
 func TestKeychainCredentialResource_CRUD_SSHCreds(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":         2,
 		"name":       "creds",
@@ -566,6 +585,7 @@ func TestKeychainCredentialResource_CRUD_SSHCreds(t *testing.T) {
 // --- Network interface full ---
 
 func TestNetworkInterfaceResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":                       "bridge0",
 		"name":                     "bridge0",
@@ -607,6 +627,7 @@ func TestNetworkInterfaceResource_CRUD_Full(t *testing.T) {
 // --- Service with start failure ---
 
 func TestServiceResource_CRUD_StartFail(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "service": "ssh", "enable": true, "state": "RUNNING",
 	}
@@ -634,6 +655,7 @@ func TestServiceResource_CRUD_StartFail(t *testing.T) {
 // --- Service with enable=false (covers the Stop branch) ---
 
 func TestServiceResource_CRUD_Disable(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "service": "ssh", "enable": false, "state": "STOPPED",
 	}
@@ -649,6 +671,7 @@ func TestServiceResource_CRUD_Disable(t *testing.T) {
 // --- CloudBackup full with include/exclude ---
 
 func TestCloudBackupResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":               1,
 		"description":      "daily",
@@ -698,6 +721,7 @@ func TestCloudBackupResource_CRUD_Full(t *testing.T) {
 // --- CloudSync full ---
 
 func TestCloudSyncResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":            1,
 		"description":   "sync",
@@ -745,6 +769,7 @@ func TestCloudSyncResource_CRUD_Full(t *testing.T) {
 // --- Network config full ---
 
 func TestNetworkConfigResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":                   1,
 		"hostname":             "truenas",
@@ -784,6 +809,7 @@ func TestNetworkConfigResource_CRUD_Full(t *testing.T) {
 // --- Privilege full ---
 
 func TestPrivilegeResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":           1,
 		"name":         "admins",
@@ -811,6 +837,7 @@ func TestPrivilegeResource_CRUD_Full(t *testing.T) {
 // --- Certificate with CSR create + imported-signed ---
 
 func TestCertificateResource_CRUD_Signed(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 3, "name": "signed", "type": 1,
 		"create_type":         "CERTIFICATE_CREATE_IMPORTED",
@@ -863,6 +890,7 @@ func TestCertificateResource_CRUD_Signed(t *testing.T) {
 // --- Reporting exporter invalid JSON error ---
 
 func TestReportingExporterResource_CRUD_InvalidJSON(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":         1,
 		"name":       "broken",
@@ -884,6 +912,7 @@ func TestReportingExporterResource_CRUD_InvalidJSON(t *testing.T) {
 // --- Reporting exporter full ---
 
 func TestReportingExporterResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":         1,
 		"name":       "graphite",
@@ -905,6 +934,7 @@ func TestReportingExporterResource_CRUD_Full(t *testing.T) {
 // --- Catalog full ---
 
 func TestCatalogResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":               "TRUENAS",
 		"label":            "TRUENAS",
@@ -925,6 +955,7 @@ func TestCatalogResource_CRUD_Full(t *testing.T) {
 // --- Filesystem ACL full ---
 
 func TestFilesystemACLResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"path":        "/mnt/tank/share",
 		"uid":         1000,

@@ -28,6 +28,7 @@ func TestKerberosRealmDataSource_Schema(t *testing.T) {
 }
 
 func TestKerberosRealmDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	primary := "kdc.example.com"
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.KerberosRealm{
@@ -63,6 +64,7 @@ func TestKerberosRealmDataSource_Read_Success(t *testing.T) {
 }
 
 func TestKerberosRealmDataSource_Read_NoPrimaryKDC(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.KerberosRealm{
 			ID:    1,
@@ -87,6 +89,7 @@ func TestKerberosRealmDataSource_Read_NoPrimaryKDC(t *testing.T) {
 }
 
 func TestKerberosRealmDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))

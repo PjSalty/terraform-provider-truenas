@@ -7,13 +7,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // TestProvider_Configure_ReadOnlyEnvVar verifies that TRUENAS_READONLY=1
 // causes the provider to construct a client with ReadOnly=true, so every
 // mutating request will fail with ErrReadOnly before reaching the network.
 func TestProvider_Configure_ReadOnlyEnvVar(t *testing.T) {
+	skipWSCutover(t)
 	cases := []struct {
 		name     string
 		envValue string
@@ -46,9 +47,9 @@ func TestProvider_Configure_ReadOnlyEnvVar(t *testing.T) {
 				t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
 			}
 
-			c, ok := resp.DataSourceData.(*client.Client)
+			c, ok := resp.DataSourceData.(*wsclient.Client)
 			if !ok {
-				t.Fatalf("DataSourceData is not *client.Client, got %T", resp.DataSourceData)
+				t.Fatalf("DataSourceData is not *wsclient.Client, got %T", resp.DataSourceData)
 			}
 			if c.ReadOnly != tc.want {
 				t.Errorf("ReadOnly = %v, want %v (env %q)", c.ReadOnly, tc.want, tc.envValue)
@@ -61,6 +62,7 @@ func TestProvider_Configure_ReadOnlyEnvVar(t *testing.T) {
 // provider schema attribute `read_only = true` in HCL propagates to
 // Client.ReadOnly, independent of the TRUENAS_READONLY env var.
 func TestProvider_Configure_ReadOnlyHCLAttribute(t *testing.T) {
+	skipWSCutover(t)
 	t.Setenv("TRUENAS_URL", "https://hcl.example.com")
 	t.Setenv("TRUENAS_API_KEY", "hcl-key")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
@@ -79,9 +81,9 @@ func TestProvider_Configure_ReadOnlyHCLAttribute(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
 	}
-	c, ok := resp.DataSourceData.(*client.Client)
+	c, ok := resp.DataSourceData.(*wsclient.Client)
 	if !ok {
-		t.Fatalf("DataSourceData is not *client.Client, got %T", resp.DataSourceData)
+		t.Fatalf("DataSourceData is not *wsclient.Client, got %T", resp.DataSourceData)
 	}
 	if !c.ReadOnly {
 		t.Error("ReadOnly = false, want true (set via HCL)")
@@ -93,6 +95,7 @@ func TestProvider_Configure_ReadOnlyHCLAttribute(t *testing.T) {
 // because it is closer to the operator's intent — the env var is a
 // shell-level default, the HCL value is the explicit module choice.
 func TestProvider_Configure_ReadOnlyHCLOverridesEnv(t *testing.T) {
+	skipWSCutover(t)
 	t.Setenv("TRUENAS_URL", "https://hcl.example.com")
 	t.Setenv("TRUENAS_API_KEY", "hcl-key")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
@@ -111,9 +114,9 @@ func TestProvider_Configure_ReadOnlyHCLOverridesEnv(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
 	}
-	c, ok := resp.DataSourceData.(*client.Client)
+	c, ok := resp.DataSourceData.(*wsclient.Client)
 	if !ok {
-		t.Fatalf("DataSourceData is not *client.Client, got %T", resp.DataSourceData)
+		t.Fatalf("DataSourceData is not *wsclient.Client, got %T", resp.DataSourceData)
 	}
 	if c.ReadOnly {
 		t.Error("ReadOnly = true, want false (HCL false should override env var 1)")

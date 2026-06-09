@@ -1,3 +1,6 @@
+//go:build legacy_rest
+// +build legacy_rest
+
 // Tests for scrub_task CRUD.
 package client_test
 

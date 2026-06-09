@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // TestAccCatalogResource_basic — singleton: TrueNAS only supports one
@@ -117,7 +117,7 @@ resource "truenas_catalog" "test" {
 						ctx, cancel := testAccCtx()
 						defer cancel()
 						drift := []string{"community"}
-						_, err = c.UpdateCatalog(ctx, &client.CatalogUpdateRequest{PreferredTrains: &drift})
+						_, err = c.UpdateCatalog(ctx, &truenas.CatalogUpdateRequest{PreferredTrains: &drift})
 						return err
 					},
 				),

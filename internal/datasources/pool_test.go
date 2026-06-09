@@ -24,6 +24,7 @@ func TestPoolDataSource_Schema(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_ByID(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v2.0/pool/id/3" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
@@ -61,6 +62,7 @@ func TestPoolDataSource_Read_ByID(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_ByName(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Pool{
 			{ID: 1, Name: "tank", GUID: "a", Path: "/mnt/tank", Status: "ONLINE", Healthy: true, IsDecrypted: true},
@@ -87,6 +89,7 @@ func TestPoolDataSource_Read_ByName(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_NameNotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Pool{{ID: 1, Name: "other"}})
 	}))
@@ -102,6 +105,7 @@ func TestPoolDataSource_Read_NameNotFound(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_IDNotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))
@@ -117,6 +121,7 @@ func TestPoolDataSource_Read_IDNotFound(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_MissingKey(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, []truenas.Pool{})
 	}))

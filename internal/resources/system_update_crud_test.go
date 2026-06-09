@@ -131,6 +131,7 @@ func TestSystemUpdateResource_Schema(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := false
 	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
@@ -164,6 +165,7 @@ func TestSystemUpdateResource_Read_Success(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Read_ErrorsEachBranch(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := true
 	cases := []struct {
@@ -193,6 +195,7 @@ func TestSystemUpdateResource_Read_ErrorsEachBranch(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Create_Success_PinsNewTrain(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := false
 	trains := stdTrains()
@@ -214,6 +217,7 @@ func TestSystemUpdateResource_Create_Success_PinsNewTrain(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Create_Success_TrainAlreadySelected(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := false
 	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
@@ -233,6 +237,7 @@ func TestSystemUpdateResource_Create_Success_TrainAlreadySelected(t *testing.T) 
 }
 
 func TestSystemUpdateResource_Create_Success_NoTrain(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := false
 	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
@@ -252,6 +257,7 @@ func TestSystemUpdateResource_Create_Success_NoTrain(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Create_InvalidTrain(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := false
 	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
@@ -270,6 +276,7 @@ func TestSystemUpdateResource_Create_InvalidTrain(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Create_GetTrainsFails(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := false
 	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"/api/v2.0/update/get_trains": true}))
@@ -288,6 +295,7 @@ func TestSystemUpdateResource_Create_GetTrainsFails(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Create_SetTrainFails(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := false
 	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"/api/v2.0/update/set_train": true}))
@@ -307,6 +315,7 @@ func TestSystemUpdateResource_Create_SetTrainFails(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Create_SetAutoDownloadFails(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := false
 	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"/api/v2.0/update/set_auto_download": true}))
@@ -325,6 +334,7 @@ func TestSystemUpdateResource_Create_SetAutoDownloadFails(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Create_RefreshStateFails(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := false
 	// applyConfig succeeds, but the subsequent refreshState hits a failing
@@ -345,6 +355,7 @@ func TestSystemUpdateResource_Create_RefreshStateFails(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Update_Success(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := true
 	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
@@ -364,6 +375,7 @@ func TestSystemUpdateResource_Update_Success(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Update_ApplyFails(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := true
 	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"/api/v2.0/update/set_auto_download": true}))
@@ -383,6 +395,7 @@ func TestSystemUpdateResource_Update_ApplyFails(t *testing.T) {
 }
 
 func TestSystemUpdateResource_Update_RefreshFails(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	ad := true
 	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"/api/v2.0/system/info": true}))

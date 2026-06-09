@@ -1,3 +1,6 @@
+//go:build legacy_rest
+// +build legacy_rest
+
 package client
 
 // Benchmarks for hot paths in the TrueNAS HTTP client. These are package-

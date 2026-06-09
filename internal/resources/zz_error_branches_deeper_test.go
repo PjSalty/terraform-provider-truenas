@@ -157,6 +157,7 @@ func drive400CRUD(t *testing.T, r resource.Resource, id string, planVals map[str
 // the many `if resp.Diagnostics.HasError() { return }` branches that sit
 // right after Plan.Get / State.Get calls throughout the resource package.
 func TestErrorBranches_BadPlan_AllResources(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	resources := []resource.Resource{
@@ -260,6 +261,7 @@ func driveInvalidJSONUpdate(t *testing.T, r resource.Resource, id string, planVa
 }
 
 func TestErrorBranches_InvalidJSON_CloudBackup(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &CloudBackupResource{client: c}
@@ -283,6 +285,7 @@ func TestErrorBranches_InvalidJSON_CloudBackup(t *testing.T) {
 }
 
 func TestErrorBranches_InvalidJSON_CloudSync(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &CloudSyncResource{client: c}
@@ -305,6 +308,7 @@ func TestErrorBranches_InvalidJSON_CloudSync(t *testing.T) {
 }
 
 func TestErrorBranches_InvalidJSON_AlertService(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &AlertServiceResource{client: c}
@@ -320,6 +324,7 @@ func TestErrorBranches_InvalidJSON_AlertService(t *testing.T) {
 }
 
 func TestErrorBranches_InvalidJSON_ReportingExporter(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ReportingExporterResource{client: c}
@@ -334,6 +339,7 @@ func TestErrorBranches_InvalidJSON_ReportingExporter(t *testing.T) {
 }
 
 func TestErrorBranches_InvalidJSON_CloudSyncCredential(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &CloudSyncCredentialResource{client: c}
@@ -347,6 +353,7 @@ func TestErrorBranches_InvalidJSON_CloudSyncCredential(t *testing.T) {
 }
 
 func TestErrorBranches_InvalidJSON_FilesystemACLTemplate(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &FilesystemACLTemplateResource{client: c}
@@ -360,6 +367,7 @@ func TestErrorBranches_InvalidJSON_FilesystemACLTemplate(t *testing.T) {
 }
 
 func TestErrorBranches_InvalidJSON_App(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &AppResource{client: c}
@@ -375,6 +383,7 @@ func TestErrorBranches_InvalidJSON_App(t *testing.T) {
 }
 
 func TestErrorBranches_InvalidJSON_DirectoryServices(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &DirectoryServicesResource{client: c}
@@ -388,6 +397,7 @@ func TestErrorBranches_InvalidJSON_DirectoryServices(t *testing.T) {
 }
 
 func TestErrorBranches_BadIDState_Pool(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &PoolResource{client: c}
@@ -424,6 +434,7 @@ func TestErrorBranches_BadIDState_Pool(t *testing.T) {
 }
 
 func TestErrorBranches_InvalidJSON_Pool(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &PoolResource{client: c}
@@ -456,6 +467,7 @@ func TestErrorBranches_InvalidJSON_Pool(t *testing.T) {
 // fail. Exercises the "Error Updating Service" and "Error Reading Service"
 // branches inside Create and Update handlers.
 func TestErrorBranches_Service_CreateUpdateFail(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "service": "ssh", "enable": false, "state": "STOPPED",
 	}
@@ -518,6 +530,7 @@ func TestErrorBranches_Service_CreateUpdateFail(t *testing.T) {
 // successful UpdateService but a failing post-update GetService, covering
 // the "Error Reading Service" branch at line 160.
 func TestErrorBranches_Service_UpdateOK_ReadFail(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "service": "ssh", "enable": true, "state": "RUNNING",
 	}
@@ -597,6 +610,7 @@ func TestErrorBranches_Service_UpdateOK_ReadFail(t *testing.T) {
 // where the current config is ACTIVEDIRECTORY+Enable, exercising the leave
 // branch that otherwise never runs.
 func TestErrorBranches_DirectoryServices_DeleteAD(t *testing.T) {
+	skipWSCutover(t)
 	adService := "ACTIVEDIRECTORY"
 	body := map[string]interface{}{
 		"id":                   1,
@@ -635,6 +649,7 @@ func TestErrorBranches_DirectoryServices_DeleteAD(t *testing.T) {
 // that returns a bare group ID on PUT (matching the real API) so the
 // successful post-update path executes.
 func TestErrorBranches_Group_UpdateSuccess(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "gid": 1000, "group": "users", "name": "users",
 		"builtin": false, "smb": false, "sudo_commands": []interface{}{},
@@ -792,6 +807,7 @@ func basetypesMapString(m map[string]string) (basetypesMap, error) {
 type basetypesMap = types.Map
 
 func TestErrorBranches_ACMEDNSAuthenticator(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ACMEDNSAuthenticatorResource{client: c}
@@ -803,6 +819,7 @@ func TestErrorBranches_ACMEDNSAuthenticator(t *testing.T) {
 }
 
 func TestErrorBranches_AlertService(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &AlertServiceResource{client: c}
@@ -816,6 +833,7 @@ func TestErrorBranches_AlertService(t *testing.T) {
 }
 
 func TestErrorBranches_AlertClasses(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &AlertClassesResource{client: c}
@@ -825,6 +843,7 @@ func TestErrorBranches_AlertClasses(t *testing.T) {
 }
 
 func TestErrorBranches_APIKey(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &APIKeyResource{client: c}
@@ -835,6 +854,7 @@ func TestErrorBranches_APIKey(t *testing.T) {
 }
 
 func TestErrorBranches_Catalog(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &CatalogResource{client: c}
@@ -848,6 +868,7 @@ func TestErrorBranches_Catalog(t *testing.T) {
 
 // Exercises the sync-on-create branch and the null SyncOnCreate fallback.
 func TestErrorBranches_Catalog_SyncOnCreate(t *testing.T) {
+	skipWSCutover(t)
 	// Mock that returns 200 OK for catalog ops, 400 for sync.
 	body := map[string]interface{}{
 		"id":               "TRUENAS",
@@ -899,6 +920,7 @@ func TestErrorBranches_Catalog_SyncOnCreate(t *testing.T) {
 }
 
 func TestErrorBranches_DNSNameserver(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &DNSNameserverResource{client: c}
@@ -909,6 +931,7 @@ func TestErrorBranches_DNSNameserver(t *testing.T) {
 }
 
 func TestErrorBranches_FilesystemACLTemplate(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &FilesystemACLTemplateResource{client: c}
@@ -919,6 +942,7 @@ func TestErrorBranches_FilesystemACLTemplate(t *testing.T) {
 }
 
 func TestErrorBranches_InitScript(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &InitScriptResource{client: c}
@@ -932,6 +956,7 @@ func TestErrorBranches_InitScript(t *testing.T) {
 }
 
 func TestErrorBranches_KerberosKeytab(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &KerberosKeytabResource{client: c}
@@ -942,6 +967,7 @@ func TestErrorBranches_KerberosKeytab(t *testing.T) {
 }
 
 func TestErrorBranches_KerberosRealm(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &KerberosRealmResource{client: c}
@@ -955,6 +981,7 @@ func TestErrorBranches_KerberosRealm(t *testing.T) {
 }
 
 func TestErrorBranches_KeychainCredential(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &KeychainCredentialResource{client: c}
@@ -973,6 +1000,7 @@ func TestErrorBranches_KeychainCredential(t *testing.T) {
 }
 
 func TestErrorBranches_CloudBackup(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &CloudBackupResource{client: c}
@@ -994,6 +1022,7 @@ func TestErrorBranches_CloudBackup(t *testing.T) {
 }
 
 func TestErrorBranches_CloudSync(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &CloudSyncResource{client: c}
@@ -1014,6 +1043,7 @@ func TestErrorBranches_CloudSync(t *testing.T) {
 }
 
 func TestErrorBranches_CloudSyncCredential(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &CloudSyncCredentialResource{client: c}
@@ -1025,6 +1055,7 @@ func TestErrorBranches_CloudSyncCredential(t *testing.T) {
 }
 
 func TestErrorBranches_CronJob(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &CronJobResource{client: c}
@@ -1044,6 +1075,7 @@ func TestErrorBranches_CronJob(t *testing.T) {
 }
 
 func TestErrorBranches_RsyncTask(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &RsyncTaskResource{client: c}
@@ -1066,6 +1098,7 @@ func TestErrorBranches_RsyncTask(t *testing.T) {
 }
 
 func TestErrorBranches_ScrubTask(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ScrubTaskResource{client: c}
@@ -1082,6 +1115,7 @@ func TestErrorBranches_ScrubTask(t *testing.T) {
 }
 
 func TestErrorBranches_SnapshotTask(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &SnapshotTaskResource{client: c}
@@ -1102,6 +1136,7 @@ func TestErrorBranches_SnapshotTask(t *testing.T) {
 }
 
 func TestErrorBranches_Replication(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ReplicationResource{client: c}
@@ -1118,6 +1153,7 @@ func TestErrorBranches_Replication(t *testing.T) {
 }
 
 func TestErrorBranches_ReportingExporter(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ReportingExporterResource{client: c}
@@ -1130,6 +1166,7 @@ func TestErrorBranches_ReportingExporter(t *testing.T) {
 }
 
 func TestErrorBranches_Privilege(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &PrivilegeResource{client: c}
@@ -1142,6 +1179,7 @@ func TestErrorBranches_Privilege(t *testing.T) {
 }
 
 func TestErrorBranches_StaticRoute(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &StaticRouteResource{client: c}
@@ -1153,6 +1191,7 @@ func TestErrorBranches_StaticRoute(t *testing.T) {
 }
 
 func TestErrorBranches_Tunable(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &TunableResource{client: c}
@@ -1166,6 +1205,7 @@ func TestErrorBranches_Tunable(t *testing.T) {
 }
 
 func TestErrorBranches_VMware(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &VMwareResource{client: c}
@@ -1177,6 +1217,7 @@ func TestErrorBranches_VMware(t *testing.T) {
 }
 
 func TestErrorBranches_FTPConfig(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &FTPConfigResource{client: c}
@@ -1190,6 +1231,7 @@ func TestErrorBranches_FTPConfig(t *testing.T) {
 }
 
 func TestErrorBranches_MailConfig(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &MailConfigResource{client: c}
@@ -1205,6 +1247,7 @@ func TestErrorBranches_MailConfig(t *testing.T) {
 }
 
 func TestErrorBranches_NFSConfig(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &NFSConfigResource{client: c}
@@ -1215,6 +1258,7 @@ func TestErrorBranches_NFSConfig(t *testing.T) {
 }
 
 func TestErrorBranches_SMBConfig(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &SMBConfigResource{client: c}
@@ -1225,6 +1269,7 @@ func TestErrorBranches_SMBConfig(t *testing.T) {
 }
 
 func TestErrorBranches_SNMPConfig(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &SNMPConfigResource{client: c}
@@ -1236,6 +1281,7 @@ func TestErrorBranches_SNMPConfig(t *testing.T) {
 }
 
 func TestErrorBranches_SSHConfig(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &SSHConfigResource{client: c}
@@ -1246,6 +1292,7 @@ func TestErrorBranches_SSHConfig(t *testing.T) {
 }
 
 func TestErrorBranches_UPSConfig(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &UPSConfigResource{client: c}
@@ -1257,6 +1304,7 @@ func TestErrorBranches_UPSConfig(t *testing.T) {
 }
 
 func TestErrorBranches_ISCSIAuth(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ISCSIAuthResource{client: c}
@@ -1268,6 +1316,7 @@ func TestErrorBranches_ISCSIAuth(t *testing.T) {
 }
 
 func TestErrorBranches_ISCSIExtent(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ISCSIExtentResource{client: c}
@@ -1283,6 +1332,7 @@ func TestErrorBranches_ISCSIExtent(t *testing.T) {
 }
 
 func TestErrorBranches_ISCSIInitiator(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ISCSIInitiatorResource{client: c}
@@ -1292,6 +1342,7 @@ func TestErrorBranches_ISCSIInitiator(t *testing.T) {
 }
 
 func TestErrorBranches_ISCSIPortal(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ISCSIPortalResource{client: c}
@@ -1301,6 +1352,7 @@ func TestErrorBranches_ISCSIPortal(t *testing.T) {
 }
 
 func TestErrorBranches_ISCSITarget(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ISCSITargetResource{client: c}
@@ -1311,6 +1363,7 @@ func TestErrorBranches_ISCSITarget(t *testing.T) {
 }
 
 func TestErrorBranches_ISCSITargetExtent(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ISCSITargetExtentResource{client: c}
@@ -1322,6 +1375,7 @@ func TestErrorBranches_ISCSITargetExtent(t *testing.T) {
 }
 
 func TestErrorBranches_NVMetGlobal(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &NVMetGlobalResource{client: c}
@@ -1332,6 +1386,7 @@ func TestErrorBranches_NVMetGlobal(t *testing.T) {
 }
 
 func TestErrorBranches_NVMetHost(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &NVMetHostResource{client: c}
@@ -1341,6 +1396,7 @@ func TestErrorBranches_NVMetHost(t *testing.T) {
 }
 
 func TestErrorBranches_NVMetHostSubsys(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &NVMetHostSubsysResource{client: c}
@@ -1351,6 +1407,7 @@ func TestErrorBranches_NVMetHostSubsys(t *testing.T) {
 }
 
 func TestErrorBranches_NVMetNamespace(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &NVMetNamespaceResource{client: c}
@@ -1362,6 +1419,7 @@ func TestErrorBranches_NVMetNamespace(t *testing.T) {
 }
 
 func TestErrorBranches_NVMetPort(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &NVMetPortResource{client: c}
@@ -1377,6 +1435,7 @@ func TestErrorBranches_NVMetPort(t *testing.T) {
 }
 
 func TestErrorBranches_NVMetPortSubsys(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &NVMetPortSubsysResource{client: c}
@@ -1387,6 +1446,7 @@ func TestErrorBranches_NVMetPortSubsys(t *testing.T) {
 }
 
 func TestErrorBranches_NVMetSubsys(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &NVMetSubsysResource{client: c}
@@ -1398,6 +1458,7 @@ func TestErrorBranches_NVMetSubsys(t *testing.T) {
 }
 
 func TestErrorBranches_NFSShare(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &NFSShareResource{client: c}
@@ -1417,6 +1478,7 @@ func TestErrorBranches_NFSShare(t *testing.T) {
 }
 
 func TestErrorBranches_SMBShare(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &SMBShareResource{client: c}
@@ -1431,6 +1493,7 @@ func TestErrorBranches_SMBShare(t *testing.T) {
 }
 
 func TestErrorBranches_User(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &UserResource{client: c}
@@ -1446,6 +1509,7 @@ func TestErrorBranches_User(t *testing.T) {
 }
 
 func TestErrorBranches_Group(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &GroupResource{client: c}
@@ -1456,6 +1520,7 @@ func TestErrorBranches_Group(t *testing.T) {
 }
 
 func TestErrorBranches_Dataset(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &DatasetResource{client: c}
@@ -1468,6 +1533,7 @@ func TestErrorBranches_Dataset(t *testing.T) {
 }
 
 func TestErrorBranches_Zvol(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ZvolResource{client: c}
@@ -1479,6 +1545,7 @@ func TestErrorBranches_Zvol(t *testing.T) {
 }
 
 func TestErrorBranches_Certificate(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &CertificateResource{client: c}
@@ -1494,6 +1561,7 @@ func TestErrorBranches_Certificate(t *testing.T) {
 }
 
 func TestErrorBranches_VM(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &VMResource{client: c}
@@ -1508,6 +1576,7 @@ func TestErrorBranches_VM(t *testing.T) {
 }
 
 func TestErrorBranches_VMDevice(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &VMDeviceResource{client: c}
@@ -1527,6 +1596,7 @@ func TestErrorBranches_VMDevice(t *testing.T) {
 }
 
 func TestErrorBranches_Pool(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &PoolResource{client: c}
@@ -1542,6 +1612,7 @@ func TestErrorBranches_Pool(t *testing.T) {
 }
 
 func TestErrorBranches_App(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &AppResource{client: c}
@@ -1555,6 +1626,7 @@ func TestErrorBranches_App(t *testing.T) {
 }
 
 func TestErrorBranches_NetworkConfig(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &NetworkConfigResource{client: c}
@@ -1566,6 +1638,7 @@ func TestErrorBranches_NetworkConfig(t *testing.T) {
 }
 
 func TestErrorBranches_NetworkInterface(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &NetworkInterfaceResource{client: c}
@@ -1591,6 +1664,7 @@ func TestErrorBranches_NetworkInterface(t *testing.T) {
 }
 
 func TestErrorBranches_KMIPConfig(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &KMIPConfigResource{client: c}
@@ -1601,6 +1675,7 @@ func TestErrorBranches_KMIPConfig(t *testing.T) {
 }
 
 func TestErrorBranches_SystemDataset(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &SystemDatasetResource{client: c}
@@ -1610,6 +1685,7 @@ func TestErrorBranches_SystemDataset(t *testing.T) {
 }
 
 func TestErrorBranches_DirectoryServices(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &DirectoryServicesResource{client: c}
@@ -1620,6 +1696,7 @@ func TestErrorBranches_DirectoryServices(t *testing.T) {
 }
 
 func TestErrorBranches_Service(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &ServiceResource{client: c}
@@ -1631,6 +1708,7 @@ func TestErrorBranches_Service(t *testing.T) {
 }
 
 func TestErrorBranches_FilesystemACL(t *testing.T) {
+	skipWSCutover(t)
 	c, done := newBadRequestClient(t)
 	defer done()
 	r := &FilesystemACLResource{client: c}

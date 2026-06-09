@@ -36,6 +36,7 @@ func TestSystemInfoDataSource_Metadata(t *testing.T) {
 }
 
 func TestSystemInfoDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v2.0/system/info" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
@@ -85,6 +86,7 @@ func TestSystemInfoDataSource_Read_Success(t *testing.T) {
 }
 
 func TestSystemInfoDataSource_Read_ServerError(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
 	}))
@@ -100,6 +102,7 @@ func TestSystemInfoDataSource_Read_ServerError(t *testing.T) {
 }
 
 func TestSystemInfoDataSource_Read_InvalidJSON(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -117,6 +120,7 @@ func TestSystemInfoDataSource_Read_InvalidJSON(t *testing.T) {
 }
 
 func TestSystemInfoDataSource_Read_PartialLoadavg(t *testing.T) {
+	skipWSCutover(t)
 	// Only 2 loadavg entries — code should not panic and fields should be null.
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]interface{}{

@@ -20,7 +20,7 @@ var readMethodRE = regexp.MustCompile(
 // snippet. We accept either the framework helper or a manual call
 // to RemoveResource because both produce the same outcome:
 //
-//	if client.IsNotFound(err) {
+//	if wsclient.IsNotFound(err) {
 //	    resp.State.RemoveResource(ctx)
 //	    return
 //	}
@@ -126,7 +126,7 @@ func TestResourcesRemoveFromStateOnNotFound(t *testing.T) {
 			"Fix by adding the standard not-found arm in the Read method:\n\n"+
 			"  obj, err := r.client.GetX(ctx, id)\n"+
 			"  if err != nil {\n"+
-			"    if client.IsNotFound(err) {\n"+
+			"    if wsclient.IsNotFound(err) {\n"+
 			"      resp.State.RemoveResource(ctx)\n"+
 			"      return\n"+
 			"    }\n"+

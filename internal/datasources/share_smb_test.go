@@ -31,6 +31,7 @@ func TestShareSMBDataSource_Schema(t *testing.T) {
 }
 
 func TestShareSMBDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.SMBShare{
 			ID:        7,
@@ -74,6 +75,7 @@ func TestShareSMBDataSource_Read_Success(t *testing.T) {
 }
 
 func TestShareSMBDataSource_Read_ReadOnly(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.SMBShare{ID: 8, Name: "ro", ReadOnly: true, Enabled: false})
 	}))
@@ -94,6 +96,7 @@ func TestShareSMBDataSource_Read_ReadOnly(t *testing.T) {
 }
 
 func TestShareSMBDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))

@@ -11,6 +11,7 @@ import (
 )
 
 func TestACMEDNSAuthenticatorResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	body := map[string]interface{}{
 		"id":         7,

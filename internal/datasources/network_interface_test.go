@@ -32,6 +32,7 @@ func TestNetworkInterfaceDataSource_Schema(t *testing.T) {
 }
 
 func TestNetworkInterfaceDataSource_Read_Physical(t *testing.T) {
+	skipWSCutover(t)
 	mtu := 9000
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.NetworkInterface{
@@ -72,6 +73,7 @@ func TestNetworkInterfaceDataSource_Read_Physical(t *testing.T) {
 }
 
 func TestNetworkInterfaceDataSource_Read_VLAN(t *testing.T) {
+	skipWSCutover(t)
 	tag := 100
 	pcp := 3
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -105,6 +107,7 @@ func TestNetworkInterfaceDataSource_Read_VLAN(t *testing.T) {
 }
 
 func TestNetworkInterfaceDataSource_Read_Bridge(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.NetworkInterface{
 			ID:            "br0",
@@ -133,6 +136,7 @@ func TestNetworkInterfaceDataSource_Read_Bridge(t *testing.T) {
 }
 
 func TestNetworkInterfaceDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))

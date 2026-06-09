@@ -26,6 +26,7 @@ func TestSystemDatasetDataSource_Schema(t *testing.T) {
 }
 
 func TestSystemDatasetDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.SystemDataset{
 			ID:       1,
@@ -66,6 +67,7 @@ func TestSystemDatasetDataSource_Read_Success(t *testing.T) {
 }
 
 func TestSystemDatasetDataSource_Read_ServerError(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
 	}))

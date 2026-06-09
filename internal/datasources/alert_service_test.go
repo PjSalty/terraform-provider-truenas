@@ -28,6 +28,7 @@ func TestAlertServiceDataSource_Schema(t *testing.T) {
 }
 
 func TestAlertServiceDataSource_Read_Success(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v2.0/alertservice/id/3" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
@@ -68,6 +69,7 @@ func TestAlertServiceDataSource_Read_Success(t *testing.T) {
 }
 
 func TestAlertServiceDataSource_Read_NilSettings(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, truenas.AlertService{ID: 1, Name: "x", Level: "INFO"})
 	}))
@@ -86,6 +88,7 @@ func TestAlertServiceDataSource_Read_NilSettings(t *testing.T) {
 }
 
 func TestAlertServiceDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))

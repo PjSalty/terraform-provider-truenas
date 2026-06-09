@@ -9,7 +9,7 @@ import (
 )
 
 // deleteNotFoundExclusions lists every resource whose Delete function
-// legitimately does NOT call client.IsNotFound. The only valid reason is
+// legitimately does NOT call wsclient.IsNotFound. The only valid reason is
 // "singleton resource" — a resource that maps to a system-wide PUT-style
 // config (ftp_config, smb_config, etc.). For those, Delete resets to a
 // default via Update, so there is no DeleteXxx call to guard with
@@ -18,7 +18,7 @@ import (
 // This map is exactly the singleton subset of resourceSweeperExclusions
 // (see sweeper_coverage_test.go). The two are kept separate because a
 // resource CAN be singleton for sweeper purposes but still call
-// client.IsNotFound somewhere (e.g. for a nested listing), so the sets
+// wsclient.IsNotFound somewhere (e.g. for a nested listing), so the sets
 // are not strictly equal in general. They just happen to overlap today.
 var deleteNotFoundExclusions = map[string]string{
 	"alertclasses":      "singleton: Delete resets via Update, no per-instance DELETE call",
@@ -46,7 +46,7 @@ var deleteNotFoundExclusions = map[string]string{
 var deleteFuncRE = regexp.MustCompile(`func \([a-z] \*(\w+)Resource\) Delete\(`)
 
 // TestDeleteHandlesNotFound verifies that every non-singleton resource's
-// Delete function contains `client.IsNotFound(` (or `IsNotFound(`) in its
+// Delete function contains `wsclient.IsNotFound(` (or `IsNotFound(`) in its
 // body. The Plugin Framework contract is that Delete on a resource that
 // no longer exists on the target system MUST be treated as success — the
 // state should just be removed. Without IsNotFound handling, any race
@@ -88,7 +88,7 @@ func TestDeleteHandlesNotFound(t *testing.T) {
 		t.Fatalf("the following resources define Delete but do not call IsNotFound — "+
 			"a delete-while-already-gone race will surface as a fatal error instead "+
 			"of a graceful state removal: %v\n\n"+
-			"Fix by wrapping the client Delete call error check with client.IsNotFound "+
+			"Fix by wrapping the client Delete call error check with wsclient.IsNotFound "+
 			"(see internal/resources/dataset.go Delete for the reference pattern), "+
 			"OR if this resource is a singleton, add it to deleteNotFoundExclusions "+
 			"with a rationale.", violations)

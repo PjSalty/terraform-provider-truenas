@@ -189,7 +189,7 @@ func TestCRUDDiscipline_CreateReadsBackResource(t *testing.T) {
 // same 404 forever.
 //
 // Acceptable patterns:
-//   - explicit client.IsNotFound check that swallows the error
+//   - explicit wsclient.IsNotFound check that swallows the error
 //   - explicit early-return on 404 with a tflog warning
 //
 // The check is conservative: if the Delete body mentions either

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // These package-local helpers used to own the full implementation of the
@@ -16,7 +16,7 @@ import (
 
 // testAccClient builds a live client.Client from the same environment
 // variables the provider uses. See internal/acctest.Client.
-func testAccClient() (*client.Client, error) {
+func testAccClient() (*wsclient.Client, error) {
 	return acctest.Client()
 }
 
