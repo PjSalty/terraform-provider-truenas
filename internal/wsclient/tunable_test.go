@@ -3,11 +3,38 @@ package wsclient
 import (
 	"context"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
+
+// tunableJobServer is the SCALE 25.10 Job-mode fixture for
+// tunable.{create,update,delete}. Mirrors certificateJobServer.
+func tunableJobServer(t *testing.T, expectMethod string, jobResult interface{}, jobError string) *TestServer {
+	t.Helper()
+	const jobID = int64(42)
+	return NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *RPCError) {
+		switch method {
+		case expectMethod:
+			return jobID, nil
+		case "core.get_jobs":
+			state := "SUCCESS"
+			if jobError != "" {
+				state = "FAILED"
+			}
+			job := map[string]interface{}{
+				"id":     jobID,
+				"state":  state,
+				"result": jobResult,
+				"error":  jobError,
+			}
+			return []interface{}{job}, nil
+		}
+		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
+	})
+}
 
 func TestGetTunable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -65,15 +92,11 @@ func TestGetTunable_decodeError(t *testing.T) {
 func TestCreateTunable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	ts := NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *RPCError) {
-		if method != "tunable.create" {
-			return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
-		}
-		return map[string]interface{}{
+	ts := tunableJobServer(t, "tunable.create",
+		map[string]interface{}{
 			"id": 9, "type": "SYSCTL", "var": "vm.swappiness",
 			"value": "10", "enabled": true,
-		}, nil
-	})
+		}, "")
 	c, _ := ts.NewClient(ctx)
 
 	tun, err := c.CreateTunable(ctx, &types.TunableCreateRequest{
@@ -103,12 +126,11 @@ func TestCreateTunable_serverError(t *testing.T) {
 func TestCreateTunable_decodeError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	ts := NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *RPCError) {
-		return "not-an-object", nil
-	})
+	// The job-result decoder gets a string instead of an object.
+	ts := tunableJobServer(t, "tunable.create", "not-an-object", "")
 	c, _ := ts.NewClient(ctx)
 	_, err := c.CreateTunable(ctx, &types.TunableCreateRequest{})
-	if err == nil || !strings.Contains(err.Error(), "parsing") {
+	if err == nil || !strings.Contains(err.Error(), "parsing tunable from job result") {
 		t.Errorf("expected parse err, got %v", err)
 	}
 }
@@ -208,12 +230,8 @@ func TestFindTunableByVar_listError(t *testing.T) {
 func TestUpdateTunable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	ts := NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *RPCError) {
-		if method != "tunable.update" {
-			return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
-		}
-		return map[string]interface{}{"id": 7, "value": "2"}, nil
-	})
+	ts := tunableJobServer(t, "tunable.update",
+		map[string]interface{}{"id": 7, "value": "2"}, "")
 	c, _ := ts.NewClient(ctx)
 
 	tun, err := c.UpdateTunable(ctx, 7, &types.TunableUpdateRequest{Value: "2"})
@@ -241,12 +259,10 @@ func TestUpdateTunable_serverError(t *testing.T) {
 func TestUpdateTunable_decodeError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	ts := NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *RPCError) {
-		return "not-an-object", nil
-	})
+	ts := tunableJobServer(t, "tunable.update", "not-an-object", "")
 	c, _ := ts.NewClient(ctx)
 	_, err := c.UpdateTunable(ctx, 7, &types.TunableUpdateRequest{})
-	if err == nil || !strings.Contains(err.Error(), "parsing") {
+	if err == nil || !strings.Contains(err.Error(), "parsing tunable from job result") {
 		t.Errorf("expected parse err, got %v", err)
 	}
 }
@@ -254,18 +270,27 @@ func TestUpdateTunable_decodeError(t *testing.T) {
 func TestDeleteTunable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	var sawDelete bool
+	sawDelete := atomic.Bool{}
 	ts := NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *RPCError) {
-		if method == "tunable.delete" {
-			sawDelete = true
+		switch method {
+		case "tunable.delete":
+			sawDelete.Store(true)
+			return int64(99), nil
+		case "core.get_jobs":
+			return []interface{}{map[string]interface{}{
+				"id":     int64(99),
+				"state":  "SUCCESS",
+				"result": nil,
+				"error":  "",
+			}}, nil
 		}
-		return nil, nil
+		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
 	if err := c.DeleteTunable(ctx, 7); err != nil {
 		t.Fatalf("DeleteTunable: %v", err)
 	}
-	if !sawDelete {
+	if !sawDelete.Load() {
 		t.Error("server did not see tunable.delete")
 	}
 }

@@ -14,7 +14,7 @@ import (
 
 func TestAccNVMetHost_basic(t *testing.T) {
 	resourceName := "truenas_nvmet_host.test"
-	hostnqn := "nqn.2014-08.org.nvmexpress:uuid:acctest-host-0001"
+	hostnqn := "nqn.2014-08.org.nvmexpress:uuid:12345678-1234-5678-1234-567812345678"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {

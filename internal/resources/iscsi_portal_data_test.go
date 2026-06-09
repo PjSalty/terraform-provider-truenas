@@ -20,12 +20,11 @@ func TestAccISCSIPortalDataSource_basic(t *testing.T) {
 provider "truenas" {}
 
 resource "truenas_iscsi_portal" "fixture" {
-  comment              = "tf-acc-portal-ds"
-  discovery_authmethod = "NONE"
+  comment = "tf-acc-portal-ds"
 
-  listen {
+  listen = [{
     ip = "0.0.0.0"
-  }
+  }]
 }
 
 data "truenas_iscsi_portal" "test" {
@@ -35,7 +34,6 @@ data "truenas_iscsi_portal" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(dataSourceName, "id"),
 					resource.TestCheckResourceAttr(dataSourceName, "comment", "tf-acc-portal-ds"),
-					resource.TestCheckResourceAttr(dataSourceName, "discovery_authmethod", "NONE"),
 				),
 			},
 		},
