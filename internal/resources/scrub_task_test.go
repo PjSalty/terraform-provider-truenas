@@ -2,8 +2,6 @@ package resources_test
 
 import (
 	"fmt"
-	"net/http"
-	"os"
 	"strconv"
 	"testing"
 
@@ -15,22 +13,23 @@ import (
 )
 
 // testAccScrubTaskCleanup deletes the existing scrub task for pool 1 if it exists,
-// so the acceptance test can create a new one.
+// so the acceptance test can create a new one. Uses the live wsclient
+// (acctest.Client) for the delete; this is acc-only cleanup, so the
+// dial cost is amortised across the full test step.
 func testAccScrubTaskCleanup(t *testing.T) {
 	t.Helper()
-	url := os.Getenv("TRUENAS_URL")
-	apiKey := os.Getenv("TRUENAS_API_KEY")
-	if url == "" || apiKey == "" {
-		return
-	}
-
-	req, _ := http.NewRequest("DELETE", url+"/api/v2.0/pool/scrub/id/1", nil)
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	resp, err := http.DefaultClient.Do(req)
+	c, err := acctest.Client()
 	if err != nil {
 		return // best-effort cleanup
 	}
-	resp.Body.Close()
+	ctx, cancel := acctest.Ctx()
+	defer cancel()
+	// Pool 1's scrub task is the canonical "first acc test fixture"
+	// — delete it if it exists. Ignore not-found; it's the expected
+	// state on a clean test instance.
+	if err := c.DeleteScrubTask(ctx, 1); err != nil && !wsclient.IsNotFound(err) {
+		return // best-effort cleanup
+	}
 }
 
 func TestAccScrubTask_basic(t *testing.T) {
