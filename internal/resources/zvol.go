@@ -19,7 +19,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
@@ -31,7 +32,7 @@ var (
 
 // ZvolResource manages a TrueNAS ZFS volume (zvol).
 type ZvolResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // ZvolResourceModel describes the resource data model.
@@ -146,11 +147,11 @@ func (r *ZvolResource) Configure(_ context.Context, req resource.ConfigureReques
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -169,7 +170,7 @@ func (r *ZvolResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	fullName := plan.Pool.ValueString() + "/" + plan.Name.ValueString()
 
-	createReq := &client.ZvolCreateRequest{
+	createReq := &truenas.ZvolCreateRequest{
 		Name:    fullName,
 		Volsize: plan.Volsize.ValueInt64(),
 	}
@@ -219,7 +220,7 @@ func (r *ZvolResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 
 	dataset, err := r.client.GetZvol(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -254,7 +255,7 @@ func (r *ZvolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
-	updateReq := &client.ZvolUpdateRequest{}
+	updateReq := &truenas.ZvolUpdateRequest{}
 
 	if !plan.Volsize.IsNull() {
 		updateReq.Volsize = plan.Volsize.ValueInt64()
@@ -301,7 +302,7 @@ func (r *ZvolResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 
 	err := r.client.DeleteZvol(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Zvol already deleted, removing from state", map[string]interface{}{"id": state.ID.ValueString()})
 			return
 		}
@@ -327,7 +328,7 @@ func (r *ZvolResource) ImportState(ctx context.Context, req resource.ImportState
 }
 
 // mapResponseToModel maps the dataset API response to the zvol Terraform model.
-func (r *ZvolResource) mapResponseToModel(dataset *client.DatasetResponse, model *ZvolResourceModel) {
+func (r *ZvolResource) mapResponseToModel(dataset *truenas.DatasetResponse, model *ZvolResourceModel) {
 	model.ID = types.StringValue(dataset.ID)
 
 	// Parse pool and name from the full path

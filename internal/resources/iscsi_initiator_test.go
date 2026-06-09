@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestAccISCSIInitiator_basic(t *testing.T) {
@@ -60,7 +60,7 @@ func testAccCheckISCSIInitiatorDestroy(resourceName string) resource.TestCheckFu
 		if err == nil {
 			return fmt.Errorf("iSCSI initiator %d still exists upstream after Terraform removed it", id)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking removal of iSCSI initiator %d: %w", id, err)
 		}
 		return nil

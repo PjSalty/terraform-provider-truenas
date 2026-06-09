@@ -29,7 +29,7 @@ func TestCall_shuttingDown(t *testing.T) {
 		closed:         make(chan struct{}),
 		pending:        make(map[uint64]chan *rpcResponse),
 		requestTimeout: time.Second,
-		retryPolicy:    DefaultRetryPolicy(),
+		RetryPolicy:        DefaultRetryPolicy(),
 	}
 	close(c.closed)
 	_, err := c.Call(context.Background(), "system.info", nil, CallOptions{Read: true})

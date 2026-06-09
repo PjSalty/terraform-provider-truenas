@@ -136,10 +136,16 @@ type Client struct {
 	lifetime       context.Context
 	lifetimeCancel context.CancelFunc
 
-	// dialTimeout, requestTimeout, retryPolicy mirror the REST client.
+	// dialTimeout, requestTimeout mirror the REST client.
 	dialTimeout    time.Duration
 	requestTimeout time.Duration
-	retryPolicy    RetryPolicy
+
+	// RetryPolicy is the public knob test code historically poked
+	// to assert retry behaviour against the REST client. Kept
+	// exported for test-suite compatibility during the v2.0
+	// WebSocket cutover; the wsclient retry path consults this
+	// field exactly like the REST client did.
+	RetryPolicy RetryPolicy
 
 	// ReadOnly and DestroyProtection are exported safety rails;
 	// see readonly.go and destroy_protection.go.
@@ -177,6 +183,16 @@ type rpcResponse struct {
 	transportErr error
 }
 
+// NewWithOptions is a compatibility shim matching the legacy
+// client.NewWithOptions signature so tests that historically built a
+// REST *client.Client can transparently build a *wsclient.Client
+// instead during the v2.0 cutover. Uses a background context for the
+// dial+auth handshake; for production code that has a Configure ctx,
+// prefer New(ctx, ...).
+func NewWithOptions(baseURL, apiKey string, insecureSkipVerify bool) (*Client, error) {
+	return New(context.Background(), baseURL, apiKey, insecureSkipVerify)
+}
+
 // New constructs a wsclient.Client connected to baseURL using apiKey.
 // Returns the connected, authenticated client on success or an error
 // describing the failure (network, TLS, auth, version).
@@ -203,7 +219,7 @@ func New(ctx context.Context, baseURL, apiKey string, insecureSkipVerify bool) (
 		lifetimeCancel:     cancel,
 		dialTimeout:        DefaultDialTimeout,
 		requestTimeout:     DefaultRequestTimeout,
-		retryPolicy:        DefaultRetryPolicy(),
+		RetryPolicy:        DefaultRetryPolicy(),
 		insecureSkipVerify: insecureSkipVerify,
 	}
 
@@ -217,6 +233,13 @@ func New(ctx context.Context, baseURL, apiKey string, insecureSkipVerify bool) (
 	}
 
 	return c, nil
+}
+
+// RequestTimeout returns the per-call request timeout currently in
+// effect. Mirror of *client.Client.RequestTimeout() so callers can
+// log the configured value without caring which transport is wired.
+func (c *Client) RequestTimeout() time.Duration {
+	return c.requestTimeout
 }
 
 // SetRequestTimeout updates the per-call request timeout. A zero or
@@ -240,7 +263,7 @@ func (c *Client) SetRetryPolicy(p RetryPolicy) {
 	if p.MaxDelay <= 0 {
 		p.MaxDelay = DefaultRetryPolicy().MaxDelay
 	}
-	c.retryPolicy = p
+	c.RetryPolicy = p
 }
 
 // Close shuts down the WebSocket connection and signals every in-flight

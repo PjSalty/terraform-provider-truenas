@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNetworkConfigDataSource_Schema(t *testing.T) {
@@ -27,7 +27,7 @@ func TestNetworkConfigDataSource_Read_Success(t *testing.T) {
 		if r.URL.Path != "/api/v2.0/network/configuration" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		writeJSON(w, http.StatusOK, client.NetworkConfig{
+		writeJSON(w, http.StatusOK, truenas.NetworkConfig{
 			ID:          1,
 			Hostname:    "truenas",
 			Domain:      "local",

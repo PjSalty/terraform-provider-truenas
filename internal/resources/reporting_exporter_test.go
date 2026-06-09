@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestAccReportingExporter_basic(t *testing.T) {
@@ -155,7 +155,7 @@ func testAccCheckReportingExporterDestroy(resourceName string) resource.TestChec
 		if err == nil {
 			return fmt.Errorf("reporting_exporter %d still exists upstream after Terraform removed it", id)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking removal of reporting_exporter %d: %w", id, err)
 		}
 		return nil

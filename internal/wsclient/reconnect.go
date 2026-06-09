@@ -27,7 +27,7 @@ var reconnectMu sync.Mutex // package-level — Client field would be one mutex 
 // reconnect could double-execute the operation server-side.
 //
 // reconnectIfNeeded blocks for at most c.dialTimeout. If the redial
-// runs into transient failures it backs off using c.retryPolicy and
+// runs into transient failures it backs off using c.RetryPolicy and
 // re-tries within the window; if it cannot reconnect before the
 // deadline, it returns ErrConnectionLost.
 func (c *Client) reconnectIfNeeded(ctx context.Context) error {
@@ -92,7 +92,7 @@ func (c *Client) reconnectIfNeeded(ctx context.Context) error {
 			return ErrConnectionLost
 		}
 
-		if err := sleepCtx(ctx, backoffDelay(c.retryPolicy, attempt)); err != nil {
+		if err := sleepCtx(ctx, backoffDelay(c.RetryPolicy, attempt)); err != nil {
 			return err
 		}
 	}

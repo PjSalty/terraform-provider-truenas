@@ -26,7 +26,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 var (
@@ -36,7 +37,7 @@ var (
 
 // FilesystemACLResource manages filesystem ACLs on TrueNAS.
 type FilesystemACLResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // FilesystemACLResourceModel describes the resource data model.
@@ -176,11 +177,11 @@ func (r *FilesystemACLResource) Configure(_ context.Context, req resource.Config
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -242,7 +243,7 @@ func (r *FilesystemACLResource) Read(ctx context.Context, req resource.ReadReque
 
 	acl, err := r.client.GetFilesystemACL(ctx, state.Path.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -316,19 +317,19 @@ func (r *FilesystemACLResource) Delete(ctx context.Context, req resource.DeleteR
 	// Reset to trivial POSIX ACL (owner rwx, group rx, other rx)
 	uid := 0
 	gid := 0
-	err := r.client.SetFilesystemACL(ctx, &client.SetACLRequest{
+	err := r.client.SetFilesystemACL(ctx, &truenas.SetACLRequest{
 		Path:    state.Path.ValueString(),
 		ACLType: "POSIX1E",
 		UID:     &uid,
 		GID:     &gid,
-		DACL: []client.SetACLEntry{
-			{Tag: "USER_OBJ", ID: -1, Perms: client.ACLPerms{Read: true, Write: true, Execute: true}, Default: false},
-			{Tag: "GROUP_OBJ", ID: -1, Perms: client.ACLPerms{Read: true, Write: false, Execute: true}, Default: false},
-			{Tag: "OTHER", ID: -1, Perms: client.ACLPerms{Read: true, Write: false, Execute: true}, Default: false},
+		DACL: []truenas.SetACLEntry{
+			{Tag: "USER_OBJ", ID: -1, Perms: truenas.ACLPerms{Read: true, Write: true, Execute: true}, Default: false},
+			{Tag: "GROUP_OBJ", ID: -1, Perms: truenas.ACLPerms{Read: true, Write: false, Execute: true}, Default: false},
+			{Tag: "OTHER", ID: -1, Perms: truenas.ACLPerms{Read: true, Write: false, Execute: true}, Default: false},
 		},
 	})
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Filesystem ACL path already gone, removing from state", map[string]interface{}{"path": state.Path.ValueString()})
 			return
 		}
@@ -353,10 +354,10 @@ func (r *FilesystemACLResource) ImportState(ctx context.Context, req resource.Im
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), req.ID)...)
 }
 
-func (r *FilesystemACLResource) buildSetRequest(ctx context.Context, plan *FilesystemACLResourceModel) (*client.SetACLRequest, diag.Diagnostics) {
+func (r *FilesystemACLResource) buildSetRequest(ctx context.Context, plan *FilesystemACLResourceModel) (*truenas.SetACLRequest, diag.Diagnostics) {
 	var d diag.Diagnostics
 
-	setReq := &client.SetACLRequest{
+	setReq := &truenas.SetACLRequest{
 		Path:    plan.Path.ValueString(),
 		ACLType: plan.ACLType.ValueString(),
 	}
@@ -377,10 +378,10 @@ func (r *FilesystemACLResource) buildSetRequest(ctx context.Context, plan *Files
 
 	for _, entry := range entries {
 		attrs := entry.Attributes()
-		setReq.DACL = append(setReq.DACL, client.SetACLEntry{
+		setReq.DACL = append(setReq.DACL, truenas.SetACLEntry{
 			Tag: attrs["tag"].(types.String).ValueString(),
 			ID:  int(attrs["id"].(types.Int64).ValueInt64()),
-			Perms: client.ACLPerms{
+			Perms: truenas.ACLPerms{
 				Read:    attrs["perm_read"].(types.Bool).ValueBool(),
 				Write:   attrs["perm_write"].(types.Bool).ValueBool(),
 				Execute: attrs["perm_execute"].(types.Bool).ValueBool(),
@@ -392,7 +393,7 @@ func (r *FilesystemACLResource) buildSetRequest(ctx context.Context, plan *Files
 	return setReq, d
 }
 
-func (r *FilesystemACLResource) mapResponseToModel(_ context.Context, acl *client.FilesystemACL, model *FilesystemACLResourceModel, d *diag.Diagnostics) {
+func (r *FilesystemACLResource) mapResponseToModel(_ context.Context, acl *truenas.FilesystemACL, model *FilesystemACLResourceModel, d *diag.Diagnostics) {
 	model.ID = types.StringValue(acl.Path)
 	model.Path = types.StringValue(acl.Path)
 	model.ACLType = types.StringValue(acl.ACLType)

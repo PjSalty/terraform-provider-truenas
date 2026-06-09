@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewAppsDataSource(t *testing.T) {
@@ -24,7 +24,7 @@ func TestAppsDataSource_Schema(t *testing.T) {
 
 func TestAppsDataSource_Read_Success(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.App{
+		writeJSON(w, http.StatusOK, []truenas.App{
 			{ID: "a", Name: "a", State: "RUNNING", Version: "1.0", UpgradeAvailable: false, CustomApp: false},
 			{ID: "b", Name: "b", State: "STOPPED", Version: "2.0", UpgradeAvailable: true, CustomApp: true},
 		})
@@ -51,7 +51,7 @@ func TestAppsDataSource_Read_Success(t *testing.T) {
 
 func TestAppsDataSource_Read_Empty(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.App{})
+		writeJSON(w, http.StatusOK, []truenas.App{})
 	}))
 
 	ds := NewAppsDataSource().(*AppsDataSource)

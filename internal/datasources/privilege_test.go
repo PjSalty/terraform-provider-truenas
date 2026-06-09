@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewPrivilegeDataSource(t *testing.T) {
@@ -32,11 +32,11 @@ func TestPrivilegeDataSource_Schema(t *testing.T) {
 func TestPrivilegeDataSource_Read_Success(t *testing.T) {
 	builtin := "FULL_ADMIN"
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.Privilege{
+		writeJSON(w, http.StatusOK, truenas.Privilege{
 			ID:          2,
 			Name:        "Admins",
 			BuiltinName: &builtin,
-			LocalGroups: []client.PrivilegeGroup{
+			LocalGroups: []truenas.PrivilegeGroup{
 				{ID: 1, GID: 544, Name: "wheel"},
 				{ID: 2, GID: 545, Name: "admins"},
 			},
@@ -79,7 +79,7 @@ func TestPrivilegeDataSource_Read_Success(t *testing.T) {
 
 func TestPrivilegeDataSource_Read_NoBuiltin(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.Privilege{
+		writeJSON(w, http.StatusOK, truenas.Privilege{
 			ID:       5,
 			Name:     "Custom",
 			Roles:    []string{},

@@ -21,7 +21,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planmodifiers"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators"
@@ -36,7 +37,7 @@ var (
 
 // CertificateResource manages a TrueNAS TLS certificate.
 type CertificateResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // CertificateResourceModel describes the resource data model.
@@ -315,11 +316,11 @@ func (r *CertificateResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -336,7 +337,7 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createReq := &client.CertificateCreateRequest{
+	createReq := &truenas.CertificateCreateRequest{
 		Name:       plan.Name.ValueString(),
 		CreateType: plan.CreateType.ValueString(),
 	}
@@ -421,7 +422,7 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 
 	cert, err := r.client.GetCertificate(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -465,7 +466,7 @@ func (r *CertificateResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	updateReq := &client.CertificateUpdateRequest{
+	updateReq := &truenas.CertificateUpdateRequest{
 		Name: plan.Name.ValueString(),
 	}
 
@@ -508,7 +509,7 @@ func (r *CertificateResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err = r.client.DeleteCertificate(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Certificate already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -582,7 +583,7 @@ func (r *CertificateResource) ImportState(ctx context.Context, req resource.Impo
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("create_type"), types.StringValue("CERTIFICATE_CREATE_IMPORTED"))...)
 }
 
-func (r *CertificateResource) mapResponseToModel(ctx context.Context, cert *client.Certificate, model *CertificateResourceModel) {
+func (r *CertificateResource) mapResponseToModel(ctx context.Context, cert *truenas.Certificate, model *CertificateResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(cert.ID))
 	model.Name = types.StringValue(cert.Name)
 	model.Certificate = types.StringValue(cert.CertificateData)

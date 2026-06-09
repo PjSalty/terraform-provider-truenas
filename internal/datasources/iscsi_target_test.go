@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewISCSITargetDataSource(t *testing.T) {
@@ -31,12 +31,12 @@ func TestISCSITargetDataSource_Read_Success(t *testing.T) {
 		if r.URL.Path != "/api/v2.0/iscsi/target/id/7" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		writeJSON(w, http.StatusOK, client.ISCSITarget{
+		writeJSON(w, http.StatusOK, truenas.ISCSITarget{
 			ID:    7,
 			Name:  "iqn-test",
 			Alias: "prod",
 			Mode:  "ISCSI",
-			Groups: []client.ISCSITargetGroup{
+			Groups: []truenas.ISCSITargetGroup{
 				{Portal: 1, Initiator: 2, AuthMethod: "CHAP", Auth: 3},
 			},
 		})
@@ -69,7 +69,7 @@ func TestISCSITargetDataSource_Read_Success(t *testing.T) {
 
 func TestISCSITargetDataSource_Read_EmptyGroups(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, client.ISCSITarget{ID: 1, Name: "x", Mode: "ISCSI"})
+		writeJSON(w, http.StatusOK, truenas.ISCSITarget{ID: 1, Name: "x", Mode: "ISCSI"})
 	}))
 
 	ds := NewISCSITargetDataSource().(*ISCSITargetDataSource)

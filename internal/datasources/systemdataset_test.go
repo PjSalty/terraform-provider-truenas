@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewSystemDatasetDataSource(t *testing.T) {
@@ -27,7 +27,7 @@ func TestSystemDatasetDataSource_Schema(t *testing.T) {
 
 func TestSystemDatasetDataSource_Read_Success(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.SystemDataset{
+		writeJSON(w, http.StatusOK, truenas.SystemDataset{
 			ID:       1,
 			Pool:     "tank",
 			PoolSet:  true,

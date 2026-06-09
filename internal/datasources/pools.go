@@ -9,14 +9,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var _ datasource.DataSource = &PoolsDataSource{}
 
 // PoolsDataSource provides a listing of all ZFS pools.
 type PoolsDataSource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // PoolsDataSourceModel is the top-level data source model.
@@ -93,11 +93,11 @@ func (d *PoolsDataSource) Configure(_ context.Context, req datasource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected DataSource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}

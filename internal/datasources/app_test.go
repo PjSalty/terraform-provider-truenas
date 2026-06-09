@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewAppDataSource(t *testing.T) {
@@ -32,7 +32,7 @@ func TestAppDataSource_Schema(t *testing.T) {
 
 func TestAppDataSource_Read_Success(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.App{
+		writeJSON(w, http.StatusOK, truenas.App{
 			ID:               "jellyfin",
 			Name:             "jellyfin",
 			State:            "RUNNING",
@@ -88,7 +88,7 @@ func TestAppDataSource_Read_ServerError(t *testing.T) {
 func TestAppDataSource_Read_ListResponse(t *testing.T) {
 	// GetApp falls back to parsing a single-element list.
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.App{
+		writeJSON(w, http.StatusOK, []truenas.App{
 			{ID: "nextcloud", Name: "nextcloud", State: "STOPPED"},
 		})
 	}))
@@ -110,7 +110,7 @@ func TestAppDataSource_Read_ListResponse(t *testing.T) {
 
 func TestAppDataSource_Read_EmptyList(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.App{})
+		writeJSON(w, http.StatusOK, []truenas.App{})
 	}))
 
 	ds := NewAppDataSource().(*AppDataSource)

@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestGroupDataSource_Schema(t *testing.T) {
@@ -23,7 +23,7 @@ func TestGroupDataSource_Schema(t *testing.T) {
 
 func TestGroupDataSource_Read_Success(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Group{
+		writeJSON(w, http.StatusOK, []truenas.Group{
 			{ID: 1, GID: 100, Name: "wheel", Builtin: true, SMB: false},
 			{
 				ID:           42,
@@ -63,7 +63,7 @@ func TestGroupDataSource_Read_Success(t *testing.T) {
 
 func TestGroupDataSource_Read_EmptySudo(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Group{{ID: 1, Name: "users", GID: 100}})
+		writeJSON(w, http.StatusOK, []truenas.Group{{ID: 1, Name: "users", GID: 100}})
 	}))
 
 	ds := NewGroupDataSource().(*GroupDataSource)
@@ -83,7 +83,7 @@ func TestGroupDataSource_Read_EmptySudo(t *testing.T) {
 
 func TestGroupDataSource_Read_NotFound(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Group{{ID: 1, Name: "other"}})
+		writeJSON(w, http.StatusOK, []truenas.Group{{ID: 1, Name: "other"}})
 	}))
 
 	ds := NewGroupDataSource().(*GroupDataSource)

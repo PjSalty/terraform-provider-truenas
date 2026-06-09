@@ -19,7 +19,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
@@ -31,7 +32,7 @@ var (
 
 // SMBShareResource manages a TrueNAS SMB share.
 type SMBShareResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // SMBShareResourceModel describes the resource data model.
@@ -157,11 +158,11 @@ func (r *SMBShareResource) Configure(_ context.Context, req resource.ConfigureRe
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -178,7 +179,7 @@ func (r *SMBShareResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	createReq := &client.SMBShareCreateRequest{
+	createReq := &truenas.SMBShareCreateRequest{
 		Path:      plan.Path.ValueString(),
 		Name:      plan.Name.ValueString(),
 		Browsable: plan.Browsable.ValueBool(),
@@ -233,7 +234,7 @@ func (r *SMBShareResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	share, err := r.client.GetSMBShare(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -279,7 +280,7 @@ func (r *SMBShareResource) Update(ctx context.Context, req resource.UpdateReques
 	abe := plan.ABE.ValueBool()
 	enabled := plan.Enabled.ValueBool()
 
-	updateReq := &client.SMBShareUpdateRequest{
+	updateReq := &truenas.SMBShareUpdateRequest{
 		Path:      plan.Path.ValueString(),
 		Name:      plan.Name.ValueString(),
 		Browsable: &browsable,
@@ -333,7 +334,7 @@ func (r *SMBShareResource) Delete(ctx context.Context, req resource.DeleteReques
 
 	err = r.client.DeleteSMBShare(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "SMB share already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -362,7 +363,7 @@ func (r *SMBShareResource) ImportState(ctx context.Context, req resource.ImportS
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *SMBShareResource) mapResponseToModel(share *client.SMBShare, model *SMBShareResourceModel) {
+func (r *SMBShareResource) mapResponseToModel(share *truenas.SMBShare, model *SMBShareResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(share.ID))
 	model.Path = types.StringValue(share.Path)
 	model.Name = types.StringValue(share.Name)

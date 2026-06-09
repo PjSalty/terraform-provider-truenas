@@ -9,7 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestAccVM_basic(t *testing.T) {
@@ -80,7 +81,7 @@ func testAccCheckVMDestroy(resourceName string) resource.TestCheckFunc {
 		if err == nil {
 			return fmt.Errorf("VM %d still exists upstream after Terraform removed it", id)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking removal of VM %d: %w", id, err)
 		}
 		return nil
@@ -129,7 +130,7 @@ func testAccCheckVMDisappears(resourceName string) resource.TestCheckFunc {
 		// Force=true so a running VM doesn't block the destroy; the
 		// disappears test wants to model an operator who reaches into
 		// the UI and does whatever it takes to make the VM go away.
-		if err := c.DeleteVM(ctx, id, &client.VMDeleteOptions{Force: true}); err != nil {
+		if err := c.DeleteVM(ctx, id, &truenas.VMDeleteOptions{Force: true}); err != nil {
 			return fmt.Errorf("out-of-band delete of VM %d failed: %w", id, err)
 		}
 		return nil

@@ -20,7 +20,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 var (
@@ -33,7 +34,7 @@ var (
 // be configured at a time. Delete disables the service rather than removing
 // the underlying singleton record.
 type DirectoryServicesResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // DirectoryServicesResourceModel describes the resource data model.
@@ -163,11 +164,11 @@ func (r *DirectoryServicesResource) Configure(_ context.Context, req resource.Co
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -272,7 +273,7 @@ func (r *DirectoryServicesResource) Delete(ctx context.Context, _ resource.Delet
 
 	disabled := false
 	emptyType := ""
-	resetReq := &client.DirectoryServicesUpdateRequest{
+	resetReq := &truenas.DirectoryServicesUpdateRequest{
 		ServiceType: &emptyType,
 		Enable:      &disabled,
 	}
@@ -290,8 +291,8 @@ func (r *DirectoryServicesResource) ImportState(ctx context.Context, req resourc
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *DirectoryServicesResource) buildUpdateRequest(plan *DirectoryServicesResourceModel, diags *diag.Diagnostics) *client.DirectoryServicesUpdateRequest {
-	out := &client.DirectoryServicesUpdateRequest{}
+func (r *DirectoryServicesResource) buildUpdateRequest(plan *DirectoryServicesResourceModel, diags *diag.Diagnostics) *truenas.DirectoryServicesUpdateRequest {
+	out := &truenas.DirectoryServicesUpdateRequest{}
 
 	if !plan.ServiceType.IsNull() && !plan.ServiceType.IsUnknown() {
 		v := plan.ServiceType.ValueString()
@@ -342,7 +343,7 @@ func (r *DirectoryServicesResource) buildUpdateRequest(plan *DirectoryServicesRe
 	return out
 }
 
-func (r *DirectoryServicesResource) mapResponseToModel(cfg *client.DirectoryServicesConfig, model *DirectoryServicesResourceModel) {
+func (r *DirectoryServicesResource) mapResponseToModel(cfg *truenas.DirectoryServicesConfig, model *DirectoryServicesResourceModel) {
 	model.ID = types.StringValue("1")
 
 	// service_type: same preserve-plan-on-revert pattern as

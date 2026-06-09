@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewAPIKeyDataSource(t *testing.T) {
@@ -31,7 +31,7 @@ func TestAPIKeyDataSource_Read_Success(t *testing.T) {
 		if r.URL.Path != "/api/v2.0/api_key/id/8" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		writeJSON(w, http.StatusOK, client.APIKey{
+		writeJSON(w, http.StatusOK, truenas.APIKey{
 			ID:       8,
 			Name:     "terraform",
 			Username: "root",

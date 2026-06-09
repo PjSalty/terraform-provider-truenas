@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestSystemInfoDataSource_Schema(t *testing.T) {
@@ -40,7 +40,7 @@ func TestSystemInfoDataSource_Read_Success(t *testing.T) {
 		if r.URL.Path != "/api/v2.0/system/info" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		info := client.SystemInfo{
+		info := truenas.SystemInfo{
 			Version:       "TrueNAS-SCALE-24.10.0",
 			Hostname:      "truenas",
 			PhysicalMem:   17179869184,

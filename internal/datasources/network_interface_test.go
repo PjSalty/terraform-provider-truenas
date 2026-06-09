@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewNetworkInterfaceDataSource(t *testing.T) {
@@ -34,7 +34,7 @@ func TestNetworkInterfaceDataSource_Schema(t *testing.T) {
 func TestNetworkInterfaceDataSource_Read_Physical(t *testing.T) {
 	mtu := 9000
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.NetworkInterface{
+		writeJSON(w, http.StatusOK, truenas.NetworkInterface{
 			ID:          "eth0",
 			Name:        "eth0",
 			Type:        "PHYSICAL",
@@ -42,7 +42,7 @@ func TestNetworkInterfaceDataSource_Read_Physical(t *testing.T) {
 			IPv4DHCP:    false,
 			IPv6Auto:    false,
 			MTU:         &mtu,
-			Aliases: []client.NetworkInterfaceAlias{
+			Aliases: []truenas.NetworkInterfaceAlias{
 				{Type: "INET", Address: "192.168.1.10", Netmask: 24},
 				{Type: "INET6", Address: "2001:db8::1", Netmask: 64},
 			},
@@ -75,7 +75,7 @@ func TestNetworkInterfaceDataSource_Read_VLAN(t *testing.T) {
 	tag := 100
 	pcp := 3
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.NetworkInterface{
+		writeJSON(w, http.StatusOK, truenas.NetworkInterface{
 			ID:                  "vlan100",
 			Name:                "vlan100",
 			Type:                "VLAN",
@@ -106,7 +106,7 @@ func TestNetworkInterfaceDataSource_Read_VLAN(t *testing.T) {
 
 func TestNetworkInterfaceDataSource_Read_Bridge(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.NetworkInterface{
+		writeJSON(w, http.StatusOK, truenas.NetworkInterface{
 			ID:            "br0",
 			Name:          "br0",
 			Type:          "BRIDGE",

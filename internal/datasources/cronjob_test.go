@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewCronJobDataSource(t *testing.T) {
@@ -36,7 +36,7 @@ func TestCronJobDataSource_Read_Success(t *testing.T) {
 		if r.URL.Path != "/api/v2.0/cronjob/id/5" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		writeJSON(w, http.StatusOK, client.CronJob{
+		writeJSON(w, http.StatusOK, truenas.CronJob{
 			ID:          5,
 			User:        "root",
 			Command:     "/usr/bin/backup.sh",
@@ -44,7 +44,7 @@ func TestCronJobDataSource_Read_Success(t *testing.T) {
 			Enabled:     true,
 			Stdout:      true,
 			Stderr:      false,
-			Schedule: client.Schedule{
+			Schedule: truenas.Schedule{
 				Minute: "0",
 				Hour:   "2",
 				Dom:    "*",
@@ -99,9 +99,9 @@ func TestCronJobDataSource_Read_NotFound(t *testing.T) {
 
 func TestCronJobDataSource_Read_DisabledJob(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.CronJob{
+		writeJSON(w, http.StatusOK, truenas.CronJob{
 			ID: 1, Enabled: false,
-			Schedule: client.Schedule{Minute: "*/5"},
+			Schedule: truenas.Schedule{Minute: "*/5"},
 		})
 	}))
 

@@ -68,15 +68,15 @@ func TestSetRequestTimeout(t *testing.T) {
 }
 
 func TestSetRetryPolicy(t *testing.T) {
-	c := &Client{retryPolicy: DefaultRetryPolicy()}
+	c := &Client{RetryPolicy:        DefaultRetryPolicy()}
 	c.SetRetryPolicy(RetryPolicy{MaxAttempts: 3, BaseDelay: time.Second, MaxDelay: 5 * time.Second})
-	if c.retryPolicy.MaxAttempts != 3 || c.retryPolicy.BaseDelay != time.Second || c.retryPolicy.MaxDelay != 5*time.Second {
-		t.Errorf("SetRetryPolicy: got %+v", c.retryPolicy)
+	if c.RetryPolicy.MaxAttempts != 3 || c.RetryPolicy.BaseDelay != time.Second || c.RetryPolicy.MaxDelay != 5*time.Second {
+		t.Errorf("SetRetryPolicy: got %+v", c.RetryPolicy)
 	}
 	// Zero falls back to defaults.
 	c.SetRetryPolicy(RetryPolicy{})
-	if c.retryPolicy != DefaultRetryPolicy() {
-		t.Errorf("zero policy: expected defaults, got %+v", c.retryPolicy)
+	if c.RetryPolicy != DefaultRetryPolicy() {
+		t.Errorf("zero policy: expected defaults, got %+v", c.RetryPolicy)
 	}
 }
 

@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"github.com/PjSalty/terraform-provider-truenas/internal/provider"
 
 	tfproviderserver "github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -158,7 +158,7 @@ func testAccCheckDatasetDestroy(resourceName string) resource.TestCheckFunc {
 		if err == nil {
 			return fmt.Errorf("dataset %q still exists after terraform destroy", rs.Primary.ID)
 		}
-		if !client.IsNotFound(err) {
+		if !wsclient.IsNotFound(err) {
 			return fmt.Errorf("unexpected error checking destroy of %q: %w", rs.Primary.ID, err)
 		}
 		// IsNotFound is the success path: dataset is gone.

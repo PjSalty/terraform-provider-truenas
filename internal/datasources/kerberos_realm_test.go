@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewKerberosRealmDataSource(t *testing.T) {
@@ -30,7 +30,7 @@ func TestKerberosRealmDataSource_Schema(t *testing.T) {
 func TestKerberosRealmDataSource_Read_Success(t *testing.T) {
 	primary := "kdc.example.com"
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.KerberosRealm{
+		writeJSON(w, http.StatusOK, truenas.KerberosRealm{
 			ID:            3,
 			Realm:         "EXAMPLE.COM",
 			PrimaryKDC:    &primary,
@@ -64,7 +64,7 @@ func TestKerberosRealmDataSource_Read_Success(t *testing.T) {
 
 func TestKerberosRealmDataSource_Read_NoPrimaryKDC(t *testing.T) {
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.KerberosRealm{
+		writeJSON(w, http.StatusOK, truenas.KerberosRealm{
 			ID:    1,
 			Realm: "X",
 			KDC:   []string{},

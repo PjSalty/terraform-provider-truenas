@@ -20,7 +20,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 var (
@@ -30,7 +31,7 @@ var (
 
 // AlertServiceResource manages a TrueNAS alert service.
 type AlertServiceResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // AlertServiceResourceModel describes the resource data model.
@@ -109,11 +110,11 @@ func (r *AlertServiceResource) Configure(_ context.Context, req resource.Configu
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -142,7 +143,7 @@ func (r *AlertServiceResource) Create(ctx context.Context, req resource.CreateRe
 	// The TrueNAS API expects the type inside the attributes map.
 	settings["type"] = plan.Type.ValueString()
 
-	createReq := &client.AlertServiceCreateRequest{
+	createReq := &truenas.AlertServiceCreateRequest{
 		Name:     plan.Name.ValueString(),
 		Enabled:  plan.Enabled.ValueBool(),
 		Level:    plan.Level.ValueString(),
@@ -188,7 +189,7 @@ func (r *AlertServiceResource) Read(ctx context.Context, req resource.ReadReques
 
 	svc, err := r.client.GetAlertService(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -243,7 +244,7 @@ func (r *AlertServiceResource) Update(ctx context.Context, req resource.UpdateRe
 	// The TrueNAS API expects the type inside the attributes map.
 	settings["type"] = plan.Type.ValueString()
 
-	updateReq := &client.AlertServiceUpdateRequest{
+	updateReq := &truenas.AlertServiceUpdateRequest{
 		Name:     plan.Name.ValueString(),
 		Enabled:  &enabled,
 		Level:    plan.Level.ValueString(),
@@ -286,7 +287,7 @@ func (r *AlertServiceResource) Delete(ctx context.Context, req resource.DeleteRe
 
 	err = r.client.DeleteAlertService(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Alert service already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -307,7 +308,7 @@ func (r *AlertServiceResource) ImportState(ctx context.Context, req resource.Imp
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *AlertServiceResource) mapResponseToModel(svc *client.AlertService, model *AlertServiceResourceModel) {
+func (r *AlertServiceResource) mapResponseToModel(svc *truenas.AlertService, model *AlertServiceResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(svc.ID))
 	model.Name = types.StringValue(svc.Name)
 	model.Type = types.StringValue(svc.GetType())
