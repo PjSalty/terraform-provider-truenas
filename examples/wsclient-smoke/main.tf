@@ -9,10 +9,6 @@
 // debugging connectivity through a load balancer.
 //
 // Differences from prod-smoke:
-//   - Pins transport = "websocket" with no env override. If the
-//     target only exposes REST, this workspace fails fast at
-//     provider.Configure with a clear "websocket dial failed"
-//     error rather than silently falling back.
 //   - Does NOT touch any pool or dataset attribute by name.
 //     A misconfigured workspace cannot accidentally read out
 //     a stale dataset path.
@@ -36,9 +32,6 @@ terraform {
 provider "truenas" {
   url     = var.truenas_url
   api_key = var.truenas_api_key
-
-  // Hardcoded: this workspace exists to verify the WS path.
-  transport = "websocket"
 
   // Read-only: nothing this workspace does can mutate state, but
   // the rail makes that property bit-enforced.

@@ -14,8 +14,8 @@ SCALE host.
 ## What it does NOT test
 
 - Any resource lifecycle (this workspace is read-only).
-- The REST transport (use `examples/prod-smoke/` with
-  `var.transport = "rest"` for that).
+- The REST transport (v2.0 ships WebSocket-only; if you need REST
+  pin to the v1.x provider line).
 - Any pool/dataset/share-specific code path. If those break
   but `system.info` still returns, this workspace will be green —
   the breakage shows up in the per-resource acceptance suite.

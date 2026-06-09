@@ -31,8 +31,8 @@ a one-line diff.
 
 ### Prerequisites
 
-- TrueNAS SCALE 25.04 or newer (for the default WebSocket transport).
-  If on 24.10 or older, set `var.transport = "rest"`.
+- TrueNAS SCALE 25.04 or newer (v2.0 ships WebSocket-only and the
+  upstream WebSocket endpoint landed in 25.04).
 - A TrueNAS API key with at least read access to the pool and
   dataset you'll point at.
 - Terraform >= 1.5.
@@ -68,7 +68,6 @@ terraform plan
 Changes to Outputs:
   + dataset_id      = "tank/path/to/your/existing/dataset"
   + pool_status     = { ... healthy = true ... }
-  + transport_used  = "websocket"
   + truenas_version = "TrueNAS-SCALE-25.04.x"
 
 Plan: 0 to add, 0 to change, 0 to destroy.
@@ -86,26 +85,12 @@ Plan: 0 to add, 0 to change, 0 to destroy.
 
 | Symptom | Likely cause |
 | --- | --- |
-| `failed to WebSocket dial: ... 404` on Configure | TrueNAS host is on SCALE 24.x. Set `TF_VAR_transport=rest` and re-run. |
+| `failed to WebSocket dial: ... 404` on Configure | TrueNAS host is on SCALE 24.x or older. Upgrade SCALE to 25.04+ or stay on the v1.x provider line. |
 | `failed to WebSocket dial: ... no such host` | URL typo, DNS misconfiguration, or the firewall rejecting the connection. Curl the URL outside Terraform first. |
 | `401 Unauthorized` on the system_info read | API key is wrong, scoped too narrowly, or has been revoked. Generate a fresh one in the TrueNAS UI. |
 | `dataset "tank/path" not found` | The named dataset doesn't exist on this pool. Verify with `zfs list -r tank` on the host. |
 | Plan shows `~ 0 to change` but with diff lines | A read code path produced different state than the upstream advertises. File an issue with the diff. |
 
-### Cross-transport verification
-
-If you are mid-cutover from v1.x to v2.x, run the smoke twice — once
-with each transport — and diff the outputs:
-
-```sh
-TF_VAR_transport=websocket terraform plan -out=ws.plan
-TF_VAR_transport=rest      terraform plan -out=rest.plan
-diff <(terraform show -json ws.plan)  <(terraform show -json rest.plan)
-```
-
-The two plans should produce identical state shapes. If they don't,
-the transport-parity invariant is broken — file an issue with the
-resource type and the diff.
 
 ## Phase 2: apply-safe
 
@@ -114,9 +99,8 @@ delete is still refused at the wire):
 
 ```hcl
 provider "truenas" {
-  url       = var.truenas_url
-  api_key   = var.truenas_api_key
-  transport = var.transport
+  url     = var.truenas_url
+  api_key = var.truenas_api_key
 
   read_only          = false  # was true
   destroy_protection = true   # still armed
