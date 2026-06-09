@@ -38,11 +38,6 @@ provider "truenas" {
   url     = var.truenas_url
   api_key = var.truenas_api_key
 
-  // v2.0+ defaults to "websocket"; the explicit pin documents the
-  // intent and will keep the example correct if a future major
-  // changes the default again.
-  transport = var.transport
-
   // Safety rails. Both armed. Do NOT clear these on the first run.
   read_only          = true
   destroy_protection = true
@@ -66,22 +61,6 @@ variable "truenas_api_key" {
   sensitive   = true
 }
 
-variable "transport" {
-  description = <<-EOT
-    "websocket" (default in v2.0+) or "rest". The smoke workspace
-    works under either; if you are validating a v1.x → v2.x cutover,
-    run it twice — once with each value — and confirm both produce
-    the same `terraform plan` output for the same target.
-  EOT
-  type    = string
-  default = "websocket"
-
-  validation {
-    condition     = contains(["websocket", "rest"], var.transport)
-    error_message = "transport must be \"websocket\" or \"rest\"."
-  }
-}
-
 variable "smoke_dataset_pool" {
   description = "Name of an existing pool on the target TrueNAS (e.g. \"tank\")."
   type        = string
@@ -93,7 +72,7 @@ variable "smoke_dataset_name" {
     root (e.g. "k8s/postgres"). Must already exist; this workspace will
     NOT create it.
   EOT
-  type = string
+  type        = string
 }
 
 variable "insecure_skip_verify" {
@@ -101,8 +80,8 @@ variable "insecure_skip_verify" {
     Skip TLS verification on the TrueNAS API connection. Set true
     only for self-signed lab environments.
   EOT
-  type    = bool
-  default = false
+  type        = bool
+  default     = false
 }
 
 // ---------------------------------------------------------------------
@@ -142,7 +121,3 @@ output "dataset_id" {
   value       = data.truenas_dataset.smoke.id
 }
 
-output "transport_used" {
-  description = "Transport pinned for this run (cross-check against provider plan)."
-  value       = var.transport
-}
