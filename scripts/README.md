@@ -120,3 +120,47 @@ in your `.envrc.local` if you have multiple.
   call but no mutating endpoints. Pointing this at prod by mistake
   is still bad practice but cannot cause writes during the pre-flight
   stage.
+
+## Multi-version matrix
+
+`./scripts/acc-matrix.sh` runs the live acceptance suite against every
+test TrueNAS that has a populated env file:
+
+| Env file | Version under test |
+| --- | --- |
+| `.envrc.local` | primary (currently SCALE 25.10) |
+| `.envrc.local-25-04` | SCALE 25.04 — the v2.0 minimum |
+| `.envrc.local-26-beta` | 26.0 BETA — forward compatibility |
+
+Each leg exports `ACC_ENV_FILE` so `acc.sh`'s env loader sources the
+right file (without it, `.envrc.local` would clobber the leg's
+TRUENAS_URL and every leg would silently re-test the primary VM).
+Per-leg logs land in `logs/acc-matrix-<version>-<timestamp>.log`.
+
+## Headless test-VM install (no console UI)
+
+The TrueNAS installer ISO (24.10+) runs a JSON-RPC 2.0 WebSocket API
+alongside the console TUI, which makes fully headless installs
+scriptable:
+
+1. Boot the VM from the installer ISO (`qm set <id> --boot order=<cd>`
+   then `qm start <id>`).
+2. Find the installer's DHCP address. Probe port 80: the 25.10+/26
+   installer serves an HTML page (HTTP 200) and the WS API at `/ws`;
+   the 25.04 installer has no nginx — the WS API is at `/` and a plain
+   GET returns 405.
+3. Drive the API: `is_adopted` → `adopt` (save the key) →
+   `list_disks` → `install` with
+   `{disks, set_pmbr, authentication: {username, password}}` →
+   `reboot`. Progress arrives as `installation_progress` callbacks.
+4. Flip boot order back to the OS disk and restart the VM.
+5. Bootstrap via the main API (`wss://<ip>/api/current`):
+   `auth.login_ex` with the password → `pool.create` (job) →
+   `api_key.create`. On 25.10+ API keys bind to a username; 25.04
+   takes `{name}` only.
+6. Drop the URL + key into the version's `.envrc.local-*` file and
+   run the matrix.
+
+The reference driver scripts used for the 2026-06 v2.0 matrix
+(`tn_headless_install.py`, `tn_postinstall.py`) follow exactly this
+flow with the `websockets` Python package.
