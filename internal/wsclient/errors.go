@@ -145,6 +145,15 @@ func IsNotFound(err error) bool {
 	}
 	var rpcErr *RPCError
 	if !errors.As(err, &rpcErr) {
+		// Not an *RPCError in the chain. The CallJob failure path
+		// wraps job failures as plain fmt.Errorf("CallJob X failed:
+		// [ENOENT] ..."), so the inner shape is lost. Fall back to
+		// matching the wrapper text directly — conservative, gated
+		// on the exact "CallJob " + "[ENOENT]" prefix combination.
+		msg := err.Error()
+		if strings.Contains(msg, "CallJob ") && strings.Contains(msg, "[ENOENT]") {
+			return true
+		}
 		return false
 	}
 	if rpcErr.Code == CodeMethodNotFound {

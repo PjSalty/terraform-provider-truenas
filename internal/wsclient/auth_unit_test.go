@@ -248,3 +248,29 @@ func TestIsNotFound_CallJobENOENT(t *testing.T) {
 		})
 	}
 }
+
+// TestIsNotFound_CallJobFailureUnwrapped covers the fallback for the
+// CallJob failure path. CallJob wraps job failures with fmt.Errorf
+// ("CallJob X (id=N) failed: [ENOENT] ..."), so the inner *RPCError
+// is lost — errors.As returns false. The fallback scans the wrapper
+// text directly.
+func TestIsNotFound_CallJobFailureUnwrapped(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"certificate.delete missing id via CallJob wrapper", errors.New("CallJob certificate.delete (id=2274) failed: [ENOENT] None: Certificate 56 does not exist"), true},
+		{"deeper wrap with [ENOENT]", errors.New("deleting certificate 56: CallJob certificate.delete (id=2274) failed: [ENOENT] None: Certificate 56 does not exist"), true},
+		{"CallJob but not ENOENT", errors.New("CallJob pool.create (id=99) failed: [EIO] disk error"), false},
+		{"plain ENOENT without CallJob", errors.New("[ENOENT] foo"), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsNotFound(tc.err); got != tc.want {
+				t.Errorf("IsNotFound = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
