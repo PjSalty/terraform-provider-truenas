@@ -34,6 +34,17 @@ terraform {
     }
   }
 }
+```
+
+> **v2.0 release candidates:** v2.0 moves the provider to the JSON-RPC 2.0
+> WebSocket API exclusively (TrueNAS removed REST in 26.0) and targets
+> SCALE 25.10+. Release candidates are published on the
+> [releases page](https://github.com/PjSalty/terraform-provider-truenas/releases);
+> the registry serves v2.0.0 once final. v1.10.x remains the line for
+> SCALE 24.x/25.04. Details in the
+> [v2 upgrade guide](https://github.com/PjSalty/terraform-provider-truenas/blob/v2.0/docs/guides/upgrade-to-v2.md).
+
+```hcl
 
 provider "truenas" {
   url     = "https://truenas.example.com"
