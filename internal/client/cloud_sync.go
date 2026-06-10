@@ -23,6 +23,40 @@ type CloudSync struct {
 	Attributes   map[string]interface{} `json:"attributes,omitempty"`
 }
 
+// UnmarshalJSON handles the TrueNAS API returning credentials as either a plain
+// integer (on create/update responses) or a nested object {"id": N, ...} (on
+// get/list responses). The Go struct field is always stored as the integer ID.
+func (cs *CloudSync) UnmarshalJSON(data []byte) error {
+	type Alias CloudSync
+	aux := &struct {
+		Credentials json.RawMessage `json:"credentials"`
+		*Alias
+	}{
+		Alias: (*Alias)(cs),
+	}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	if len(aux.Credentials) == 0 {
+		return nil
+	}
+	// Try plain integer first (create/update responses).
+	var credID int
+	if err := json.Unmarshal(aux.Credentials, &credID); err == nil {
+		cs.Credentials = credID
+		return nil
+	}
+	// Fall back to nested object {"id": N, ...} (get/list responses).
+	var credObj struct {
+		ID int `json:"id"`
+	}
+	if err := json.Unmarshal(aux.Credentials, &credObj); err != nil {
+		return fmt.Errorf("credentials field: %w", err)
+	}
+	cs.Credentials = credObj.ID
+	return nil
+}
+
 // CloudSyncCreateRequest represents the request to create a cloud sync task.
 type CloudSyncCreateRequest struct {
 	Description  string                 `json:"description,omitempty"`
