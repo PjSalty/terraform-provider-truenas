@@ -113,8 +113,8 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
     [github.com/PjSalty/terraform-provider-truenas/internal/planmodifiers]=100
     [github.com/PjSalty/terraform-provider-truenas/internal/flex]=100
     [github.com/PjSalty/terraform-provider-truenas/internal/acctest]=100
-    [github.com/PjSalty/terraform-provider-truenas/internal/wsclient]=99
-    [github.com/PjSalty/terraform-provider-truenas/internal/sweep]=95
+    [github.com/PjSalty/terraform-provider-truenas/internal/wsclient]=100
+    [github.com/PjSalty/terraform-provider-truenas/internal/sweep]=100
     [github.com/PjSalty/terraform-provider-truenas/internal/fwresource]=100
   )
 
@@ -122,10 +122,10 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
   # is canonical. Track the floor so a future polish PR can reclaim
   # the gap by porting unit fixtures to wsclient testserver.
   declare -A TIER2_FLOOR=(
-    [github.com/PjSalty/terraform-provider-truenas/internal/resources]=85
-    [github.com/PjSalty/terraform-provider-truenas/internal/datasources]=90
-    [github.com/PjSalty/terraform-provider-truenas/internal/provider]=90
-    [github.com/PjSalty/terraform-provider-truenas/internal/recordreplay]=90
+    [github.com/PjSalty/terraform-provider-truenas/internal/resources]=100
+    [github.com/PjSalty/terraform-provider-truenas/internal/datasources]=100
+    [github.com/PjSalty/terraform-provider-truenas/internal/provider]=100
+    [github.com/PjSalty/terraform-provider-truenas/internal/recordreplay]=100
   )
 
   # Aggregate per-package coverage from coverage.out (a real run's
