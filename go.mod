@@ -2,6 +2,8 @@ module github.com/PjSalty/terraform-provider-truenas
 
 go 1.25.9
 
+toolchain go1.25.11
+
 require (
 	github.com/coder/websocket v1.8.14
 	github.com/hashicorp/hcl/v2 v2.24.0
@@ -74,7 +76,7 @@ require (
 	go.abhg.dev/goldmark/frontmatter v0.2.0 // indirect
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df // indirect
 	golang.org/x/mod v0.35.0 // indirect
-	golang.org/x/net v0.54.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
