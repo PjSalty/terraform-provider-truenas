@@ -164,39 +164,35 @@ acc_check_url() {
   acc_ok "TRUENAS_URL reachable"
 }
 
-# acc_check_auth makes a real GET /api/v2.0/system/info call and
-# verifies the response is well-formed JSON with a `version` field.
-# Catches expired API keys, revoked tokens, and the rare case where
-# the URL is reachable but pointing at the wrong instance.
+# acc_check_auth dials the JSON-RPC WebSocket API with the configured
+# key via cmd/wspreflight and verifies the system.info round-trip.
+# WS-based (not REST curl) because TrueNAS 26 removed /api/v2.0 — this
+# probe travels exactly the path the provider itself uses.
+# Caches the probe output for acc_check_pool.
+ACC_PREFLIGHT_JSON=""
 acc_check_auth() {
-  acc_info "checking API key against /system/info"
-  local resp
-  if ! resp="$(acc_curl --fail "${TRUENAS_URL}/api/v2.0/system/info")"; then
-    acc_die "/system/info request failed. API key invalid, revoked, or scoped too narrowly."
+  acc_info "checking API key via JSON-RPC system.info"
+  local root
+  root="$(acc_repo_root)"
+  if ! ACC_PREFLIGHT_JSON="$(cd "${root}" && go run ./cmd/wspreflight 2>&1)"; then
+    acc_die "WS preflight failed: ${ACC_PREFLIGHT_JSON}"
   fi
   local version
-  # TrueNAS SCALE 25.10+ pretty-prints JSON with whitespace after the
-  # colon (`"version": "25.10.0"`); 25.04 and earlier emitted it
-  # compactly. Accept either by tolerating optional whitespace.
-  version="$(printf '%s' "${resp}" | grep -oE '"version":[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"version":[[:space:]]*"//;s/"$//')"
+  version="$(printf '%s' "${ACC_PREFLIGHT_JSON}" | grep -oE '"version":[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"version":[[:space:]]*"//;s/"$//')"
   if [ -z "${version}" ]; then
-    acc_die "/system/info response did not include a version field. Unexpected upstream shape."
+    acc_die "WS preflight returned no version. Output: ${ACC_PREFLIGHT_JSON}"
   fi
   acc_ok "authenticated as TrueNAS ${version}"
 }
 
-# acc_check_pool confirms TRUENAS_TEST_POOL actually exists. A typo
-# here would let the acc suite kick off and fail every dataset/zvol
-# test at create-time with a cryptic "pool not found" error.
+# acc_check_pool confirms TRUENAS_TEST_POOL actually exists, using the
+# pool list captured by acc_check_auth's WS probe.
 acc_check_pool() {
   acc_info "checking TRUENAS_TEST_POOL=${TRUENAS_TEST_POOL} exists on the host"
-  local resp
-  if ! resp="$(acc_curl --fail "${TRUENAS_URL}/api/v2.0/pool")"; then
-    acc_die "/pool listing failed. The API key may not have permission to read pools."
+  if [ -z "${ACC_PREFLIGHT_JSON}" ]; then
+    acc_check_auth
   fi
-  # Same whitespace-tolerant match as the version grep — TrueNAS 25.10+
-  # pretty-prints with a space after the colon.
-  if ! printf '%s' "${resp}" | grep -qE "\"name\":[[:space:]]*\"${TRUENAS_TEST_POOL}\""; then
+  if ! printf '%s' "${ACC_PREFLIGHT_JSON}" | grep -q "\"${TRUENAS_TEST_POOL}\""; then
     acc_die "pool ${TRUENAS_TEST_POOL} not found on host. Set TRUENAS_TEST_POOL to an existing pool name."
   fi
   acc_ok "pool ${TRUENAS_TEST_POOL} exists"

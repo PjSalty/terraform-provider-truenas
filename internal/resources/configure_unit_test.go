@@ -20,7 +20,6 @@ var clientNew = wsclient.NewWithOptions
 // This exercises the ~20-line boilerplate Configure function on each of the
 // 62 resources in the provider without needing a real *wsclient.Client.
 func TestResourceConfigure_Batch(t *testing.T) {
-	skipWSCutover(t)
 	ctx := context.Background()
 
 	constructors := []func() resource.Resource{
@@ -117,12 +116,10 @@ func TestResourceConfigure_Batch(t *testing.T) {
 			if !resp2.Diagnostics.HasError() {
 				t.Errorf("Configure(wrong-type) should have error")
 			}
-			// Case 3: valid *wsclient.Client — exercises the success path that
-			// assigns r.client. Use a throwaway in-memory client.
-			validClient, err := clientNew("http://localhost", "test", true)
-			if err != nil {
-				t.Fatalf("wsclient.New: %v", err)
-			}
+			// Case 3: valid *wsclient.Client — exercises the success path
+			// that assigns r.client. Configure only type-asserts; it never
+			// calls a method, so an empty client value suffices (no dial).
+			validClient := &wsclient.Client{}
 			resp3 := &resource.ConfigureResponse{}
 			conf.Configure(ctx, resource.ConfigureRequest{ProviderData: validClient}, resp3)
 			if resp3.Diagnostics.HasError() {
