@@ -55,6 +55,19 @@ func newWSConfigServerClient(t *testing.T, svc string, resp map[string]interface
 	return c
 }
 
+// newWSTestClient pairs an arbitrary wsclient.TestHandler with a
+// connected client — for tests that need full per-method control
+// (failure injection, stateful fixtures).
+func newWSTestClient(t *testing.T, h wsclient.TestHandler) *wsclient.Client {
+	t.Helper()
+	ts := wsclient.NewTestServer(t, h)
+	c, err := ts.NewClient(context.Background())
+	if err != nil {
+		t.Fatalf("testserver NewClient: %v", err)
+	}
+	return c
+}
+
 // newWSEntityServerClient builds a wsclient.TestServer for the
 // id-addressed entity pattern: "<ns>.get_instance" and "<ns>.query"
 // return the supplied object, "<ns>.delete" returns true. JSON-RPC
