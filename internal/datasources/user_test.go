@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -25,24 +25,21 @@ func TestUserDataSource_Schema(t *testing.T) {
 }
 
 func TestUserDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
 	email := "alice@example.com"
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []truenas.User{
-			{
-				ID:       7,
-				UID:      1001,
-				Username: "alice",
-				FullName: "Alice A",
-				Email:    &email,
-				Home:     "/home/alice",
-				Shell:    "/bin/bash",
-				Builtin:  false,
-				Locked:   false,
-				SMB:      true,
-				Group:    truenas.UserGroup{GID: 1001, Group: "alice"},
-			},
-		})
+	c := newWSServer(t, wsReturn([]truenas.User{
+		{
+			ID:       7,
+			UID:      1001,
+			Username: "alice",
+			FullName: "Alice A",
+			Email:    &email,
+			Home:     "/home/alice",
+			Shell:    "/bin/bash",
+			Builtin:  false,
+			Locked:   false,
+			SMB:      true,
+			Group:    truenas.UserGroup{GID: 1001, Group: "alice"},
+		},
 	}))
 
 	ds := NewUserDataSource().(*UserDataSource)
@@ -77,11 +74,8 @@ func TestUserDataSource_Read_Success(t *testing.T) {
 }
 
 func TestUserDataSource_Read_NilEmail(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []truenas.User{
-			{ID: 1, Username: "bob", Email: nil, Group: truenas.UserGroup{GID: 100}},
-		})
+	c := newWSServer(t, wsReturn([]truenas.User{
+		{ID: 1, Username: "bob", Email: nil, Group: truenas.UserGroup{GID: 100}},
 	}))
 
 	ds := NewUserDataSource().(*UserDataSource)
@@ -100,10 +94,7 @@ func TestUserDataSource_Read_NilEmail(t *testing.T) {
 }
 
 func TestUserDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []truenas.User{{Username: "other"}})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.User{{Username: "other"}}))
 
 	ds := NewUserDataSource().(*UserDataSource)
 	ds.client = c
@@ -116,10 +107,7 @@ func TestUserDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestUserDataSource_Read_ServerError(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewUserDataSource().(*UserDataSource)
 	ds.client = c

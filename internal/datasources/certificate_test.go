@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -25,26 +25,23 @@ func TestCertificateDataSource_Schema(t *testing.T) {
 }
 
 func TestCertificateDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		certs := []truenas.Certificate{
-			{
-				ID:              7,
-				Name:            "wildcard",
-				Common:          "*.example.com",
-				From:            "2026-01-01",
-				Until:           "2027-01-01",
-				KeyType:         "RSA",
-				KeyLength:       2048,
-				DigestAlgorithm: "SHA256",
-				Expired:         false,
-				DN:              "CN=*.example.com",
-				SAN:             []string{"*.example.com", "example.com"},
-			},
-			{ID: 8, Name: "other"},
-		}
-		writeJSON(w, http.StatusOK, certs)
-	}))
+	certs := []truenas.Certificate{
+		{
+			ID:              7,
+			Name:            "wildcard",
+			Common:          "*.example.com",
+			From:            "2026-01-01",
+			Until:           "2027-01-01",
+			KeyType:         "RSA",
+			KeyLength:       2048,
+			DigestAlgorithm: "SHA256",
+			Expired:         false,
+			DN:              "CN=*.example.com",
+			SAN:             []string{"*.example.com", "example.com"},
+		},
+		{ID: 8, Name: "other"},
+	}
+	c := newWSServer(t, wsReturn(certs))
 
 	ds := NewCertificateDataSource().(*CertificateDataSource)
 	ds.client = c
@@ -80,10 +77,10 @@ func TestCertificateDataSource_Read_Success(t *testing.T) {
 }
 
 func TestCertificateDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []truenas.Certificate{{ID: 1, Name: "other"}})
-	}))
+	// WS GetCertificateByName sends a server-side name filter; a
+	// no-match lookup returns an EMPTY list (unlike the REST client
+	// which listed everything and filtered client-side).
+	c := newWSServer(t, wsReturn([]truenas.Certificate{}))
 
 	ds := NewCertificateDataSource().(*CertificateDataSource)
 	ds.client = c
@@ -98,10 +95,7 @@ func TestCertificateDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestCertificateDataSource_Read_ServerError(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewCertificateDataSource().(*CertificateDataSource)
 	ds.client = c
@@ -116,11 +110,8 @@ func TestCertificateDataSource_Read_ServerError(t *testing.T) {
 }
 
 func TestCertificateDataSource_Read_EmptySAN(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []truenas.Certificate{
-			{ID: 1, Name: "bare", Common: "x", SAN: nil},
-		})
+	c := newWSServer(t, wsReturn([]truenas.Certificate{
+		{ID: 1, Name: "bare", Common: "x", SAN: nil},
 	}))
 
 	ds := NewCertificateDataSource().(*CertificateDataSource)

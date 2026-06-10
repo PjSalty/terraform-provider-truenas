@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -32,21 +32,18 @@ func TestShareNFSDataSource_Schema(t *testing.T) {
 }
 
 func TestShareNFSDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.NFSShare{
-			ID:           42,
-			Path:         "/mnt/tank/exports",
-			Aliases:      []string{"/exports"},
-			Comment:      "shared data",
-			Hosts:        []string{"client1", "client2"},
-			ReadOnly:     false,
-			MaprootUser:  "root",
-			MaprootGroup: "wheel",
-			Security:     []string{"SYS"},
-			Enabled:      true,
-			Networks:     []string{"192.168.1.0/24"},
-		})
+	c := newWSServer(t, wsReturn(truenas.NFSShare{
+		ID:           42,
+		Path:         "/mnt/tank/exports",
+		Aliases:      []string{"/exports"},
+		Comment:      "shared data",
+		Hosts:        []string{"client1", "client2"},
+		ReadOnly:     false,
+		MaprootUser:  "root",
+		MaprootGroup: "wheel",
+		Security:     []string{"SYS"},
+		Enabled:      true,
+		Networks:     []string{"192.168.1.0/24"},
 	}))
 
 	ds := NewShareNFSDataSource().(*ShareNFSDataSource)
@@ -78,10 +75,7 @@ func TestShareNFSDataSource_Read_Success(t *testing.T) {
 }
 
 func TestShareNFSDataSource_Read_EmptyLists(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.NFSShare{ID: 1, Path: "/mnt/tank/x", Enabled: false})
-	}))
+	c := newWSServer(t, wsReturn(truenas.NFSShare{ID: 1, Path: "/mnt/tank/x", Enabled: false}))
 
 	ds := NewShareNFSDataSource().(*ShareNFSDataSource)
 	ds.client = c
@@ -99,10 +93,7 @@ func TestShareNFSDataSource_Read_EmptyLists(t *testing.T) {
 }
 
 func TestShareNFSDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewShareNFSDataSource().(*ShareNFSDataSource)
 	ds.client = c
@@ -115,10 +106,7 @@ func TestShareNFSDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestShareNFSDataSource_Read_ServerError(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewShareNFSDataSource().(*ShareNFSDataSource)
 	ds.client = c

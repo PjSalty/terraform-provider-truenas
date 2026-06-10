@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -25,24 +25,21 @@ func TestDiskDataSource_Schema(t *testing.T) {
 }
 
 func TestDiskDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
 	pool := "tank"
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []truenas.Disk{
-			{
-				Name:        "sda",
-				Serial:      "S1",
-				Size:        1099511627776,
-				Type:        "HDD",
-				Model:       "WD",
-				Description: "data disk",
-				Bus:         "SATA",
-				Identifier:  "{serial}S1",
-				Devname:     "sda",
-				Pool:        &pool,
-			},
-			{Name: "sdb", Serial: "S2", Size: 500000000000, Type: "SSD"},
-		})
+	c := newWSServer(t, wsReturn([]truenas.Disk{
+		{
+			Name:        "sda",
+			Serial:      "S1",
+			Size:        1099511627776,
+			Type:        "HDD",
+			Model:       "WD",
+			Description: "data disk",
+			Bus:         "SATA",
+			Identifier:  "{serial}S1",
+			Devname:     "sda",
+			Pool:        &pool,
+		},
+		{Name: "sdb", Serial: "S2", Size: 500000000000, Type: "SSD"},
 	}))
 
 	ds := NewDiskDataSource().(*DiskDataSource)
@@ -74,11 +71,8 @@ func TestDiskDataSource_Read_Success(t *testing.T) {
 }
 
 func TestDiskDataSource_Read_NilPool(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []truenas.Disk{
-			{Name: "sdc", Serial: "S3", Size: 100, Type: "SSD", Pool: nil},
-		})
+	c := newWSServer(t, wsReturn([]truenas.Disk{
+		{Name: "sdc", Serial: "S3", Size: 100, Type: "SSD", Pool: nil},
 	}))
 
 	ds := NewDiskDataSource().(*DiskDataSource)
@@ -97,10 +91,7 @@ func TestDiskDataSource_Read_NilPool(t *testing.T) {
 }
 
 func TestDiskDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []truenas.Disk{{Name: "sda"}})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.Disk{{Name: "sda"}}))
 
 	ds := NewDiskDataSource().(*DiskDataSource)
 	ds.client = c
@@ -113,10 +104,7 @@ func TestDiskDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestDiskDataSource_Read_ListError(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewDiskDataSource().(*DiskDataSource)
 	ds.client = c

@@ -28,23 +28,17 @@ func TestISCSIExtentDataSource_Schema(t *testing.T) {
 }
 
 func TestISCSIExtentDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/iscsi/extent/id/4" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, truenas.ISCSIExtent{
-			ID:        4,
-			Name:      "ext1",
-			Type:      "DISK",
-			Disk:      json.RawMessage(`"zvol/tank/vol1"`),
-			Filesize:  json.RawMessage(`0`),
-			Blocksize: 512,
-			RPM:       "SSD",
-			Enabled:   true,
-			Comment:   "prod",
-			ReadOnly:  false,
-		})
+	c := newWSServer(t, wsReturn(truenas.ISCSIExtent{
+		ID:        4,
+		Name:      "ext1",
+		Type:      "DISK",
+		Disk:      json.RawMessage(`"zvol/tank/vol1"`),
+		Filesize:  json.RawMessage(`0`),
+		Blocksize: 512,
+		RPM:       "SSD",
+		Enabled:   true,
+		Comment:   "prod",
+		ReadOnly:  false,
 	}))
 
 	ds := NewISCSIExtentDataSource().(*ISCSIExtentDataSource)

@@ -95,3 +95,31 @@ func skipWSCutover(t *testing.T) {
 	t.Helper()
 	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go; resource-layer wsclient testserver rewrite tracked as v2.x polish")
 }
+
+// newWSServer returns a *wsclient.Client connected to an in-process
+// wsclient.TestServer running the given JSON-RPC method handler. The
+// WS twin of newTestServer for the post-cutover unit tests.
+func newWSServer(t *testing.T, h wsclient.TestHandler) *wsclient.Client {
+	t.Helper()
+	ts := wsclient.NewTestServer(t, h)
+	c, err := ts.NewClient(context.Background())
+	if err != nil {
+		t.Fatalf("testserver NewClient: %v", err)
+	}
+	return c
+}
+
+// wsReturn builds a TestHandler that returns obj for every method.
+func wsReturn(obj interface{}) wsclient.TestHandler {
+	return func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		return obj, nil
+	}
+}
+
+// wsError builds a TestHandler that fails every method with the given
+// RPC error.
+func wsError(code int, msg string) wsclient.TestHandler {
+	return func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		return nil, &wsclient.RPCError{Code: code, Message: msg}
+	}
+}

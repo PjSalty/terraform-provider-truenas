@@ -31,25 +31,19 @@ func TestSnapshotTaskDataSource_Schema(t *testing.T) {
 }
 
 func TestSnapshotTaskDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/pool/snapshottask/id/11" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, truenas.SnapshotTask{
-			ID:           11,
-			Dataset:      "tank/data",
-			Recursive:    true,
-			Lifetime:     30,
-			LifetimeUnit: "DAY",
-			NamingSchema: "auto-%Y-%m-%d_%H-%M",
-			Enabled:      true,
-			AllowEmpty:   false,
-			Exclude:      []string{"tank/data/scratch"},
-			Schedule: truenas.Schedule{
-				Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*",
-			},
-		})
+	c := newWSServer(t, wsReturn(truenas.SnapshotTask{
+		ID:           11,
+		Dataset:      "tank/data",
+		Recursive:    true,
+		Lifetime:     30,
+		LifetimeUnit: "DAY",
+		NamingSchema: "auto-%Y-%m-%d_%H-%M",
+		Enabled:      true,
+		AllowEmpty:   false,
+		Exclude:      []string{"tank/data/scratch"},
+		Schedule: truenas.Schedule{
+			Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*",
+		},
 	}))
 
 	ds := NewSnapshotTaskDataSource().(*SnapshotTaskDataSource)

@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -26,32 +26,29 @@ func TestDatasetDataSource_Schema(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.DatasetResponse{
-			ID:         "tank/data",
-			Name:       "data",
-			Pool:       "tank",
-			Type:       "FILESYSTEM",
-			MountPoint: "/mnt/tank/data",
-			Compression: &truenas.PropertyValue{
-				Value: "lz4",
-			},
-			Atime: &truenas.PropertyValue{Value: "on"},
-			Quota: &truenas.PropertyRawVal{
-				Value:    "10G",
-				Rawvalue: "10737418240",
-			},
-			Refquota: &truenas.PropertyRawVal{
-				Value:    "5G",
-				Rawvalue: "5368709120",
-			},
-			Sync:          &truenas.PropertyValue{Value: "standard"},
-			Readonly:      &truenas.PropertyValue{Value: "off"},
-			RecordSize:    &truenas.PropertyValue{Value: "128K"},
-			Deduplication: &truenas.PropertyValue{Value: "off"},
-			Comments:      &truenas.PropertyValue{Value: "hello"},
-		})
+	c := newWSServer(t, wsReturn(truenas.DatasetResponse{
+		ID:         "tank/data",
+		Name:       "data",
+		Pool:       "tank",
+		Type:       "FILESYSTEM",
+		MountPoint: "/mnt/tank/data",
+		Compression: &truenas.PropertyValue{
+			Value: "lz4",
+		},
+		Atime: &truenas.PropertyValue{Value: "on"},
+		Quota: &truenas.PropertyRawVal{
+			Value:    "10G",
+			Rawvalue: "10737418240",
+		},
+		Refquota: &truenas.PropertyRawVal{
+			Value:    "5G",
+			Rawvalue: "5368709120",
+		},
+		Sync:          &truenas.PropertyValue{Value: "standard"},
+		Readonly:      &truenas.PropertyValue{Value: "off"},
+		RecordSize:    &truenas.PropertyValue{Value: "128K"},
+		Deduplication: &truenas.PropertyValue{Value: "off"},
+		Comments:      &truenas.PropertyValue{Value: "hello"},
 	}))
 
 	ds := NewDatasetDataSource().(*DatasetDataSource)
@@ -88,15 +85,12 @@ func TestDatasetDataSource_Read_Success(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_MinimalFields(t *testing.T) {
-	skipWSCutover(t)
 	// Only required fields populated — none of the property pointers set.
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.DatasetResponse{
-			ID:   "tank/minimal",
-			Name: "minimal",
-			Pool: "tank",
-			Type: "FILESYSTEM",
-		})
+	c := newWSServer(t, wsReturn(truenas.DatasetResponse{
+		ID:   "tank/minimal",
+		Name: "minimal",
+		Pool: "tank",
+		Type: "FILESYSTEM",
 	}))
 
 	ds := NewDatasetDataSource().(*DatasetDataSource)
@@ -112,10 +106,7 @@ func TestDatasetDataSource_Read_MinimalFields(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "not found"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewDatasetDataSource().(*DatasetDataSource)
 	ds.client = c
@@ -130,10 +121,7 @@ func TestDatasetDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_ServerError(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewDatasetDataSource().(*DatasetDataSource)
 	ds.client = c
