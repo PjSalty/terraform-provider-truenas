@@ -50,6 +50,40 @@ func TestCloudSync_CRUD(t *testing.T) {
 		}
 	})
 
+	t.Run("Get with nested credentials object (import/read path)", func(t *testing.T) {
+		// TrueNAS returns credentials as a full object on GET/list, not a plain int.
+		// This shape previously caused: "cannot unmarshal object into Go struct field
+		// CloudSync.credentials of type int".
+		_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{
+				"id": 2,
+				"description": "Google Drive - Max",
+				"path": "/mnt/Data/backup/max_google-drive",
+				"credentials": {
+					"id": 2,
+					"name": "Google Drive",
+					"provider": {"type": "GOOGLE_DRIVE"}
+				},
+				"direction": "PULL",
+				"transfer_mode": "SYNC",
+				"schedule": {"minute": "0", "hour": "0", "dom": "*", "month": "*", "dow": "*"},
+				"enabled": true,
+				"attributes": {"folder": "/", "fast_list": false, "acknowledge_abuse": false}
+			}`))
+		}))
+
+		got, err := c.GetCloudSync(ctx, 2)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.Credentials != 2 {
+			t.Errorf("Credentials = %d, want 2", got.Credentials)
+		}
+		if got.Description != "Google Drive - Max" {
+			t.Errorf("Description = %q", got.Description)
+		}
+	})
+
 	t.Run("Get 404", func(t *testing.T) {
 		_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
