@@ -2,7 +2,7 @@
 
 [![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-brightgreen.svg)](LICENSE)
 [![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.0-623CE4)](https://www.terraform.io/)
-[![TrueNAS SCALE](https://img.shields.io/badge/TrueNAS%20SCALE-25.04%2B-0095D5)](https://www.truenas.com/truenas-scale/)
+[![TrueNAS SCALE](https://img.shields.io/badge/TrueNAS%20SCALE-25.10%2B-0095D5)](https://www.truenas.com/truenas-scale/)
 
 Terraform provider for managing
 [TrueNAS SCALE](https://www.truenas.com/truenas-scale/) storage, network,
@@ -341,14 +341,26 @@ example under `examples/data-sources/<name>/data-source.tf`.
 
 | Provider Version | TrueNAS SCALE | Terraform | Go (build) |
 | ---------------- | ------------- | --------- | ---------- |
+| `2.0.x`          | **25.10+** (full) · 25.04 (partial) · 26.0-BETA (tracked) | `>= 1.5` | `>= 1.26` |
+| `1.10.x`         | 24.04 – 25.04 | `>= 1.0`  | `>= 1.23`  |
 | `0.4.x`          | 24.04 – 25.10 | `>= 1.0`  | `>= 1.23`  |
 | `0.3.x`          | 24.04 – 25.04 | `>= 1.0`  | `>= 1.23`  |
 | `0.1.x`          | 24.04         | `>= 1.0`  | `>= 1.22`  |
 
-SCALE 25.10 introduced several schema-breaking changes (alert services,
-dataset comments) that the 0.4.x provider handles transparently; older
-provider versions will surface spurious drift when pointed at a 25.10
-instance.
+v2.0 is validated against live instances of each line:
+
+- **SCALE 25.10** — fully supported; the complete acceptance suite
+  passes (147/147).
+- **SCALE 25.04** — works for the common surface (126/141), but
+  several resources model APIs that don't exist there: `nvmet_*`
+  (NVMe-oF arrived in 25.10), the unified `truenas_directory_services`
+  resource, the 25.10 SMB share `purpose` vocabulary, and some
+  `alert_service` types. If you need those resources on 25.04, stay on
+  `1.10.x` until you upgrade SCALE.
+- **SCALE 26.0-BETA** — 143/147; the four failures are 26.0 API drift
+  (`service.start` signature, SMB config shape) tracked for a v2.x
+  release alongside 26.0 final. Note 26.0 removes the REST API
+  entirely, so the v1.x line cannot work there at all.
 
 ## Development
 

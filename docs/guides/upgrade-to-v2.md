@@ -29,12 +29,29 @@ v2.0 cuts over to WebSocket exclusively. The wsclient implementation was in tree
 
 ### TrueNAS version requirement
 
-| Provider | Minimum SCALE |
+| Provider | SCALE support |
 | --- | --- |
-| v1.x | 24.04 (REST only) |
-| v2.0 (WebSocket only) | 25.04 |
+| v1.x | 24.04 – 25.04 (REST only) |
+| v2.0 (WebSocket only) | **25.10+ fully supported** · 25.04 partial |
 
-If the provider Configure step fails with a websocket dial error against a SCALE 24.10 (or older) host, that's the version mismatch. Upgrade SCALE to 25.04 or newer, or stay on the v1.x provider line.
+v2.0 is validated against live instances: 147/147 acceptance tests on
+25.10, 126/141 on 25.04, 143/147 on 26.0-BETA.
+
+**25.04 partial support**: the WebSocket transport works (25.04 is when
+`/api/current` landed), but several resources model middleware APIs
+that 25.04 simply doesn't have — `nvmet_*` (NVMe-oF target support
+arrived in 25.10), the unified `truenas_directory_services` resource,
+the 25.10 SMB share `purpose` vocabulary, and some `alert_service`
+types. Plans touching those resources fail with method-not-found
+errors on 25.04. If you need them, upgrade SCALE first; otherwise
+v2.0 on 25.04 is fine for the common surface.
+
+**26.0-BETA**: 4 known failures from 26.0 API drift (`service.start`
+signature change, SMB config shape) — tracked for a v2.x release
+alongside 26.0 final. 26.0 removes REST entirely, so v1.x cannot
+target it at all.
+
+If the provider Configure step fails with a websocket dial error against a SCALE 24.10 (or older) host, that's the version mismatch. Upgrade SCALE, or stay on the v1.x provider line.
 
 ### REST API deprecation timeline
 
@@ -46,7 +63,7 @@ iX's published timeline for the REST API at `/api/v2.0`:
 This provider's timeline:
 
 - **v1.x** — REST is the default. WebSocket is opt-in alpha via `transport = "websocket"`.
-- **v2.0** — WebSocket only. The REST client code has been deleted. Provider requires SCALE 25.04+ unconditionally.
+- **v2.0** — WebSocket only. The REST client code has been deleted. Fully supported on SCALE 25.10+; 25.04 works with a reduced resource surface (see above).
 
 ## Upgrade procedure
 

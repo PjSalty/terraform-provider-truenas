@@ -8,8 +8,12 @@ description: |-
 # TrueNAS Provider
 
 The TrueNAS provider is used to interact with the resources supported by
-TrueNAS SCALE 25.04 and later. The provider needs to be configured with a
-base URL and an API key before it can be used.
+TrueNAS SCALE over its JSON-RPC 2.0 WebSocket API. Fully supported on
+SCALE 25.10 and later. SCALE 25.04 works for the common resource surface
+but lacks the APIs behind `nvmet_*`, `truenas_directory_services`, the
+25.10 SMB `purpose` vocabulary, and some alert service types — use the
+v1.10.x provider line there if you need those. The provider needs to be
+configured with a base URL and an API key before it can be used.
 
 Use the navigation to the left to read about the available resources and
 data sources.
