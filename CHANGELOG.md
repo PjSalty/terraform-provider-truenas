@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (rc.4 — multi-version validation, 2026-06-09/10)
+
+- **Validation matrix across three live SCALE lines.** The full
+  acceptance suite was executed against real instances of each:
+  - SCALE **25.10**: 147/147 PASS — the fully-supported floor.
+  - SCALE **25.04**: 126/141 — every failure is an upstream API
+    absence (`nvmet.*` arrived in 25.10, unified
+    `directoryservices.*`, 25.10 SMB `purpose` vocabulary, newer
+    `alert_service` types), not a provider defect. Documented as
+    partial support in the version matrix.
+  - SCALE **26.0-BETA.1**: 143/147 — four failures from 26.0 API
+    drift (`service.start` signature, SMB config shape), tracked
+    for a v2.x release alongside 26.0 final.
+- **WebSocket acceptance preflight** (`cmd/wspreflight`): the acc
+  harness probes `system.info` + `pool.query` over JSON-RPC before
+  running, replacing the REST curl preflight that TrueNAS 26.0
+  removed the endpoint for.
+
+### Fixed (rc.4 — SCALE 25.10 API drift, 2026-06-09)
+
+- `tunable` create/update/delete became middleware **jobs** in
+  25.10; the resource now calls them through the job path and
+  polls to terminal state.
+- `filesystem.getacl` takes positional args on 25.10 and
+  `filesystem.setacl` is a job; both converted.
+- `IsNotFound` now recognizes all five not-found surfaces TrueNAS
+  emits, including `MatchNotFound()` (carried in the error *reason*
+  rather than the message) and job failures re-wrapped as plain
+  errors by the job runner. Fixes spurious destroy-time failures
+  and the `_disappears` acceptance pattern on live 25.10.
+
+### Changed (rc.4 — test rigor)
+
+- 100.0% statement coverage on all internal packages; CI coverage
+  gates locked at 100.
+
 ### Changed (continued — REST removal, 2026-06-09)
 
 - **REST transport fully retired.** `internal/client/` is gone.
