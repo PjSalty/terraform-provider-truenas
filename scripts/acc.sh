@@ -122,8 +122,8 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
   # is canonical. Track the floor so a future polish PR can reclaim
   # the gap by porting unit fixtures to wsclient testserver.
   declare -A TIER2_FLOOR=(
-    [github.com/PjSalty/terraform-provider-truenas/internal/resources]=40
-    [github.com/PjSalty/terraform-provider-truenas/internal/datasources]=35
+    [github.com/PjSalty/terraform-provider-truenas/internal/resources]=85
+    [github.com/PjSalty/terraform-provider-truenas/internal/datasources]=90
     [github.com/PjSalty/terraform-provider-truenas/internal/provider]=90
     [github.com/PjSalty/terraform-provider-truenas/internal/recordreplay]=90
   )

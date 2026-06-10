@@ -61,8 +61,8 @@ jobs:
             [github.com/PjSalty/terraform-provider-truenas/internal/fwresource]=100
           )
           declare -A TIER2_FLOOR=(
-            [github.com/PjSalty/terraform-provider-truenas/internal/resources]=40
-            [github.com/PjSalty/terraform-provider-truenas/internal/datasources]=35
+            [github.com/PjSalty/terraform-provider-truenas/internal/resources]=85
+            [github.com/PjSalty/terraform-provider-truenas/internal/datasources]=90
             [github.com/PjSalty/terraform-provider-truenas/internal/provider]=90
             [github.com/PjSalty/terraform-provider-truenas/internal/recordreplay]=90
           )
