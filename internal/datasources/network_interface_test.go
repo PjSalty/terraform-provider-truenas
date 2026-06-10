@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -32,22 +32,19 @@ func TestNetworkInterfaceDataSource_Schema(t *testing.T) {
 }
 
 func TestNetworkInterfaceDataSource_Read_Physical(t *testing.T) {
-	skipWSCutover(t)
 	mtu := 9000
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.NetworkInterface{
-			ID:          "eth0",
-			Name:        "eth0",
-			Type:        "PHYSICAL",
-			Description: "wan uplink",
-			IPv4DHCP:    false,
-			IPv6Auto:    false,
-			MTU:         &mtu,
-			Aliases: []truenas.NetworkInterfaceAlias{
-				{Type: "INET", Address: "192.168.1.10", Netmask: 24},
-				{Type: "INET6", Address: "2001:db8::1", Netmask: 64},
-			},
-		})
+	c := newWSServer(t, wsReturn(truenas.NetworkInterface{
+		ID:          "eth0",
+		Name:        "eth0",
+		Type:        "PHYSICAL",
+		Description: "wan uplink",
+		IPv4DHCP:    false,
+		IPv6Auto:    false,
+		MTU:         &mtu,
+		Aliases: []truenas.NetworkInterfaceAlias{
+			{Type: "INET", Address: "192.168.1.10", Netmask: 24},
+			{Type: "INET6", Address: "2001:db8::1", Netmask: 64},
+		},
 	}))
 
 	ds := NewNetworkInterfaceDataSource().(*NetworkInterfaceDataSource)
@@ -73,18 +70,15 @@ func TestNetworkInterfaceDataSource_Read_Physical(t *testing.T) {
 }
 
 func TestNetworkInterfaceDataSource_Read_VLAN(t *testing.T) {
-	skipWSCutover(t)
 	tag := 100
 	pcp := 3
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.NetworkInterface{
-			ID:                  "vlan100",
-			Name:                "vlan100",
-			Type:                "VLAN",
-			VlanParentInterface: "eth0",
-			VlanTag:             &tag,
-			VlanPCP:             &pcp,
-		})
+	c := newWSServer(t, wsReturn(truenas.NetworkInterface{
+		ID:                  "vlan100",
+		Name:                "vlan100",
+		Type:                "VLAN",
+		VlanParentInterface: "eth0",
+		VlanTag:             &tag,
+		VlanPCP:             &pcp,
 	}))
 
 	ds := NewNetworkInterfaceDataSource().(*NetworkInterfaceDataSource)
@@ -107,14 +101,11 @@ func TestNetworkInterfaceDataSource_Read_VLAN(t *testing.T) {
 }
 
 func TestNetworkInterfaceDataSource_Read_Bridge(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.NetworkInterface{
-			ID:            "br0",
-			Name:          "br0",
-			Type:          "BRIDGE",
-			BridgeMembers: []string{"eth1", "eth2"},
-		})
+	c := newWSServer(t, wsReturn(truenas.NetworkInterface{
+		ID:            "br0",
+		Name:          "br0",
+		Type:          "BRIDGE",
+		BridgeMembers: []string{"eth1", "eth2"},
 	}))
 
 	ds := NewNetworkInterfaceDataSource().(*NetworkInterfaceDataSource)
@@ -136,10 +127,7 @@ func TestNetworkInterfaceDataSource_Read_Bridge(t *testing.T) {
 }
 
 func TestNetworkInterfaceDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewNetworkInterfaceDataSource().(*NetworkInterfaceDataSource)
 	ds.client = c

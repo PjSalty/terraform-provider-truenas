@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -33,31 +33,28 @@ func TestVMDataSource_Schema(t *testing.T) {
 }
 
 func TestVMDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
 	uuid := "abc-123"
 	cpuModel := "host"
 	minMem := int64(1073741824)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.VM{
-			ID:               12,
-			Name:             "vm1",
-			Description:      "test vm",
-			Vcpus:            2,
-			Cores:            4,
-			Threads:          2,
-			Memory:           4294967296,
-			MinMemory:        &minMem,
-			Bootloader:       "UEFI",
-			BootloaderOvmf:   "OVMF_CODE.fd",
-			Autostart:        true,
-			Time:             "UTC",
-			ShutdownTimeout:  90,
-			CPUMode:          "CUSTOM",
-			CPUModel:         &cpuModel,
-			EnableSecureBoot: true,
-			UUID:             &uuid,
-			Status:           &truenas.VMStatus{State: "RUNNING"},
-		})
+	c := newWSServer(t, wsReturn(truenas.VM{
+		ID:               12,
+		Name:             "vm1",
+		Description:      "test vm",
+		Vcpus:            2,
+		Cores:            4,
+		Threads:          2,
+		Memory:           4294967296,
+		MinMemory:        &minMem,
+		Bootloader:       "UEFI",
+		BootloaderOvmf:   "OVMF_CODE.fd",
+		Autostart:        true,
+		Time:             "UTC",
+		ShutdownTimeout:  90,
+		CPUMode:          "CUSTOM",
+		CPUModel:         &cpuModel,
+		EnableSecureBoot: true,
+		UUID:             &uuid,
+		Status:           &truenas.VMStatus{State: "RUNNING"},
 	}))
 
 	ds := NewVMDataSource().(*VMDataSource)
@@ -92,10 +89,7 @@ func TestVMDataSource_Read_Success(t *testing.T) {
 }
 
 func TestVMDataSource_Read_NoStatus(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.VM{ID: 1, Name: "vm", Memory: 1024})
-	}))
+	c := newWSServer(t, wsReturn(truenas.VM{ID: 1, Name: "vm", Memory: 1024}))
 
 	ds := NewVMDataSource().(*VMDataSource)
 	ds.client = c
@@ -119,10 +113,7 @@ func TestVMDataSource_Read_NoStatus(t *testing.T) {
 }
 
 func TestVMDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewVMDataSource().(*VMDataSource)
 	ds.client = c

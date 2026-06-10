@@ -27,16 +27,10 @@ func TestISCSIInitiatorDataSource_Schema(t *testing.T) {
 }
 
 func TestISCSIInitiatorDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/iscsi/initiator/id/2" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, truenas.ISCSIInitiator{
-			ID:         2,
-			Initiators: []string{"iqn.2024-01.com.example:host1"},
-			Comment:    "k8s nodes",
-		})
+	c := newWSServer(t, wsReturn(truenas.ISCSIInitiator{
+		ID:         2,
+		Initiators: []string{"iqn.2024-01.com.example:host1"},
+		Comment:    "k8s nodes",
 	}))
 
 	ds := NewISCSIInitiatorDataSource().(*ISCSIInitiatorDataSource)

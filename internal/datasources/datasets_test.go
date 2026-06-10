@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -37,10 +37,7 @@ func datasetsFixture() []truenas.DatasetResponse {
 }
 
 func TestDatasetsDataSource_Read_All(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, datasetsFixture())
-	}))
+	c := newWSServer(t, wsReturn(datasetsFixture()))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c
@@ -59,10 +56,7 @@ func TestDatasetsDataSource_Read_All(t *testing.T) {
 }
 
 func TestDatasetsDataSource_Read_PoolFilter(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, datasetsFixture())
-	}))
+	c := newWSServer(t, wsReturn(datasetsFixture()))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c
@@ -81,10 +75,7 @@ func TestDatasetsDataSource_Read_PoolFilter(t *testing.T) {
 }
 
 func TestDatasetsDataSource_Read_ParentFilter(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, datasetsFixture())
-	}))
+	c := newWSServer(t, wsReturn(datasetsFixture()))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c
@@ -105,10 +96,7 @@ func TestDatasetsDataSource_Read_ParentFilter(t *testing.T) {
 }
 
 func TestDatasetsDataSource_Read_ServerError(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c

@@ -27,18 +27,12 @@ func TestAPIKeyDataSource_Schema(t *testing.T) {
 }
 
 func TestAPIKeyDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/api_key/id/8" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, truenas.APIKey{
-			ID:       8,
-			Name:     "terraform",
-			Username: "root",
-			Local:    true,
-			Revoked:  false,
-		})
+	c := newWSServer(t, wsReturn(truenas.APIKey{
+		ID:       8,
+		Name:     "terraform",
+		Username: "root",
+		Local:    true,
+		Revoked:  false,
 	}))
 
 	ds := NewAPIKeyDataSource().(*APIKeyDataSource)

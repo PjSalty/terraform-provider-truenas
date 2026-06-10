@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -31,19 +31,16 @@ func TestShareSMBDataSource_Schema(t *testing.T) {
 }
 
 func TestShareSMBDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.SMBShare{
-			ID:        7,
-			Path:      "/mnt/tank/smb",
-			Name:      "public",
-			Comment:   "public share",
-			Browsable: true,
-			ReadOnly:  false,
-			ABE:       true,
-			Enabled:   true,
-			Purpose:   "NO_PRESET",
-		})
+	c := newWSServer(t, wsReturn(truenas.SMBShare{
+		ID:        7,
+		Path:      "/mnt/tank/smb",
+		Name:      "public",
+		Comment:   "public share",
+		Browsable: true,
+		ReadOnly:  false,
+		ABE:       true,
+		Enabled:   true,
+		Purpose:   "NO_PRESET",
 	}))
 
 	ds := NewShareSMBDataSource().(*ShareSMBDataSource)
@@ -75,10 +72,7 @@ func TestShareSMBDataSource_Read_Success(t *testing.T) {
 }
 
 func TestShareSMBDataSource_Read_ReadOnly(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.SMBShare{ID: 8, Name: "ro", ReadOnly: true, Enabled: false})
-	}))
+	c := newWSServer(t, wsReturn(truenas.SMBShare{ID: 8, Name: "ro", ReadOnly: true, Enabled: false}))
 
 	ds := NewShareSMBDataSource().(*ShareSMBDataSource)
 	ds.client = c
@@ -96,10 +90,7 @@ func TestShareSMBDataSource_Read_ReadOnly(t *testing.T) {
 }
 
 func TestShareSMBDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewShareSMBDataSource().(*ShareSMBDataSource)
 	ds.client = c

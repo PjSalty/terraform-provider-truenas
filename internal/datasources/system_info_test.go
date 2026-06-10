@@ -3,6 +3,7 @@ package datasources
 import (
 	"context"
 	"encoding/json"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"net/http"
 	"testing"
 
@@ -36,26 +37,20 @@ func TestSystemInfoDataSource_Metadata(t *testing.T) {
 }
 
 func TestSystemInfoDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/system/info" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		info := truenas.SystemInfo{
-			Version:       "TrueNAS-SCALE-24.10.0",
-			Hostname:      "truenas",
-			PhysicalMem:   17179869184,
-			Model:         "Intel Xeon",
-			Cores:         8,
-			Uptime:        "up 3 days",
-			UptimeSeconds: 259200.5,
-			SystemSerial:  "ABC123",
-			SystemProduct: "PowerEdge R740",
-			Timezone:      "UTC",
-			Loadavg:       []float64{0.5, 0.7, 0.9},
-		}
-		writeJSON(w, http.StatusOK, info)
-	}))
+	info := truenas.SystemInfo{
+		Version:       "TrueNAS-SCALE-24.10.0",
+		Hostname:      "truenas",
+		PhysicalMem:   17179869184,
+		Model:         "Intel Xeon",
+		Cores:         8,
+		Uptime:        "up 3 days",
+		UptimeSeconds: 259200.5,
+		SystemSerial:  "ABC123",
+		SystemProduct: "PowerEdge R740",
+		Timezone:      "UTC",
+		Loadavg:       []float64{0.5, 0.7, 0.9},
+	}
+	c := newWSServer(t, wsReturn(info))
 
 	ds := NewSystemInfoDataSource().(*SystemInfoDataSource)
 	ds.client = c
@@ -86,10 +81,7 @@ func TestSystemInfoDataSource_Read_Success(t *testing.T) {
 }
 
 func TestSystemInfoDataSource_Read_ServerError(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewSystemInfoDataSource().(*SystemInfoDataSource)
 	ds.client = c
@@ -120,14 +112,11 @@ func TestSystemInfoDataSource_Read_InvalidJSON(t *testing.T) {
 }
 
 func TestSystemInfoDataSource_Read_PartialLoadavg(t *testing.T) {
-	skipWSCutover(t)
 	// Only 2 loadavg entries — code should not panic and fields should be null.
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"version":  "v1",
-			"hostname": "h",
-			"loadavg":  []float64{0.1, 0.2},
-		})
+	c := newWSServer(t, wsReturn(map[string]interface{}{
+		"version":  "v1",
+		"hostname": "h",
+		"loadavg":  []float64{0.1, 0.2},
 	}))
 
 	ds := NewSystemInfoDataSource().(*SystemInfoDataSource)

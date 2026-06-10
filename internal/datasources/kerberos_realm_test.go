@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -28,17 +28,14 @@ func TestKerberosRealmDataSource_Schema(t *testing.T) {
 }
 
 func TestKerberosRealmDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
 	primary := "kdc.example.com"
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.KerberosRealm{
-			ID:            3,
-			Realm:         "EXAMPLE.COM",
-			PrimaryKDC:    &primary,
-			KDC:           []string{"kdc1.example.com", "kdc2.example.com"},
-			AdminServer:   []string{"admin.example.com"},
-			KPasswdServer: []string{"kpasswd.example.com"},
-		})
+	c := newWSServer(t, wsReturn(truenas.KerberosRealm{
+		ID:            3,
+		Realm:         "EXAMPLE.COM",
+		PrimaryKDC:    &primary,
+		KDC:           []string{"kdc1.example.com", "kdc2.example.com"},
+		AdminServer:   []string{"admin.example.com"},
+		KPasswdServer: []string{"kpasswd.example.com"},
 	}))
 
 	ds := NewKerberosRealmDataSource().(*KerberosRealmDataSource)
@@ -64,13 +61,10 @@ func TestKerberosRealmDataSource_Read_Success(t *testing.T) {
 }
 
 func TestKerberosRealmDataSource_Read_NoPrimaryKDC(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.KerberosRealm{
-			ID:    1,
-			Realm: "X",
-			KDC:   []string{},
-		})
+	c := newWSServer(t, wsReturn(truenas.KerberosRealm{
+		ID:    1,
+		Realm: "X",
+		KDC:   []string{},
 	}))
 
 	ds := NewKerberosRealmDataSource().(*KerberosRealmDataSource)
@@ -89,10 +83,7 @@ func TestKerberosRealmDataSource_Read_NoPrimaryKDC(t *testing.T) {
 }
 
 func TestKerberosRealmDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewKerberosRealmDataSource().(*KerberosRealmDataSource)
 	ds.client = c

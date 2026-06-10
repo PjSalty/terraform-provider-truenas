@@ -27,17 +27,11 @@ func TestISCSIPortalDataSource_Schema(t *testing.T) {
 }
 
 func TestISCSIPortalDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/iscsi/portal/id/3" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, truenas.ISCSIPortal{
-			ID:      3,
-			Comment: "prod",
-			Tag:     1,
-			Listen:  []truenas.ISCSIPortalListen{{IP: "0.0.0.0", Port: 3260}},
-		})
+	c := newWSServer(t, wsReturn(truenas.ISCSIPortal{
+		ID:      3,
+		Comment: "prod",
+		Tag:     1,
+		Listen:  []truenas.ISCSIPortalListen{{IP: "0.0.0.0", Port: 3260}},
 	}))
 
 	ds := NewISCSIPortalDataSource().(*ISCSIPortalDataSource)

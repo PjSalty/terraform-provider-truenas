@@ -28,20 +28,14 @@ func TestKeychainCredentialDataSource_Schema(t *testing.T) {
 }
 
 func TestKeychainCredentialDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/keychaincredential/id/4" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, truenas.KeychainCredential{
-			ID:   4,
-			Name: "backup-key",
-			Type: "SSH_KEY_PAIR",
-			Attributes: map[string]interface{}{
-				"public_key":  "ssh-rsa AAA...",
-				"private_key": "-----BEGIN...",
-			},
-		})
+	c := newWSServer(t, wsReturn(truenas.KeychainCredential{
+		ID:   4,
+		Name: "backup-key",
+		Type: "SSH_KEY_PAIR",
+		Attributes: map[string]interface{}{
+			"public_key":  "ssh-rsa AAA...",
+			"private_key": "-----BEGIN...",
+		},
 	}))
 
 	ds := NewKeychainCredentialDataSource().(*KeychainCredentialDataSource)

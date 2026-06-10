@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -24,20 +24,14 @@ func TestPoolDataSource_Schema(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_ByID(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/pool/id/3" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, truenas.Pool{
-			ID:          3,
-			Name:        "tank",
-			GUID:        "1234567890",
-			Path:        "/mnt/tank",
-			Status:      "ONLINE",
-			Healthy:     true,
-			IsDecrypted: true,
-		})
+	c := newWSServer(t, wsReturn(truenas.Pool{
+		ID:          3,
+		Name:        "tank",
+		GUID:        "1234567890",
+		Path:        "/mnt/tank",
+		Status:      "ONLINE",
+		Healthy:     true,
+		IsDecrypted: true,
 	}))
 
 	ds := NewPoolDataSource().(*PoolDataSource)
@@ -62,12 +56,9 @@ func TestPoolDataSource_Read_ByID(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_ByName(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []truenas.Pool{
-			{ID: 1, Name: "tank", GUID: "a", Path: "/mnt/tank", Status: "ONLINE", Healthy: true, IsDecrypted: true},
-			{ID: 2, Name: "other", GUID: "b"},
-		})
+	c := newWSServer(t, wsReturn([]truenas.Pool{
+		{ID: 1, Name: "tank", GUID: "a", Path: "/mnt/tank", Status: "ONLINE", Healthy: true, IsDecrypted: true},
+		{ID: 2, Name: "other", GUID: "b"},
 	}))
 
 	ds := NewPoolDataSource().(*PoolDataSource)
@@ -89,10 +80,7 @@ func TestPoolDataSource_Read_ByName(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_NameNotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []truenas.Pool{{ID: 1, Name: "other"}})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.Pool{{ID: 1, Name: "other"}}))
 
 	ds := NewPoolDataSource().(*PoolDataSource)
 	ds.client = c
@@ -105,10 +93,7 @@ func TestPoolDataSource_Read_NameNotFound(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_IDNotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewPoolDataSource().(*PoolDataSource)
 	ds.client = c
@@ -121,10 +106,7 @@ func TestPoolDataSource_Read_IDNotFound(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_MissingKey(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []truenas.Pool{})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.Pool{}))
 
 	ds := NewPoolDataSource().(*PoolDataSource)
 	ds.client = c

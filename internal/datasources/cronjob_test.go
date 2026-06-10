@@ -2,7 +2,7 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -32,27 +32,21 @@ func TestCronJobDataSource_Schema(t *testing.T) {
 }
 
 func TestCronJobDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/cronjob/id/5" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, truenas.CronJob{
-			ID:          5,
-			User:        "root",
-			Command:     "/usr/bin/backup.sh",
-			Description: "nightly backup",
-			Enabled:     true,
-			Stdout:      true,
-			Stderr:      false,
-			Schedule: truenas.Schedule{
-				Minute: "0",
-				Hour:   "2",
-				Dom:    "*",
-				Month:  "*",
-				Dow:    "*",
-			},
-		})
+	c := newWSServer(t, wsReturn(truenas.CronJob{
+		ID:          5,
+		User:        "root",
+		Command:     "/usr/bin/backup.sh",
+		Description: "nightly backup",
+		Enabled:     true,
+		Stdout:      true,
+		Stderr:      false,
+		Schedule: truenas.Schedule{
+			Minute: "0",
+			Hour:   "2",
+			Dom:    "*",
+			Month:  "*",
+			Dow:    "*",
+		},
 	}))
 
 	ds := NewCronJobDataSource().(*CronJobDataSource)
@@ -84,10 +78,7 @@ func TestCronJobDataSource_Read_Success(t *testing.T) {
 }
 
 func TestCronJobDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewCronJobDataSource().(*CronJobDataSource)
 	ds.client = c
@@ -100,12 +91,9 @@ func TestCronJobDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestCronJobDataSource_Read_DisabledJob(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.CronJob{
-			ID: 1, Enabled: false,
-			Schedule: truenas.Schedule{Minute: "*/5"},
-		})
+	c := newWSServer(t, wsReturn(truenas.CronJob{
+		ID: 1, Enabled: false,
+		Schedule: truenas.Schedule{Minute: "*/5"},
 	}))
 
 	ds := NewCronJobDataSource().(*CronJobDataSource)

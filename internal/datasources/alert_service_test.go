@@ -28,21 +28,15 @@ func TestAlertServiceDataSource_Schema(t *testing.T) {
 }
 
 func TestAlertServiceDataSource_Read_Success(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/alertservice/id/3" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, truenas.AlertService{
-			ID:      3,
-			Name:    "slack",
-			Enabled: true,
-			Level:   "WARNING",
-			Settings: map[string]interface{}{
-				"type":    "Slack",
-				"cluster": "prod",
-			},
-		})
+	c := newWSServer(t, wsReturn(truenas.AlertService{
+		ID:      3,
+		Name:    "slack",
+		Enabled: true,
+		Level:   "WARNING",
+		Settings: map[string]interface{}{
+			"type":    "Slack",
+			"cluster": "prod",
+		},
 	}))
 
 	ds := NewAlertServiceDataSource().(*AlertServiceDataSource)
