@@ -106,10 +106,10 @@ func canonicalJSONBody(body []byte) []byte {
 	if err := json.Unmarshal(body, &v); err != nil {
 		return body
 	}
-	out, err := json.Marshal(v)
-	if err != nil {
-		return body
-	}
+	// Marshal of a value produced by Unmarshal into interface{} cannot
+	// fail: every shape Unmarshal emits (map[string]interface{}, []
+	// interface{}, string, float64, bool, nil) is marshalable.
+	out, _ := json.Marshal(v)
 	return out
 }
 
@@ -166,11 +166,10 @@ func (r *Recorder) serve(w http.ResponseWriter, req *http.Request) {
 	upstream.Path = req.URL.Path
 	upstream.RawQuery = req.URL.RawQuery
 
-	upReq, err := http.NewRequestWithContext(req.Context(), req.Method, upstream.String(), bytes.NewReader(body))
-	if err != nil {
-		http.Error(w, "recordreplay: build upstream request: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+	// NewRequestWithContext cannot fail here: req.Method comes from a
+	// parsed inbound request (always a valid token) and upstream.String()
+	// re-serialises a URL that url.Parse already accepted.
+	upReq, _ := http.NewRequestWithContext(req.Context(), req.Method, upstream.String(), bytes.NewReader(body))
 	// Forward headers EXCEPT Host (which httputil would do too).
 	for k, vs := range req.Header {
 		if strings.EqualFold(k, "Host") {
@@ -227,10 +226,9 @@ func (r *Recorder) write(method, path string, query url.Values, body []byte, fx 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	h := Hash(method, path, query, body)
-	out, err := json.MarshalIndent(fx, "", "  ")
-	if err != nil {
-		return
-	}
+	// Fixture is a flat struct of strings, ints, and []byte — MarshalIndent
+	// cannot fail on it.
+	out, _ := json.MarshalIndent(fx, "", "  ")
 	_ = os.WriteFile(filepath.Join(r.Dir, h+".json"), out, 0o644)
 	r.captured++
 }

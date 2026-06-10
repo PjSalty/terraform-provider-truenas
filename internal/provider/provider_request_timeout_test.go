@@ -120,6 +120,11 @@ func TestProvider_Configure_RequestTimeoutHCLOverridesEnv(t *testing.T) {
 // malformed duration surfaces as a provider diagnostic rather than
 // silently being ignored.
 func TestProvider_Configure_RequestTimeoutInvalidDuration(t *testing.T) {
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://example.com")
 	t.Setenv("TRUENAS_API_KEY", "k")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")

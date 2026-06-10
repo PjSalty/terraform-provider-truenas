@@ -160,3 +160,28 @@ func TestGetList_DialFail(t *testing.T) {
 		t.Errorf("want GET path error, got: %v", err)
 	}
 }
+
+func TestGetList_BodyReadFails(t *testing.T) {
+	// Lie about Content-Length then close the connection mid-body so
+	// io.ReadAll fails after a successful header exchange. Covers the
+	// read-body error branch.
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", "1000000")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("partial"))
+		// Hijack + close to cut the stream short.
+		if hj, ok := w.(http.Hijacker); ok {
+			conn, _, _ := hj.Hijack()
+			_ = conn.Close()
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("TRUENAS_URL", srv.URL)
+	t.Setenv("TRUENAS_API_KEY", "k")
+	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
+
+	err := sweep.GetList(context.Background(), nil, "/anything", &struct{}{})
+	if err == nil {
+		t.Error("expected error from truncated body")
+	}
+}
