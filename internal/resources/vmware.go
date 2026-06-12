@@ -16,19 +16,22 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
 	_ resource.Resource                = &VMwareResource{}
 	_ resource.ResourceWithImportState = &VMwareResource{}
+	_ resource.ResourceWithModifyPlan  = &VMwareResource{}
 )
 
 // VMwareResource manages a VMware host registration on TrueNAS SCALE.
 // It is used for snapshot-aware replication of VMware datastores that are
 // backed by TrueNAS ZFS datasets.
 type VMwareResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // VMwareResourceModel describes the resource data model.
@@ -114,11 +117,11 @@ func (r *VMwareResource) Configure(_ context.Context, req resource.ConfigureRequ
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -135,7 +138,7 @@ func (r *VMwareResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	createReq := &client.VMwareCreateRequest{
+	createReq := &truenas.VMwareCreateRequest{
 		Datastore:  plan.Datastore.ValueString(),
 		Filesystem: plan.Filesystem.ValueString(),
 		Hostname:   plan.Hostname.ValueString(),
@@ -178,7 +181,7 @@ func (r *VMwareResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	v, err := r.client.GetVMware(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -222,7 +225,7 @@ func (r *VMwareResource) Update(ctx context.Context, req resource.UpdateRequest,
 	username := plan.Username.ValueString()
 	password := plan.Password.ValueString()
 
-	updateReq := &client.VMwareUpdateRequest{
+	updateReq := &truenas.VMwareUpdateRequest{
 		Datastore:  &datastore,
 		Filesystem: &filesystem,
 		Hostname:   &hostname,
@@ -262,7 +265,7 @@ func (r *VMwareResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	tflog.Debug(ctx, "Deleting VMware", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteVMware(ctx, id); err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "VMware snapshot already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -270,6 +273,14 @@ func (r *VMwareResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 	tflog.Trace(ctx, "Delete VMware success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a VMware host integration breaks the
+// snapshot-quiescing path for any VM whose datastore is hosted on this
+// TrueNAS — backups silently drop to crash-consistent without warning.
+func (r *VMwareResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_vmware")
 }
 
 func (r *VMwareResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -283,7 +294,7 @@ func (r *VMwareResource) ImportState(ctx context.Context, req resource.ImportSta
 
 // mapResponseToModel copies API fields to the model, preserving the
 // user-supplied password value (API returns it redacted).
-func (r *VMwareResource) mapResponseToModel(v *client.VMware, model *VMwareResourceModel) {
+func (r *VMwareResource) mapResponseToModel(v *truenas.VMware, model *VMwareResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(v.ID))
 	model.Datastore = types.StringValue(v.Datastore)
 	model.Filesystem = types.StringValue(v.Filesystem)

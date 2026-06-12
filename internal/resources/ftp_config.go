@@ -21,7 +21,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 
 // FTPConfigResource manages the TrueNAS FTP service configuration.
 type FTPConfigResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // FTPConfigResourceModel describes the resource data model.
@@ -195,11 +196,11 @@ func (r *FTPConfigResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -310,7 +311,7 @@ func (r *FTPConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest
 	defaultroot := true
 	tls := false
 
-	_, err := r.client.UpdateFTPConfig(ctx, &client.FTPConfigUpdateRequest{
+	_, err := r.client.UpdateFTPConfig(ctx, &truenas.FTPConfigUpdateRequest{
 		Port:          &port,
 		Clients:       &clients,
 		IPConnections: &ipconnections,
@@ -340,8 +341,8 @@ func (r *FTPConfigResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *FTPConfigResource) buildUpdateRequest(plan *FTPConfigResourceModel) *client.FTPConfigUpdateRequest {
-	updateReq := &client.FTPConfigUpdateRequest{}
+func (r *FTPConfigResource) buildUpdateRequest(plan *FTPConfigResourceModel) *truenas.FTPConfigUpdateRequest {
+	updateReq := &truenas.FTPConfigUpdateRequest{}
 
 	if !plan.Port.IsNull() && !plan.Port.IsUnknown() {
 		v := int(plan.Port.ValueInt64())
@@ -403,7 +404,7 @@ func (r *FTPConfigResource) buildUpdateRequest(plan *FTPConfigResourceModel) *cl
 	return updateReq
 }
 
-func (r *FTPConfigResource) mapResponseToModel(config *client.FTPConfig, model *FTPConfigResourceModel) {
+func (r *FTPConfigResource) mapResponseToModel(config *truenas.FTPConfig, model *FTPConfigResourceModel) {
 	model.ID = types.StringValue("1")
 	model.Port = types.Int64Value(int64(config.Port))
 	model.Clients = types.Int64Value(int64(config.Clients))

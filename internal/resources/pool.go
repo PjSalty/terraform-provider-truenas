@@ -19,8 +19,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -40,7 +41,7 @@ var (
 // a raw JSON string that is passed through to the API verbatim, with
 // the tradeoff that schema validation happens server-side.
 type PoolResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // PoolResourceModel describes the pool resource data model.
@@ -185,11 +186,11 @@ func (r *PoolResource) Configure(_ context.Context, req resource.ConfigureReques
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -217,7 +218,7 @@ func (r *PoolResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	createReq := &client.PoolCreateRequest{
+	createReq := &truenas.PoolCreateRequest{
 		Name:     plan.Name.ValueString(),
 		Topology: topology,
 	}
@@ -281,7 +282,7 @@ func (r *PoolResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 
 	pool, err := r.client.GetPool(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -334,13 +335,13 @@ func (r *PoolResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 
 	tflog.Debug(ctx, "Exporting/destroying pool", map[string]interface{}{"id": id})
 
-	err = r.client.ExportPool(ctx, id, &client.PoolExportRequest{
+	err = r.client.ExportPool(ctx, id, &truenas.PoolExportRequest{
 		Cascade:         true,
 		RestartServices: false,
 		Destroy:         true,
 	})
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Pool already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -373,7 +374,7 @@ func (r *PoolResource) ImportState(ctx context.Context, req resource.ImportState
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *PoolResource) mapResponseToModel(pool *client.Pool, model *PoolResourceModel) {
+func (r *PoolResource) mapResponseToModel(pool *truenas.Pool, model *PoolResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(pool.ID))
 	model.Name = types.StringValue(pool.Name)
 	model.GUID = types.StringValue(pool.GUID)

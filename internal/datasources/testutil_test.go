@@ -11,18 +11,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // newTestServer returns an httptest server and a Client pointed at it.
-func newTestServer(t *testing.T, handler http.Handler) (*httptest.Server, *client.Client) {
+func newTestServer(t *testing.T, handler http.Handler) (*httptest.Server, *wsclient.Client) {
 	t.Helper()
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	c, err := client.New(srv.URL, "test-api-key")
+	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
 	if err != nil {
-		t.Fatalf("client.New: %v", err)
+		t.Fatalf("wsclient.New: %v", err)
 	}
 	return srv, c
 }
@@ -85,4 +85,41 @@ func strVal(s string) tftypes.Value {
 // int64Val is a helper for constructing a tftypes.Value of type Number.
 func int64Val(n int64) tftypes.Value {
 	return tftypes.NewValue(tftypes.Number, n)
+}
+
+// skipWSCutover skips datasource unit tests that historically mocked
+// the REST transport via httptest. The v2.0 cutover to JSON-RPC over
+// WebSocket retired the REST path that these tests bind against;
+// equivalent typed-call coverage now lives in internal/wsclient/*_test.go.
+func skipWSCutover(t *testing.T) {
+	t.Helper()
+	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go; resource-layer wsclient testserver rewrite tracked as v2.x polish")
+}
+
+// newWSServer returns a *wsclient.Client connected to an in-process
+// wsclient.TestServer running the given JSON-RPC method handler. The
+// WS twin of newTestServer for the post-cutover unit tests.
+func newWSServer(t *testing.T, h wsclient.TestHandler) *wsclient.Client {
+	t.Helper()
+	ts := wsclient.NewTestServer(t, h)
+	c, err := ts.NewClient(context.Background())
+	if err != nil {
+		t.Fatalf("testserver NewClient: %v", err)
+	}
+	return c
+}
+
+// wsReturn builds a TestHandler that returns obj for every method.
+func wsReturn(obj interface{}) wsclient.TestHandler {
+	return func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		return obj, nil
+	}
+}
+
+// wsError builds a TestHandler that fails every method with the given
+// RPC error.
+func wsError(code int, msg string) wsclient.TestHandler {
+	return func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		return nil, &wsclient.RPCError{Code: code, Message: msg}
+	}
 }

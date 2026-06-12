@@ -6,19 +6,19 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-func pv(v string) *client.PropertyValue { return &client.PropertyValue{Value: v} }
-func prv(raw string) *client.PropertyRawVal {
-	return &client.PropertyRawVal{Rawvalue: raw, Value: raw}
+func pv(v string) *truenas.PropertyValue { return &truenas.PropertyValue{Value: v} }
+func prv(raw string) *truenas.PropertyRawVal {
+	return &truenas.PropertyRawVal{Rawvalue: raw, Value: raw}
 }
 
 func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &DatasetResource{}
 	cases := []struct {
 		name        string
-		ds          *client.DatasetResponse
+		ds          *truenas.DatasetResponse
 		wantID      string
 		wantPool    string
 		wantName    string
@@ -30,7 +30,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name: "root dataset no compression",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:         "tank/data",
 				MountPoint: "/mnt/tank/data",
 				Type:       "FILESYSTEM",
@@ -42,7 +42,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "nested dataset with compression and quota",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:          "tank/apps/postgres",
 				MountPoint:  "/mnt/tank/apps/postgres",
 				Type:        "FILESYSTEM",
@@ -61,7 +61,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "volume type dataset",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:         "pool1/vol1",
 				MountPoint: "",
 				Type:       "VOLUME",
@@ -73,7 +73,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "dataset with nil comments",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:         "tank/foo",
 				MountPoint: "/mnt/tank/foo",
 				Type:       "FILESYSTEM",
@@ -85,7 +85,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "dataset with zero quota raw",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:       "tank/nolimit",
 				Type:     "FILESYSTEM",
 				Quota:    prv("0"),
@@ -98,7 +98,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "dataset with atime and dedup",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:            "tank/sec",
 				Type:          "FILESYSTEM",
 				Atime:         pv("OFF"),
@@ -111,7 +111,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "dataset deep nested",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:         "big/a/b/c/d/e/final",
 				Type:       "FILESYSTEM",
 				MountPoint: "/mnt/big/a/b/c/d/e/final",
@@ -124,7 +124,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "dataset with sync and readonly",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:       "tank/sync",
 				Type:     "FILESYSTEM",
 				Sync:     pv("ALWAYS"),
@@ -134,7 +134,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "dataset with recordsize",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:         "tank/rs",
 				Type:       "FILESYSTEM",
 				RecordSize: pv("1M"),
@@ -143,7 +143,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "dataset with copies",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:     "tank/cp",
 				Type:   "FILESYSTEM",
 				Copies: pv("3"),
@@ -152,7 +152,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "dataset with snapdir",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:      "tank/snap",
 				Type:    "FILESYSTEM",
 				Snapdir: pv("VISIBLE"),
@@ -161,10 +161,10 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "dataset with user_properties comment (25.10 shape)",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:   "tank/np",
 				Type: "FILESYSTEM",
-				UserProperties: map[string]*client.PropertyValue{
+				UserProperties: map[string]*truenas.PropertyValue{
 					"comments": {Value: "new-shape"},
 				},
 			},
@@ -172,7 +172,7 @@ func TestDatasetResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "dataset with ShareType from API",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:        "tank/smb",
 				Type:      "FILESYSTEM",
 				ShareType: pv("SMB"),

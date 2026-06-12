@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNFSShareResource_MapResponseToModel_Cases(t *testing.T) {
@@ -14,7 +14,7 @@ func TestNFSShareResource_MapResponseToModel_Cases(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name        string
-		share       *client.NFSShare
+		share       *truenas.NFSShare
 		wantID      string
 		wantPath    string
 		wantComment string
@@ -26,14 +26,14 @@ func TestNFSShareResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name:        "minimal share",
-			share:       &client.NFSShare{ID: 1, Path: "/mnt/tank/nfs", Enabled: true},
+			share:       &truenas.NFSShare{ID: 1, Path: "/mnt/tank/nfs", Enabled: true},
 			wantID:      "1",
 			wantPath:    "/mnt/tank/nfs",
 			wantEnabled: true,
 		},
 		{
 			name: "share with hosts and networks",
-			share: &client.NFSShare{
+			share: &truenas.NFSShare{
 				ID:       5,
 				Path:     "/mnt/tank/share",
 				Comment:  "team share",
@@ -52,7 +52,7 @@ func TestNFSShareResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "readonly share with mapping",
-			share: &client.NFSShare{
+			share: &truenas.NFSShare{
 				ID:          7,
 				Path:        "/mnt/tank/ro",
 				ReadOnly:    true,
@@ -65,12 +65,12 @@ func TestNFSShareResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name:   "disabled share",
-			share:  &client.NFSShare{ID: 9, Path: "/mnt/x"},
+			share:  &truenas.NFSShare{ID: 9, Path: "/mnt/x"},
 			wantID: "9", wantPath: "/mnt/x",
 		},
 		{
 			name: "share with all security mechanisms",
-			share: &client.NFSShare{
+			share: &truenas.NFSShare{
 				ID:       10,
 				Path:     "/mnt/tank/secure",
 				Security: []string{"SYS", "KRB5", "KRB5I", "KRB5P"},
@@ -80,7 +80,7 @@ func TestNFSShareResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "share with CIDR networks",
-			share: &client.NFSShare{
+			share: &truenas.NFSShare{
 				ID:       11,
 				Path:     "/mnt/tank/cidr",
 				Networks: []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"},
@@ -90,7 +90,7 @@ func TestNFSShareResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "share with mapall group",
-			share: &client.NFSShare{
+			share: &truenas.NFSShare{
 				ID:           12,
 				Path:         "/mnt/tank/shared",
 				MapallUser:   "nobody",
@@ -102,7 +102,7 @@ func TestNFSShareResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "share with many hosts",
-			share: &client.NFSShare{
+			share: &truenas.NFSShare{
 				ID:      13,
 				Path:    "/mnt/tank/clients",
 				Hosts:   []string{"c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"},

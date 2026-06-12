@@ -17,7 +17,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // ipRegex matches IPv4 or simple IPv6 addresses. Intentionally permissive —
@@ -31,7 +32,7 @@ var (
 
 // DNSNameserverResource manages DNS nameserver configuration on TrueNAS.
 type DNSNameserverResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // DNSNameserverResourceModel describes the resource data model.
@@ -103,11 +104,11 @@ func (r *DNSNameserverResource) Configure(_ context.Context, req resource.Config
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -203,7 +204,7 @@ func (r *DNSNameserverResource) Delete(ctx context.Context, req resource.DeleteR
 
 	// For a singleton resource, "delete" clears the nameservers to empty.
 	empty := ""
-	updateReq := &client.NetworkConfigUpdateRequest{
+	updateReq := &truenas.NetworkConfigUpdateRequest{
 		Nameserver1: &empty,
 		Nameserver2: &empty,
 		Nameserver3: &empty,
@@ -226,8 +227,8 @@ func (r *DNSNameserverResource) ImportState(ctx context.Context, req resource.Im
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *DNSNameserverResource) buildUpdateRequest(model *DNSNameserverResourceModel) *client.NetworkConfigUpdateRequest {
-	req := &client.NetworkConfigUpdateRequest{}
+func (r *DNSNameserverResource) buildUpdateRequest(model *DNSNameserverResourceModel) *truenas.NetworkConfigUpdateRequest {
+	req := &truenas.NetworkConfigUpdateRequest{}
 
 	if !model.Nameserver1.IsNull() {
 		ns := model.Nameserver1.ValueString()
@@ -245,7 +246,7 @@ func (r *DNSNameserverResource) buildUpdateRequest(model *DNSNameserverResourceM
 	return req
 }
 
-func (r *DNSNameserverResource) mapResponseToModel(config *client.NetworkConfig, model *DNSNameserverResourceModel) {
+func (r *DNSNameserverResource) mapResponseToModel(config *truenas.NetworkConfig, model *DNSNameserverResourceModel) {
 	model.ID = types.StringValue("network_config")
 	model.Nameserver1 = types.StringValue(config.Nameserver1)
 	model.Nameserver2 = types.StringValue(config.Nameserver2)

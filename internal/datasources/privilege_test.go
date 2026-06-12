@@ -2,12 +2,12 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewPrivilegeDataSource(t *testing.T) {
@@ -31,19 +31,17 @@ func TestPrivilegeDataSource_Schema(t *testing.T) {
 
 func TestPrivilegeDataSource_Read_Success(t *testing.T) {
 	builtin := "FULL_ADMIN"
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.Privilege{
-			ID:          2,
-			Name:        "Admins",
-			BuiltinName: &builtin,
-			LocalGroups: []client.PrivilegeGroup{
-				{ID: 1, GID: 544, Name: "wheel"},
-				{ID: 2, GID: 545, Name: "admins"},
-			},
-			DSGroups: []interface{}{"S-1-5-32-544", float64(1000)},
-			Roles:    []string{"READONLY_ADMIN", "SHARING_ADMIN"},
-			WebShell: true,
-		})
+	c := newWSServer(t, wsReturn(truenas.Privilege{
+		ID:          2,
+		Name:        "Admins",
+		BuiltinName: &builtin,
+		LocalGroups: []truenas.PrivilegeGroup{
+			{ID: 1, GID: 544, Name: "wheel"},
+			{ID: 2, GID: 545, Name: "admins"},
+		},
+		DSGroups: []interface{}{"S-1-5-32-544", float64(1000)},
+		Roles:    []string{"READONLY_ADMIN", "SHARING_ADMIN"},
+		WebShell: true,
 	}))
 
 	ds := NewPrivilegeDataSource().(*PrivilegeDataSource)
@@ -78,13 +76,11 @@ func TestPrivilegeDataSource_Read_Success(t *testing.T) {
 }
 
 func TestPrivilegeDataSource_Read_NoBuiltin(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.Privilege{
-			ID:       5,
-			Name:     "Custom",
-			Roles:    []string{},
-			DSGroups: []interface{}{},
-		})
+	c := newWSServer(t, wsReturn(truenas.Privilege{
+		ID:       5,
+		Name:     "Custom",
+		Roles:    []string{},
+		DSGroups: []interface{}{},
 	}))
 
 	ds := NewPrivilegeDataSource().(*PrivilegeDataSource)
@@ -103,9 +99,7 @@ func TestPrivilegeDataSource_Read_NoBuiltin(t *testing.T) {
 }
 
 func TestPrivilegeDataSource_Read_NotFound(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewPrivilegeDataSource().(*PrivilegeDataSource)
 	ds.client = c

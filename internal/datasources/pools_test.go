@@ -2,10 +2,10 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewPoolsDataSource(t *testing.T) {
@@ -23,11 +23,9 @@ func TestPoolsDataSource_Schema(t *testing.T) {
 }
 
 func TestPoolsDataSource_Read_Multiple(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Pool{
-			{ID: 1, Name: "tank", GUID: "a", Path: "/mnt/tank", Status: "ONLINE", Healthy: true, IsDecrypted: true},
-			{ID: 2, Name: "fast", GUID: "b", Path: "/mnt/fast", Status: "DEGRADED", Healthy: false, IsDecrypted: true},
-		})
+	c := newWSServer(t, wsReturn([]truenas.Pool{
+		{ID: 1, Name: "tank", GUID: "a", Path: "/mnt/tank", Status: "ONLINE", Healthy: true, IsDecrypted: true},
+		{ID: 2, Name: "fast", GUID: "b", Path: "/mnt/fast", Status: "DEGRADED", Healthy: false, IsDecrypted: true},
 	}))
 
 	ds := NewPoolsDataSource().(*PoolsDataSource)
@@ -47,9 +45,7 @@ func TestPoolsDataSource_Read_Multiple(t *testing.T) {
 }
 
 func TestPoolsDataSource_Read_Empty(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Pool{})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.Pool{}))
 
 	ds := NewPoolsDataSource().(*PoolsDataSource)
 	ds.client = c
@@ -67,9 +63,7 @@ func TestPoolsDataSource_Read_Empty(t *testing.T) {
 }
 
 func TestPoolsDataSource_Read_ServerError(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewPoolsDataSource().(*PoolsDataSource)
 	ds.client = c

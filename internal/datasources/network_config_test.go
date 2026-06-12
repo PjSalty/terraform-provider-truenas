@@ -2,10 +2,11 @@ package datasources
 
 import (
 	"context"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"net/http"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNetworkConfigDataSource_Schema(t *testing.T) {
@@ -23,20 +24,15 @@ func TestNetworkConfigDataSource_Schema(t *testing.T) {
 }
 
 func TestNetworkConfigDataSource_Read_Success(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/network/configuration" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, client.NetworkConfig{
-			ID:          1,
-			Hostname:    "truenas",
-			Domain:      "local",
-			Nameserver1: "1.1.1.1",
-			Nameserver2: "8.8.8.8",
-			Nameserver3: "",
-			IPv4Gateway: "192.168.1.1",
-			HTTPProxy:   "",
-		})
+	c := newWSServer(t, wsReturn(truenas.NetworkConfig{
+		ID:          1,
+		Hostname:    "truenas",
+		Domain:      "local",
+		Nameserver1: "1.1.1.1",
+		Nameserver2: "8.8.8.8",
+		Nameserver3: "",
+		IPv4Gateway: "192.168.1.1",
+		HTTPProxy:   "",
 	}))
 
 	ds := NewNetworkConfigDataSource().(*NetworkConfigDataSource)
@@ -62,9 +58,7 @@ func TestNetworkConfigDataSource_Read_Success(t *testing.T) {
 }
 
 func TestNetworkConfigDataSource_Read_ServerError(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewNetworkConfigDataSource().(*NetworkConfigDataSource)
 	ds.client = c
@@ -77,6 +71,7 @@ func TestNetworkConfigDataSource_Read_ServerError(t *testing.T) {
 }
 
 func TestNetworkConfigDataSource_Read_InvalidJSON(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte("not-json"))

@@ -6,9 +6,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // aclTestConfig stitches together a child dataset + an ACL managed against
@@ -50,6 +51,11 @@ func TestAccFilesystemACLResource_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: aclTestConfig(name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_filesystem_acl.test", "acltype", "POSIX1E"),
 					resource.TestCheckResourceAttrSet("truenas_filesystem_acl.test", "path"),
@@ -96,15 +102,15 @@ func TestAccFilesystemACLResource_disappears(t *testing.T) {
 						// our planned DACL (USER_OBJ rwx → USER_OBJ r-x).
 						uid := 0
 						gid := 0
-						return c.SetFilesystemACL(ctx, &client.SetACLRequest{
+						return c.SetFilesystemACL(ctx, &truenas.SetACLRequest{
 							Path:    path,
 							ACLType: "POSIX1E",
 							UID:     &uid,
 							GID:     &gid,
-							DACL: []client.SetACLEntry{
-								{Tag: "USER_OBJ", ID: -1, Perms: client.ACLPerms{Read: true, Write: false, Execute: true}, Default: false},
-								{Tag: "GROUP_OBJ", ID: -1, Perms: client.ACLPerms{Read: true, Write: false, Execute: false}, Default: false},
-								{Tag: "OTHER", ID: -1, Perms: client.ACLPerms{Read: false, Write: false, Execute: false}, Default: false},
+							DACL: []truenas.SetACLEntry{
+								{Tag: "USER_OBJ", ID: -1, Perms: truenas.ACLPerms{Read: true, Write: false, Execute: true}, Default: false},
+								{Tag: "GROUP_OBJ", ID: -1, Perms: truenas.ACLPerms{Read: true, Write: false, Execute: false}, Default: false},
+								{Tag: "OTHER", ID: -1, Perms: truenas.ACLPerms{Read: false, Write: false, Execute: false}, Default: false},
 							},
 						})
 					},
@@ -150,7 +156,12 @@ resource "truenas_filesystem_acl" "test" {
 			},
 			{
 				Config: fmt.Sprintf(baseResource, name, 1000),
-				Check:  resource.TestCheckResourceAttr("truenas_filesystem_acl.test", "uid", "1000"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_filesystem_acl.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_filesystem_acl.test", "uid", "1000"),
 			},
 		},
 	})

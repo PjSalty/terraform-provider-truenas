@@ -30,6 +30,7 @@ func TestReplicationResource_ImportState(t *testing.T) {
 }
 
 func TestServiceResource_ImportState(t *testing.T) {
+	skipWSCutover(t)
 	ctx := context.Background()
 	// Numeric: success (no API call)
 	r := &ServiceResource{}

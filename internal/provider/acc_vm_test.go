@@ -54,6 +54,9 @@ resource "truenas_vm" "test" {
 							knownvalue.Int64Exact(128),
 						),
 					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_vm.test", "name", name),
@@ -109,6 +112,11 @@ resource "truenas_vm" "test" {
   memory      = 256
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_vm.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_vm.test", "description", "updated"),
 					resource.TestCheckResourceAttr("truenas_vm.test", "memory", "256"),

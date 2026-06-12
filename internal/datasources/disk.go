@@ -8,14 +8,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var _ datasource.DataSource = &DiskDataSource{}
 
 // DiskDataSource provides disk information from TrueNAS.
 type DiskDataSource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // DiskDataSourceModel describes the data source model.
@@ -92,11 +93,11 @@ func (d *DiskDataSource) Configure(_ context.Context, req datasource.ConfigureRe
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected DataSource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -144,7 +145,7 @@ func (d *DiskDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	resp.Diagnostics.Append(diags...)
 }
 
-func (d *DiskDataSource) mapDiskToModel(disk *client.Disk, model *DiskDataSourceModel) {
+func (d *DiskDataSource) mapDiskToModel(disk *truenas.Disk, model *DiskDataSourceModel) {
 	model.Name = types.StringValue(disk.Name)
 	model.Serial = types.StringValue(disk.Serial)
 	model.Size = types.Int64Value(disk.Size)
