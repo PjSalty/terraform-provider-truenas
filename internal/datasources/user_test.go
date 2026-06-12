@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -12,7 +13,7 @@ import (
 
 func TestUserDataSource_Schema(t *testing.T) {
 	ds := NewUserDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "username", "full_name", "uid", "gid", "home", "shell",
@@ -26,7 +27,7 @@ func TestUserDataSource_Schema(t *testing.T) {
 
 func TestUserDataSource_Read_Success(t *testing.T) {
 	email := "alice@example.com"
-	c := newWSServer(t, wsReturn([]truenas.User{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.User{
 		{
 			ID:       7,
 			UID:      1001,
@@ -45,7 +46,7 @@ func TestUserDataSource_Read_Success(t *testing.T) {
 	ds := NewUserDataSource().(*UserDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"username": strVal("alice")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"username": strVal("alice")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -74,14 +75,14 @@ func TestUserDataSource_Read_Success(t *testing.T) {
 }
 
 func TestUserDataSource_Read_NilEmail(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.User{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.User{
 		{ID: 1, Username: "bob", Email: nil, Group: truenas.UserGroup{GID: 100}},
 	}))
 
 	ds := NewUserDataSource().(*UserDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"username": strVal("bob")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"username": strVal("bob")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -94,12 +95,12 @@ func TestUserDataSource_Read_NilEmail(t *testing.T) {
 }
 
 func TestUserDataSource_Read_NotFound(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.User{{Username: "other"}}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.User{{Username: "other"}}))
 
 	ds := NewUserDataSource().(*UserDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"username": strVal("missing")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"username": strVal("missing")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
@@ -107,12 +108,12 @@ func TestUserDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestUserDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewUserDataSource().(*UserDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"username": strVal("any")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"username": strVal("any")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

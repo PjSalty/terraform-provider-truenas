@@ -34,7 +34,7 @@ func newTestServerClient(t *testing.T, handler http.HandlerFunc) (*wsclient.Clie
 // the same object — and a connected *wsclient.Client. This is the
 // JSON-RPC equivalent of the REST-era GET/PUT httptest handler, used
 // to un-skip the config CRUD unit tests after the v2.0 WS cutover.
-func newWSConfigServerClient(t *testing.T, svc string, resp map[string]interface{}, updateCalls *int) *wsclient.Client {
+func newWSConfigServerClient(ctx context.Context, t *testing.T, svc string, resp map[string]interface{}, updateCalls *int) *wsclient.Client {
 	t.Helper()
 	ts := wsclient.NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
@@ -48,7 +48,7 @@ func newWSConfigServerClient(t *testing.T, svc string, resp map[string]interface
 		}
 		return nil, &wsclient.RPCError{Code: wsclient.CodeMethodNotFound, Message: method}
 	})
-	c, err := ts.NewClient(context.Background())
+	c, err := ts.NewClient(ctx)
 	if err != nil {
 		t.Fatalf("testserver NewClient: %v", err)
 	}
@@ -58,10 +58,10 @@ func newWSConfigServerClient(t *testing.T, svc string, resp map[string]interface
 // newWSTestClient pairs an arbitrary wsclient.TestHandler with a
 // connected client — for tests that need full per-method control
 // (failure injection, stateful fixtures).
-func newWSTestClient(t *testing.T, h wsclient.TestHandler) *wsclient.Client {
+func newWSTestClient(ctx context.Context, t *testing.T, h wsclient.TestHandler) *wsclient.Client {
 	t.Helper()
 	ts := wsclient.NewTestServer(t, h)
-	c, err := ts.NewClient(context.Background())
+	c, err := ts.NewClient(ctx)
 	if err != nil {
 		t.Fatalf("testserver NewClient: %v", err)
 	}
@@ -72,7 +72,7 @@ func newWSTestClient(t *testing.T, h wsclient.TestHandler) *wsclient.Client {
 // id-addressed entity pattern: "<ns>.get_instance" and "<ns>.query"
 // return the supplied object, "<ns>.delete" returns true. JSON-RPC
 // equivalent of the REST-era GET-by-id/DELETE httptest handler.
-func newWSEntityServerClient(t *testing.T, ns string, obj map[string]interface{}) *wsclient.Client {
+func newWSEntityServerClient(ctx context.Context, t *testing.T, ns string, obj map[string]interface{}) *wsclient.Client {
 	t.Helper()
 	ts := wsclient.NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
@@ -85,7 +85,7 @@ func newWSEntityServerClient(t *testing.T, ns string, obj map[string]interface{}
 		}
 		return nil, &wsclient.RPCError{Code: wsclient.CodeMethodNotFound, Message: method}
 	})
-	c, err := ts.NewClient(context.Background())
+	c, err := ts.NewClient(ctx)
 	if err != nil {
 		t.Fatalf("testserver NewClient: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestFTPConfigResource_CRUD(t *testing.T) {
 	}
 
 	var updateCalls int
-	c := newWSConfigServerClient(t, "ftp", resp, &updateCalls)
+	c := newWSConfigServerClient(ctx, t, "ftp", resp, &updateCalls)
 
 	r := &FTPConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -166,7 +166,7 @@ func TestSMBConfigResource_CRUD(t *testing.T) {
 		"filemask":        "0775",
 		"dirmask":         "0775",
 	}
-	c := newWSConfigServerClient(t, "smb", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "smb", resp, nil)
 
 	r := &SMBConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -196,7 +196,7 @@ func TestSNMPConfigResource_CRUD(t *testing.T) {
 		"v3_privproto":      nil,
 		"v3_privpassphrase": nil,
 	}
-	c := newWSConfigServerClient(t, "snmp", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "snmp", resp, nil)
 
 	r := &SNMPConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -226,7 +226,7 @@ func TestUPSConfigResource_CRUD(t *testing.T) {
 		"shutdowntimer": 30,
 		"description":   "primary",
 	}
-	c := newWSConfigServerClient(t, "ups", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "ups", resp, nil)
 
 	r := &UPSConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -255,7 +255,7 @@ func TestMailConfigResource_CRUD(t *testing.T) {
 		"user":           "admin",
 		"pass":           "",
 	}
-	c := newWSConfigServerClient(t, "mail", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "mail", resp, nil)
 
 	r := &MailConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -284,7 +284,7 @@ func TestSSHConfigResource_CRUD(t *testing.T) {
 		"sftp_log_facility": "",
 		"weak_ciphers":      []string{},
 	}
-	c := newWSConfigServerClient(t, "ssh", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "ssh", resp, nil)
 
 	r := &SSHConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -314,7 +314,7 @@ func TestNFSConfigResource_CRUD(t *testing.T) {
 		"rpcstatd_port": nil,
 		"rpclockd_port": nil,
 	}
-	c := newWSConfigServerClient(t, "nfs", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "nfs", resp, nil)
 
 	r := &NFSConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -371,7 +371,7 @@ func TestFTPConfigResource_UpdateDelete(t *testing.T) {
 		"filemask": "077", "dirmask": "077", "fxp": false, "resume": false,
 		"defaultroot": true, "tls": false,
 	}
-	c := newWSConfigServerClient(t, "ftp", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "ftp", resp, nil)
 
 	r := &FTPConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -403,7 +403,7 @@ func TestSMBConfigResource_UpdateDelete(t *testing.T) {
 		"description": "", "enable_smb1": false, "unixcharset": "UTF-8",
 		"aapl_extensions": false, "guest": "nobody", "filemask": "0775", "dirmask": "0775",
 	}
-	c := newWSConfigServerClient(t, "smb", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "smb", resp, nil)
 
 	r := &SMBConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -429,7 +429,7 @@ func TestSNMPConfigResource_UpdateDelete(t *testing.T) {
 		"v3": false, "v3_username": "", "v3_authtype": "", "v3_password": "",
 		"v3_privproto": nil, "v3_privpassphrase": nil,
 	}
-	c := newWSConfigServerClient(t, "snmp", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "snmp", resp, nil)
 
 	r := &SNMPConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -454,7 +454,7 @@ func TestUPSConfigResource_UpdateDelete(t *testing.T) {
 		"port": "auto", "remotehost": "", "remoteport": 3493,
 		"shutdown": "BATT", "shutdowntimer": 30, "description": "",
 	}
-	c := newWSConfigServerClient(t, "ups", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "ups", resp, nil)
 
 	r := &UPSConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -478,7 +478,7 @@ func TestMailConfigResource_UpdateDelete(t *testing.T) {
 		"id": 1, "fromemail": "a@b.c", "fromname": "N", "outgoingserver": "smtp",
 		"port": 587, "security": "TLS", "smtp": true, "user": "u", "pass": "",
 	}
-	c := newWSConfigServerClient(t, "mail", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "mail", resp, nil)
 
 	r := &MailConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -503,7 +503,7 @@ func TestSSHConfigResource_UpdateDelete(t *testing.T) {
 		"tcpfwd": true, "compression": false, "sftp_log_level": "",
 		"sftp_log_facility": "", "weak_ciphers": []string{},
 	}
-	c := newWSConfigServerClient(t, "ssh", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "ssh", resp, nil)
 
 	r := &SSHConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -528,7 +528,7 @@ func TestNFSConfigResource_UpdateDelete(t *testing.T) {
 		"protocols": []string{"NFSV3"}, "v4_krb": false, "v4_domain": "",
 		"bindip": []string{}, "mountd_port": nil, "rpcstatd_port": nil, "rpclockd_port": nil,
 	}
-	c := newWSConfigServerClient(t, "nfs", resp, nil)
+	c := newWSConfigServerClient(ctx, t, "nfs", resp, nil)
 
 	r := &NFSConfigResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -579,7 +579,7 @@ func TestNVMetGlobalResource_UpdateDelete(t *testing.T) {
 
 func TestISCSIAuthResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "iscsi.auth", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "iscsi.auth", map[string]interface{}{
 		"id": 1, "tag": 1, "user": "chap", "secret": "[REDACTED]",
 		"peeruser": "", "peersecret": "", "discovery_auth": "NONE",
 	})
@@ -598,7 +598,7 @@ func TestISCSIAuthResource_ReadDelete(t *testing.T) {
 
 func TestISCSIExtentResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "iscsi.extent", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "iscsi.extent", map[string]interface{}{
 		"id": 1, "name": "e1", "type": "FILE", "path": "/mnt/tank/e1",
 		"blocksize": 512, "enabled": true, "comment": "",
 		"ro": false, "xen": false, "insecure_tpc": false, "filesize": "0",
@@ -618,7 +618,7 @@ func TestISCSIExtentResource_ReadDelete(t *testing.T) {
 
 func TestISCSIInitiatorResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "iscsi.initiator", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "iscsi.initiator", map[string]interface{}{
 		"id": 1, "initiators": []string{}, "comment": "all",
 	})
 	r := &ISCSIInitiatorResource{client: c}
@@ -636,7 +636,7 @@ func TestISCSIInitiatorResource_ReadDelete(t *testing.T) {
 
 func TestISCSIPortalResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "iscsi.portal", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "iscsi.portal", map[string]interface{}{
 		"id": 1, "tag": 1, "comment": "",
 		"listen": []map[string]interface{}{{"ip": "0.0.0.0", "port": 3260}},
 	})
@@ -655,7 +655,7 @@ func TestISCSIPortalResource_ReadDelete(t *testing.T) {
 
 func TestISCSITargetResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "iscsi.target", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "iscsi.target", map[string]interface{}{
 		"id": 1, "name": "tgt1", "alias": "", "mode": "ISCSI", "groups": []interface{}{},
 	})
 	r := &ISCSITargetResource{client: c}
@@ -673,7 +673,7 @@ func TestISCSITargetResource_ReadDelete(t *testing.T) {
 
 func TestISCSITargetExtentResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "iscsi.targetextent", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "iscsi.targetextent", map[string]interface{}{
 		"id": 1, "target": 1, "extent": 1, "lunid": 0,
 	})
 	r := &ISCSITargetExtentResource{client: c}
@@ -691,7 +691,7 @@ func TestISCSITargetExtentResource_ReadDelete(t *testing.T) {
 
 func TestUserResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "user", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "user", map[string]interface{}{
 		"id": 1, "uid": 1000, "username": "alice", "full_name": "Alice",
 		"email": nil, "home": "/home/alice", "shell": "/bin/bash",
 		"locked": false, "smb": true, "group": map[string]interface{}{"id": 100, "bsdgrp_gid": 100},
@@ -712,7 +712,7 @@ func TestUserResource_ReadDelete(t *testing.T) {
 
 func TestGroupResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "group", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "group", map[string]interface{}{
 		"id": 1, "gid": 1000, "group": "users", "name": "users",
 		"builtin": false, "smb": false, "sudo_commands": []string{},
 	})
@@ -731,7 +731,7 @@ func TestGroupResource_ReadDelete(t *testing.T) {
 
 func TestNFSShareResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "sharing.nfs", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "sharing.nfs", map[string]interface{}{
 		"id": 1, "path": "/mnt/tank", "comment": "",
 		"hosts": []string{}, "networks": []string{}, "security": []string{},
 		"readonly": false, "enabled": true,
@@ -752,7 +752,7 @@ func TestNFSShareResource_ReadDelete(t *testing.T) {
 
 func TestSMBShareResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "sharing.smb", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "sharing.smb", map[string]interface{}{
 		"id": 1, "path": "/mnt/tank", "name": "tank", "comment": "",
 		"purpose": "NO_PRESET", "browsable": true, "readonly": false,
 		"abe": false, "enabled": true, "hostsallow": []string{}, "hostsdeny": []string{},
@@ -772,7 +772,7 @@ func TestSMBShareResource_ReadDelete(t *testing.T) {
 
 func TestNVMetHostResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "nvmet.host", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "nvmet.host", map[string]interface{}{
 		"id": 1, "hostnqn": "nqn.x",
 	})
 	r := &NVMetHostResource{client: c}
@@ -790,7 +790,7 @@ func TestNVMetHostResource_ReadDelete(t *testing.T) {
 
 func TestNVMetSubsysResource_ReadDelete(t *testing.T) {
 	ctx := context.Background()
-	c := newWSEntityServerClient(t, "nvmet.subsys", map[string]interface{}{
+	c := newWSEntityServerClient(ctx, t, "nvmet.subsys", map[string]interface{}{
 		"id": 1, "name": "tgt", "allow_any_host": false, "serial": "SN",
 	})
 	r := &NVMetSubsysResource{client: c}

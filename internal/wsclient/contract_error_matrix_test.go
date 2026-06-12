@@ -72,7 +72,7 @@ func TestContract_RPCErrorMatrix(t *testing.T) {
 			false, CodeMethodCallError},
 	}
 	for _, tc := range cases {
-		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			ts := NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *RPCError) {
 				return nil, &RPCError{

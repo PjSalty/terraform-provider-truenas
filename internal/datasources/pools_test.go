@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
@@ -16,14 +17,14 @@ func TestNewPoolsDataSource(t *testing.T) {
 
 func TestPoolsDataSource_Schema(t *testing.T) {
 	ds := NewPoolsDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	if _, ok := resp.Schema.GetAttributes()["pools"]; !ok {
 		t.Errorf("missing attribute: pools")
 	}
 }
 
 func TestPoolsDataSource_Read_Multiple(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Pool{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Pool{
 		{ID: 1, Name: "tank", GUID: "a", Path: "/mnt/tank", Status: "ONLINE", Healthy: true, IsDecrypted: true},
 		{ID: 2, Name: "fast", GUID: "b", Path: "/mnt/fast", Status: "DEGRADED", Healthy: false, IsDecrypted: true},
 	}))
@@ -31,7 +32,7 @@ func TestPoolsDataSource_Read_Multiple(t *testing.T) {
 	ds := NewPoolsDataSource().(*PoolsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -45,12 +46,12 @@ func TestPoolsDataSource_Read_Multiple(t *testing.T) {
 }
 
 func TestPoolsDataSource_Read_Empty(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Pool{}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Pool{}))
 
 	ds := NewPoolsDataSource().(*PoolsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -63,12 +64,12 @@ func TestPoolsDataSource_Read_Empty(t *testing.T) {
 }
 
 func TestPoolsDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewPoolsDataSource().(*PoolsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

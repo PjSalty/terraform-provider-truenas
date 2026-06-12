@@ -18,7 +18,7 @@ func TestNewAPIKeyDataSource(t *testing.T) {
 
 func TestAPIKeyDataSource_Schema(t *testing.T) {
 	ds := NewAPIKeyDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	for _, want := range []string{"id", "name", "username", "local", "revoked"} {
 		if _, ok := resp.Schema.GetAttributes()[want]; !ok {
 			t.Errorf("missing attribute: %s", want)
@@ -27,7 +27,7 @@ func TestAPIKeyDataSource_Schema(t *testing.T) {
 }
 
 func TestAPIKeyDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.APIKey{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.APIKey{
 		ID:       8,
 		Name:     "terraform",
 		Username: "root",
@@ -37,7 +37,7 @@ func TestAPIKeyDataSource_Read_Success(t *testing.T) {
 
 	ds := NewAPIKeyDataSource().(*APIKeyDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(8)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(8)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -62,7 +62,7 @@ func TestAPIKeyDataSource_Read_NotFound(t *testing.T) {
 	}))
 	ds := NewAPIKeyDataSource().(*APIKeyDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

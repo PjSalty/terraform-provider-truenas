@@ -65,7 +65,7 @@ func TestProperty_MarshalRoundTripStable(t_ *testing.T) {
 	}
 
 	for _, zero := range zeros {
-		zero := zero
+
 		ty := reflect.TypeOf(zero).Elem().Name()
 		t_.Run(ty, func(t_ *testing.T) {
 			for _, seed := range parseable {
@@ -115,7 +115,7 @@ func TestProperty_UnmarshalUnknownFieldsTolerated(t_ *testing.T) {
 	// is "extra fields don't break decoding", not "id round-trips".
 	payload := []byte(`{"__future_field_v3":[1,2,3],"another_added_in_25_10":"value"}`)
 	for _, z := range zeros {
-		z := z
+
 		ty := reflect.TypeOf(z).Elem().Name()
 		t_.Run(ty, func(t_ *testing.T) {
 			v := reflect.New(reflect.TypeOf(z).Elem()).Interface()

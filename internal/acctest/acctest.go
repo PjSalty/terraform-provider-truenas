@@ -127,7 +127,7 @@ func assertNotProd(rawURL string) error {
 				"resources; running it against this host would damage production. "+
 				"Set TRUENAS_URL to your TEST TrueNAS instance and re-run. To "+
 				"intentionally target this host (very rare), explicitly set "+
-				"TRUENAS_PROD_DENY=\"\" first.", host)
+				"TRUENAS_PROD_DENY=\"\" first", host)
 		}
 	}
 	return nil
