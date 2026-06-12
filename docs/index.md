@@ -11,7 +11,7 @@ The TrueNAS provider is used to interact with the resources supported by
 TrueNAS SCALE over its JSON-RPC 2.0 WebSocket API. Fully supported on
 SCALE 25.10 and later. SCALE 25.04 works for the common resource surface
 but lacks the APIs behind `nvmet_*`, `truenas_directory_services`, the
-25.10 SMB `purpose` vocabulary, and some alert service types — use the
+25.10 SMB `purpose` vocabulary, and some alert service types, use the
 v1.10.x provider line there if you need those. The provider needs to be
 configured with a base URL and an API key before it can be used.
 
@@ -52,7 +52,7 @@ client.
 
 Credentials can be provided in three ways, listed in order of precedence:
 
-1. Static `api_key` argument on the `provider` block (discouraged — the
+1. Static `api_key` argument on the `provider` block (discouraged, the
    value ends up in plan output and may be captured in state backends).
 2. `TRUENAS_API_KEY` environment variable.
 3. `TF_VAR_truenas_api_key` with a `variable "truenas_api_key" { sensitive = true }`

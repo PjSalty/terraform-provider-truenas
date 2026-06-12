@@ -27,7 +27,7 @@ locals {
   protected_dataset = "tank/important-data"
 }
 
-# Hourly snapshots — keep for 24 hours
+# Hourly snapshots, keep for 24 hours
 resource "truenas_snapshot_task" "hourly" {
   dataset = local.protected_dataset
   recursive = true
@@ -43,7 +43,7 @@ resource "truenas_snapshot_task" "hourly" {
   schedule_dow    = "*"
 }
 
-# Daily snapshots — keep for 30 days
+# Daily snapshots, keep for 30 days
 resource "truenas_snapshot_task" "daily" {
   dataset = local.protected_dataset
   recursive = true
@@ -59,7 +59,7 @@ resource "truenas_snapshot_task" "daily" {
   schedule_dow    = "*"
 }
 
-# Weekly snapshots — keep for 12 weeks
+# Weekly snapshots, keep for 12 weeks
 resource "truenas_snapshot_task" "weekly" {
   dataset = local.protected_dataset
   recursive = true
@@ -75,7 +75,7 @@ resource "truenas_snapshot_task" "weekly" {
   schedule_dow    = "0"  # Sunday
 }
 
-# Monthly snapshots — keep for 12 months
+# Monthly snapshots, keep for 12 months
 resource "truenas_snapshot_task" "monthly" {
   dataset = local.protected_dataset
   recursive = true
@@ -198,7 +198,7 @@ data "truenas_pool" "backup" {
 check "pools_healthy" {
   assert {
     condition     = data.truenas_pool.tank.healthy && data.truenas_pool.backup.healthy
-    error_message = "One or more pools are unhealthy — backup configuration may be at risk."
+    error_message = "One or more pools are unhealthy, backup configuration may be at risk."
   }
 }
 ```
