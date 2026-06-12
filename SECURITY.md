@@ -47,9 +47,9 @@ In scope:
 
 Out of scope:
 
-- Issues in TrueNAS SCALE itself — report those to the upstream iXsystems
+- Issues in TrueNAS SCALE itself, report those to the upstream iXsystems
   project.
-- Issues in Terraform or `terraform-plugin-framework` — report those to
+- Issues in Terraform or `terraform-plugin-framework`, report those to
   HashiCorp.
 - Issues requiring privileged access to an already-compromised host.
 

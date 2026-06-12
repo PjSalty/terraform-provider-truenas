@@ -2,12 +2,12 @@
 page_title: "truenas_ups_config Resource - terraform-provider-truenas"
 subcategory: "System"
 description: |-
-  Manages the UPS configuration on TrueNAS SCALE. This is a singleton resource — only one instance can exist.
+  Manages the UPS configuration on TrueNAS SCALE. This is a singleton resource, only one instance can exist.
 ---
 
 # truenas_ups_config (Resource)
 
-Manages the UPS configuration on TrueNAS SCALE. This is a singleton resource — only one instance can exist.
+Manages the UPS configuration on TrueNAS SCALE. This is a singleton resource, only one instance can exist.
 
 Managed attributes map directly to the TrueNAS SCALE API. Changes are applied
 via the JSON-RPC endpoint on the target system; mutations that cannot be

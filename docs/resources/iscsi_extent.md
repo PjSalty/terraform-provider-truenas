@@ -43,7 +43,7 @@ The following arguments are supported:
 * `name` - (Required) The extent name.
 * `type` - (Required) The extent type (DISK or FILE). Valid values: `DISK`, `FILE`.
 * `disk` - (Optional) The zvol path for DISK type extents.
-* `path` - (Optional) The file path for FILE type extents. For DISK type extents, the API computes this from `disk` — leave unset.
+* `path` - (Optional) The file path for FILE type extents. For DISK type extents, the API computes this from `disk`, leave unset.
 * `filesize` - (Optional) The file size in bytes for FILE type extents.
 * `blocksize` - (Optional) Block size in bytes (512 or 4096). Default: `512`.
 * `rpm` - (Optional) Reported RPM (SSD, 5400, 7200, 10000, 15000). Default: `SSD`.
