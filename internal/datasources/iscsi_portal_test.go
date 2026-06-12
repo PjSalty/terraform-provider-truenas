@@ -18,7 +18,7 @@ func TestNewISCSIPortalDataSource(t *testing.T) {
 
 func TestISCSIPortalDataSource_Schema(t *testing.T) {
 	ds := NewISCSIPortalDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	for _, want := range []string{"id", "comment", "tag", "listen"} {
 		if _, ok := resp.Schema.GetAttributes()[want]; !ok {
 			t.Errorf("missing attribute: %s", want)
@@ -27,7 +27,7 @@ func TestISCSIPortalDataSource_Schema(t *testing.T) {
 }
 
 func TestISCSIPortalDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.ISCSIPortal{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.ISCSIPortal{
 		ID:      3,
 		Comment: "prod",
 		Tag:     1,
@@ -37,7 +37,7 @@ func TestISCSIPortalDataSource_Read_Success(t *testing.T) {
 	ds := NewISCSIPortalDataSource().(*ISCSIPortalDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(3)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(3)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -62,7 +62,7 @@ func TestISCSIPortalDataSource_Read_EmptyListen(t *testing.T) {
 	}))
 	ds := NewISCSIPortalDataSource().(*ISCSIPortalDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(1)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(1)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -76,7 +76,7 @@ func TestISCSIPortalDataSource_Read_NotFound(t *testing.T) {
 	}))
 	ds := NewISCSIPortalDataSource().(*ISCSIPortalDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

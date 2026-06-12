@@ -3,16 +3,17 @@ package datasources
 import (
 	"context"
 	"encoding/json"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"net/http"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestSystemInfoDataSource_Schema(t *testing.T) {
 	ds := NewSystemInfoDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"version", "hostname", "physical_memory", "model", "cores",
@@ -50,12 +51,12 @@ func TestSystemInfoDataSource_Read_Success(t *testing.T) {
 		Timezone:      "UTC",
 		Loadavg:       []float64{0.5, 0.7, 0.9},
 	}
-	c := newWSServer(t, wsReturn(info))
+	c := newWSServer(t.Context(), t, wsReturn(info))
 
 	ds := NewSystemInfoDataSource().(*SystemInfoDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -81,12 +82,12 @@ func TestSystemInfoDataSource_Read_Success(t *testing.T) {
 }
 
 func TestSystemInfoDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewSystemInfoDataSource().(*SystemInfoDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error diagnostic")
@@ -104,7 +105,7 @@ func TestSystemInfoDataSource_Read_InvalidJSON(t *testing.T) {
 	ds := NewSystemInfoDataSource().(*SystemInfoDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error diagnostic for invalid JSON")
@@ -113,7 +114,7 @@ func TestSystemInfoDataSource_Read_InvalidJSON(t *testing.T) {
 
 func TestSystemInfoDataSource_Read_PartialLoadavg(t *testing.T) {
 	// Only 2 loadavg entries — code should not panic and fields should be null.
-	c := newWSServer(t, wsReturn(map[string]interface{}{
+	c := newWSServer(t.Context(), t, wsReturn(map[string]interface{}{
 		"version":  "v1",
 		"hostname": "h",
 		"loadavg":  []float64{0.1, 0.2},
@@ -122,7 +123,7 @@ func TestSystemInfoDataSource_Read_PartialLoadavg(t *testing.T) {
 	ds := NewSystemInfoDataSource().(*SystemInfoDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)

@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -18,7 +19,7 @@ func TestNewDatasetsDataSource(t *testing.T) {
 
 func TestDatasetsDataSource_Schema(t *testing.T) {
 	ds := NewDatasetsDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{"pool", "parent_dataset", "datasets"} {
 		if _, ok := attrs[want]; !ok {
@@ -37,12 +38,12 @@ func datasetsFixture() []truenas.DatasetResponse {
 }
 
 func TestDatasetsDataSource_Read_All(t *testing.T) {
-	c := newWSServer(t, wsReturn(datasetsFixture()))
+	c := newWSServer(t.Context(), t, wsReturn(datasetsFixture()))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -56,12 +57,12 @@ func TestDatasetsDataSource_Read_All(t *testing.T) {
 }
 
 func TestDatasetsDataSource_Read_PoolFilter(t *testing.T) {
-	c := newWSServer(t, wsReturn(datasetsFixture()))
+	c := newWSServer(t.Context(), t, wsReturn(datasetsFixture()))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"pool": strVal("tank")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"pool": strVal("tank")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -75,12 +76,12 @@ func TestDatasetsDataSource_Read_PoolFilter(t *testing.T) {
 }
 
 func TestDatasetsDataSource_Read_ParentFilter(t *testing.T) {
-	c := newWSServer(t, wsReturn(datasetsFixture()))
+	c := newWSServer(t.Context(), t, wsReturn(datasetsFixture()))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{
 		"parent_dataset": strVal("tank/data"),
 	})
 	resp := callRead(context.Background(), ds, cfg)
@@ -96,12 +97,12 @@ func TestDatasetsDataSource_Read_ParentFilter(t *testing.T) {
 }
 
 func TestDatasetsDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

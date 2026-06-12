@@ -19,7 +19,7 @@ func TestNewAlertServiceDataSource(t *testing.T) {
 
 func TestAlertServiceDataSource_Schema(t *testing.T) {
 	ds := NewAlertServiceDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	for _, want := range []string{"id", "name", "type", "enabled", "level", "settings_json"} {
 		if _, ok := resp.Schema.GetAttributes()[want]; !ok {
 			t.Errorf("missing attribute: %s", want)
@@ -28,7 +28,7 @@ func TestAlertServiceDataSource_Schema(t *testing.T) {
 }
 
 func TestAlertServiceDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.AlertService{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.AlertService{
 		ID:      3,
 		Name:    "slack",
 		Enabled: true,
@@ -41,7 +41,7 @@ func TestAlertServiceDataSource_Read_Success(t *testing.T) {
 
 	ds := NewAlertServiceDataSource().(*AlertServiceDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(3)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(3)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -69,7 +69,7 @@ func TestAlertServiceDataSource_Read_NilSettings(t *testing.T) {
 	}))
 	ds := NewAlertServiceDataSource().(*AlertServiceDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(1)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(1)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -88,7 +88,7 @@ func TestAlertServiceDataSource_Read_NotFound(t *testing.T) {
 	}))
 	ds := NewAlertServiceDataSource().(*AlertServiceDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

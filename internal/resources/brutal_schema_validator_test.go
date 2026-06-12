@@ -51,12 +51,12 @@ var brutalStringInputs = []string{
 	"\x1b[31mred\x1b[0m", // ANSI escape
 
 	// Unicode / multi-byte
-	"тест", // Cyrillic
-	"测试",   // CJK
-	"🚀",    // Emoji
-	"é",   // combining acute on e — NFC vs NFD
-	"​",    // zero-width space
-	"‮",    // RTL override (security: phishing vectors)
+	"тест",   // Cyrillic
+	"测试",     // CJK
+	"🚀",      // Emoji
+	"é",     // combining acute on e — NFC vs NFD
+	"\u200b", // zero-width space
+	"\u202e", // RTL override (security: phishing vectors)
 
 	// SQL / shell injection
 	"' OR 1=1--",
@@ -191,14 +191,13 @@ func resourceTypeName(r resource.Resource) string {
 // ~23,000 individual validator invocations per run. Sub-second.
 func TestBrutalSchema_AllWiredValidators(t *testing.T) {
 	for _, ctor := range resourceConstructors() {
-		ctor := ctor
+
 		r := ctor()
 		tn := resourceTypeName(r)
 		t.Run(tn, func(t *testing.T) {
 			ctx := context.Background()
 			sch := schemaOf(t, ctx, r)
 			for name, attr := range sch.Schema.Attributes {
-				name, attr := name, attr
 				t.Run(name, func(t *testing.T) {
 					exerciseValidatorsOnAttribute(t, sch.Schema, name, attr)
 				})
@@ -217,7 +216,6 @@ func exerciseValidatorsOnAttribute(t *testing.T, sch schema.Schema, name string,
 		}
 		for _, val := range brutalStringInputs {
 			for vi, v := range a.Validators {
-				vi, v, val := vi, v, val
 				safe := safeSubtestName(val)
 				t.Run(safe, func(t *testing.T) {
 					defer recoverAsFailure(t, name, vi, val)
@@ -238,7 +236,6 @@ func exerciseValidatorsOnAttribute(t *testing.T, sch schema.Schema, name string,
 		}
 		for _, val := range brutalInt64Inputs {
 			for vi, v := range a.Validators {
-				vi, v, val := vi, v, val
 				t.Run(int64Name(val), func(t *testing.T) {
 					defer recoverAsFailure(t, name, vi, val)
 					req := validator.Int64Request{
@@ -284,9 +281,8 @@ func exerciseValidatorsOnAttribute(t *testing.T, sch schema.Schema, name string,
 			}
 		}
 		for _, lc := range lists {
-			lc := lc
+
 			for vi, v := range a.Validators {
-				vi, v := vi, v
 				t.Run(lc.name, func(t *testing.T) {
 					defer recoverAsFailure(t, name, vi, lc.val)
 					req := validator.ListRequest{
@@ -316,9 +312,8 @@ func exerciseValidatorsOnAttribute(t *testing.T, sch schema.Schema, name string,
 			{"empty", types.MapValueMust(a.ElementType, nil)},
 		}
 		for _, mc := range maps {
-			mc := mc
+
 			for vi, v := range a.Validators {
-				vi, v := vi, v
 				t.Run(mc.name, func(t *testing.T) {
 					defer recoverAsFailure(t, name, vi, mc.val)
 					req := validator.MapRequest{

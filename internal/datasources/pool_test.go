@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -12,7 +13,7 @@ import (
 
 func TestPoolDataSource_Schema(t *testing.T) {
 	ds := NewPoolDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "name", "guid", "path", "status", "healthy", "is_decrypted",
@@ -24,7 +25,7 @@ func TestPoolDataSource_Schema(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_ByID(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.Pool{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.Pool{
 		ID:          3,
 		Name:        "tank",
 		GUID:        "1234567890",
@@ -37,7 +38,7 @@ func TestPoolDataSource_Read_ByID(t *testing.T) {
 	ds := NewPoolDataSource().(*PoolDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(3)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(3)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -56,7 +57,7 @@ func TestPoolDataSource_Read_ByID(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_ByName(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Pool{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Pool{
 		{ID: 1, Name: "tank", GUID: "a", Path: "/mnt/tank", Status: "ONLINE", Healthy: true, IsDecrypted: true},
 		{ID: 2, Name: "other", GUID: "b"},
 	}))
@@ -64,7 +65,7 @@ func TestPoolDataSource_Read_ByName(t *testing.T) {
 	ds := NewPoolDataSource().(*PoolDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("tank")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("tank")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -80,12 +81,12 @@ func TestPoolDataSource_Read_ByName(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_NameNotFound(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Pool{{ID: 1, Name: "other"}}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Pool{{ID: 1, Name: "other"}}))
 
 	ds := NewPoolDataSource().(*PoolDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("missing")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("missing")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
@@ -93,12 +94,12 @@ func TestPoolDataSource_Read_NameNotFound(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_IDNotFound(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewPoolDataSource().(*PoolDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
@@ -106,12 +107,12 @@ func TestPoolDataSource_Read_IDNotFound(t *testing.T) {
 }
 
 func TestPoolDataSource_Read_MissingKey(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Pool{}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Pool{}))
 
 	ds := NewPoolDataSource().(*PoolDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error for missing id/name")

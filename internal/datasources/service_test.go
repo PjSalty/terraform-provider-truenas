@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -12,7 +13,7 @@ import (
 
 func TestServiceDataSource_Schema(t *testing.T) {
 	ds := NewServiceDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{"id", "service", "enable", "state"} {
 		if _, ok := attrs[want]; !ok {
@@ -22,7 +23,7 @@ func TestServiceDataSource_Schema(t *testing.T) {
 }
 
 func TestServiceDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Service{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Service{
 		{ID: 1, Service: "ssh", Enable: true, State: "RUNNING"},
 		{ID: 2, Service: "nfs", Enable: false, State: "STOPPED"},
 	}))
@@ -30,7 +31,7 @@ func TestServiceDataSource_Read_Success(t *testing.T) {
 	ds := NewServiceDataSource().(*ServiceDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"service": strVal("ssh")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"service": strVal("ssh")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -51,12 +52,12 @@ func TestServiceDataSource_Read_Success(t *testing.T) {
 
 func TestServiceDataSource_Read_NotFound(t *testing.T) {
 	// WS GetServiceByName uses a server-side filter; no-match → empty.
-	c := newWSServer(t, wsReturn([]truenas.Service{}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Service{}))
 
 	ds := NewServiceDataSource().(*ServiceDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"service": strVal("missing")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"service": strVal("missing")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
@@ -64,12 +65,12 @@ func TestServiceDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestServiceDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewServiceDataSource().(*ServiceDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"service": strVal("ssh")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"service": strVal("ssh")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
@@ -77,14 +78,14 @@ func TestServiceDataSource_Read_ServerError(t *testing.T) {
 }
 
 func TestServiceDataSource_Read_StoppedService(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Service{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Service{
 		{ID: 5, Service: "smbsrv", Enable: false, State: "STOPPED"},
 	}))
 
 	ds := NewServiceDataSource().(*ServiceDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"service": strVal("smbsrv")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"service": strVal("smbsrv")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)

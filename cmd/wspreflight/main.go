@@ -11,6 +11,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -19,14 +20,25 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
+var errUsage = errors.New("TRUENAS_URL and TRUENAS_API_KEY must be set")
+
 func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		if errors.Is(err, errUsage) {
+			os.Exit(2)
+		}
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	url := os.Getenv("TRUENAS_URL")
 	key := os.Getenv("TRUENAS_API_KEY")
 	insecure := os.Getenv("TRUENAS_INSECURE_SKIP_VERIFY") == "true" ||
 		os.Getenv("TRUENAS_INSECURE_SKIP_VERIFY") == "1"
 	if url == "" || key == "" {
-		fmt.Fprintln(os.Stderr, "TRUENAS_URL and TRUENAS_API_KEY must be set")
-		os.Exit(2)
+		return errUsage
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -34,20 +46,17 @@ func main() {
 
 	c, err := wsclient.New(ctx, url, key, insecure)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "dial/auth: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("dial/auth: %w", err)
 	}
 
 	info, err := c.GetSystemInfo(ctx)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "system.info: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("system.info: %w", err)
 	}
 
 	pools, err := c.ListPools(ctx)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "pool.query: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("pool.query: %w", err)
 	}
 	names := make([]string, 0, len(pools))
 	for _, p := range pools {
@@ -62,4 +71,5 @@ func main() {
 		"pools":   names,
 	})
 	fmt.Println(string(out))
+	return nil
 }

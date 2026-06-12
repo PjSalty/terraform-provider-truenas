@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -12,7 +13,7 @@ import (
 
 func TestDatasetDataSource_Schema(t *testing.T) {
 	ds := NewDatasetDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "name", "pool", "type", "mount_point", "compression",
@@ -26,7 +27,7 @@ func TestDatasetDataSource_Schema(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.DatasetResponse{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.DatasetResponse{
 		ID:         "tank/data",
 		Name:       "data",
 		Pool:       "tank",
@@ -54,7 +55,7 @@ func TestDatasetDataSource_Read_Success(t *testing.T) {
 	ds := NewDatasetDataSource().(*DatasetDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{
 		"id": strVal("tank/data"),
 	})
 	resp := callRead(context.Background(), ds, cfg)
@@ -86,7 +87,7 @@ func TestDatasetDataSource_Read_Success(t *testing.T) {
 
 func TestDatasetDataSource_Read_MinimalFields(t *testing.T) {
 	// Only required fields populated — none of the property pointers set.
-	c := newWSServer(t, wsReturn(truenas.DatasetResponse{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.DatasetResponse{
 		ID:   "tank/minimal",
 		Name: "minimal",
 		Pool: "tank",
@@ -96,7 +97,7 @@ func TestDatasetDataSource_Read_MinimalFields(t *testing.T) {
 	ds := NewDatasetDataSource().(*DatasetDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{
 		"id": strVal("tank/minimal"),
 	})
 	resp := callRead(context.Background(), ds, cfg)
@@ -106,12 +107,12 @@ func TestDatasetDataSource_Read_MinimalFields(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_NotFound(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewDatasetDataSource().(*DatasetDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{
 		"id": strVal("tank/missing"),
 	})
 	resp := callRead(context.Background(), ds, cfg)
@@ -121,12 +122,12 @@ func TestDatasetDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewDatasetDataSource().(*DatasetDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{
 		"id": strVal("tank/x"),
 	})
 	resp := callRead(context.Background(), ds, cfg)

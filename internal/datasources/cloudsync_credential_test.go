@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -12,7 +13,7 @@ import (
 
 func TestCloudSyncCredentialDataSource_Schema(t *testing.T) {
 	ds := NewCloudSyncCredentialDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{"id", "name", "provider_type"} {
 		if _, ok := attrs[want]; !ok {
@@ -22,7 +23,7 @@ func TestCloudSyncCredentialDataSource_Schema(t *testing.T) {
 }
 
 func TestCloudSyncCredentialDataSource_Read_ByID(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.CloudSyncCredential{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.CloudSyncCredential{
 		ID:       5,
 		Name:     "my-s3",
 		Provider: map[string]interface{}{"type": "S3", "access_key_id": "ABC"},
@@ -31,7 +32,7 @@ func TestCloudSyncCredentialDataSource_Read_ByID(t *testing.T) {
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{
 		"id": int64Val(5),
 	})
 	resp := callRead(context.Background(), ds, cfg)
@@ -49,7 +50,7 @@ func TestCloudSyncCredentialDataSource_Read_ByID(t *testing.T) {
 }
 
 func TestCloudSyncCredentialDataSource_Read_ByName(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.CloudSyncCredential{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.CloudSyncCredential{
 		{ID: 1, Name: "first", Provider: map[string]interface{}{"type": "B2"}},
 		{ID: 2, Name: "target", Provider: map[string]interface{}{"type": "AZUREBLOB"}},
 	}))
@@ -57,7 +58,7 @@ func TestCloudSyncCredentialDataSource_Read_ByName(t *testing.T) {
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{
 		"name": strVal("target"),
 	})
 	resp := callRead(context.Background(), ds, cfg)
@@ -75,12 +76,12 @@ func TestCloudSyncCredentialDataSource_Read_ByName(t *testing.T) {
 }
 
 func TestCloudSyncCredentialDataSource_Read_MissingLookupKey(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.CloudSyncCredential{}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.CloudSyncCredential{}))
 
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error for missing lookup key")
@@ -88,12 +89,12 @@ func TestCloudSyncCredentialDataSource_Read_MissingLookupKey(t *testing.T) {
 }
 
 func TestCloudSyncCredentialDataSource_Read_NotFoundByID(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(999)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(999)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error for 404")
@@ -101,12 +102,12 @@ func TestCloudSyncCredentialDataSource_Read_NotFoundByID(t *testing.T) {
 }
 
 func TestCloudSyncCredentialDataSource_Read_NotFoundByName(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.CloudSyncCredential{{ID: 1, Name: "only"}}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.CloudSyncCredential{{ID: 1, Name: "only"}}))
 
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("missing")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("missing")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error for missing credential")
@@ -115,7 +116,7 @@ func TestCloudSyncCredentialDataSource_Read_NotFoundByName(t *testing.T) {
 
 func TestCloudSyncCredentialDataSource_Read_EmptyProvider(t *testing.T) {
 	// Provider map without "type" key — provider_type should be empty string.
-	c := newWSServer(t, wsReturn(truenas.CloudSyncCredential{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.CloudSyncCredential{
 		ID:       3,
 		Name:     "bare",
 		Provider: map[string]interface{}{},
@@ -124,7 +125,7 @@ func TestCloudSyncCredentialDataSource_Read_EmptyProvider(t *testing.T) {
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(3)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(3)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)

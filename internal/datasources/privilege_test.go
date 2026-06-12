@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -18,7 +19,7 @@ func TestNewPrivilegeDataSource(t *testing.T) {
 
 func TestPrivilegeDataSource_Schema(t *testing.T) {
 	ds := NewPrivilegeDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "name", "builtin_name", "local_groups", "ds_groups", "roles", "web_shell",
@@ -31,7 +32,7 @@ func TestPrivilegeDataSource_Schema(t *testing.T) {
 
 func TestPrivilegeDataSource_Read_Success(t *testing.T) {
 	builtin := "FULL_ADMIN"
-	c := newWSServer(t, wsReturn(truenas.Privilege{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.Privilege{
 		ID:          2,
 		Name:        "Admins",
 		BuiltinName: &builtin,
@@ -47,7 +48,7 @@ func TestPrivilegeDataSource_Read_Success(t *testing.T) {
 	ds := NewPrivilegeDataSource().(*PrivilegeDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(2)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(2)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -76,7 +77,7 @@ func TestPrivilegeDataSource_Read_Success(t *testing.T) {
 }
 
 func TestPrivilegeDataSource_Read_NoBuiltin(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.Privilege{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.Privilege{
 		ID:       5,
 		Name:     "Custom",
 		Roles:    []string{},
@@ -86,7 +87,7 @@ func TestPrivilegeDataSource_Read_NoBuiltin(t *testing.T) {
 	ds := NewPrivilegeDataSource().(*PrivilegeDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(5)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(5)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -99,12 +100,12 @@ func TestPrivilegeDataSource_Read_NoBuiltin(t *testing.T) {
 }
 
 func TestPrivilegeDataSource_Read_NotFound(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewPrivilegeDataSource().(*PrivilegeDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
