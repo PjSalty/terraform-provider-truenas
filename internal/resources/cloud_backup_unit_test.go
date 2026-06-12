@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestCloudBackupResource_MapResponseToModel_Cases(t *testing.T) {
@@ -16,7 +16,7 @@ func TestCloudBackupResource_MapResponseToModel_Cases(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name          string
-		cb            *client.CloudBackup
+		cb            *truenas.CloudBackup
 		wantPath      string
 		wantCredID    int64
 		wantEnabled   bool
@@ -26,12 +26,12 @@ func TestCloudBackupResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name: "minimal task",
-			cb: &client.CloudBackup{
+			cb: &truenas.CloudBackup{
 				ID:          1,
 				Description: "nightly",
 				Path:        "/mnt/tank/data",
 				Credentials: json.RawMessage("3"),
-				Schedule:    client.CloudBackupSchedule{Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*"},
+				Schedule:    truenas.CloudBackupSchedule{Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*"},
 				Enabled:     true,
 				KeepLast:    10,
 			},
@@ -40,11 +40,11 @@ func TestCloudBackupResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "expanded credentials object",
-			cb: &client.CloudBackup{
+			cb: &truenas.CloudBackup{
 				ID:          2,
 				Path:        "/mnt/tank/backups",
 				Credentials: json.RawMessage(`{"id":7,"name":"s3-creds","provider":"S3"}`),
-				Schedule:    client.CloudBackupSchedule{Minute: "30", Hour: "3", Dom: "*", Month: "*", Dow: "*"},
+				Schedule:    truenas.CloudBackupSchedule{Minute: "30", Hour: "3", Dom: "*", Month: "*", Dow: "*"},
 				Enabled:     false,
 				KeepLast:    5,
 				Attributes:  json.RawMessage(`{"bucket":"prod","prefix":"data"}`),
@@ -54,13 +54,13 @@ func TestCloudBackupResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "with include/exclude lists",
-			cb: &client.CloudBackup{
+			cb: &truenas.CloudBackup{
 				ID:          3,
 				Path:        "/mnt/tank/home",
 				Credentials: json.RawMessage("1"),
 				Include:     []string{"/mnt/tank/home/data"},
 				Exclude:     []string{"/mnt/tank/home/tmp"},
-				Schedule:    client.CloudBackupSchedule{Minute: "0", Hour: "1", Dom: "*", Month: "*", Dow: "*"},
+				Schedule:    truenas.CloudBackupSchedule{Minute: "0", Hour: "1", Dom: "*", Month: "*", Dow: "*"},
 				Enabled:     true,
 				KeepLast:    30,
 			},
@@ -69,7 +69,7 @@ func TestCloudBackupResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "with pre/post scripts and transfer setting",
-			cb: &client.CloudBackup{
+			cb: &truenas.CloudBackup{
 				ID:              4,
 				Path:            "/mnt/tank/db",
 				Credentials:     json.RawMessage("2"),
@@ -77,7 +77,7 @@ func TestCloudBackupResource_MapResponseToModel_Cases(t *testing.T) {
 				PostScript:      "/usr/local/bin/post.sh",
 				Snapshot:        true,
 				Args:            "--fast",
-				Schedule:        client.CloudBackupSchedule{Minute: "*/15", Hour: "*", Dom: "*", Month: "*", Dow: "*"},
+				Schedule:        truenas.CloudBackupSchedule{Minute: "*/15", Hour: "*", Dom: "*", Month: "*", Dow: "*"},
 				Enabled:         true,
 				KeepLast:        7,
 				TransferSetting: "FAST_STORAGE",
@@ -87,11 +87,11 @@ func TestCloudBackupResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "zero credentials id",
-			cb: &client.CloudBackup{
+			cb: &truenas.CloudBackup{
 				ID:          5,
 				Path:        "/mnt/x",
 				Credentials: json.RawMessage("0"),
-				Schedule:    client.CloudBackupSchedule{Minute: "0", Hour: "0", Dom: "*", Month: "*", Dow: "*"},
+				Schedule:    truenas.CloudBackupSchedule{Minute: "0", Hour: "0", Dom: "*", Month: "*", Dow: "*"},
 				Enabled:     false,
 				KeepLast:    0,
 			},

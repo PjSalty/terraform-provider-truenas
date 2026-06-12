@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // TestProvider_Configure_DestroyProtectionEnvVar verifies that
@@ -16,6 +16,11 @@ import (
 // fail with ErrDestroyProtected before reaching the network — while
 // POST and PUT still flow through normally.
 func TestProvider_Configure_DestroyProtectionEnvVar(t *testing.T) {
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	cases := []struct {
 		name     string
 		envValue string
@@ -48,9 +53,9 @@ func TestProvider_Configure_DestroyProtectionEnvVar(t *testing.T) {
 			if resp.Diagnostics.HasError() {
 				t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
 			}
-			c, ok := resp.DataSourceData.(*client.Client)
+			c, ok := resp.DataSourceData.(*wsclient.Client)
 			if !ok {
-				t.Fatalf("DataSourceData is not *client.Client, got %T", resp.DataSourceData)
+				t.Fatalf("DataSourceData is not *wsclient.Client, got %T", resp.DataSourceData)
 			}
 			if c.DestroyProtection != tc.want {
 				t.Errorf("DestroyProtection = %v, want %v (env %q)", c.DestroyProtection, tc.want, tc.envValue)
@@ -63,6 +68,11 @@ func TestProvider_Configure_DestroyProtectionEnvVar(t *testing.T) {
 // the HCL attribute propagates to Client.DestroyProtection independent
 // of the env var.
 func TestProvider_Configure_DestroyProtectionHCLAttribute(t *testing.T) {
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://dp.example.com")
 	t.Setenv("TRUENAS_API_KEY", "dp-key")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
@@ -82,9 +92,9 @@ func TestProvider_Configure_DestroyProtectionHCLAttribute(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
 	}
-	c, ok := resp.DataSourceData.(*client.Client)
+	c, ok := resp.DataSourceData.(*wsclient.Client)
 	if !ok {
-		t.Fatalf("DataSourceData is not *client.Client, got %T", resp.DataSourceData)
+		t.Fatalf("DataSourceData is not *wsclient.Client, got %T", resp.DataSourceData)
 	}
 	if !c.DestroyProtection {
 		t.Error("DestroyProtection = false, want true (set via HCL)")
@@ -95,6 +105,11 @@ func TestProvider_Configure_DestroyProtectionHCLAttribute(t *testing.T) {
 // that the HCL attribute takes precedence over the env var — same
 // precedence rule as ReadOnly. HCL is closer to the operator's intent.
 func TestProvider_Configure_DestroyProtectionHCLOverridesEnv(t *testing.T) {
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://dp.example.com")
 	t.Setenv("TRUENAS_API_KEY", "dp-key")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
@@ -114,9 +129,9 @@ func TestProvider_Configure_DestroyProtectionHCLOverridesEnv(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
 	}
-	c, ok := resp.DataSourceData.(*client.Client)
+	c, ok := resp.DataSourceData.(*wsclient.Client)
 	if !ok {
-		t.Fatalf("DataSourceData is not *client.Client, got %T", resp.DataSourceData)
+		t.Fatalf("DataSourceData is not *wsclient.Client, got %T", resp.DataSourceData)
 	}
 	if c.DestroyProtection {
 		t.Error("DestroyProtection = true, want false (HCL false should override env var 1)")
@@ -128,6 +143,11 @@ func TestProvider_Configure_DestroyProtectionHCLOverridesEnv(t *testing.T) {
 // apply: read_only=false + destroy_protection=true. Creates and updates
 // work; deletes are blocked. This is the production "safe apply" knob.
 func TestProvider_Configure_SafeApplyProfile(t *testing.T) {
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://dp.example.com")
 	t.Setenv("TRUENAS_API_KEY", "dp-key")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "")
@@ -148,9 +168,9 @@ func TestProvider_Configure_SafeApplyProfile(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
 	}
-	c, ok := resp.DataSourceData.(*client.Client)
+	c, ok := resp.DataSourceData.(*wsclient.Client)
 	if !ok {
-		t.Fatalf("DataSourceData is not *client.Client, got %T", resp.DataSourceData)
+		t.Fatalf("DataSourceData is not *wsclient.Client, got %T", resp.DataSourceData)
 	}
 	if c.ReadOnly {
 		t.Error("ReadOnly = true, want false for safe-apply profile")

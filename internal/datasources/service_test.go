@@ -2,12 +2,12 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestServiceDataSource_Schema(t *testing.T) {
@@ -22,11 +22,9 @@ func TestServiceDataSource_Schema(t *testing.T) {
 }
 
 func TestServiceDataSource_Read_Success(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Service{
-			{ID: 1, Service: "ssh", Enable: true, State: "RUNNING"},
-			{ID: 2, Service: "nfs", Enable: false, State: "STOPPED"},
-		})
+	c := newWSServer(t, wsReturn([]truenas.Service{
+		{ID: 1, Service: "ssh", Enable: true, State: "RUNNING"},
+		{ID: 2, Service: "nfs", Enable: false, State: "STOPPED"},
 	}))
 
 	ds := NewServiceDataSource().(*ServiceDataSource)
@@ -52,9 +50,8 @@ func TestServiceDataSource_Read_Success(t *testing.T) {
 }
 
 func TestServiceDataSource_Read_NotFound(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Service{{ID: 1, Service: "ssh"}})
-	}))
+	// WS GetServiceByName uses a server-side filter; no-match → empty.
+	c := newWSServer(t, wsReturn([]truenas.Service{}))
 
 	ds := NewServiceDataSource().(*ServiceDataSource)
 	ds.client = c
@@ -67,9 +64,7 @@ func TestServiceDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestServiceDataSource_Read_ServerError(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewServiceDataSource().(*ServiceDataSource)
 	ds.client = c
@@ -82,10 +77,8 @@ func TestServiceDataSource_Read_ServerError(t *testing.T) {
 }
 
 func TestServiceDataSource_Read_StoppedService(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Service{
-			{ID: 5, Service: "smbsrv", Enable: false, State: "STOPPED"},
-		})
+	c := newWSServer(t, wsReturn([]truenas.Service{
+		{ID: 5, Service: "smbsrv", Enable: false, State: "STOPPED"},
 	}))
 
 	ds := NewServiceDataSource().(*ServiceDataSource)

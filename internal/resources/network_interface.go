@@ -21,9 +21,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	tnvalidators "github.com/PjSalty/terraform-provider-truenas/internal/validators"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -43,7 +44,7 @@ var (
 // they are discovered automatically from the host. This resource only
 // supports creating virtual interface types.
 type NetworkInterfaceResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // NetworkInterfaceResourceModel describes the resource data model.
@@ -289,11 +290,11 @@ func (r *NetworkInterfaceResource) Configure(_ context.Context, req resource.Con
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -310,7 +311,7 @@ func (r *NetworkInterfaceResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	createReq := &client.NetworkInterfaceCreateRequest{
+	createReq := &truenas.NetworkInterfaceCreateRequest{
 		Type: plan.Type.ValueString(),
 	}
 	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
@@ -388,7 +389,7 @@ func (r *NetworkInterfaceResource) Read(ctx context.Context, req resource.ReadRe
 
 	iface, err := r.client.GetInterface(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -421,7 +422,7 @@ func (r *NetworkInterfaceResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	updateReq := &client.NetworkInterfaceUpdateRequest{}
+	updateReq := &truenas.NetworkInterfaceUpdateRequest{}
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		v := plan.Description.ValueString()
 		updateReq.Description = &v
@@ -497,7 +498,7 @@ func (r *NetworkInterfaceResource) Delete(ctx context.Context, req resource.Dele
 
 	tflog.Debug(ctx, "Deleting interface", map[string]interface{}{"id": state.ID.ValueString()})
 	if err := r.client.DeleteInterface(ctx, state.ID.ValueString()); err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Network interface already deleted, removing from state", map[string]interface{}{"id": state.ID.ValueString()})
 			return
 		}
@@ -517,7 +518,7 @@ func (r *NetworkInterfaceResource) ImportState(ctx context.Context, req resource
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NetworkInterfaceResource) mapResponseToModel(ctx context.Context, iface *client.NetworkInterface, model *NetworkInterfaceResourceModel) {
+func (r *NetworkInterfaceResource) mapResponseToModel(ctx context.Context, iface *truenas.NetworkInterface, model *NetworkInterfaceResourceModel) {
 	model.ID = types.StringValue(iface.ID)
 	model.Name = types.StringValue(iface.Name)
 	model.Type = types.StringValue(iface.Type)
@@ -569,19 +570,19 @@ func (r *NetworkInterfaceResource) mapResponseToModel(ctx context.Context, iface
 // aliasesFromList converts a Terraform list of alias objects into the client
 // alias struct slice. Returns ok=false if the list is null/unknown (caller
 // should skip setting the field in that case).
-func aliasesFromList(ctx context.Context, list types.List, diags *diag.Diagnostics) ([]client.NetworkInterfaceAlias, bool) {
+func aliasesFromList(ctx context.Context, list types.List, diags *diag.Diagnostics) ([]truenas.NetworkInterfaceAlias, bool) {
 	_ = ctx
 	_ = diags
 	if list.IsNull() || list.IsUnknown() {
 		return nil, false
 	}
 	elements := list.Elements()
-	result := make([]client.NetworkInterfaceAlias, 0, len(elements))
+	result := make([]truenas.NetworkInterfaceAlias, 0, len(elements))
 	for _, elem := range elements {
 		// ListNestedAttribute schema guarantees elements are types.Object.
 		obj := elem.(types.Object)
 		attrs := obj.Attributes()
-		alias := client.NetworkInterfaceAlias{}
+		alias := truenas.NetworkInterfaceAlias{}
 		if v, ok := attrs["type"].(types.String); ok && !v.IsNull() {
 			alias.Type = v.ValueString()
 		}

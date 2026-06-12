@@ -33,8 +33,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -44,7 +45,7 @@ var (
 )
 
 type CloudBackupResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 type CloudBackupResourceModel struct {
@@ -223,11 +224,11 @@ func (r *CloudBackupResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -253,7 +254,7 @@ func (r *CloudBackupResource) Create(ctx context.Context, req resource.CreateReq
 	snapshot := plan.Snapshot.ValueBool()
 	enabled := plan.Enabled.ValueBool()
 
-	createReq := &client.CloudBackupCreateRequest{
+	createReq := &truenas.CloudBackupCreateRequest{
 		Description:     plan.Description.ValueString(),
 		Path:            plan.Path.ValueString(),
 		Credentials:     int(plan.Credentials.ValueInt64()),
@@ -266,7 +267,7 @@ func (r *CloudBackupResource) Create(ctx context.Context, req resource.CreateReq
 		Password:        plan.Password.ValueString(),
 		KeepLast:        int(plan.KeepLast.ValueInt64()),
 		TransferSetting: plan.TransferSetting.ValueString(),
-		Schedule: &client.CloudBackupSchedule{
+		Schedule: &truenas.CloudBackupSchedule{
 			Minute: plan.ScheduleMinute.ValueString(),
 			Hour:   plan.ScheduleHour.ValueString(),
 			Dom:    plan.ScheduleDom.ValueString(),
@@ -319,7 +320,7 @@ func (r *CloudBackupResource) Read(ctx context.Context, req resource.ReadRequest
 
 	cb, err := r.client.GetCloudBackup(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -375,7 +376,7 @@ func (r *CloudBackupResource) Update(ctx context.Context, req resource.UpdateReq
 	keepLast := int(plan.KeepLast.ValueInt64())
 	transferSetting := plan.TransferSetting.ValueString()
 
-	updateReq := &client.CloudBackupUpdateRequest{
+	updateReq := &truenas.CloudBackupUpdateRequest{
 		Description:     &description,
 		Path:            &backupPath,
 		Credentials:     &creds,
@@ -388,7 +389,7 @@ func (r *CloudBackupResource) Update(ctx context.Context, req resource.UpdateReq
 		Password:        &password,
 		KeepLast:        &keepLast,
 		TransferSetting: &transferSetting,
-		Schedule: &client.CloudBackupSchedule{
+		Schedule: &truenas.CloudBackupSchedule{
 			Minute: plan.ScheduleMinute.ValueString(),
 			Hour:   plan.ScheduleHour.ValueString(),
 			Dom:    plan.ScheduleDom.ValueString(),
@@ -438,7 +439,7 @@ func (r *CloudBackupResource) Delete(ctx context.Context, req resource.DeleteReq
 	}
 
 	if err := r.client.DeleteCloudBackup(ctx, id); err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Cloud backup task already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -465,7 +466,7 @@ func (r *CloudBackupResource) ImportState(ctx context.Context, req resource.Impo
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("password"), types.StringValue(""))...)
 }
 
-func (r *CloudBackupResource) mapResponseToModel(ctx context.Context, cb *client.CloudBackup, model *CloudBackupResourceModel) {
+func (r *CloudBackupResource) mapResponseToModel(ctx context.Context, cb *truenas.CloudBackup, model *CloudBackupResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(cb.ID))
 	model.Description = types.StringValue(cb.Description)
 	model.Path = types.StringValue(cb.Path)

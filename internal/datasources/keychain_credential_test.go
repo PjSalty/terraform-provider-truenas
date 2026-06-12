@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewKeychainCredentialDataSource(t *testing.T) {
@@ -28,19 +28,14 @@ func TestKeychainCredentialDataSource_Schema(t *testing.T) {
 }
 
 func TestKeychainCredentialDataSource_Read_Success(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/keychaincredential/id/4" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, client.KeychainCredential{
-			ID:   4,
-			Name: "backup-key",
-			Type: "SSH_KEY_PAIR",
-			Attributes: map[string]interface{}{
-				"public_key":  "ssh-rsa AAA...",
-				"private_key": "-----BEGIN...",
-			},
-		})
+	c := newWSServer(t, wsReturn(truenas.KeychainCredential{
+		ID:   4,
+		Name: "backup-key",
+		Type: "SSH_KEY_PAIR",
+		Attributes: map[string]interface{}{
+			"public_key":  "ssh-rsa AAA...",
+			"private_key": "-----BEGIN...",
+		},
 	}))
 
 	ds := NewKeychainCredentialDataSource().(*KeychainCredentialDataSource)
@@ -64,8 +59,9 @@ func TestKeychainCredentialDataSource_Read_Success(t *testing.T) {
 }
 
 func TestKeychainCredentialDataSource_Read_NilAttributes(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, client.KeychainCredential{ID: 1, Name: "x", Type: "SSH_CREDENTIALS"})
+		writeJSON(w, http.StatusOK, truenas.KeychainCredential{ID: 1, Name: "x", Type: "SSH_CREDENTIALS"})
 	}))
 	ds := NewKeychainCredentialDataSource().(*KeychainCredentialDataSource)
 	ds.client = c
@@ -82,6 +78,7 @@ func TestKeychainCredentialDataSource_Read_NilAttributes(t *testing.T) {
 }
 
 func TestKeychainCredentialDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))

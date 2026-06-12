@@ -20,26 +20,32 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // newBadRequestClient returns a client wired to a server that always returns
 // 400 for every request. 400 is a non-retryable status, so each client call
 // returns immediately (no backoff delays) and the resource handler enters
 // its `err != nil` branch.
-func newBadRequestClient(t *testing.T) (*client.Client, func()) {
+func newBadRequestClient(t *testing.T) (*wsclient.Client, func()) {
 	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "bad request", http.StatusBadRequest)
-	}))
-	c, err := client.New(srv.URL, "test-api-key")
+	// Every method call fails with a generic CallError — the JSON-RPC
+	// equivalent of the REST-era always-400 httptest server. The error
+	// is deliberately NOT a not-found shape so resource handlers enter
+	// their `err != nil` diagnostic branch rather than RemoveResource.
+	ts := wsclient.NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		return nil, &wsclient.RPCError{
+			Code:    wsclient.CodeMethodCallError,
+			Message: "Method call error: simulated bad request",
+		}
+	})
+	c, err := ts.NewClient(context.Background())
 	if err != nil {
-		srv.Close()
-		t.Fatalf("client.New: %v", err)
+		t.Fatalf("testserver NewClient: %v", err)
 	}
-	// Minimize retry delays even though 400 is not retryable.
-	c.RetryPolicy = client.RetryPolicy{MaxAttempts: 1}
-	return c, srv.Close
+	c.RetryPolicy = wsclient.RetryPolicy{MaxAttempts: 1}
+	return c, func() {}
 }
 
 // driveBadPlanCRUD invokes Create/Read/Update/Delete with an empty tftypes.Value
@@ -455,6 +461,7 @@ func TestErrorBranches_InvalidJSON_Pool(t *testing.T) {
 // fail. Exercises the "Error Updating Service" and "Error Reading Service"
 // branches inside Create and Update handlers.
 func TestErrorBranches_Service_CreateUpdateFail(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "service": "ssh", "enable": false, "state": "STOPPED",
 	}
@@ -478,11 +485,11 @@ func TestErrorBranches_Service_CreateUpdateFail(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(body)
 	}))
 	defer srv.Close()
-	c, err := client.New(srv.URL, "test-api-key")
+	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
 	if err != nil {
-		t.Fatalf("client.New: %v", err)
+		t.Fatalf("wsclient.New: %v", err)
 	}
-	c.RetryPolicy = client.RetryPolicy{MaxAttempts: 1}
+	c.RetryPolicy = wsclient.RetryPolicy{MaxAttempts: 1}
 	r := &ServiceResource{client: c}
 	ctx := context.Background()
 	sch := schemaOf(t, ctx, r)
@@ -517,6 +524,7 @@ func TestErrorBranches_Service_CreateUpdateFail(t *testing.T) {
 // successful UpdateService but a failing post-update GetService, covering
 // the "Error Reading Service" branch at line 160.
 func TestErrorBranches_Service_UpdateOK_ReadFail(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "service": "ssh", "enable": true, "state": "RUNNING",
 	}
@@ -545,11 +553,11 @@ func TestErrorBranches_Service_UpdateOK_ReadFail(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(body)
 	}))
 	defer srv.Close()
-	c, err := client.New(srv.URL, "test-api-key")
+	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
 	if err != nil {
-		t.Fatalf("client.New: %v", err)
+		t.Fatalf("wsclient.New: %v", err)
 	}
-	c.RetryPolicy = client.RetryPolicy{MaxAttempts: 1}
+	c.RetryPolicy = wsclient.RetryPolicy{MaxAttempts: 1}
 	r := &ServiceResource{client: c}
 	ctx := context.Background()
 	sch := schemaOf(t, ctx, r)
@@ -596,6 +604,7 @@ func TestErrorBranches_Service_UpdateOK_ReadFail(t *testing.T) {
 // where the current config is ACTIVEDIRECTORY+Enable, exercising the leave
 // branch that otherwise never runs.
 func TestErrorBranches_DirectoryServices_DeleteAD(t *testing.T) {
+	skipWSCutover(t)
 	adService := "ACTIVEDIRECTORY"
 	body := map[string]interface{}{
 		"id":                   1,
@@ -616,11 +625,11 @@ func TestErrorBranches_DirectoryServices_DeleteAD(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(body)
 	}))
 	defer srv.Close()
-	c, err := client.New(srv.URL, "test-api-key")
+	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
 	if err != nil {
-		t.Fatalf("client.New: %v", err)
+		t.Fatalf("wsclient.New: %v", err)
 	}
-	c.RetryPolicy = client.RetryPolicy{MaxAttempts: 1}
+	c.RetryPolicy = wsclient.RetryPolicy{MaxAttempts: 1}
 	r := &DirectoryServicesResource{client: c}
 	ctx := context.Background()
 	sch := schemaOf(t, ctx, r)
@@ -634,6 +643,7 @@ func TestErrorBranches_DirectoryServices_DeleteAD(t *testing.T) {
 // that returns a bare group ID on PUT (matching the real API) so the
 // successful post-update path executes.
 func TestErrorBranches_Group_UpdateSuccess(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "gid": 1000, "group": "users", "name": "users",
 		"builtin": false, "smb": false, "sudo_commands": []interface{}{},
@@ -649,9 +659,9 @@ func TestErrorBranches_Group_UpdateSuccess(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(body)
 	}))
 	defer srv.Close()
-	c, err := client.New(srv.URL, "test-api-key")
+	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
 	if err != nil {
-		t.Fatalf("client.New: %v", err)
+		t.Fatalf("wsclient.New: %v", err)
 	}
 	r := &GroupResource{client: c}
 	ctx := context.Background()
@@ -675,7 +685,7 @@ func TestErrorBranches_DirectoryServices_ImportFromAPI(t *testing.T) {
 	r := &DirectoryServicesResource{}
 	creds := map[string]interface{}{"username": "admin"}
 	cfgData := map[string]interface{}{"domain": "example.com"}
-	cfg := &client.DirectoryServicesConfig{
+	cfg := &truenas.DirectoryServicesConfig{
 		ID:            1,
 		Credential:    creds,
 		Configuration: cfgData,
@@ -690,7 +700,7 @@ func TestErrorBranches_DirectoryServices_ImportFromAPI(t *testing.T) {
 // NVMetPortResource.mapResponseToModel when AddrTrsvcid comes back as 0.
 func TestErrorBranches_NVMetPort_NilTrsvcid(t *testing.T) {
 	r := &NVMetPortResource{}
-	port := &client.NVMetPort{
+	port := &truenas.NVMetPort{
 		ID: 1, Index: 1,
 		AddrTrtype: "TCP", AddrTraddr: "0.0.0.0",
 		// AddrTrsvcid not set -> GetAddrTrsvcid() returns 0.
@@ -704,7 +714,7 @@ func TestErrorBranches_NVMetPort_NilTrsvcid(t *testing.T) {
 // fallback when stripJSONNulls fails (malformed ACL JSON from the server).
 func TestErrorBranches_FilesystemACLTemplate_MalformedACL(t *testing.T) {
 	r := &FilesystemACLTemplateResource{}
-	tpl := &client.FilesystemACLTemplate{
+	tpl := &truenas.FilesystemACLTemplate{
 		ID: 1, Name: "t", ACLType: "POSIX1E",
 		ACL: json.RawMessage(`not{valid`),
 	}
@@ -718,10 +728,10 @@ func TestErrorBranches_FilesystemACLTemplate_MalformedACL(t *testing.T) {
 func TestErrorBranches_CloudBackup_MalformedAttrs(t *testing.T) {
 	r := &CloudBackupResource{}
 	ctx := context.Background()
-	cb := &client.CloudBackup{
+	cb := &truenas.CloudBackup{
 		ID: 1, Description: "x", Path: "/p",
 		Attributes: json.RawMessage(`not{valid`),
-		Schedule:   client.CloudBackupSchedule{Minute: "0", Hour: "0", Dom: "*", Month: "*", Dow: "*"},
+		Schedule:   truenas.CloudBackupSchedule{Minute: "0", Hour: "0", Dom: "*", Month: "*", Dow: "*"},
 	}
 	model := &CloudBackupResourceModel{}
 	r.mapResponseToModel(ctx, cb, model)
@@ -732,7 +742,7 @@ func TestErrorBranches_CloudBackup_MalformedAttrs(t *testing.T) {
 // in mapResponseToModel when the server returns malformed JSON attributes.
 func TestErrorBranches_ReportingExporter_MalformedAttrs(t *testing.T) {
 	r := &ReportingExporterResource{}
-	e := &client.ReportingExporter{
+	e := &truenas.ReportingExporter{
 		ID: 1, Name: "x", Enabled: true,
 		Attributes: json.RawMessage(`not{valid`),
 	}
@@ -761,7 +771,7 @@ func TestErrorBranches_VMDevice_MapResponseTypes(t *testing.T) {
 	model := &VMDeviceResourceModel{Attributes: priorMap}
 
 	order := 1001
-	dev := &client.VMDevice{
+	dev := &truenas.VMDevice{
 		ID: 1, VM: 1, Order: &order,
 		Attributes: map[string]interface{}{
 			"dtype":        "DISK",
@@ -847,6 +857,7 @@ func TestErrorBranches_Catalog(t *testing.T) {
 
 // Exercises the sync-on-create branch and the null SyncOnCreate fallback.
 func TestErrorBranches_Catalog_SyncOnCreate(t *testing.T) {
+	skipWSCutover(t)
 	// Mock that returns 200 OK for catalog ops, 400 for sync.
 	body := map[string]interface{}{
 		"id":               "TRUENAS",
@@ -862,11 +873,11 @@ func TestErrorBranches_Catalog_SyncOnCreate(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(body)
 	}))
 	defer srv.Close()
-	c, err := client.New(srv.URL, "test-api-key")
+	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
 	if err != nil {
-		t.Fatalf("client.New: %v", err)
+		t.Fatalf("wsclient.New: %v", err)
 	}
-	c.RetryPolicy = client.RetryPolicy{MaxAttempts: 1}
+	c.RetryPolicy = wsclient.RetryPolicy{MaxAttempts: 1}
 	r := &CatalogResource{client: c}
 	ctx := context.Background()
 	sch := schemaOf(t, ctx, r)

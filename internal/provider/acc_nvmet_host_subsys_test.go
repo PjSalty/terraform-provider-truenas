@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -65,6 +66,14 @@ func TestAccNVMetHostSubsysResource_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: nvmetHostSubsysConfig(hostnqn, subsysName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_nvmet_host_subsys.test", plancheck.ResourceActionCreate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("truenas_nvmet_host_subsys.test", "id"),
 					resource.TestCheckResourceAttrSet("truenas_nvmet_host_subsys.test", "host_id"),

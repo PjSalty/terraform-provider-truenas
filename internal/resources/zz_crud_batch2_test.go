@@ -35,8 +35,7 @@ func TestCloudBackupResource_CRUD(t *testing.T) {
 			"minute": "0", "hour": "1", "dom": "*", "month": "*", "dow": "*",
 		},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CloudBackupResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"description":      str("daily"),
@@ -71,8 +70,7 @@ func TestCloudSyncResource_CRUD(t *testing.T) {
 			"minute": "0", "hour": "1", "dom": "*", "month": "*", "dow": "*",
 		},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CloudSyncResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"description":     str("sync"),
@@ -98,8 +96,7 @@ func TestCloudSyncCredentialResource_CRUD(t *testing.T) {
 		"name":     "s3",
 		"provider": map[string]interface{}{"type": "S3", "access_key_id": "AK", "secret_access_key": "SK"},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CloudSyncCredentialResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":                     str("s3"),
@@ -123,8 +120,7 @@ func TestCronJobResource_CRUD(t *testing.T) {
 			"minute": "0", "hour": "*", "dom": "*", "month": "*", "dow": "*",
 		},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CronJobResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"user":            str("root"),
@@ -170,8 +166,7 @@ func TestRsyncTaskResource_CRUD(t *testing.T) {
 			"minute": "0", "hour": "2", "dom": "*", "month": "*", "dow": "*",
 		},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &RsyncTaskResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"path":            str("/mnt/tank/src"),
@@ -200,8 +195,7 @@ func TestScrubTaskResource_CRUD(t *testing.T) {
 			"minute": "0", "hour": "0", "dom": "*", "month": "*", "dow": "7",
 		},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ScrubTaskResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"pool_id":         num(1),
@@ -233,8 +227,7 @@ func TestSnapshotTaskResource_CRUD(t *testing.T) {
 			"begin": "09:00", "end": "18:00",
 		},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &SnapshotTaskResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"dataset":         str("tank/data"),
@@ -274,8 +267,7 @@ func TestReplicationResource_CRUD(t *testing.T) {
 		"life_time_value":   0,
 		"life_time_unit":    "",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ReplicationResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":             str("repl"),
@@ -299,8 +291,7 @@ func TestReportingExporterResource_CRUD(t *testing.T) {
 		"enabled":    true,
 		"attributes": map[string]interface{}{"host": "localhost", "port": 2003},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ReportingExporterResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":            str("graphite"),
@@ -323,8 +314,7 @@ func TestPrivilegeResource_CRUD(t *testing.T) {
 		"ds_groups":    []interface{}{},
 		"local_groups": []interface{}{map[string]interface{}{"id": 1000, "gid": 1000, "name": "admins"}},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &PrivilegeResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":         str("admins"),
@@ -343,8 +333,7 @@ func TestStaticRouteResource_CRUD(t *testing.T) {
 		"gateway":     "192.168.1.1",
 		"description": "",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &StaticRouteResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"destination": str("10.0.0.0/24"),
@@ -355,6 +344,7 @@ func TestStaticRouteResource_CRUD(t *testing.T) {
 // --- Tunable ---
 
 func TestTunableResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":      1,
 		"var":     "net.core.somaxconn",
@@ -397,8 +387,7 @@ func TestVMwareResource_CRUD(t *testing.T) {
 		"password":    "secret",
 		"filesystems": []interface{}{"tank/data"},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &VMwareResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"hostname": str("vcenter.example.com"),

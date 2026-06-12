@@ -147,6 +147,35 @@ func TestRequiredWhenEqual_DiscriminatorUnknown(t *testing.T) {
 	}
 }
 
+// TestRequiredWhenEqual_RequiredAttributeUnknown defers validation
+// when a required attribute itself is unknown (e.g. it interpolates
+// against a not-yet-known dependency like
+// `path = truenas_dataset.x.mount_point`). Without this carve-out,
+// acc tests that wire a required attribute from a sibling resource's
+// computed value fail at plan time with a spurious "Missing required
+// attribute" diagnostic.
+func TestRequiredWhenEqual_RequiredAttributeUnknown(t *testing.T) {
+	v := resourcevalidators.RequiredWhenEqual(
+		"create_type", "CERTIFICATE_CREATE_IMPORTED", []string{"certificate", "privatekey"})
+	objType := fakeSchema.Type().TerraformType(context.Background()).(tftypes.Object)
+	raw := tftypes.NewValue(objType, map[string]tftypes.Value{
+		"create_type": tftypes.NewValue(tftypes.String, "CERTIFICATE_CREATE_IMPORTED"),
+		// certificate is unknown — interpolated from another resource
+		"certificate": tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
+		// privatekey is set
+		"privatekey": tftypes.NewValue(tftypes.String, "-----BEGIN..."),
+	})
+	req := resource.ValidateConfigRequest{
+		Config: tfsdk.Config{Schema: fakeSchema, Raw: raw},
+	}
+	resp := &resource.ValidateConfigResponse{}
+	v.ValidateResource(context.Background(), req, resp)
+	if resp.Diagnostics.HasError() {
+		t.Errorf("unknown required attribute should defer, got: %v",
+			resp.Diagnostics.Errors())
+	}
+}
+
 // TestRequiredWhenEqual_DiscriminatorGetAttributeError exercises the
 // `if resp.Diagnostics.HasError()` early-return after the first
 // GetAttribute call on the discriminator. This fires when the

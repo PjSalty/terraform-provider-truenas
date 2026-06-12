@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccDNSNameserverResource_basic — singleton: DNS nameserver
@@ -25,6 +26,11 @@ resource "truenas_dns_nameserver" "test" {
   nameserver1 = "1.1.1.1"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_dns_nameserver.test", "nameserver1", "1.1.1.1"),
 					resource.TestCheckResourceAttrSet("truenas_dns_nameserver.test", "id"),
@@ -64,6 +70,11 @@ resource "truenas_dns_nameserver" "test" {
   nameserver1 = "8.8.8.8"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_dns_nameserver.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_dns_nameserver.test", "nameserver1", "8.8.8.8"),
 			},
 			{

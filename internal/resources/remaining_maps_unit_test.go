@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // These tests cover mapResponseToModel for resources that didn't yet have
@@ -18,7 +18,7 @@ import (
 func TestACMEDNSAuthenticatorResource_MapResponseToModel(t *testing.T) {
 	r := &ACMEDNSAuthenticatorResource{}
 	ctx := context.Background()
-	cases := []*client.ACMEDNSAuthenticator{
+	cases := []*truenas.ACMEDNSAuthenticator{
 		{ID: 1, Name: "cloudflare-1", Attributes: map[string]interface{}{"authenticator": "cloudflare", "api_token": "abc"}},
 		{ID: 2, Name: "route53", Attributes: map[string]interface{}{"authenticator": "route53", "access_key": "AK", "secret_key": "SK"}},
 		{ID: 3, Name: "do", Attributes: map[string]interface{}{"authenticator": "digitalocean", "api_key": "x"}},
@@ -40,7 +40,7 @@ func TestACMEDNSAuthenticatorResource_MapResponseToModel(t *testing.T) {
 
 func TestAppResource_MapResponseToModel(t *testing.T) {
 	r := &AppResource{}
-	cases := []*client.App{
+	cases := []*truenas.App{
 		{ID: "plex", Name: "plex", State: "RUNNING", HumanVersion: "1.0.0", UpgradeAvailable: false},
 		{ID: "sonarr", Name: "sonarr", State: "STOPPED", HumanVersion: "4.0.0", UpgradeAvailable: true},
 		{ID: "custom", Name: "custom", State: "RUNNING", CustomApp: true},
@@ -66,7 +66,7 @@ func TestAppResource_MapResponseToModel(t *testing.T) {
 func TestCatalogResource_MapResponseToModel(t *testing.T) {
 	r := &CatalogResource{}
 	ctx := context.Background()
-	cases := []*client.Catalog{
+	cases := []*truenas.Catalog{
 		{ID: "TRUENAS", Label: "TRUENAS", Location: "/mnt/tank/catalog", PreferredTrains: []string{"stable"}},
 		{ID: "COMMUNITY", Label: "COMMUNITY", PreferredTrains: []string{"stable", "community"}},
 		{ID: "EMPTY", Label: "EMPTY"},
@@ -89,7 +89,7 @@ func TestCatalogResource_MapResponseToModel(t *testing.T) {
 func TestCloudSyncCredentialResource_MapResponseToModel(t *testing.T) {
 	r := &CloudSyncCredentialResource{}
 	ctx := context.Background()
-	cases := []*client.CloudSyncCredential{
+	cases := []*truenas.CloudSyncCredential{
 		{ID: 1, Name: "s3-prod", Provider: map[string]interface{}{"type": "S3", "access_key_id": "k", "secret_access_key": "s"}},
 		{ID: 2, Name: "b2", Provider: map[string]interface{}{"type": "B2", "account": "a"}},
 		{ID: 3, Name: "blob", Provider: map[string]interface{}{"type": "AZUREBLOB", "account": "a"}},
@@ -112,7 +112,7 @@ func TestDirectoryServicesResource_MapResponseToModel(t *testing.T) {
 	r := &DirectoryServicesResource{}
 	svcType := "ACTIVEDIRECTORY"
 	realm := "CORP.EXAMPLE.COM"
-	cases := []*client.DirectoryServicesConfig{
+	cases := []*truenas.DirectoryServicesConfig{
 		{ID: 1, ServiceType: &svcType, Enable: true, EnableAccountCache: true, KerberosRealm: &realm, Timeout: 60},
 		{ID: 1, Enable: false, Timeout: 60},
 		{ID: 1, ServiceType: &svcType, Enable: true, EnableDNSUpdates: true, Timeout: 120},
@@ -131,7 +131,7 @@ func TestDirectoryServicesResource_MapResponseToModel(t *testing.T) {
 
 func TestFilesystemACLTemplateResource_MapResponseToModel(t *testing.T) {
 	r := &FilesystemACLTemplateResource{}
-	cases := []*client.FilesystemACLTemplate{
+	cases := []*truenas.FilesystemACLTemplate{
 		{ID: 1, Name: "home", ACLType: "POSIX1E", Comment: "home dir", ACL: json.RawMessage(`[{"tag":"USER","id":0,"perms":"rwx"}]`)},
 		{ID: 2, Name: "dataset", ACLType: "NFS4", Builtin: true},
 		{ID: 3, Name: "custom", ACLType: "NFS4", Comment: "custom template"},
@@ -155,7 +155,7 @@ func TestFilesystemACLTemplateResource_MapResponseToModel(t *testing.T) {
 
 func TestISCSITargetExtentResource_MapResponseToModel(t *testing.T) {
 	r := &ISCSITargetExtentResource{}
-	cases := []*client.ISCSITargetExtent{
+	cases := []*truenas.ISCSITargetExtent{
 		{ID: 1, Target: 1, Extent: 1, LunID: 0},
 		{ID: 2, Target: 1, Extent: 2, LunID: 1},
 		{ID: 3, Target: 2, Extent: 5, LunID: 10},
@@ -180,7 +180,7 @@ func TestISCSITargetExtentResource_MapResponseToModel(t *testing.T) {
 
 func TestKerberosKeytabResource_MapResponseToModel(t *testing.T) {
 	r := &KerberosKeytabResource{}
-	cases := []*client.KerberosKeytab{
+	cases := []*truenas.KerberosKeytab{
 		{ID: 1, Name: "host", File: "BQIAAA=="},
 		{ID: 2, Name: "webdav", File: ""},
 		{ID: 3, Name: "service-principal", File: "base64payload"},
@@ -200,7 +200,7 @@ func TestKerberosRealmResource_MapResponseToModel(t *testing.T) {
 	r := &KerberosRealmResource{}
 	ctx := context.Background()
 	primaryKDC := "kdc1.corp.example.com"
-	cases := []*client.KerberosRealm{
+	cases := []*truenas.KerberosRealm{
 		{ID: 1, Realm: "CORP.EXAMPLE.COM", PrimaryKDC: &primaryKDC, KDC: []string{"kdc1", "kdc2"}, AdminServer: []string{"admin"}},
 		{ID: 2, Realm: "OTHER.EXAMPLE.COM", KDC: []string{"kdc1"}},
 		{ID: 3, Realm: "TEST.LOCAL"},
@@ -222,7 +222,7 @@ func TestKMIPConfigResource_MapResponseToModel(t *testing.T) {
 	certID := 1
 	caID := 2
 	server := "kmip.example.com"
-	cases := []*client.KMIPConfig{
+	cases := []*truenas.KMIPConfig{
 		{ID: 1, Enabled: true, ManageSEDDisks: true, Certificate: &certID, CertificateAuthority: &caID, Port: 5696, Server: &server, SSLVersion: "PROTOCOL_TLSv1_2"},
 		{ID: 1, Enabled: false, Port: 5696, SSLVersion: "PROTOCOL_TLSv1_2"},
 		{ID: 1, Enabled: true, ManageZFSKeys: true, Certificate: &certID, Port: 5696, Server: &server, SSLVersion: "PROTOCOL_TLSv1_3"},
@@ -244,7 +244,7 @@ func TestKMIPConfigResource_MapResponseToModel(t *testing.T) {
 func TestMailConfigResource_MapResponseToModel(t *testing.T) {
 	r := &MailConfigResource{}
 	user := "admin"
-	cases := []*client.MailConfig{
+	cases := []*truenas.MailConfig{
 		{ID: 1, FromEmail: "admin@example.com", FromName: "TrueNAS", OutgoingServer: "smtp.example.com", Port: 587, Security: "TLS", SMTP: true, User: &user, Pass: "p"},
 		{ID: 1, FromEmail: "noauth@example.com", OutgoingServer: "smtp.internal", Port: 25, Security: "PLAIN", SMTP: false},
 		{ID: 1, FromEmail: "ssl@example.com", OutgoingServer: "smtp.ssl.example.com", Port: 465, Security: "SSL", SMTP: true, User: &user},
@@ -266,7 +266,7 @@ func TestMailConfigResource_MapResponseToModel(t *testing.T) {
 func TestNetworkConfigResource_MapResponseToModel(t *testing.T) {
 	r := &NetworkConfigResource{}
 	ctx := context.Background()
-	cases := []*client.FullNetworkConfig{
+	cases := []*truenas.FullNetworkConfig{
 		{ID: 1, Hostname: "truenas", Domain: "local", IPv4Gateway: "10.0.0.1", Nameserver1: "1.1.1.1"},
 		{ID: 1, Hostname: "fs01", Domain: "corp.example.com", IPv4Gateway: "192.168.1.1", IPv6Gateway: "fe80::1", Nameserver1: "8.8.8.8", Nameserver2: "8.8.4.4"},
 		{ID: 1, Hostname: "nas", Domain: "", HTTPProxy: "http://proxy.example.com:8080", Hosts: []string{"10.0.0.1 host1", "10.0.0.2 host2"}},
@@ -291,7 +291,7 @@ func TestNFSConfigResource_MapResponseToModel(t *testing.T) {
 	mport := 600
 	rport := 601
 	lport := 602
-	cases := []*client.NFSConfig{
+	cases := []*truenas.NFSConfig{
 		{ID: 1, Servers: 4, AllowNonroot: false, Protocols: []string{"NFSV3", "NFSV4"}, V4Krb: false},
 		{ID: 1, Servers: 8, V4Krb: true, V4Domain: "CORP.EXAMPLE.COM", Protocols: []string{"NFSV4"}},
 		{ID: 1, Servers: 2, BindIP: []string{"10.0.0.5"}, MountdPort: &mport, RpcstatdPort: &rport, RpclockdPort: &lport, Protocols: []string{"NFSV3"}},
@@ -312,9 +312,9 @@ func TestNFSConfigResource_MapResponseToModel(t *testing.T) {
 
 func TestNVMetHostSubsysResource_MapResponseToModel(t *testing.T) {
 	r := &NVMetHostSubsysResource{}
-	cases := []*client.NVMetHostSubsys{
+	cases := []*truenas.NVMetHostSubsys{
 		{ID: 1, HostID: 10, SubsysID: 20},
-		{ID: 2, Host: &client.NVMetHostSubsysHost{ID: 5}, Subsys: &client.NVMetHostSubsysSubsys{ID: 6}},
+		{ID: 2, Host: &truenas.NVMetHostSubsysHost{ID: 5}, Subsys: &truenas.NVMetHostSubsysSubsys{ID: 6}},
 		{ID: 3, HostID: 100, SubsysID: 200},
 	}
 	for i, hs := range cases {
@@ -333,7 +333,7 @@ func TestNVMetNamespaceResource_MapResponseToModel(t *testing.T) {
 	nsid1 := 1
 	nsid2 := 255
 	filesize := int64(1073741824)
-	cases := []*client.NVMetNamespace{
+	cases := []*truenas.NVMetNamespace{
 		{ID: 1, Nsid: &nsid1, SubsysID: 5, DeviceType: "ZVOL", DevicePath: "zvol/tank/v1", Enabled: true},
 		{ID: 2, Nsid: &nsid2, SubsysID: 10, DeviceType: "FILE", DevicePath: "/mnt/tank/file.img", Filesize: &filesize, Enabled: true},
 		{ID: 3, SubsysID: 3, DeviceType: "ZVOL", DevicePath: "zvol/p/v", Enabled: false},
@@ -357,7 +357,7 @@ func TestNVMetPortResource_MapResponseToModel(t *testing.T) {
 	inlineSize := 16384
 	maxQ := 256
 	piEnable := true
-	cases := []*client.NVMetPort{
+	cases := []*truenas.NVMetPort{
 		{ID: 1, Index: 1, AddrTrtype: "TCP", AddrTraddr: "0.0.0.0", AddrTrsvcid: json.RawMessage("4420"), Enabled: true},
 		{ID: 2, Index: 2, AddrTrtype: "TCP", AddrTraddr: "10.0.0.5", AddrTrsvcid: json.RawMessage("4420"), InlineDataSize: &inlineSize, MaxQueueSize: &maxQ, Enabled: true},
 		{ID: 3, Index: 3, AddrTrtype: "RDMA", AddrTraddr: "10.0.0.6", AddrTrsvcid: json.RawMessage(`"4420"`), PiEnable: &piEnable, Enabled: false},
@@ -378,9 +378,9 @@ func TestNVMetPortResource_MapResponseToModel(t *testing.T) {
 
 func TestNVMetPortSubsysResource_MapResponseToModel(t *testing.T) {
 	r := &NVMetPortSubsysResource{}
-	cases := []*client.NVMetPortSubsys{
+	cases := []*truenas.NVMetPortSubsys{
 		{ID: 1, PortID: 10, SubsysID: 20},
-		{ID: 2, Port: &client.NVMetPortSubsysPort{ID: 5}, Subsys: &client.NVMetPortSubsysSubsys{ID: 6}},
+		{ID: 2, Port: &truenas.NVMetPortSubsysPort{ID: 5}, Subsys: &truenas.NVMetPortSubsysSubsys{ID: 6}},
 		{ID: 3, PortID: 100, SubsysID: 200},
 	}
 	for i, ps := range cases {
@@ -398,7 +398,7 @@ func TestSNMPConfigResource_MapResponseToModel(t *testing.T) {
 	r := &SNMPConfigResource{}
 	privProto := "AES"
 	privPass := "privpw"
-	cases := []*client.SNMPConfig{
+	cases := []*truenas.SNMPConfig{
 		{ID: 1, Community: "public", Contact: "admin@example.com", Location: "dc1", V3: false},
 		{ID: 1, Community: "private", V3: true, V3Username: "user", V3AuthType: "SHA", V3Password: "pw", V3PrivProto: &privProto, V3PrivPassphrase: &privPass},
 		{ID: 1, Location: "remote", V3: false},
@@ -419,7 +419,7 @@ func TestSNMPConfigResource_MapResponseToModel(t *testing.T) {
 
 func TestSystemDatasetResource_MapResponseToModel(t *testing.T) {
 	r := &SystemDatasetResource{}
-	cases := []*client.SystemDataset{
+	cases := []*truenas.SystemDataset{
 		{ID: 1, Pool: "tank", PoolSet: true, UUID: "abc-123", Basename: "tank/.system", Path: "/mnt/tank/.system"},
 		{ID: 1, Pool: "boot-pool", PoolSet: false, UUID: "def", Basename: "boot-pool/.system", Path: "/boot-pool/.system"},
 		{ID: 1, Pool: "", PoolSet: false, UUID: "zero", Basename: "", Path: ""},
@@ -443,7 +443,7 @@ func TestSystemDatasetResource_MapResponseToModel(t *testing.T) {
 
 func TestUPSConfigResource_MapResponseToModel(t *testing.T) {
 	r := &UPSConfigResource{}
-	cases := []*client.UPSConfig{
+	cases := []*truenas.UPSConfig{
 		{ID: 1, Mode: "MASTER", Identifier: "ups", Driver: "usbhid-ups", Port: "auto", Shutdown: "BATT", ShutdownTimer: 30, Description: "primary"},
 		{ID: 1, Mode: "SLAVE", RemoteHost: "10.0.0.1", RemotePort: 3493},
 		{ID: 1, Mode: "MASTER", Identifier: "backup-ups", Port: "/dev/ttyS0", Shutdown: "LOWBATT"},
@@ -464,7 +464,7 @@ func TestUPSConfigResource_MapResponseToModel(t *testing.T) {
 
 func TestVMwareResource_MapResponseToModel(t *testing.T) {
 	r := &VMwareResource{}
-	cases := []*client.VMware{
+	cases := []*truenas.VMware{
 		{ID: 1, Datastore: "ds1", Filesystem: "tank/vm", Hostname: "vcenter.example.com", Username: "administrator@vsphere.local"},
 		{ID: 2, Datastore: "ds2", Filesystem: "tank/nested/vm", Hostname: "esxi.example.com", Username: "root"},
 		{ID: 3, Datastore: "backup", Filesystem: "tank/backup", Hostname: "backup-host", Username: "svc-backup"},

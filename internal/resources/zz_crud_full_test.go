@@ -45,8 +45,7 @@ func TestNFSShareResource_CRUD_Full(t *testing.T) {
 		"maproot_user": "root", "maproot_group": "wheel",
 		"mapall_user": "nobody", "mapall_group": "nogroup",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &NFSShareResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"path":          str("/mnt/tank/share"),
@@ -72,8 +71,7 @@ func TestSMBShareResource_CRUD_Full(t *testing.T) {
 		"abe": true, "enabled": true, "hostsallow": []interface{}{"10.0.0.0/24"},
 		"hostsdeny": []interface{}{"0.0.0.0/0"},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &SMBShareResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"path":       str("/mnt/tank/share"),
@@ -93,8 +91,7 @@ func TestSMBShareResource_CRUD_Full(t *testing.T) {
 
 func TestDatasetResource_CRUD_Full(t *testing.T) {
 	body := datasetBody("tank/data", "FILESYSTEM")
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &DatasetResource{client: c}
 	crudDrive(t, r, c, "tank/data", map[string]tftypes.Value{
 		"name":          str("data"),
@@ -119,8 +116,7 @@ func TestDatasetResource_CRUD_Full(t *testing.T) {
 
 func TestZvolResource_CRUD_Full(t *testing.T) {
 	body := datasetBody("tank/vol1", "VOLUME")
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ZvolResource{client: c}
 	crudDrive(t, r, c, "tank/vol1", map[string]tftypes.Value{
 		"name":          str("vol1"),
@@ -146,8 +142,7 @@ func TestUserResource_CRUD_Full(t *testing.T) {
 		"sshpubkey":         "ssh-rsa AAA...",
 		"password_disabled": false,
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &UserResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"uid":               num(1000),
@@ -176,8 +171,7 @@ func TestGroupResource_CRUD_Full(t *testing.T) {
 		"sudo_commands_nopasswd": []interface{}{"/bin/cat"},
 		"users":                  []interface{}{1},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &GroupResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"gid":                    num(1000),
@@ -197,8 +191,7 @@ func TestNVMetHostResource_CRUD_Full(t *testing.T) {
 		"dhchap_ctrl_key": "ckey", "dhchap_dhgroup": "DH-G2",
 		"dhchap_hash": "HMAC_SHA256",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &NVMetHostResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"hostnqn":         str("nqn.x"),
@@ -217,8 +210,7 @@ func TestNVMetSubsysResource_CRUD_Full(t *testing.T) {
 		"allow_any_host": true, "pi_enable": true, "serial": "SN", "ieee_oui": "00:11:22",
 		"qix_max": 128, "ana": false,
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &NVMetSubsysResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":           str("tgt"),
@@ -240,8 +232,7 @@ func TestNVMetPortResource_CRUD_Full(t *testing.T) {
 		"addr_traddr": "0.0.0.0", "addr_adrfam": "IPV4", "inline_data_size": 16384,
 		"max_queue_size": 128, "pi_enable": false, "enabled": true,
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &NVMetPortResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"addr_trtype":      str("TCP"),
@@ -262,8 +253,7 @@ func TestNVMetNamespaceResource_CRUD_Full(t *testing.T) {
 		"id": 1, "nsid": 1, "subsys_id": 1, "device_type": "ZVOL",
 		"device_path": "zvol/tank/vol1", "filesize": 16777216, "enabled": true,
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &NVMetNamespaceResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"nsid":        num(1),
@@ -285,8 +275,7 @@ func TestISCSITargetResource_CRUD_Full(t *testing.T) {
 		},
 		"auth_networks": []interface{}{"10.0.0.0/24"},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ISCSITargetResource{client: c}
 
 	// Build the Groups list as a list[object].
@@ -324,8 +313,7 @@ func TestISCSIExtentResource_CRUD_Full(t *testing.T) {
 		"serial": "abc123", "product_id": "pid", "naa": "0x6589cfc00000",
 		"rpm": "SSD", "avail_threshold": 80,
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ISCSIExtentResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":         str("e1"),
@@ -352,8 +340,7 @@ func TestISCSIPortalResource_CRUD_Full(t *testing.T) {
 		"discovery_authmethod": "CHAP",
 		"discovery_authgroup":  1,
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ISCSIPortalResource{client: c}
 
 	// Build the Listen list as list[object{ip,port}]
@@ -387,8 +374,7 @@ func TestISCSIInitiatorResource_CRUD_Full(t *testing.T) {
 		"initiators": []interface{}{"iqn.1994-05.com.redhat"},
 		"comment":    "allow redhat",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ISCSIInitiatorResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"comment":    str("allow redhat"),
@@ -399,6 +385,7 @@ func TestISCSIInitiatorResource_CRUD_Full(t *testing.T) {
 // --- Certificate with create-imported and CSR variants ---
 
 func TestCertificateResource_CRUD_CSR(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 2, "name": "csr1", "type": 2,
 		"create_type":      "CERTIFICATE_CREATE_CSR",
@@ -470,8 +457,7 @@ func TestReplicationResource_CRUD_Full(t *testing.T) {
 		"lifetime_value":             2,
 		"lifetime_unit":              "WEEK",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ReplicationResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":                       str("repl"),
@@ -499,8 +485,7 @@ func TestACMEDNSAuthenticatorResource_CRUD_WithAttrs(t *testing.T) {
 		"name":       "cf2",
 		"attributes": map[string]interface{}{"authenticator": "cloudflare", "api_token": "t"},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ACMEDNSAuthenticatorResource{client: c}
 	// Build a populated attributes map
 	attrsVal := tftypes.NewValue(
@@ -524,8 +509,7 @@ func TestCloudSyncCredentialResource_CRUD_InvalidJSON(t *testing.T) {
 		"name":     "s3",
 		"provider": map[string]interface{}{"type": "S3"},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CloudSyncCredentialResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":                     str("s3"),
@@ -543,8 +527,7 @@ func TestKeychainCredentialResource_CRUD_SSHCreds(t *testing.T) {
 		"type":       "SSH_CREDENTIALS",
 		"attributes": map[string]interface{}{"host": "backup.example.com", "port": 22, "username": "backup", "private_key": 1, "remote_host_key": "ssh-ed25519 AAA..."},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &KeychainCredentialResource{client: c}
 	attrsVal := tftypes.NewValue(
 		tftypes.Map{ElementType: tftypes.String},
@@ -585,8 +568,7 @@ func TestNetworkInterfaceResource_CRUD_Full(t *testing.T) {
 		"failover_aliases":         []interface{}{},
 		"failover_virtual_aliases": []interface{}{},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &NetworkInterfaceResource{client: c}
 	crudDrive(t, r, c, "bridge0", map[string]tftypes.Value{
 		"name":                  str("bridge0"),
@@ -607,6 +589,7 @@ func TestNetworkInterfaceResource_CRUD_Full(t *testing.T) {
 // --- Service with start failure ---
 
 func TestServiceResource_CRUD_StartFail(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "service": "ssh", "enable": true, "state": "RUNNING",
 	}
@@ -637,8 +620,7 @@ func TestServiceResource_CRUD_Disable(t *testing.T) {
 	body := map[string]interface{}{
 		"id": 1, "service": "ssh", "enable": false, "state": "STOPPED",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ServiceResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"service": str("ssh"),
@@ -669,8 +651,7 @@ func TestCloudBackupResource_CRUD_Full(t *testing.T) {
 			"minute": "0", "hour": "1", "dom": "*", "month": "*", "dow": "*",
 		},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CloudBackupResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"description":      str("daily"),
@@ -717,8 +698,7 @@ func TestCloudSyncResource_CRUD_Full(t *testing.T) {
 			"minute": "0", "hour": "1", "dom": "*", "month": "*", "dow": "*",
 		},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CloudSyncResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"description":     str("sync"),
@@ -764,8 +744,7 @@ func TestNetworkConfigResource_CRUD_Full(t *testing.T) {
 		"service_announcement": map[string]interface{}{},
 		"activity":             map[string]interface{}{},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &NetworkConfigResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"hostname":        str("truenas"),
@@ -797,8 +776,7 @@ func TestPrivilegeResource_CRUD_Full(t *testing.T) {
 			map[string]interface{}{"id": 1001, "gid": 1001, "name": "ops"},
 		},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &PrivilegeResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":         str("admins"),
@@ -811,6 +789,7 @@ func TestPrivilegeResource_CRUD_Full(t *testing.T) {
 // --- Certificate with CSR create + imported-signed ---
 
 func TestCertificateResource_CRUD_Signed(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 3, "name": "signed", "type": 1,
 		"create_type":         "CERTIFICATE_CREATE_IMPORTED",
@@ -870,8 +849,7 @@ func TestReportingExporterResource_CRUD_InvalidJSON(t *testing.T) {
 		"enabled":    true,
 		"attributes": map[string]interface{}{},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ReportingExporterResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":            str("broken"),
@@ -891,8 +869,7 @@ func TestReportingExporterResource_CRUD_Full(t *testing.T) {
 		"enabled":    true,
 		"attributes": map[string]interface{}{"host": "localhost", "port": 2003, "prefix": "truenas", "interval": 60},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ReportingExporterResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":            str("graphite"),
@@ -911,8 +888,7 @@ func TestCatalogResource_CRUD_Full(t *testing.T) {
 		"preferred_trains": []interface{}{"stable", "enterprise"},
 		"location":         "/mnt/tank/catalog",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CatalogResource{client: c}
 	crudDrive(t, r, c, "TRUENAS", map[string]tftypes.Value{
 		"label":            str("TRUENAS"),
@@ -925,6 +901,7 @@ func TestCatalogResource_CRUD_Full(t *testing.T) {
 // --- Filesystem ACL full ---
 
 func TestFilesystemACLResource_CRUD_Full(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"path":        "/mnt/tank/share",
 		"uid":         1000,

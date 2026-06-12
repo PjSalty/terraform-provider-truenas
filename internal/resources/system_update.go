@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // systemUpdateSingletonID is the fixed identifier used for the
@@ -36,7 +36,7 @@ var (
 // not apply updates; it only governs how the system behaves when an update
 // becomes available. Applying an update remains a manual action.
 type SystemUpdateResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // SystemUpdateResourceModel describes the resource data model.
@@ -152,11 +152,11 @@ func (r *SystemUpdateResource) Configure(_ context.Context, req resource.Configu
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}

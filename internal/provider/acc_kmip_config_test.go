@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccKMIPConfigResource_basic — singleton: KMIP service configuration
@@ -31,6 +32,11 @@ resource "truenas_kmip_config" "test" {
   validate         = true
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_kmip_config.test", "enabled", "false"),
 					resource.TestCheckResourceAttr("truenas_kmip_config.test", "port", "5696"),

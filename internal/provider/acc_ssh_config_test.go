@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccSSHConfigResource_basic — singleton: the SSH service
@@ -25,6 +26,11 @@ resource "truenas_ssh_config" "test" {
   tcpport = 22
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_ssh_config.test", "tcpport", "22"),
 					resource.TestCheckResourceAttrSet("truenas_ssh_config.test", "id"),
@@ -64,6 +70,11 @@ resource "truenas_ssh_config" "test" {
   tcpport = 2222
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_ssh_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_ssh_config.test", "tcpport", "2222"),
 			},
 			{

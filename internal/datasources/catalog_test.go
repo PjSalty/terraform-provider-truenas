@@ -2,10 +2,10 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewCatalogDataSource(t *testing.T) {
@@ -26,13 +26,11 @@ func TestCatalogDataSource_Schema(t *testing.T) {
 }
 
 func TestCatalogDataSource_Read_Success(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.Catalog{
-			ID:              "TRUENAS",
-			Label:           "TRUENAS",
-			PreferredTrains: []string{"stable", "community"},
-			Location:        "/mnt/.ix-apps/catalog",
-		})
+	c := newWSServer(t, wsReturn(truenas.Catalog{
+		ID:              "TRUENAS",
+		Label:           "TRUENAS",
+		PreferredTrains: []string{"stable", "community"},
+		Location:        "/mnt/.ix-apps/catalog",
 	}))
 
 	ds := NewCatalogDataSource().(*CatalogDataSource)
@@ -59,12 +57,10 @@ func TestCatalogDataSource_Read_Success(t *testing.T) {
 
 func TestCatalogDataSource_Read_EmptyID(t *testing.T) {
 	// Should default ID to "catalog" when blank.
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.Catalog{
-			ID:              "",
-			Label:           "TRUENAS",
-			PreferredTrains: []string{},
-		})
+	c := newWSServer(t, wsReturn(truenas.Catalog{
+		ID:              "",
+		Label:           "TRUENAS",
+		PreferredTrains: []string{},
 	}))
 
 	ds := NewCatalogDataSource().(*CatalogDataSource)
@@ -83,9 +79,7 @@ func TestCatalogDataSource_Read_EmptyID(t *testing.T) {
 }
 
 func TestCatalogDataSource_Read_ServerError(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewCatalogDataSource().(*CatalogDataSource)
 	ds.client = c
