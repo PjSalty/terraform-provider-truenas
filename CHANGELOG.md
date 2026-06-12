@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-12
+
 ### Added (rc.4 — multi-version validation, 2026-06-09/10)
 
 - **Validation matrix across three live SCALE lines.** The full
@@ -1443,7 +1445,8 @@ fix. No code change; no wire-path behavior change.
   `iscsi_target`, `cronjob`, `alert_service`.
 - Initial data sources: `dataset`, `pool`, `system_info`.
 
-[Unreleased]: https://github.com/PjSalty/terraform-provider-truenas/compare/v1.0.0...main
+[Unreleased]: https://github.com/PjSalty/terraform-provider-truenas/compare/v2.0.0...v2.0
+[2.0.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v2.0.0
 [1.0.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v1.0.0
 [0.4.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v0.4.0
 [0.3.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v0.3.0
