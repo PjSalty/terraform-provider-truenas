@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -35,6 +36,14 @@ resource "truenas_share_nfs" "test" {
   enabled = true
 }
 `, ds),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_share_nfs.test", plancheck.ResourceActionCreate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_share_nfs.test", "comment", "acctest"),
 					resource.TestCheckResourceAttr("truenas_share_nfs.test", "enabled", "true"),
@@ -94,6 +103,11 @@ resource "truenas_share_nfs" "test" {
   enabled = false
 }
 `, ds),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_share_nfs.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_share_nfs.test", "comment", "updated"),
 					resource.TestCheckResourceAttr("truenas_share_nfs.test", "enabled", "false"),

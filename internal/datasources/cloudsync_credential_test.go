@@ -2,12 +2,12 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestCloudSyncCredentialDataSource_Schema(t *testing.T) {
@@ -22,15 +22,10 @@ func TestCloudSyncCredentialDataSource_Schema(t *testing.T) {
 }
 
 func TestCloudSyncCredentialDataSource_Read_ByID(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/cloudsync/credentials/id/5" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, client.CloudSyncCredential{
-			ID:       5,
-			Name:     "my-s3",
-			Provider: map[string]interface{}{"type": "S3", "access_key_id": "ABC"},
-		})
+	c := newWSServer(t, wsReturn(truenas.CloudSyncCredential{
+		ID:       5,
+		Name:     "my-s3",
+		Provider: map[string]interface{}{"type": "S3", "access_key_id": "ABC"},
 	}))
 
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)
@@ -54,15 +49,9 @@ func TestCloudSyncCredentialDataSource_Read_ByID(t *testing.T) {
 }
 
 func TestCloudSyncCredentialDataSource_Read_ByName(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/v2.0/cloudsync/credentials" {
-			writeJSON(w, http.StatusOK, []client.CloudSyncCredential{
-				{ID: 1, Name: "first", Provider: map[string]interface{}{"type": "B2"}},
-				{ID: 2, Name: "target", Provider: map[string]interface{}{"type": "AZUREBLOB"}},
-			})
-			return
-		}
-		http.NotFound(w, r)
+	c := newWSServer(t, wsReturn([]truenas.CloudSyncCredential{
+		{ID: 1, Name: "first", Provider: map[string]interface{}{"type": "B2"}},
+		{ID: 2, Name: "target", Provider: map[string]interface{}{"type": "AZUREBLOB"}},
 	}))
 
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)
@@ -86,9 +75,7 @@ func TestCloudSyncCredentialDataSource_Read_ByName(t *testing.T) {
 }
 
 func TestCloudSyncCredentialDataSource_Read_MissingLookupKey(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.CloudSyncCredential{})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.CloudSyncCredential{}))
 
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)
 	ds.client = c
@@ -101,9 +88,7 @@ func TestCloudSyncCredentialDataSource_Read_MissingLookupKey(t *testing.T) {
 }
 
 func TestCloudSyncCredentialDataSource_Read_NotFoundByID(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)
 	ds.client = c
@@ -116,9 +101,7 @@ func TestCloudSyncCredentialDataSource_Read_NotFoundByID(t *testing.T) {
 }
 
 func TestCloudSyncCredentialDataSource_Read_NotFoundByName(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.CloudSyncCredential{{ID: 1, Name: "only"}})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.CloudSyncCredential{{ID: 1, Name: "only"}}))
 
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)
 	ds.client = c
@@ -132,12 +115,10 @@ func TestCloudSyncCredentialDataSource_Read_NotFoundByName(t *testing.T) {
 
 func TestCloudSyncCredentialDataSource_Read_EmptyProvider(t *testing.T) {
 	// Provider map without "type" key — provider_type should be empty string.
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.CloudSyncCredential{
-			ID:       3,
-			Name:     "bare",
-			Provider: map[string]interface{}{},
-		})
+	c := newWSServer(t, wsReturn(truenas.CloudSyncCredential{
+		ID:       3,
+		Name:     "bare",
+		Provider: map[string]interface{}{},
 	}))
 
 	ds := NewCloudSyncCredentialDataSource().(*CloudSyncCredentialDataSource)

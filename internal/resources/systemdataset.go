@@ -15,7 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -32,7 +33,7 @@ var (
 // pool) — this mirrors the behavior of the other singleton resources in
 // this provider (e.g. ssh_config).
 type SystemDatasetResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // SystemDatasetResourceModel describes the resource data model.
@@ -107,11 +108,11 @@ func (r *SystemDatasetResource) Configure(_ context.Context, req resource.Config
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -205,7 +206,7 @@ func (r *SystemDatasetResource) Delete(ctx context.Context, _ resource.DeleteReq
 
 	// Reset by sending null pool; TrueNAS will fall back to the boot pool.
 	var nullPool *string
-	_, err := r.client.UpdateSystemDataset(ctx, &client.SystemDatasetUpdateRequest{
+	_, err := r.client.UpdateSystemDataset(ctx, &truenas.SystemDatasetUpdateRequest{
 		Pool: nullPool,
 	})
 	if err != nil {
@@ -222,8 +223,8 @@ func (r *SystemDatasetResource) ImportState(ctx context.Context, req resource.Im
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func buildSystemDatasetUpdate(plan *SystemDatasetResourceModel) *client.SystemDatasetUpdateRequest {
-	updateReq := &client.SystemDatasetUpdateRequest{}
+func buildSystemDatasetUpdate(plan *SystemDatasetResourceModel) *truenas.SystemDatasetUpdateRequest {
+	updateReq := &truenas.SystemDatasetUpdateRequest{}
 	if !plan.Pool.IsNull() && !plan.Pool.IsUnknown() {
 		v := plan.Pool.ValueString()
 		if v == "" {
@@ -236,7 +237,7 @@ func buildSystemDatasetUpdate(plan *SystemDatasetResourceModel) *client.SystemDa
 	return updateReq
 }
 
-func (r *SystemDatasetResource) mapResponseToModel(cfg *client.SystemDataset, model *SystemDatasetResourceModel) {
+func (r *SystemDatasetResource) mapResponseToModel(cfg *truenas.SystemDataset, model *SystemDatasetResourceModel) {
 	model.ID = types.StringValue("systemdataset")
 	model.Pool = types.StringValue(cfg.Pool)
 	model.PoolSet = types.BoolValue(cfg.PoolSet)

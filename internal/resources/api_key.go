@@ -17,17 +17,20 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
 	_ resource.Resource                = &APIKeyResource{}
 	_ resource.ResourceWithImportState = &APIKeyResource{}
+	_ resource.ResourceWithModifyPlan  = &APIKeyResource{}
 )
 
 // APIKeyResource manages a TrueNAS API key.
 type APIKeyResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // APIKeyResourceModel describes the resource data model.
@@ -90,11 +93,11 @@ func (r *APIKeyResource) Configure(_ context.Context, req resource.ConfigureRequ
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -111,7 +114,7 @@ func (r *APIKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	createReq := &client.APIKeyCreateRequest{
+	createReq := &truenas.APIKeyCreateRequest{
 		Name: plan.Name.ValueString(),
 	}
 
@@ -161,7 +164,7 @@ func (r *APIKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	apiKey, err := r.client.GetAPIKey(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -207,7 +210,7 @@ func (r *APIKeyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	updateReq := &client.APIKeyUpdateRequest{
+	updateReq := &truenas.APIKeyUpdateRequest{
 		Name: plan.Name.ValueString(),
 	}
 
@@ -251,7 +254,7 @@ func (r *APIKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 	err = r.client.DeleteAPIKey(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "API key already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -262,6 +265,14 @@ func (r *APIKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 	tflog.Trace(ctx, "Delete APIKey success")
+}
+
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Destroying an API key revokes API access for anything
+// holding the key — operators should see the warning before they apply.
+// Non-blocking; pair with the destroy_protection rail for hard stops.
+func (r *APIKeyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_api_key")
 }
 
 func (r *APIKeyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

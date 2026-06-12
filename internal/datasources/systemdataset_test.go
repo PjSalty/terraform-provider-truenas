@@ -2,10 +2,10 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewSystemDatasetDataSource(t *testing.T) {
@@ -26,15 +26,13 @@ func TestSystemDatasetDataSource_Schema(t *testing.T) {
 }
 
 func TestSystemDatasetDataSource_Read_Success(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.SystemDataset{
-			ID:       1,
-			Pool:     "tank",
-			PoolSet:  true,
-			UUID:     "uuid-1234",
-			Basename: "tank/.system",
-			Path:     "/mnt/tank/.system",
-		})
+	c := newWSServer(t, wsReturn(truenas.SystemDataset{
+		ID:       1,
+		Pool:     "tank",
+		PoolSet:  true,
+		UUID:     "uuid-1234",
+		Basename: "tank/.system",
+		Path:     "/mnt/tank/.system",
 	}))
 
 	ds := NewSystemDatasetDataSource().(*SystemDatasetDataSource)
@@ -66,9 +64,7 @@ func TestSystemDatasetDataSource_Read_Success(t *testing.T) {
 }
 
 func TestSystemDatasetDataSource_Read_ServerError(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewSystemDatasetDataSource().(*SystemDatasetDataSource)
 	ds.client = c

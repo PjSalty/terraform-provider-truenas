@@ -19,17 +19,20 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
 	_ resource.Resource                = &ACMEDNSAuthenticatorResource{}
 	_ resource.ResourceWithImportState = &ACMEDNSAuthenticatorResource{}
+	_ resource.ResourceWithModifyPlan  = &ACMEDNSAuthenticatorResource{}
 )
 
 // ACMEDNSAuthenticatorResource manages a TrueNAS ACME DNS authenticator.
 type ACMEDNSAuthenticatorResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // ACMEDNSAuthenticatorResourceModel describes the resource data model.
@@ -95,11 +98,11 @@ func (r *ACMEDNSAuthenticatorResource) Configure(_ context.Context, req resource
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -128,7 +131,7 @@ func (r *ACMEDNSAuthenticatorResource) Create(ctx context.Context, req resource.
 		}
 	}
 
-	createReq := &client.ACMEDNSAuthenticatorCreateRequest{
+	createReq := &truenas.ACMEDNSAuthenticatorCreateRequest{
 		Name:       plan.Name.ValueString(),
 		Attributes: attrs,
 	}
@@ -172,7 +175,7 @@ func (r *ACMEDNSAuthenticatorResource) Read(ctx context.Context, req resource.Re
 
 	auth, err := r.client.GetACMEDNSAuthenticator(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -225,7 +228,7 @@ func (r *ACMEDNSAuthenticatorResource) Update(ctx context.Context, req resource.
 		}
 	}
 
-	updateReq := &client.ACMEDNSAuthenticatorUpdateRequest{
+	updateReq := &truenas.ACMEDNSAuthenticatorUpdateRequest{
 		Name:       plan.Name.ValueString(),
 		Attributes: attrs,
 	}
@@ -266,7 +269,7 @@ func (r *ACMEDNSAuthenticatorResource) Delete(ctx context.Context, req resource.
 
 	err = r.client.DeleteACMEDNSAuthenticator(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "ACME DNS authenticator already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -279,6 +282,13 @@ func (r *ACMEDNSAuthenticatorResource) Delete(ctx context.Context, req resource.
 	tflog.Trace(ctx, "Delete ACMEDNSAuthenticator success")
 }
 
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing an ACME DNS authenticator breaks any
+// certificate issuance flow that references it; renewal jobs will fail.
+func (r *ACMEDNSAuthenticatorResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_acme_dns_authenticator")
+}
+
 func (r *ACMEDNSAuthenticatorResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	if _, err := strconv.Atoi(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("ACME DNS authenticator ID must be numeric: %s", err))
@@ -287,7 +297,7 @@ func (r *ACMEDNSAuthenticatorResource) ImportState(ctx context.Context, req reso
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ACMEDNSAuthenticatorResource) mapResponseToModel(ctx context.Context, auth *client.ACMEDNSAuthenticator, model *ACMEDNSAuthenticatorResourceModel) {
+func (r *ACMEDNSAuthenticatorResource) mapResponseToModel(ctx context.Context, auth *truenas.ACMEDNSAuthenticator, model *ACMEDNSAuthenticatorResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(auth.ID))
 	model.Name = types.StringValue(auth.Name)
 

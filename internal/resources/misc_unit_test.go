@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- AlertService ---
@@ -17,17 +17,17 @@ func TestAlertServiceResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &AlertServiceResource{}
 	cases := []struct {
 		name     string
-		svc      *client.AlertService
+		svc      *truenas.AlertService
 		wantType string
 	}{
-		{name: "mail via legacy type", svc: &client.AlertService{ID: 1, Name: "mail", Type: "Mail", Enabled: true, Level: "WARNING", Settings: map[string]interface{}{"email": "foo@bar"}}, wantType: "Mail"},
-		{name: "pushover via attributes type", svc: &client.AlertService{ID: 2, Name: "po", Enabled: true, Level: "INFO", Settings: map[string]interface{}{"type": "Pushover", "api_key": "k"}}, wantType: "Pushover"},
-		{name: "slack disabled", svc: &client.AlertService{ID: 3, Name: "slack", Enabled: false, Level: "CRITICAL", Settings: map[string]interface{}{"type": "Slack"}}, wantType: "Slack"},
-		{name: "nil settings", svc: &client.AlertService{ID: 4, Name: "empty", Type: "Custom", Enabled: true, Level: "NOTICE"}, wantType: "Custom"},
-		{name: "telegram via attributes", svc: &client.AlertService{ID: 5, Name: "tg", Enabled: true, Level: "ALERT", Settings: map[string]interface{}{"type": "Telegram", "bot_token": "t", "chat_ids": []interface{}{float64(123)}}}, wantType: "Telegram"},
-		{name: "VictorOps attr", svc: &client.AlertService{ID: 6, Name: "vo", Enabled: true, Level: "CRITICAL", Settings: map[string]interface{}{"type": "VictorOps", "api_key": "k", "routing_key": "r"}}, wantType: "VictorOps"},
-		{name: "PagerDuty attr", svc: &client.AlertService{ID: 7, Name: "pd", Enabled: true, Level: "ALERT", Settings: map[string]interface{}{"type": "PagerDuty", "service_key": "s", "client_name": "c"}}, wantType: "PagerDuty"},
-		{name: "SNMP trap legacy type", svc: &client.AlertService{ID: 8, Name: "snmp", Type: "SNMPTrap", Enabled: false, Level: "WARNING"}, wantType: "SNMPTrap"},
+		{name: "mail via legacy type", svc: &truenas.AlertService{ID: 1, Name: "mail", Type: "Mail", Enabled: true, Level: "WARNING", Settings: map[string]interface{}{"email": "foo@bar"}}, wantType: "Mail"},
+		{name: "pushover via attributes type", svc: &truenas.AlertService{ID: 2, Name: "po", Enabled: true, Level: "INFO", Settings: map[string]interface{}{"type": "Pushover", "api_key": "k"}}, wantType: "Pushover"},
+		{name: "slack disabled", svc: &truenas.AlertService{ID: 3, Name: "slack", Enabled: false, Level: "CRITICAL", Settings: map[string]interface{}{"type": "Slack"}}, wantType: "Slack"},
+		{name: "nil settings", svc: &truenas.AlertService{ID: 4, Name: "empty", Type: "Custom", Enabled: true, Level: "NOTICE"}, wantType: "Custom"},
+		{name: "telegram via attributes", svc: &truenas.AlertService{ID: 5, Name: "tg", Enabled: true, Level: "ALERT", Settings: map[string]interface{}{"type": "Telegram", "bot_token": "t", "chat_ids": []interface{}{float64(123)}}}, wantType: "Telegram"},
+		{name: "VictorOps attr", svc: &truenas.AlertService{ID: 6, Name: "vo", Enabled: true, Level: "CRITICAL", Settings: map[string]interface{}{"type": "VictorOps", "api_key": "k", "routing_key": "r"}}, wantType: "VictorOps"},
+		{name: "PagerDuty attr", svc: &truenas.AlertService{ID: 7, Name: "pd", Enabled: true, Level: "ALERT", Settings: map[string]interface{}{"type": "PagerDuty", "service_key": "s", "client_name": "c"}}, wantType: "PagerDuty"},
+		{name: "SNMP trap legacy type", svc: &truenas.AlertService{ID: 8, Name: "snmp", Type: "SNMPTrap", Enabled: false, Level: "WARNING"}, wantType: "SNMPTrap"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -74,16 +74,16 @@ func TestCloudSyncResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &CloudSyncResource{}
 	cases := []struct {
 		name string
-		cs   *client.CloudSync
+		cs   *truenas.CloudSync
 	}{
-		{name: "push", cs: &client.CloudSync{ID: 1, Description: "backup", Path: "/mnt/tank", Credentials: 2, Direction: "PUSH", TransferMode: "COPY", Enabled: true, Schedule: client.Schedule{Minute: "0", Hour: "1", Dom: "*", Month: "*", Dow: "*"}, Attributes: map[string]interface{}{"bucket": "b"}}},
-		{name: "pull sync", cs: &client.CloudSync{ID: 2, Path: "/a", Credentials: 3, Direction: "PULL", TransferMode: "SYNC", Enabled: true, Schedule: client.Schedule{Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*"}}},
-		{name: "move direction", cs: &client.CloudSync{ID: 3, Path: "/x", Credentials: 1, Direction: "PUSH", TransferMode: "MOVE", Schedule: client.Schedule{Minute: "0", Hour: "3", Dom: "*", Month: "*", Dow: "*"}}},
-		{name: "minimal", cs: &client.CloudSync{ID: 4, Path: "/p", Credentials: 1, Direction: "PUSH", TransferMode: "COPY"}},
-		{name: "with description", cs: &client.CloudSync{ID: 5, Description: "backup task", Path: "/a", Credentials: 2, Direction: "PUSH", TransferMode: "COPY"}},
-		{name: "pull copy", cs: &client.CloudSync{ID: 6, Path: "/b", Credentials: 3, Direction: "PULL", TransferMode: "COPY"}},
-		{name: "pull move", cs: &client.CloudSync{ID: 7, Path: "/c", Credentials: 1, Direction: "PULL", TransferMode: "MOVE"}},
-		{name: "with attrs", cs: &client.CloudSync{ID: 8, Path: "/d", Credentials: 1, Direction: "PUSH", TransferMode: "COPY", Attributes: map[string]interface{}{"bucket": "b", "prefix": "p"}, Enabled: true}},
+		{name: "push", cs: &truenas.CloudSync{ID: 1, Description: "backup", Path: "/mnt/tank", Credentials: 2, Direction: "PUSH", TransferMode: "COPY", Enabled: true, Schedule: truenas.Schedule{Minute: "0", Hour: "1", Dom: "*", Month: "*", Dow: "*"}, Attributes: map[string]interface{}{"bucket": "b"}}},
+		{name: "pull sync", cs: &truenas.CloudSync{ID: 2, Path: "/a", Credentials: 3, Direction: "PULL", TransferMode: "SYNC", Enabled: true, Schedule: truenas.Schedule{Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "move direction", cs: &truenas.CloudSync{ID: 3, Path: "/x", Credentials: 1, Direction: "PUSH", TransferMode: "MOVE", Schedule: truenas.Schedule{Minute: "0", Hour: "3", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "minimal", cs: &truenas.CloudSync{ID: 4, Path: "/p", Credentials: 1, Direction: "PUSH", TransferMode: "COPY"}},
+		{name: "with description", cs: &truenas.CloudSync{ID: 5, Description: "backup task", Path: "/a", Credentials: 2, Direction: "PUSH", TransferMode: "COPY"}},
+		{name: "pull copy", cs: &truenas.CloudSync{ID: 6, Path: "/b", Credentials: 3, Direction: "PULL", TransferMode: "COPY"}},
+		{name: "pull move", cs: &truenas.CloudSync{ID: 7, Path: "/c", Credentials: 1, Direction: "PULL", TransferMode: "MOVE"}},
+		{name: "with attrs", cs: &truenas.CloudSync{ID: 8, Path: "/d", Credentials: 1, Direction: "PUSH", TransferMode: "COPY", Attributes: map[string]interface{}{"bucket": "b", "prefix": "p"}, Enabled: true}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -128,14 +128,14 @@ func TestKeychainCredentialResource_MapResponseToModel_Cases(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name string
-		cred *client.KeychainCredential
+		cred *truenas.KeychainCredential
 	}{
-		{name: "ssh key pair", cred: &client.KeychainCredential{ID: 1, Name: "key1", Type: "SSH_KEY_PAIR", Attributes: map[string]interface{}{"public_key": "ssh-rsa AAAA"}}},
-		{name: "ssh credentials", cred: &client.KeychainCredential{ID: 2, Name: "remote", Type: "SSH_CREDENTIALS", Attributes: map[string]interface{}{"host": "remote", "port": float64(22)}}},
-		{name: "empty attributes", cred: &client.KeychainCredential{ID: 3, Name: "blank", Type: "SSH_KEY_PAIR"}},
-		{name: "multiple attrs", cred: &client.KeychainCredential{ID: 4, Name: "multi", Type: "SSH_CREDENTIALS", Attributes: map[string]interface{}{"host": "h", "username": "u"}}},
-		{name: "ssh with port", cred: &client.KeychainCredential{ID: 5, Name: "ssh-port", Type: "SSH_CREDENTIALS", Attributes: map[string]interface{}{"host": "remote.example.com", "port": float64(2222), "username": "backup"}}},
-		{name: "many attributes", cred: &client.KeychainCredential{ID: 6, Name: "full", Type: "SSH_CREDENTIALS", Attributes: map[string]interface{}{"host": "h", "username": "u", "port": float64(22), "private_key": "k", "remote_host_key": "rhk"}}},
+		{name: "ssh key pair", cred: &truenas.KeychainCredential{ID: 1, Name: "key1", Type: "SSH_KEY_PAIR", Attributes: map[string]interface{}{"public_key": "ssh-rsa AAAA"}}},
+		{name: "ssh credentials", cred: &truenas.KeychainCredential{ID: 2, Name: "remote", Type: "SSH_CREDENTIALS", Attributes: map[string]interface{}{"host": "remote", "port": float64(22)}}},
+		{name: "empty attributes", cred: &truenas.KeychainCredential{ID: 3, Name: "blank", Type: "SSH_KEY_PAIR"}},
+		{name: "multiple attrs", cred: &truenas.KeychainCredential{ID: 4, Name: "multi", Type: "SSH_CREDENTIALS", Attributes: map[string]interface{}{"host": "h", "username": "u"}}},
+		{name: "ssh with port", cred: &truenas.KeychainCredential{ID: 5, Name: "ssh-port", Type: "SSH_CREDENTIALS", Attributes: map[string]interface{}{"host": "remote.example.com", "port": float64(2222), "username": "backup"}}},
+		{name: "many attributes", cred: &truenas.KeychainCredential{ID: 6, Name: "full", Type: "SSH_CREDENTIALS", Attributes: map[string]interface{}{"host": "h", "username": "u", "port": float64(22), "private_key": "k", "remote_host_key": "rhk"}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -180,15 +180,15 @@ func TestCertificateResource_MapResponseToModel_Cases(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name string
-		cert *client.Certificate
+		cert *truenas.Certificate
 	}{
-		{name: "basic cert", cert: &client.Certificate{ID: 1, Name: "c1", CertificateData: "-----BEGIN-----", KeyType: "RSA", KeyLength: 4096, DigestAlgorithm: "SHA256", Lifetime: 365, Common: "example.com", SAN: []string{"example.com", "www.example.com"}}},
-		{name: "ec cert", cert: &client.Certificate{ID: 2, Name: "ec", CertificateData: "data", KeyType: "EC", KeyLength: 256, DigestAlgorithm: "SHA256", Lifetime: 90, Country: "US", State: "CA", Organization: "Acme"}},
-		{name: "expired cert", cert: &client.Certificate{ID: 3, Name: "old", CertificateData: "d", KeyType: "RSA", KeyLength: 2048, Expired: true, DigestAlgorithm: "SHA256"}},
-		{name: "no san", cert: &client.Certificate{ID: 4, Name: "nosan", CertificateData: "d", KeyType: "RSA", KeyLength: 2048, DigestAlgorithm: "SHA256"}},
-		{name: "wildcard cert", cert: &client.Certificate{ID: 5, Name: "wild", CertificateData: "d", KeyType: "RSA", KeyLength: 2048, DigestAlgorithm: "SHA256", Common: "*.example.com", SAN: []string{"*.example.com", "example.com"}}},
-		{name: "self-signed CA", cert: &client.Certificate{ID: 6, Name: "ca", CertificateData: "d", KeyType: "RSA", KeyLength: 4096, DigestAlgorithm: "SHA512", Lifetime: 3650, Common: "Internal CA", Country: "US", State: "CA", Organization: "Home"}},
-		{name: "with all fields", cert: &client.Certificate{ID: 7, Name: "full", CertificateData: "d", KeyType: "EC", KeyLength: 384, DigestAlgorithm: "SHA384", Common: "api.example.com", SAN: []string{"api.example.com", "api-v2.example.com", "api-v3.example.com"}, Country: "US", State: "NY", Organization: "Example", Email: "admin@example.com"}},
+		{name: "basic cert", cert: &truenas.Certificate{ID: 1, Name: "c1", CertificateData: "-----BEGIN-----", KeyType: "RSA", KeyLength: 4096, DigestAlgorithm: "SHA256", Lifetime: 365, Common: "example.com", SAN: []string{"example.com", "www.example.com"}}},
+		{name: "ec cert", cert: &truenas.Certificate{ID: 2, Name: "ec", CertificateData: "data", KeyType: "EC", KeyLength: 256, DigestAlgorithm: "SHA256", Lifetime: 90, Country: "US", State: "CA", Organization: "Acme"}},
+		{name: "expired cert", cert: &truenas.Certificate{ID: 3, Name: "old", CertificateData: "d", KeyType: "RSA", KeyLength: 2048, Expired: true, DigestAlgorithm: "SHA256"}},
+		{name: "no san", cert: &truenas.Certificate{ID: 4, Name: "nosan", CertificateData: "d", KeyType: "RSA", KeyLength: 2048, DigestAlgorithm: "SHA256"}},
+		{name: "wildcard cert", cert: &truenas.Certificate{ID: 5, Name: "wild", CertificateData: "d", KeyType: "RSA", KeyLength: 2048, DigestAlgorithm: "SHA256", Common: "*.example.com", SAN: []string{"*.example.com", "example.com"}}},
+		{name: "self-signed CA", cert: &truenas.Certificate{ID: 6, Name: "ca", CertificateData: "d", KeyType: "RSA", KeyLength: 4096, DigestAlgorithm: "SHA512", Lifetime: 3650, Common: "Internal CA", Country: "US", State: "CA", Organization: "Home"}},
+		{name: "with all fields", cert: &truenas.Certificate{ID: 7, Name: "full", CertificateData: "d", KeyType: "EC", KeyLength: 384, DigestAlgorithm: "SHA384", Common: "api.example.com", SAN: []string{"api.example.com", "api-v2.example.com", "api-v3.example.com"}, Country: "US", State: "NY", Organization: "Example", Email: "admin@example.com"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -269,15 +269,15 @@ func TestPrivilegeResource_MapResponseToModel_Cases(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name string
-		priv *client.Privilege
+		priv *truenas.Privilege
 	}{
-		{name: "basic admin", priv: &client.Privilege{ID: 1, Name: "admins", LocalGroups: []client.PrivilegeGroup{{ID: 1, GID: 545}}, Roles: []string{"FULL_ADMIN"}, WebShell: true}},
-		{name: "with ds groups", priv: &client.Privilege{ID: 2, Name: "ops", LocalGroups: []client.PrivilegeGroup{}, DSGroups: []interface{}{"S-1-5-21-1"}, Roles: []string{"READONLY_ADMIN"}}},
-		{name: "multiple roles", priv: &client.Privilege{ID: 3, Name: "multi", LocalGroups: []client.PrivilegeGroup{{ID: 2, GID: 546}}, Roles: []string{"SHARING_ADMIN", "DATASET_WRITE"}}},
-		{name: "empty privilege", priv: &client.Privilege{ID: 4, Name: "empty"}},
-		{name: "no web shell", priv: &client.Privilege{ID: 5, Name: "noui", LocalGroups: []client.PrivilegeGroup{{ID: 10, GID: 1000}}, Roles: []string{"READONLY_ADMIN"}, WebShell: false}},
-		{name: "multiple local groups", priv: &client.Privilege{ID: 6, Name: "multi_grp", LocalGroups: []client.PrivilegeGroup{{ID: 1, GID: 100}, {ID: 2, GID: 200}, {ID: 3, GID: 300}}, Roles: []string{"FULL_ADMIN"}}},
-		{name: "ds groups multiple", priv: &client.Privilege{ID: 7, Name: "ds_multi", DSGroups: []interface{}{"S-1-5-21-1", "S-1-5-21-2", "S-1-5-21-3"}, Roles: []string{"FULL_ADMIN"}}},
+		{name: "basic admin", priv: &truenas.Privilege{ID: 1, Name: "admins", LocalGroups: []truenas.PrivilegeGroup{{ID: 1, GID: 545}}, Roles: []string{"FULL_ADMIN"}, WebShell: true}},
+		{name: "with ds groups", priv: &truenas.Privilege{ID: 2, Name: "ops", LocalGroups: []truenas.PrivilegeGroup{}, DSGroups: []interface{}{"S-1-5-21-1"}, Roles: []string{"READONLY_ADMIN"}}},
+		{name: "multiple roles", priv: &truenas.Privilege{ID: 3, Name: "multi", LocalGroups: []truenas.PrivilegeGroup{{ID: 2, GID: 546}}, Roles: []string{"SHARING_ADMIN", "DATASET_WRITE"}}},
+		{name: "empty privilege", priv: &truenas.Privilege{ID: 4, Name: "empty"}},
+		{name: "no web shell", priv: &truenas.Privilege{ID: 5, Name: "noui", LocalGroups: []truenas.PrivilegeGroup{{ID: 10, GID: 1000}}, Roles: []string{"READONLY_ADMIN"}, WebShell: false}},
+		{name: "multiple local groups", priv: &truenas.Privilege{ID: 6, Name: "multi_grp", LocalGroups: []truenas.PrivilegeGroup{{ID: 1, GID: 100}, {ID: 2, GID: 200}, {ID: 3, GID: 300}}, Roles: []string{"FULL_ADMIN"}}},
+		{name: "ds groups multiple", priv: &truenas.Privilege{ID: 7, Name: "ds_multi", DSGroups: []interface{}{"S-1-5-21-1", "S-1-5-21-2", "S-1-5-21-3"}, Roles: []string{"FULL_ADMIN"}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -328,14 +328,14 @@ func TestReportingExporterResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &ReportingExporterResource{}
 	cases := []struct {
 		name string
-		e    *client.ReportingExporter
+		e    *truenas.ReportingExporter
 	}{
-		{name: "graphite enabled", e: &client.ReportingExporter{ID: 1, Name: "graphite", Enabled: true, Attributes: json.RawMessage(`{"host":"graphite.local","port":2003}`)}},
-		{name: "disabled exporter", e: &client.ReportingExporter{ID: 2, Name: "off", Enabled: false, Attributes: json.RawMessage(`{}`)}},
-		{name: "nil attributes", e: &client.ReportingExporter{ID: 3, Name: "x", Enabled: true}},
-		{name: "complex attributes", e: &client.ReportingExporter{ID: 4, Name: "y", Enabled: true, Attributes: json.RawMessage(`{"host":"h","port":2003,"prefix":"data"}`)}},
-		{name: "prometheus remote write", e: &client.ReportingExporter{ID: 5, Name: "prom", Enabled: true, Attributes: json.RawMessage(`{"url":"https://prom/api/v1/write","username":"u","password":"p"}`)}},
-		{name: "influxdb v2", e: &client.ReportingExporter{ID: 6, Name: "influx", Enabled: true, Attributes: json.RawMessage(`{"org":"acme","bucket":"data","token":"t","url":"https://influx"}`)}},
+		{name: "graphite enabled", e: &truenas.ReportingExporter{ID: 1, Name: "graphite", Enabled: true, Attributes: json.RawMessage(`{"host":"graphite.local","port":2003}`)}},
+		{name: "disabled exporter", e: &truenas.ReportingExporter{ID: 2, Name: "off", Enabled: false, Attributes: json.RawMessage(`{}`)}},
+		{name: "nil attributes", e: &truenas.ReportingExporter{ID: 3, Name: "x", Enabled: true}},
+		{name: "complex attributes", e: &truenas.ReportingExporter{ID: 4, Name: "y", Enabled: true, Attributes: json.RawMessage(`{"host":"h","port":2003,"prefix":"data"}`)}},
+		{name: "prometheus remote write", e: &truenas.ReportingExporter{ID: 5, Name: "prom", Enabled: true, Attributes: json.RawMessage(`{"url":"https://prom/api/v1/write","username":"u","password":"p"}`)}},
+		{name: "influxdb v2", e: &truenas.ReportingExporter{ID: 6, Name: "influx", Enabled: true, Attributes: json.RawMessage(`{"org":"acme","bucket":"data","token":"t","url":"https://influx"}`)}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -376,15 +376,15 @@ func TestPoolResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &PoolResource{}
 	cases := []struct {
 		name string
-		pool *client.Pool
+		pool *truenas.Pool
 	}{
-		{name: "healthy tank", pool: &client.Pool{ID: 1, Name: "tank", GUID: "12345", Path: "/mnt/tank", Status: "ONLINE", Healthy: true}},
-		{name: "degraded pool", pool: &client.Pool{ID: 2, Name: "ssd", GUID: "99999", Path: "/mnt/ssd", Status: "DEGRADED", Healthy: false}},
-		{name: "fault pool", pool: &client.Pool{ID: 3, Name: "fault", GUID: "abc", Path: "/mnt/fault", Status: "FAULTED", Healthy: false}},
-		{name: "minimal", pool: &client.Pool{ID: 4, Name: "min", Status: "ONLINE", Healthy: true}},
-		{name: "offline pool", pool: &client.Pool{ID: 5, Name: "off", GUID: "offg", Path: "/mnt/off", Status: "OFFLINE", Healthy: false}},
-		{name: "long pool name", pool: &client.Pool{ID: 6, Name: "really-long-pool-name-for-test", GUID: "longg", Path: "/mnt/rlpnft", Status: "ONLINE", Healthy: true}},
-		{name: "unavail pool", pool: &client.Pool{ID: 7, Name: "unavail", Status: "UNAVAIL", Healthy: false}},
+		{name: "healthy tank", pool: &truenas.Pool{ID: 1, Name: "tank", GUID: "12345", Path: "/mnt/tank", Status: "ONLINE", Healthy: true}},
+		{name: "degraded pool", pool: &truenas.Pool{ID: 2, Name: "ssd", GUID: "99999", Path: "/mnt/ssd", Status: "DEGRADED", Healthy: false}},
+		{name: "fault pool", pool: &truenas.Pool{ID: 3, Name: "fault", GUID: "abc", Path: "/mnt/fault", Status: "FAULTED", Healthy: false}},
+		{name: "minimal", pool: &truenas.Pool{ID: 4, Name: "min", Status: "ONLINE", Healthy: true}},
+		{name: "offline pool", pool: &truenas.Pool{ID: 5, Name: "off", GUID: "offg", Path: "/mnt/off", Status: "OFFLINE", Healthy: false}},
+		{name: "long pool name", pool: &truenas.Pool{ID: 6, Name: "really-long-pool-name-for-test", GUID: "longg", Path: "/mnt/rlpnft", Status: "ONLINE", Healthy: true}},
+		{name: "unavail pool", pool: &truenas.Pool{ID: 7, Name: "unavail", Status: "UNAVAIL", Healthy: false}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

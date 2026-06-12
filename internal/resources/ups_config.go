@@ -19,7 +19,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -29,7 +30,7 @@ var (
 
 // UPSConfigResource manages the TrueNAS UPS configuration.
 type UPSConfigResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // UPSConfigResourceModel describes the resource data model.
@@ -159,11 +160,11 @@ func (r *UPSConfigResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -268,7 +269,7 @@ func (r *UPSConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest
 	description := ""
 
 	// driver and port are not reset because the API rejects empty values
-	_, err := r.client.UpdateUPSConfig(ctx, &client.UPSConfigUpdateRequest{
+	_, err := r.client.UpdateUPSConfig(ctx, &truenas.UPSConfigUpdateRequest{
 		Mode:          &mode,
 		Identifier:    &identifier,
 		RemoteHost:    &remotehost,
@@ -291,8 +292,8 @@ func (r *UPSConfigResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *UPSConfigResource) buildUpdateRequest(plan *UPSConfigResourceModel) *client.UPSConfigUpdateRequest {
-	updateReq := &client.UPSConfigUpdateRequest{}
+func (r *UPSConfigResource) buildUpdateRequest(plan *UPSConfigResourceModel) *truenas.UPSConfigUpdateRequest {
+	updateReq := &truenas.UPSConfigUpdateRequest{}
 
 	if !plan.Mode.IsNull() && !plan.Mode.IsUnknown() {
 		v := plan.Mode.ValueString()
@@ -338,7 +339,7 @@ func (r *UPSConfigResource) buildUpdateRequest(plan *UPSConfigResourceModel) *cl
 	return updateReq
 }
 
-func (r *UPSConfigResource) mapResponseToModel(config *client.UPSConfig, model *UPSConfigResourceModel) {
+func (r *UPSConfigResource) mapResponseToModel(config *truenas.UPSConfig, model *UPSConfigResourceModel) {
 	model.ID = types.StringValue("1")
 	model.Mode = types.StringValue(config.Mode)
 	model.Identifier = types.StringValue(config.Identifier)

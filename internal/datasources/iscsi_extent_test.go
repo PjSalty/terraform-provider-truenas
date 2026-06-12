@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewISCSIExtentDataSource(t *testing.T) {
@@ -28,22 +28,17 @@ func TestISCSIExtentDataSource_Schema(t *testing.T) {
 }
 
 func TestISCSIExtentDataSource_Read_Success(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/iscsi/extent/id/4" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, client.ISCSIExtent{
-			ID:        4,
-			Name:      "ext1",
-			Type:      "DISK",
-			Disk:      json.RawMessage(`"zvol/tank/vol1"`),
-			Filesize:  json.RawMessage(`0`),
-			Blocksize: 512,
-			RPM:       "SSD",
-			Enabled:   true,
-			Comment:   "prod",
-			ReadOnly:  false,
-		})
+	c := newWSServer(t, wsReturn(truenas.ISCSIExtent{
+		ID:        4,
+		Name:      "ext1",
+		Type:      "DISK",
+		Disk:      json.RawMessage(`"zvol/tank/vol1"`),
+		Filesize:  json.RawMessage(`0`),
+		Blocksize: 512,
+		RPM:       "SSD",
+		Enabled:   true,
+		Comment:   "prod",
+		ReadOnly:  false,
 	}))
 
 	ds := NewISCSIExtentDataSource().(*ISCSIExtentDataSource)
@@ -70,6 +65,7 @@ func TestISCSIExtentDataSource_Read_Success(t *testing.T) {
 }
 
 func TestISCSIExtentDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))

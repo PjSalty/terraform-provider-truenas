@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccSystemDatasetResource_basic verifies that the singleton
@@ -25,6 +26,11 @@ resource "truenas_systemdataset" "test" {
   pool = "test"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_systemdataset.test", "id", "systemdataset"),
 					resource.TestCheckResourceAttr("truenas_systemdataset.test", "pool", "test"),

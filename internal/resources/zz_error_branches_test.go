@@ -73,6 +73,7 @@ func badRequestHandler() http.HandlerFunc {
 // TestCRUD_400_AllResources drives all resources through a 400 server
 // to exercise generic-error branches (non-NotFound error paths).
 func TestCRUD_400_AllResources(t *testing.T) {
+	skipWSCutover(t)
 	c, srv := newTestServerClient(t, badRequestHandler())
 	defer srv.Close()
 	resources := []resource.Resource{
@@ -181,6 +182,7 @@ func crud404(t *testing.T, r resource.Resource, id string) {
 // TestCRUD_404_AllResources drives all resources through a 404 server
 // to exercise NotFound and generic-error branches in Read/Delete.
 func TestCRUD_404_AllResources(t *testing.T) {
+	skipWSCutover(t)
 	c, srv := newTestServerClient(t, notFoundHandler())
 	defer srv.Close()
 	// Wire c into every resource; per-resource field is `client`.

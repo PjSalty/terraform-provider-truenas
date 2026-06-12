@@ -2,11 +2,11 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"strings"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewDirectoryServicesDataSource(t *testing.T) {
@@ -33,23 +33,21 @@ func TestDirectoryServicesDataSource_Schema(t *testing.T) {
 func TestDirectoryServicesDataSource_Read_Enabled(t *testing.T) {
 	svcType := "ACTIVEDIRECTORY"
 	realm := "EXAMPLE.COM"
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.DirectoryServicesConfig{
-			ID:                 1,
-			ServiceType:        &svcType,
-			Enable:             true,
-			EnableAccountCache: true,
-			EnableDNSUpdates:   false,
-			Timeout:            30,
-			KerberosRealm:      &realm,
-			Credential: map[string]interface{}{
-				"type": "KERBEROS_USER",
-				"user": "admin",
-			},
-			Configuration: map[string]interface{}{
-				"domain": "example.com",
-			},
-		})
+	c := newWSServer(t, wsReturn(truenas.DirectoryServicesConfig{
+		ID:                 1,
+		ServiceType:        &svcType,
+		Enable:             true,
+		EnableAccountCache: true,
+		EnableDNSUpdates:   false,
+		Timeout:            30,
+		KerberosRealm:      &realm,
+		Credential: map[string]interface{}{
+			"type": "KERBEROS_USER",
+			"user": "admin",
+		},
+		Configuration: map[string]interface{}{
+			"domain": "example.com",
+		},
 	}))
 
 	ds := NewDirectoryServicesDataSource().(*DirectoryServicesDataSource)
@@ -85,11 +83,9 @@ func TestDirectoryServicesDataSource_Read_Enabled(t *testing.T) {
 
 func TestDirectoryServicesDataSource_Read_Disabled(t *testing.T) {
 	// No service type, no credential — should produce null strings.
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.DirectoryServicesConfig{
-			ID:     1,
-			Enable: false,
-		})
+	c := newWSServer(t, wsReturn(truenas.DirectoryServicesConfig{
+		ID:     1,
+		Enable: false,
 	}))
 
 	ds := NewDirectoryServicesDataSource().(*DirectoryServicesDataSource)
@@ -112,9 +108,7 @@ func TestDirectoryServicesDataSource_Read_Disabled(t *testing.T) {
 }
 
 func TestDirectoryServicesDataSource_Read_ServerError(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewDirectoryServicesDataSource().(*DirectoryServicesDataSource)
 	ds.client = c

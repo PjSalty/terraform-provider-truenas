@@ -23,8 +23,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -35,7 +36,7 @@ var (
 
 // ISCSITargetResource manages an iSCSI target.
 type ISCSITargetResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // ISCSITargetResourceModel describes the resource data model.
@@ -164,11 +165,11 @@ func (r *ISCSITargetResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -185,7 +186,7 @@ func (r *ISCSITargetResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createReq := &client.ISCSITargetCreateRequest{
+	createReq := &truenas.ISCSITargetCreateRequest{
 		Name: plan.Name.ValueString(),
 		Mode: plan.Mode.ValueString(),
 	}
@@ -198,7 +199,7 @@ func (r *ISCSITargetResource) Create(ctx context.Context, req resource.CreateReq
 		var groups []ISCSITargetGroupModel
 		resp.Diagnostics.Append(plan.Groups.ElementsAs(ctx, &groups, false)...)
 		for _, g := range groups {
-			createReq.Groups = append(createReq.Groups, client.ISCSITargetGroup{
+			createReq.Groups = append(createReq.Groups, truenas.ISCSITargetGroup{
 				Portal:     int(g.Portal.ValueInt64()),
 				Initiator:  int(g.Initiator.ValueInt64()),
 				AuthMethod: g.AuthMethod.ValueString(),
@@ -243,7 +244,7 @@ func (r *ISCSITargetResource) Read(ctx context.Context, req resource.ReadRequest
 
 	target, err := r.client.GetISCSITarget(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -284,7 +285,7 @@ func (r *ISCSITargetResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	updateReq := &client.ISCSITargetUpdateRequest{
+	updateReq := &truenas.ISCSITargetUpdateRequest{
 		Name: plan.Name.ValueString(),
 		Mode: plan.Mode.ValueString(),
 	}
@@ -297,7 +298,7 @@ func (r *ISCSITargetResource) Update(ctx context.Context, req resource.UpdateReq
 		var groups []ISCSITargetGroupModel
 		resp.Diagnostics.Append(plan.Groups.ElementsAs(ctx, &groups, false)...)
 		for _, g := range groups {
-			updateReq.Groups = append(updateReq.Groups, client.ISCSITargetGroup{
+			updateReq.Groups = append(updateReq.Groups, truenas.ISCSITargetGroup{
 				Portal:     int(g.Portal.ValueInt64()),
 				Initiator:  int(g.Initiator.ValueInt64()),
 				AuthMethod: g.AuthMethod.ValueString(),
@@ -342,7 +343,7 @@ func (r *ISCSITargetResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err = r.client.DeleteISCSITarget(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "iSCSI target already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -401,7 +402,7 @@ func (r *ISCSITargetResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ISCSITargetResource) mapResponseToModel(_ context.Context, target *client.ISCSITarget, model *ISCSITargetResourceModel) {
+func (r *ISCSITargetResource) mapResponseToModel(_ context.Context, target *truenas.ISCSITarget, model *ISCSITargetResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(target.ID))
 	model.Name = types.StringValue(target.Name)
 	model.Alias = types.StringValue(target.Alias)

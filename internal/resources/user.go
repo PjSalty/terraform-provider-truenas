@@ -25,8 +25,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -37,7 +38,7 @@ var (
 
 // UserResource manages a TrueNAS local user.
 type UserResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // UserResourceModel describes the resource data model.
@@ -206,11 +207,11 @@ func (r *UserResource) Configure(_ context.Context, req resource.ConfigureReques
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -227,7 +228,7 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	createReq := &client.UserCreateRequest{
+	createReq := &truenas.UserCreateRequest{
 		Username:    plan.Username.ValueString(),
 		FullName:    plan.FullName.ValueString(),
 		Password:    plan.Password.ValueString(),
@@ -310,7 +311,7 @@ func (r *UserResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 
 	user, err := r.client.GetUser(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -354,7 +355,7 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	locked := plan.Locked.ValueBool()
 	smb := plan.SMB.ValueBool()
 
-	updateReq := &client.UserUpdateRequest{
+	updateReq := &truenas.UserUpdateRequest{
 		FullName: plan.FullName.ValueString(),
 		Locked:   &locked,
 		SMB:      &smb,
@@ -431,7 +432,7 @@ func (r *UserResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 
 	err = r.client.DeleteUser(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "User already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -461,7 +462,7 @@ func (r *UserResource) ImportState(ctx context.Context, req resource.ImportState
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("password"), types.StringValue(""))...)
 }
 
-func (r *UserResource) mapResponseToModel(_ context.Context, user *client.User, model *UserResourceModel) {
+func (r *UserResource) mapResponseToModel(_ context.Context, user *truenas.User, model *UserResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(user.ID))
 	model.UID = types.Int64Value(int64(user.UID))
 	model.Username = types.StringValue(user.Username)

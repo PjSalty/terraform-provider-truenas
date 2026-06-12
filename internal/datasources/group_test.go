@@ -2,12 +2,12 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestGroupDataSource_Schema(t *testing.T) {
@@ -22,18 +22,16 @@ func TestGroupDataSource_Schema(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_Success(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Group{
-			{ID: 1, GID: 100, Name: "wheel", Builtin: true, SMB: false},
-			{
-				ID:           42,
-				GID:          2000,
-				Name:         "admins",
-				Builtin:      false,
-				SMB:          true,
-				SudoCommands: []string{"/bin/ls", "/usr/bin/apt"},
-			},
-		})
+	c := newWSServer(t, wsReturn([]truenas.Group{
+		{ID: 1, GID: 100, Name: "wheel", Builtin: true, SMB: false},
+		{
+			ID:           42,
+			GID:          2000,
+			Name:         "admins",
+			Builtin:      false,
+			SMB:          true,
+			SudoCommands: []string{"/bin/ls", "/usr/bin/apt"},
+		},
 	}))
 
 	ds := NewGroupDataSource().(*GroupDataSource)
@@ -62,9 +60,7 @@ func TestGroupDataSource_Read_Success(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_EmptySudo(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Group{{ID: 1, Name: "users", GID: 100}})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.Group{{ID: 1, Name: "users", GID: 100}}))
 
 	ds := NewGroupDataSource().(*GroupDataSource)
 	ds.client = c
@@ -82,9 +78,7 @@ func TestGroupDataSource_Read_EmptySudo(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_NotFound(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.Group{{ID: 1, Name: "other"}})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.Group{{ID: 1, Name: "other"}}))
 
 	ds := NewGroupDataSource().(*GroupDataSource)
 	ds.client = c
@@ -97,9 +91,7 @@ func TestGroupDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_ListError(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewGroupDataSource().(*GroupDataSource)
 	ds.client = c

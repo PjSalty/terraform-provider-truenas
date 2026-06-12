@@ -35,6 +35,11 @@ resource "truenas_cloudsync_credential" "test" {
   })
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_cloudsync_credential.test", "name", name),
 					resource.TestCheckResourceAttr("truenas_cloudsync_credential.test", "provider_type", "S3"),

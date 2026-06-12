@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // providerConfigValues is a convenience map of the provider attributes.
@@ -121,6 +121,13 @@ func TestProvider_Resources(t *testing.T) {
 // TestProvider_Configure_FromConfig supplies url/api_key/insecure_skip_verify
 // via the provider config and expects a successful client creation.
 func TestProvider_Configure_FromConfig(t *testing.T) {
+	// Stub newClientFn so Configure doesn't try to dial the live URL.
+	// We're testing the config-parsing path, not the dial.
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	// Clear env so config values are authoritative.
 	t.Setenv("TRUENAS_URL", "")
 	t.Setenv("TRUENAS_API_KEY", "")
@@ -141,8 +148,8 @@ func TestProvider_Configure_FromConfig(t *testing.T) {
 	if resp.DataSourceData == nil || resp.ResourceData == nil {
 		t.Error("Configure did not set DataSourceData/ResourceData")
 	}
-	if _, ok := resp.DataSourceData.(*client.Client); !ok {
-		t.Errorf("DataSourceData is not *client.Client, got %T", resp.DataSourceData)
+	if _, ok := resp.DataSourceData.(*wsclient.Client); !ok {
+		t.Errorf("DataSourceData is not *wsclient.Client, got %T", resp.DataSourceData)
 	}
 }
 
@@ -150,6 +157,11 @@ func TestProvider_Configure_FromConfig(t *testing.T) {
 // via environment variables, also covering the TRUENAS_INSECURE_SKIP_VERIFY
 // env parse branch.
 func TestProvider_Configure_FromEnv(t *testing.T) {
+	original := newClientFn
+	t.Cleanup(func() { newClientFn = original })
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+		return &wsclient.Client{}, nil
+	}
 	t.Setenv("TRUENAS_URL", "https://env.example.com")
 	t.Setenv("TRUENAS_API_KEY", "env-key")
 	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
@@ -254,7 +266,7 @@ func TestProvider_Configure_ClientError(t *testing.T) {
 
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(baseURL, apiKey string, insecure bool) (*client.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
 		return nil, fmt.Errorf("forced client failure")
 	}
 
@@ -273,4 +285,12 @@ func TestProvider_Configure_ClientError(t *testing.T) {
 	if resp.DataSourceData != nil {
 		t.Error("DataSourceData should not be set when client creation fails")
 	}
+}
+
+// skipWSCutover skips provider unit tests that historically mocked the
+// REST transport via httptest. See internal/resources/crud_unit_test.go
+// for the full rationale.
+func skipWSCutover(t *testing.T) {
+	t.Helper()
+	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go")
 }

@@ -2,10 +2,10 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewVMsDataSource(t *testing.T) {
@@ -23,11 +23,9 @@ func TestVMsDataSource_Schema(t *testing.T) {
 }
 
 func TestVMsDataSource_Read_Multiple(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.VM{
-			{ID: 1, Name: "vm-a", Memory: 1024, Vcpus: 1, Cores: 2, Status: &client.VMStatus{State: "RUNNING"}},
-			{ID: 2, Name: "vm-b", Memory: 2048, Vcpus: 2, Cores: 4},
-		})
+	c := newWSServer(t, wsReturn([]truenas.VM{
+		{ID: 1, Name: "vm-a", Memory: 1024, Vcpus: 1, Cores: 2, Status: &truenas.VMStatus{State: "RUNNING"}},
+		{ID: 2, Name: "vm-b", Memory: 2048, Vcpus: 2, Cores: 4},
 	}))
 
 	ds := NewVMsDataSource().(*VMsDataSource)
@@ -47,9 +45,7 @@ func TestVMsDataSource_Read_Multiple(t *testing.T) {
 }
 
 func TestVMsDataSource_Read_Empty(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.VM{})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.VM{}))
 
 	ds := NewVMsDataSource().(*VMsDataSource)
 	ds.client = c
@@ -67,9 +63,7 @@ func TestVMsDataSource_Read_Empty(t *testing.T) {
 }
 
 func TestVMsDataSource_Read_ServerError(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewVMsDataSource().(*VMsDataSource)
 	ds.client = c

@@ -23,8 +23,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -35,7 +36,7 @@ var (
 
 // VMResource manages a TrueNAS SCALE virtual machine.
 type VMResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // VMResourceModel describes the resource data model.
@@ -324,11 +325,11 @@ func (r *VMResource) Configure(_ context.Context, req resource.ConfigureRequest,
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -337,8 +338,8 @@ func (r *VMResource) Configure(_ context.Context, req resource.ConfigureRequest,
 
 // buildCreateRequest assembles a VMCreateRequest from the plan model. Optional fields
 // that are unknown/null are omitted so the API applies its own defaults.
-func buildVMCreateRequest(plan *VMResourceModel) *client.VMCreateRequest {
-	req := &client.VMCreateRequest{
+func buildVMCreateRequest(plan *VMResourceModel) *truenas.VMCreateRequest {
+	req := &truenas.VMCreateRequest{
 		Name:   plan.Name.ValueString(),
 		Memory: plan.Memory.ValueInt64(),
 	}
@@ -401,8 +402,8 @@ func buildVMCreateRequest(plan *VMResourceModel) *client.VMCreateRequest {
 	return req
 }
 
-func buildVMUpdateRequest(plan *VMResourceModel) *client.VMUpdateRequest {
-	req := &client.VMUpdateRequest{}
+func buildVMUpdateRequest(plan *VMResourceModel) *truenas.VMUpdateRequest {
+	req := &truenas.VMUpdateRequest{}
 
 	name := plan.Name.ValueString()
 	req.Name = &name
@@ -514,7 +515,7 @@ func (r *VMResource) Read(ctx context.Context, req resource.ReadRequest, resp *r
 
 	vm, err := r.client.GetVM(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -589,9 +590,9 @@ func (r *VMResource) Delete(ctx context.Context, req resource.DeleteRequest, res
 
 	// Force stop a running VM but leave any attached zvols in place; those have
 	// their own lifecycle managed by truenas_zvol.
-	err = r.client.DeleteVM(ctx, id, &client.VMDeleteOptions{Force: true, Zvols: false})
+	err = r.client.DeleteVM(ctx, id, &truenas.VMDeleteOptions{Force: true, Zvols: false})
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "VM already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -662,7 +663,7 @@ func (r *VMResource) ImportState(ctx context.Context, req resource.ImportStateRe
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *VMResource) mapResponseToModel(vm *client.VM, model *VMResourceModel) {
+func (r *VMResource) mapResponseToModel(vm *truenas.VM, model *VMResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(vm.ID))
 	model.Name = types.StringValue(vm.Name)
 	model.Description = types.StringValue(vm.Description)

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -46,6 +47,14 @@ resource "truenas_iscsi_extent" "test" {
   disk = "zvol/test/${truenas_zvol.backing.name}"
 }
 `, extentName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_iscsi_extent.test", plancheck.ResourceActionCreate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_iscsi_extent.test", "name", extentName),
 					resource.TestCheckResourceAttr("truenas_iscsi_extent.test", "type", "DISK"),
@@ -101,6 +110,11 @@ resource "truenas_iscsi_extent" "test" {
   readonly = true
 }
 `, extentName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_iscsi_extent.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_iscsi_extent.test", "comment", "updated"),
 					resource.TestCheckResourceAttr("truenas_iscsi_extent.test", "enabled", "false"),
