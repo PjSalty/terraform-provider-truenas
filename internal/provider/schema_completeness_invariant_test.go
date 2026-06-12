@@ -9,7 +9,7 @@ import (
 )
 
 // attributeBlockWithTypeRE is a richer form of attributeBlockRE (which
-// captures only name + body) — adds a middle capture group for the
+// captures only name + body), adds a middle capture group for the
 // Attribute go-type so the schema-completeness tests can distinguish
 // BoolAttribute from StringAttribute when applying exemption rules.
 var attributeBlockWithTypeRE = regexp.MustCompile(`(?m)^\s*"([a-z][a-z0-9_]*)":\s*schema\.(\w+Attribute)\{((?:[^{}]|\{[^{}]*\})*?)\}`)
@@ -21,11 +21,11 @@ var attributeBlockWithTypeRE = regexp.MustCompile(`(?m)^\s*"([a-z][a-z0-9_]*)":\
 // undescribed attribute on the next PR.
 //
 // The right fix for every entry below is to add a Description.
-// Tracked as v2.x polish — backlog item per resource.
+// Tracked as v2.x polish, backlog item per resource.
 //
 // Key format: "<resources|datasources>/<file>::<attribute>"
 var allowedAttributesWithoutDescription = map[string]string{
-	// id attributes — boilerplate "Identifier" description would
+	// id attributes, boilerplate "Identifier" description would
 	// add value to registry docs; add when touching each file.
 	"resources/alertclasses.go::id":            "polish-backlog: id attr lacks Description",
 	"resources/cloud_backup.go::id":            "polish-backlog: id attr lacks Description",
@@ -35,7 +35,7 @@ var allowedAttributesWithoutDescription = map[string]string{
 	"resources/kmip_config.go::id":             "polish-backlog: id attr lacks Description",
 	"resources/reporting_exporter.go::id":      "polish-backlog: id attr lacks Description",
 
-	// cronjob — composite schedule fields and CRUD-flag fields lack
+	// cronjob, composite schedule fields and CRUD-flag fields lack
 	// descriptions across the board. Bulk-add when next touching the
 	// file.
 	"resources/cronjob.go::command":         "polish-backlog: cronjob attr lacks Description",
@@ -50,7 +50,7 @@ var allowedAttributesWithoutDescription = map[string]string{
 	"resources/cronjob.go::stdout":          "polish-backlog: cronjob attr lacks Description",
 	"resources/cronjob.go::user":            "polish-backlog: cronjob attr lacks Description",
 
-	// cloud_backup — schedule_* fields share the cronjob pattern;
+	// cloud_backup, schedule_* fields share the cronjob pattern;
 	// add descriptions when next touching the file.
 	"resources/cloud_backup.go::schedule_dom":    "polish-backlog: cloud_backup schedule_* lacks Description",
 	"resources/cloud_backup.go::schedule_dow":    "polish-backlog: cloud_backup schedule_* lacks Description",
@@ -67,7 +67,7 @@ var allowedAttributesWithoutDescription = map[string]string{
 //
 //   - The generated registry docs are built from the Description
 //     string. A missing Description produces a blank cell in the
-//     attribute table — looks broken to a user evaluating the
+//     attribute table, looks broken to a user evaluating the
 //     provider.
 //   - `terraform plan` surfaces Description in the attribute
 //     diff header. A missing description means the operator has
@@ -103,7 +103,7 @@ func TestSchemaCompleteness_EveryAttributeHasDescription(t *testing.T) {
 			typ := string(m[2])
 			body := string(m[3])
 			// "Description:" must appear in the block body. The string
-			// contents themselves are not inspected — empty descriptions
+			// contents themselves are not inspected, empty descriptions
 			// are checked separately by a registry lint we don't
 			// duplicate here.
 			if strings.Contains(body, "Description:") || strings.Contains(body, "MarkdownDescription:") {
@@ -130,8 +130,8 @@ func TestSchemaCompleteness_EveryAttributeHasDescription(t *testing.T) {
 			b.WriteString(")\n")
 		}
 		b.WriteString("\nEvery public attribute must carry a Description so the registry docs and\n")
-		b.WriteString("`terraform plan` output explain the field. Add a description, or — if the\n")
-		b.WriteString("attribute is legitimately internal — add an entry to\n")
+		b.WriteString("`terraform plan` output explain the field. Add a description, or, if the\n")
+		b.WriteString("attribute is legitimately internal, add an entry to\n")
 		b.WriteString("allowedAttributesWithoutDescription with a one-line rationale.\n")
 		t.Error(b.String())
 	}
@@ -242,7 +242,7 @@ func TestSchemaCompleteness_RequiredAttributesHaveValidators(t *testing.T) {
 // of them is to add at least a stringvalidator.LengthAtLeast(1).
 // Tracked as v2.x polish.
 var allowedRequiredAttributesWithoutValidator = map[string]string{
-	// data sources — server-side 404 is the source of truth for
+	// data sources, server-side 404 is the source of truth for
 	// "this lookup key doesn't exist"; client-side length check
 	// would only catch the empty-string typo class.
 	"datasources/alert_service.go::id":       "ds-lookup: server-side 404 is source of truth",
@@ -268,7 +268,7 @@ var allowedRequiredAttributesWithoutValidator = map[string]string{
 	"datasources/user.go::username":          "ds-lookup: server-side 404 is source of truth",
 	"datasources/vm.go::id":                  "ds-lookup: server-side 404 is source of truth",
 
-	// JSON-blob attributes — content validation is server-
+	// JSON-blob attributes, content validation is server-
 	// authoritative and version-dependent; a client-side validator
 	// would either be a re-implementation of TrueNAS schemas or a
 	// shallow length check.

@@ -13,7 +13,7 @@ import (
 // `pool.dataset.compression_choices` on a 25.10.0 instance.
 //
 // Three notes:
-//  1. "ON" is a valid value — it means "use the pool default", which
+//  1. "ON" is a valid value, it means "use the pool default", which
 //     TrueNAS normalises in the response. Earlier provider versions
 //     omitted it and silently rejected configs using it.
 //  2. The full ZSTD-N ladder runs 1–19, not just the GZIP-style 1–9.

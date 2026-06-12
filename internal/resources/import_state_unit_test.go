@@ -30,7 +30,7 @@ func newPrimedState(ctx context.Context, r resource.Resource) (tfsdk.State, erro
 	return tfsdk.State{Raw: raw, Schema: schema}, nil
 }
 
-// TestDatasetResource_ImportState drives the passthrough import path — it
+// TestDatasetResource_ImportState drives the passthrough import path, it
 // sets the id attribute based on the incoming request.
 func TestDatasetResource_ImportState(t *testing.T) {
 	ctx := context.Background()

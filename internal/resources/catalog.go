@@ -30,7 +30,7 @@ var (
 
 // CatalogResource manages the TrueNAS SCALE application catalog.
 //
-// In TrueNAS SCALE 25.04+ the catalog is a singleton — there is exactly one
+// In TrueNAS SCALE 25.04+ the catalog is a singleton, there is exactly one
 // catalog (label "TRUENAS") and only `preferred_trains` is user-tunable via
 // the REST API. This resource therefore behaves like the `ssh_config`
 // singleton: Create/Update/Read all hit PUT/GET /catalog, and Delete resets
@@ -60,7 +60,7 @@ func (r *CatalogResource) Metadata(_ context.Context, req resource.MetadataReque
 func (r *CatalogResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages the TrueNAS SCALE application catalog. This is a singleton " +
-			"resource in SCALE 25.04+ — only `preferred_trains` is user-tunable. " +
+			"resource in SCALE 25.04+, only `preferred_trains` is user-tunable. " +
 			"Optionally triggers a catalog sync on create.",
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{
@@ -231,7 +231,7 @@ func (r *CatalogResource) Update(ctx context.Context, req resource.UpdateRequest
 func (r *CatalogResource) Delete(ctx context.Context, _ resource.DeleteRequest, resp *resource.DeleteResponse) {
 	tflog.Trace(ctx, "Delete Catalog start")
 
-	// Singleton — cannot be deleted. Reset preferred_trains to the SCALE
+	// Singleton, cannot be deleted. Reset preferred_trains to the SCALE
 	// default ["stable"] so the catalog is in a known state for the next
 	// apply.
 	tflog.Debug(ctx, "Resetting TrueNAS catalog preferred_trains to default on delete")

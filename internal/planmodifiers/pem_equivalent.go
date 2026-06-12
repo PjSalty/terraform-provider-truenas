@@ -12,9 +12,9 @@ import (
 
 // pemEquivalent implements planmodifier.String for attributes that carry
 // PEM-encoded certificate or key material. When the plan and state values
-// decode to the same PEM blocks — ignoring line endings, trailing
+// decode to the same PEM blocks, ignoring line endings, trailing
 // whitespace, and re-encoding differences the server may introduce on
-// read-back — it rewrites the plan value back to the state value so
+// read-back, it rewrites the plan value back to the state value so
 // Terraform does not report a spurious change.
 //
 // TrueNAS SCALE normalizes the PEM it receives (CRLF → LF, chain
@@ -61,14 +61,14 @@ func (m pemEquivalent) PlanModifyString(ctx context.Context, req planmodifier.St
 
 	planCanon, ok := canonicalizePEM(plan)
 	if !ok {
-		return // not parseable PEM — let the diff stand
+		return // not parseable PEM, let the diff stand
 	}
 	stateCanon, ok := canonicalizePEM(state)
 	if !ok {
 		return
 	}
 	if planCanon == stateCanon {
-		// Plan matches state semantically — preserve state so the framework
+		// Plan matches state semantically, preserve state so the framework
 		// doesn't report a change and downstream RequiresReplace does not
 		// trigger on cosmetic normalization. This is the interesting
 		// positive case so emit a trace breadcrumb for operator visibility.

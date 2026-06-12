@@ -12,7 +12,7 @@
 //     secret_access_key = "Y" })`.
 //   - On read we filter the server response back down to the keys the user
 //     originally specified (via filterJSONByKeys) so server-side defaults
-//     don't cause phantom drift — same pattern as cloud_backup.go.
+//     don't cause phantom drift, same pattern as cloud_backup.go.
 package resources
 
 import (

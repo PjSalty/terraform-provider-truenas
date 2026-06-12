@@ -13,7 +13,7 @@ import (
 // observe ErrConnectionLost do not redial the server in parallel. The
 // first holder runs the dial+auth handshake; subsequent holders see
 // the conn already healthy on entry and return.
-var reconnectMu sync.Mutex // package-level — Client field would be one mutex per Client instance, fine
+var reconnectMu sync.Mutex // package-level, Client field would be one mutex per Client instance, fine
 
 // reconnectIfNeeded checks whether c.conn is alive and, if not,
 // performs a single redial+auth sequence. Returns nil when the conn
@@ -23,7 +23,7 @@ var reconnectMu sync.Mutex // package-level — Client field would be one mutex 
 // Designed for use from Call() retry loops: an idempotent call that
 // hits ErrConnectionLost can wrap reconnectIfNeeded around its retry
 // to bring the conn back before re-issuing the request. Non-idempotent
-// callers MUST NOT use this — replaying a non-idempotent call after
+// callers MUST NOT use this, replaying a non-idempotent call after
 // reconnect could double-execute the operation server-side.
 //
 // reconnectIfNeeded blocks for at most c.dialTimeout. If the redial
@@ -65,7 +65,7 @@ func (c *Client) reconnectIfNeeded(ctx context.Context) error {
 
 	deadline := time.Now().Add(c.dialTimeout)
 	for attempt := 0; ; attempt++ {
-		// Drop any pending callers — their replies were going to a
+		// Drop any pending callers, their replies were going to a
 		// dead conn and will never arrive. Idempotent retriers will
 		// re-issue against the fresh conn after this returns.
 		c.failPending(ErrConnectionLost)

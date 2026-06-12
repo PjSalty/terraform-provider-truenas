@@ -46,7 +46,7 @@ Runs the full six-stage pipeline:
 | 6 | Live acceptance suite (TF_ACC=1) | ~30-90m | Wire-format drift, real resource lifecycle bugs |
 
 Each stage exits non-zero on failure with a clear message, so you see
-the actual fault — not a cascade of downstream errors.
+the actual fault, not a cascade of downstream errors.
 
 The acceptance stage streams to stdout AND saves to
 `acc-YYYYMMDD-HHMMSS.log` so you can grep through a failed run after
@@ -91,14 +91,14 @@ it at a production TrueNAS by accident would orphan acc-test
 fixtures at best and destroy real data at worst. The runner enforces
 a denylist at three layers so a typo cannot get you there:
 
-1. **`.envrc.example`** — `TRUENAS_URL` defaults to an empty string,
+1. **`.envrc.example`**, `TRUENAS_URL` defaults to an empty string,
    not the production hostname. You have to consciously set it to
    your test instance.
-2. **`scripts/lib/_env.sh`** — `acc_assert_not_prod` runs as part of
+2. **`scripts/lib/_env.sh`**, `acc_assert_not_prod` runs as part of
    the env-load phase. If `TRUENAS_URL`'s hostname is in
    `TRUENAS_PROD_DENY` (default: the homelab prod TrueNAS), the
    pipeline refuses to start.
-3. **`internal/acctest/acctest.Client()`** — same check, in Go. Any
+3. **`internal/acctest/acctest.Client()`**, same check, in Go. Any
    `_disappears` helper that goes through the framework hits this
    before constructing a real client, so even running `go test`
    directly without the shell runner cannot bypass the guard.
@@ -129,8 +129,8 @@ test TrueNAS that has a populated env file:
 | Env file | Version under test |
 | --- | --- |
 | `.envrc.local` | primary (currently SCALE 25.10) |
-| `.envrc.local-25-04` | SCALE 25.04 — the v2.0 minimum |
-| `.envrc.local-26-beta` | 26.0 BETA — forward compatibility |
+| `.envrc.local-25-04` | SCALE 25.04, the v2.0 minimum |
+| `.envrc.local-26-beta` | 26.0 BETA, forward compatibility |
 
 Each leg exports `ACC_ENV_FILE` so `acc.sh`'s env loader sources the
 right file (without it, `.envrc.local` would clobber the leg's
@@ -147,7 +147,7 @@ scriptable:
    then `qm start <id>`).
 2. Find the installer's DHCP address. Probe port 80: the 25.10+/26
    installer serves an HTML page (HTTP 200) and the WS API at `/ws`;
-   the 25.04 installer has no nginx — the WS API is at `/` and a plain
+   the 25.04 installer has no nginx, the WS API is at `/` and a plain
    GET returns 405.
 3. Drive the API: `is_adopted` → `adopt` (save the key) →
    `list_disks` → `install` with

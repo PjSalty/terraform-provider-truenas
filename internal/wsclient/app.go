@@ -18,7 +18,7 @@ import (
 // (image pull + helm install + persistent-volume provisioning can run
 // for many seconds). CallJob waits for terminal state. After job
 // completion, this client refetches the app via app.get_instance to
-// return up-to-date placement data (state, version, metadata) — the
+// return up-to-date placement data (state, version, metadata), the
 // job's `result` field is not contractually guaranteed to contain the
 // final shape across SCALE point releases.
 const appPollInterval = 1 * time.Second
@@ -66,7 +66,7 @@ func (c *Client) GetApp(ctx context.Context, id string) (*types.App, error) {
 
 // CreateApp installs a new app. The underlying app.create RPC is a
 // job (image pull + helm install). After CallJob returns, this method
-// fetches the placed app via app.get_instance — the job's result
+// fetches the placed app via app.get_instance, the job's result
 // shape is not stable across SCALE releases, so refetching keeps the
 // returned struct schema-true regardless of server version.
 func (c *Client) CreateApp(ctx context.Context, req *types.AppCreateRequest) (*types.App, error) {
@@ -85,7 +85,7 @@ func (c *Client) CreateApp(ctx context.Context, req *types.AppCreateRequest) (*t
 }
 
 // UpdateApp updates an existing app. Same job-and-refetch pattern as
-// CreateApp — the helm upgrade runs server-side.
+// CreateApp, the helm upgrade runs server-side.
 func (c *Client) UpdateApp(ctx context.Context, id string, req *types.AppUpdateRequest) (*types.App, error) {
 	tflog.Trace(ctx, "UpdateApp (ws) start")
 

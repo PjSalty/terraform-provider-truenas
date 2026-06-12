@@ -7,7 +7,7 @@ import (
 )
 
 // iscsiGroupObjType is the tftypes.Object for a single target group entry
-// — it must match the schema order so the framework accepts the raw value.
+// , it must match the schema order so the framework accepts the raw value.
 func iscsiGroupObjType() tftypes.Object {
 	return tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{

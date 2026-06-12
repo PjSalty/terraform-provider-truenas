@@ -103,7 +103,7 @@ func TestCronJob_UpgradeState_NoOp(t *testing.T) {
 
 // TestCronJob_UpgradeState_GetError exercises the early-return branch when
 // req.State.Get into the prior model fails. We build a bogus prior schema
-// whose `id` attribute is a Bool — the framework reflection into
+// whose `id` attribute is a Bool, the framework reflection into
 // CronJobResourceModel (where ID is types.String) fails with a type error,
 // which is exactly the condition the StateUpgrader guards against.
 func TestCronJob_UpgradeState_GetError(t *testing.T) {

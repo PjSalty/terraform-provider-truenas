@@ -14,7 +14,7 @@ import (
 
 // JSON-RPC 2.0 standard error codes. The TrueNAS server adds two
 // implementation-specific codes documented at
-// https://api.truenas.com/v25.04/jsonrpc.html — we recognize both.
+// https://api.truenas.com/v25.04/jsonrpc.html, we recognize both.
 const (
 	// CodeParseError is the JSON-RPC standard "Invalid JSON received"
 	// code. We never expect to see this since we control the request
@@ -84,7 +84,7 @@ func (e *RPCError) Error() string {
 	// "bad value for password: 's3cret'"). `Message` is the static
 	// server-controlled label ("Method call error", "cloud sync
 	// credential 'foo' not found") and is left intact so legitimate
-	// diagnostics still read cleanly — running it through the
+	// diagnostics still read cleanly, running it through the
 	// fragment matcher would strip phrases like "cloud sync
 	// credential" because they contain the substring "credential".
 	reason = redactMessage(reason)
@@ -102,7 +102,7 @@ func (e *RPCError) Error() string {
 
 // errnameAndReason pulls the `errname` and `reason` fields out of
 // e.Data when the server included them. Both default to "" on any
-// decode failure — the wrapping Error() call still returns a usable
+// decode failure, the wrapping Error() call still returns a usable
 // message even when the data shape is unexpected.
 func (e *RPCError) errnameAndReason() (errname, reason string) {
 	if len(e.Data) == 0 {
@@ -119,7 +119,7 @@ func (e *RPCError) errnameAndReason() (errname, reason string) {
 }
 
 // IsNotFound reports whether err signals "the resource does not exist
-// on the server" — the WebSocket equivalent of HTTP 404. Resources
+// on the server", the WebSocket equivalent of HTTP 404. Resources
 // call this from their Read path to drop a missing instance from
 // state instead of returning an error that would block the run.
 //
@@ -133,7 +133,7 @@ func (e *RPCError) errnameAndReason() (errname, reason string) {
 //
 //   - CodeMethodCallError (-32001) with errname ∈ {ENOENT, ValidationErrors}
 //     and the reason text mentioning "does not exist" / "not found" /
-//     "no such" — this is how TrueNAS typically signals a missing
+//     "no such", this is how TrueNAS typically signals a missing
 //     instance from a `*.get_instance` or `*.delete` call.
 //
 // IsNotFound is intentionally conservative: ambiguous server errors
@@ -148,7 +148,7 @@ func IsNotFound(err error) bool {
 		// Not an *RPCError in the chain. The CallJob failure path
 		// wraps job failures as plain fmt.Errorf("CallJob X failed:
 		// [ENOENT] ..."), so the inner shape is lost. Fall back to
-		// matching the wrapper text directly — conservative, gated
+		// matching the wrapper text directly, conservative, gated
 		// on the exact "CallJob " + "[ENOENT]" prefix combination.
 		msg := err.Error()
 		if strings.Contains(msg, "CallJob ") && strings.Contains(msg, "[ENOENT]") {
@@ -161,8 +161,8 @@ func IsNotFound(err error) bool {
 	}
 	// TrueNAS surfaces "this id doesn't exist" through multiple JSON-RPC
 	// error codes depending on the call shape:
-	//   -32001 CodeMethodCallError   — typical Get failure
-	//   -32602 CodeInvalidParams     — when middlewared validates the id
+	//   -32001 CodeMethodCallError  , typical Get failure
+	//   -32602 CodeInvalidParams    , when middlewared validates the id
 	//          parameter against an ID-existence check and reports back
 	//          via [ENOENT]. Example seen live on cronjob.get_instance:
 	//          "Invalid params: [ENOENT] None: CronJob 45 does not exist"
@@ -186,17 +186,17 @@ func IsNotFound(err error) bool {
 	}
 	// Text-scan fallbacks for the cases where errname isn't populated
 	// in Data but the Message itself carries the not-found signature.
-	// All conservative — gated on very specific markers so general
+	// All conservative, gated on very specific markers so general
 	// EINVAL / validation errors don't get swallowed.
 	msg := rpcErr.Message
 	msgLow := strings.ToLower(msg)
-	// 1. CodeInvalidParams + "[ENOENT]" — TrueNAS' validator surfaces
+	// 1. CodeInvalidParams + "[ENOENT]", TrueNAS' validator surfaces
 	//    a missing id through this prefix on cronjob.get_instance and
 	//    similar id-validated methods.
 	if rpcErr.Code == CodeInvalidParams && strings.Contains(msg, "[ENOENT]") {
 		return true
 	}
-	// 2. CodeMethodCallError + "MatchNotFound()" — TrueNAS' query.* and
+	// 2. CodeMethodCallError + "MatchNotFound()", TrueNAS' query.* and
 	//    *.get_instance paths surface a no-match-found result by raising
 	//    a MatchNotFound exception class whose name leaks into the
 	//    error's reason field (not the static Message label). Seen live
@@ -221,7 +221,7 @@ func IsNotFound(err error) bool {
 		return true
 	}
 	// 4. Catch-all for CodeMethodCallError where the message body
-	//    literally says "does not exist" — covers one-off TrueNAS
+	//    literally says "does not exist", covers one-off TrueNAS
 	//    exception classes (ValidationError raised with reason text
 	//    and no errname populated in Data).
 	if rpcErr.Code == CodeMethodCallError &&
@@ -236,7 +236,7 @@ func IsNotFound(err error) bool {
 // can errors.Is(err, ErrConnectionLost) and decide whether to retry.
 //
 // The transport layer surfaces this even when an auto-reconnect is
-// already in flight — callers with idempotent semantics opt back in
+// already in flight, callers with idempotent semantics opt back in
 // via the CallOptions.Idempotent flag, never by inspecting this
 // error directly.
 var ErrConnectionLost = errors.New("websocket connection lost")

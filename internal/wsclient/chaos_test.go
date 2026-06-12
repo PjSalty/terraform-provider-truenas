@@ -57,7 +57,7 @@ func TestChaos_JobPoll_ServerDropsMidPoll(t *testing.T) {
 					// chance to flush before we tear the conn
 					// down. Without this the client gets
 					// ErrConnectionLost on the IN-FLIGHT call,
-					// not on the NEXT call — which is a
+					// not on the NEXT call, which is a
 					// different code path we cover separately.
 					time.Sleep(50 * time.Millisecond)
 					tsRef.CloseConnection()

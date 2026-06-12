@@ -99,7 +99,7 @@ func (r *ISCSIExtentResource) Schema(ctx context.Context, _ resource.SchemaReque
 			},
 			"path": schema.StringAttribute{
 				Description: "The file path for FILE type extents. For DISK type " +
-					"extents, the API computes this from `disk` — leave unset.",
+					"extents, the API computes this from `disk`, leave unset.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -411,7 +411,7 @@ func (r *ISCSIExtentResource) ModifyPlan(ctx context.Context, req resource.Modif
 	}
 	extentType := config.Type.ValueString()
 
-	// Treat unknown as "value will appear at apply time" — the framework
+	// Treat unknown as "value will appear at apply time", the framework
 	// re-runs ModifyPlan after the dependency resolves. Without this
 	// carve-out a wired-from-sibling config (e.g.
 	// `path = truenas_dataset.x.mount_point`) fails plan with a spurious

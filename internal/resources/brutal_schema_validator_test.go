@@ -17,7 +17,7 @@ import (
 
 // brutalStringInputs is the battery of edge inputs every wired
 // string validator across every resource must survive without
-// panicking. Each entry exists for a specific bug class — see the
+// panicking. Each entry exists for a specific bug class, see the
 // inline comments. A panic in any validator on any input gets
 // caught here once, not 100 times across the per-resource test
 // files.
@@ -36,7 +36,7 @@ var brutalStringInputs = []string{
 	strings.Repeat("x", 64), // common min/max boundary
 	strings.Repeat("x", 256),
 	strings.Repeat("x", 1024),
-	strings.Repeat("x", 100_000), // very long — catches O(n^2) regex / strings.ToUpper edge cases
+	strings.Repeat("x", 100_000), // very long, catches O(n^2) regex / strings.ToUpper edge cases
 
 	// Whitespace classes
 	"\t",
@@ -46,7 +46,7 @@ var brutalStringInputs = []string{
 
 	// Control chars
 	"\x00",
-	"prefix\x00suffix",   // embedded NUL — bug class: strings.Contains based gating
+	"prefix\x00suffix",   // embedded NUL, bug class: strings.Contains based gating
 	"\x07",               // BEL
 	"\x1b[31mred\x1b[0m", // ANSI escape
 
@@ -54,7 +54,7 @@ var brutalStringInputs = []string{
 	"тест",   // Cyrillic
 	"测试",     // CJK
 	"🚀",      // Emoji
-	"é",     // combining acute on e — NFC vs NFD
+	"é",     // combining acute on e, NFC vs NFD
 	"\u200b", // zero-width space
 	"\u202e", // RTL override (security: phishing vectors)
 
@@ -176,7 +176,7 @@ func resourceTypeName(r resource.Resource) string {
 // TestBrutalSchema_AllWiredValidators iterates every resource in
 // the provider, introspects its schema, walks every attribute that
 // has validators wired, and fires the brutality battery through
-// each one. The test asserts no validator panics on any input —
+// each one. The test asserts no validator panics on any input -
 // regardless of whether it accepts or rejects the value.
 //
 // Why this is the highest-leverage test in the file: the framework
@@ -186,7 +186,7 @@ func resourceTypeName(r resource.Resource) string {
 // trace the operator can't act on. Catching the panic here means
 // the validator returns a clean diagnostic instead.
 //
-// The test is fast — pure in-memory schema walks, no client calls.
+// The test is fast, pure in-memory schema walks, no client calls.
 // At 63 resources × ~10 attributes × 36 brutality inputs each =
 // ~23,000 individual validator invocations per run. Sub-second.
 func TestBrutalSchema_AllWiredValidators(t *testing.T) {
@@ -267,7 +267,7 @@ func exerciseValidatorsOnAttribute(t *testing.T, sch schema.Schema, name string,
 			{"empty", types.ListValueMust(a.ElementType, nil)},
 		}
 		// Try a single-element list with each string brutality
-		// input — only if the element type is StringType.
+		// input, only if the element type is StringType.
 		if a.ElementType == types.StringType {
 			for _, val := range []string{"", "a", strings.Repeat("x", 1024), "🚀", "\x00"} {
 				lv, d := types.ListValue(types.StringType, []fwattr.Value{types.StringValue(val)})
@@ -333,7 +333,7 @@ func exerciseValidatorsOnAttribute(t *testing.T, sch schema.Schema, name string,
 // emptyObjectRaw builds an empty-object tftypes.Value matching the
 // schema's object type. Used as Config.Raw when the test wants to
 // exercise a single attribute's validator without populating the
-// full config — the framework needs SOME raw value at Config.Raw
+// full config, the framework needs SOME raw value at Config.Raw
 // for path-resolution to work but cross-attribute validators (the
 // only kind that care about siblings) are tested separately.
 func emptyObjectRaw(ctx context.Context, sch schema.Schema) tftypes.Value {
@@ -343,7 +343,7 @@ func emptyObjectRaw(ctx context.Context, sch schema.Schema) tftypes.Value {
 // recoverAsFailure turns a panic into a t.Errorf so the test
 // runner reports the offending (attribute, validator index, value)
 // instead of crashing the whole suite. This is the load-bearing
-// behaviour for the brutality test — we WANT every input to reach
+// behaviour for the brutality test, we WANT every input to reach
 // every validator, and a panic on input #15 must not stop inputs
 // #16-#36 from being tested against this same attribute.
 func recoverAsFailure(t *testing.T, attr string, vIdx int, val interface{}) {

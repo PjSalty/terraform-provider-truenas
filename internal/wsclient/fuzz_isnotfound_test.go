@@ -13,7 +13,7 @@ import (
 // nested data blobs).
 //
 // The IsNotFound classifier is on the hot path for Delete idempotency
-// — every resource Delete handler calls it. A panic here would turn
+// , every resource Delete handler calls it. A panic here would turn
 // the destroy step into a stack trace, so we drive it through random
 // inputs to surface anything go-fuzz can find.
 func FuzzIsNotFound(f *testing.F) {

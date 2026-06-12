@@ -25,7 +25,7 @@ func testAccScrubTaskCleanup(t *testing.T) {
 	ctx, cancel := acctest.Ctx()
 	defer cancel()
 	// Pool 1's scrub task is the canonical "first acc test fixture"
-	// — delete it if it exists. Ignore not-found; it's the expected
+	//, delete it if it exists. Ignore not-found; it's the expected
 	// state on a clean test instance.
 	if err := c.DeleteScrubTask(ctx, 1); err != nil && !wsclient.IsNotFound(err) {
 		return // best-effort cleanup

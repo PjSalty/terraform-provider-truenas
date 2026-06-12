@@ -9,7 +9,7 @@ import (
 // TestCloudSync_UnmarshalJSON_NestedCredentialsObject mirrors the
 // internal/client test from PR #12 against the shared types.CloudSync.
 // TrueNAS returns credentials as a nested object on GET / list and as a
-// plain integer on create / update — the unmarshaler must accept both.
+// plain integer on create / update, the unmarshaler must accept both.
 func TestCloudSync_UnmarshalJSON_NestedCredentialsObject(t *testing.T) {
 	body := `{
         "id": 2,
@@ -60,7 +60,7 @@ func TestCloudSync_UnmarshalJSON_PlainIntCredentials(t *testing.T) {
 }
 
 // TestCloudSync_UnmarshalJSON_MissingCredentials accepts payloads
-// where credentials is absent — leaves the field as the zero value.
+// where credentials is absent, leaves the field as the zero value.
 func TestCloudSync_UnmarshalJSON_MissingCredentials(t *testing.T) {
 	body := `{"id": 4, "path": "/mnt/q"}`
 
@@ -93,7 +93,7 @@ func TestCloudSync_UnmarshalJSON_MalformedCredentials(t *testing.T) {
 
 // TestCloudSync_UnmarshalJSON_DirectCallMalformed covers the inner
 // json.Unmarshal(data, aux) error path. Reachable only by calling
-// UnmarshalJSON directly with garbage — the std-lib parser would
+// UnmarshalJSON directly with garbage, the std-lib parser would
 // reject malformed bytes before delegating to a custom UnmarshalJSON.
 // Callers that re-use the method on a stream of bytes (e.g. testing
 // harnesses) still get a clean error rather than a silent partial

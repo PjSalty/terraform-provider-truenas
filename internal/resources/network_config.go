@@ -1,6 +1,6 @@
 package resources
 
-// Network config singleton — manages global network settings including
+// Network config singleton, manages global network settings including
 // hostname, domain, DNS servers, default gateways, and HTTP proxy. Backed
 // by the TrueNAS SCALE /network/configuration endpoint.
 
@@ -64,7 +64,7 @@ func (r *NetworkConfigResource) Metadata(_ context.Context, req resource.Metadat
 
 func (r *NetworkConfigResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{Blocks: map[string]schema.Block{"timeouts": timeouts.Block(ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true})}, Description: "Manages the global network configuration on TrueNAS SCALE. " +
-		"This is a singleton resource — only one instance can exist.",
+		"This is a singleton resource, only one instance can exist.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "The configuration ID (always 1).",

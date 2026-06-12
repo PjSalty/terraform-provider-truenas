@@ -2,7 +2,7 @@ package types
 
 import "encoding/json"
 
-// UpdateTrains is the response shape for "update.get_trains" — the map of
+// UpdateTrains is the response shape for "update.get_trains", the map of
 // available release trains plus the currently booted train and the train
 // selected for update tracking. The `selected` field is what the provider
 // reconciles against when the user sets `train` on truenas_system_update;
@@ -27,7 +27,7 @@ type UpdateTrainInfo struct {
 //   - HA_UNAVAILABLE: HA is non-functional
 //
 // Changes is left as raw JSON because the exact shape is non-stable across
-// TrueNAS releases and the resource does not expose it to users — it is
+// TrueNAS releases and the resource does not expose it to users, it is
 // only surfaced indirectly via the computed `available_version` field.
 type UpdateCheckResult struct {
 	Status  string          `json:"status"`

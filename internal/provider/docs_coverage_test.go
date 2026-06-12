@@ -14,7 +14,7 @@ import (
 // AND a working HCL example under examples/resources/<type>/resource.tf
 // AND an import example under examples/resources/<type>/import.sh.
 //
-// This is the Phase I coverage ratchet — lower values leave operators
+// This is the Phase I coverage ratchet, lower values leave operators
 // flying blind at lookup time, which is a prod-ready blocker. Raising
 // the floor is cheap (commit the new floor alongside a new resource's
 // docs + example); lowering it requires a documented reason in the PR
@@ -25,7 +25,7 @@ const docsCoverageFloor = 63
 // also has a registry-format doc, a resource.tf example, and an
 // import.sh example, AND that the total count meets docsCoverageFloor.
 //
-// This is a static file-layout test — it does NOT require tfplugindocs,
+// This is a static file-layout test, it does NOT require tfplugindocs,
 // terraform, or network access. It walks the three directories and
 // cross-references their contents against the declared TypeName of
 // every resource file in internal/resources/.
@@ -92,7 +92,7 @@ func TestDocsCoverage(t *testing.T) {
 
 	if len(resources) < docsCoverageFloor {
 		t.Fatalf("docs coverage ratchet regression: have %d resources, "+
-			"want ≥ %d. This is a SLO ratchet — if you intentionally "+
+			"want ≥ %d. This is a SLO ratchet, if you intentionally "+
 			"removed a resource, lower docsCoverageFloor in this test "+
 			"with a PR-comment justification.",
 			len(resources), docsCoverageFloor)
@@ -113,7 +113,7 @@ func TestDocsNoPlaceholders(t *testing.T) {
 	var hits []string
 	for _, root := range roots {
 		_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			// Skip unreadable entries silently — a single missing file
+			// Skip unreadable entries silently, a single missing file
 			// must not masquerade as a placeholder regression. The outer
 			// ratchet TestDocsCoverage already enforces file presence
 			// against the declared resource set, so anything skipped

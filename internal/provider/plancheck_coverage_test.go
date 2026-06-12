@@ -38,13 +38,13 @@ import (
 // idempotencyExclusions lists every acc_*_test.go file that does NOT
 // need a PostApplyPostRefresh ExpectEmptyPlan check, with rationale.
 // EVERY other file in internal/provider/acc_*_test.go MUST carry the
-// idempotency check. There is no floor — the contract is 100% of the
+// idempotency check. There is no floor, the contract is 100% of the
 // non-excluded surface.
 //
 // Categories of legitimate exclusion:
-//   - PlanOnly negative-path tests (acc_validator_errors_test.go) — there
+//   - PlanOnly negative-path tests (acc_validator_errors_test.go), there
 //     is no Apply step, so PostApplyPostRefresh is structurally N/A.
-//   - Helpers (acc_helpers_test.go) — not a test file, just shared
+//   - Helpers (acc_helpers_test.go), not a test file, just shared
 //     scaffolding.
 //   - Data-source-only resources (acc_app_test.go uses the catalog
 //     data source; acc_pool_test.go is read-only on a pre-existing
@@ -53,7 +53,7 @@ import (
 //     basic test is a PlanOnly check or otherwise lacks an Apply
 //     step that could be followed by a refresh.
 //
-// Adding to this list is a deliberate, reviewed act — the rationale
+// Adding to this list is a deliberate, reviewed act, the rationale
 // MUST explain why the resource genuinely cannot carry the check, not
 // "it failed when I ran it". A failure is exactly the bug the check is
 // designed to surface; the fix goes in the resource code, not the
@@ -79,7 +79,7 @@ func TestIdempotencyCheckCoverage(t *testing.T) {
 	var withCheck, without []string
 	for _, f := range matches {
 		base := filepath.Base(f)
-		// Skip invariant tests — they're static-analysis tools that
+		// Skip invariant tests, they're static-analysis tools that
 		// happen to start with acc_, not actual acceptance tests.
 		if strings.HasSuffix(base, "_invariant_test.go") {
 			continue
@@ -116,7 +116,7 @@ func TestIdempotencyCheckCoverage(t *testing.T) {
 			"add the check to each file, or add the file to idempotencyExclusions "+
 			"with a one-line rationale explaining why the apply-idempotency "+
 			"invariant cannot hold for it. \"the test fails when I run it\" is "+
-			"NOT a valid exclusion reason — that is the bug the check exists to "+
+			"NOT a valid exclusion reason, that is the bug the check exists to "+
 			"surface, and the fix goes in the resource code.\n  missing: %s",
 			len(without), strings.Join(without, ", "))
 	}

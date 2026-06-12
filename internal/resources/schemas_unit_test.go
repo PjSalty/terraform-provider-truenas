@@ -11,7 +11,7 @@ import (
 // must be present in its schema. This file batches Schema + Metadata + New*
 // coverage for all resources that don't yet have dedicated mapping tests.
 // Running Schema() exercises validators, plan modifiers, timeouts blocks,
-// and any inline attribute definitions — substantial lines per resource.
+// and any inline attribute definitions, substantial lines per resource.
 type schemaCase struct {
 	name     string
 	newFn    func() resource.Resource

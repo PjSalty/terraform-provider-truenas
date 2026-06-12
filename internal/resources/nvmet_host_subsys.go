@@ -231,7 +231,7 @@ func (r *NVMetHostSubsysResource) Delete(ctx context.Context, req resource.Delet
 
 // ModifyPlan emits a plan-time Warning whenever the plan would destroy
 // this resource. Removing a host-subsys mapping strips authorisation
-// for the host to access this subsystem — clients suddenly get EPERM.
+// for the host to access this subsystem, clients suddenly get EPERM.
 func (r *NVMetHostSubsysResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_host_subsys")
 }

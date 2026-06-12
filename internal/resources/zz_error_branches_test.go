@@ -24,7 +24,7 @@ func readDeleteWithBadID(t *testing.T, r resource.Resource) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			// Resources without strconv validation and with a nil client
-			// will nil-panic. That's expected here — it just means this
+			// will nil-panic. That's expected here, it just means this
 			// particular resource doesn't parse the ID first.
 			_ = rec
 		}

@@ -39,5 +39,5 @@ paths = [
 
 # Default hashicorp-tf-password / private-key / generic-api-key rules
 # still apply outside the allowlisted paths above. We deliberately do
-# NOT override them — real credentials in non-example, non-test source
+# NOT override them, real credentials in non-example, non-test source
 # files remain blocked.

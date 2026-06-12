@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# scripts/acc.sh — the canonical local acceptance test runner.
+# scripts/acc.sh, the canonical local acceptance test runner.
 #
 # Runs the test pipeline in the order an operator wants to see them
 # fail in: cheap checks first, then live-VM checks. Each stage exits
@@ -53,11 +53,11 @@ done
 cd "${REPO_ROOT}"
 
 # Always load env so even --skip-acc surfaces a missing-config error
-# early. (Some stages — like the static invariants — touch test files
+# early. (Some stages, like the static invariants, touch test files
 # that reference env vars even when TF_ACC isn't set.)
 acc_load_env
 
-# Stage 1 — pre-flight --------------------------------------------------
+# Stage 1, pre-flight --------------------------------------------------
 
 if [ "${ACC_ONLY}" -eq 0 ] && [ "${SKIP_ACC}" -eq 0 ]; then
   acc_info "stage 1/6: preflight"
@@ -66,7 +66,7 @@ if [ "${ACC_ONLY}" -eq 0 ] && [ "${SKIP_ACC}" -eq 0 ]; then
   acc_check_pool
 fi
 
-# Stage 2 — build -------------------------------------------------------
+# Stage 2, build -------------------------------------------------------
 
 if [ "${ACC_ONLY}" -eq 0 ]; then
   acc_info "stage 2/6: go build ./..."
@@ -74,7 +74,7 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
   acc_ok "build clean"
 fi
 
-# Stage 3 — static checks (lint) ----------------------------------------
+# Stage 3, static checks (lint) ----------------------------------------
 
 if [ "${ACC_ONLY}" -eq 0 ]; then
   acc_info "stage 3/6: gofmt + go vet"
@@ -86,7 +86,7 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
   acc_ok "lint clean"
 fi
 
-# Stage 4 — unit tests + tiered coverage gate --------------------------
+# Stage 4, unit tests + tiered coverage gate --------------------------
 #
 # The v2.0 WS cutover changed the coverage model: the resource and
 # datasource layers previously hit 100% via REST httptest mocks, but
@@ -102,7 +102,7 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
     acc_die "unit tests failed"
   fi
 
-  # Tier 1 — packages required to hold 100% (low-level, pure functions).
+  # Tier 1, packages required to hold 100% (low-level, pure functions).
   # These have no live-API dependency; any regression IS a real coverage
   # loss the unit suite must catch.
   declare -A TIER1=(
@@ -118,7 +118,7 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
     [github.com/PjSalty/terraform-provider-truenas/internal/fwresource]=100
   )
 
-  # Tier 2 — packages with degraded unit coverage post-WS-cutover; acc
+  # Tier 2, packages with degraded unit coverage post-WS-cutover; acc
   # is canonical. Track the floor so a future polish PR can reclaim
   # the gap by porting unit fixtures to wsclient testserver.
   declare -A TIER2_FLOOR=(
@@ -180,7 +180,7 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
   acc_ok "unit tests + tiered coverage green"
 fi
 
-# Stage 5 — static invariants (separate so they get a clean status line)
+# Stage 5, static invariants (separate so they get a clean status line)
 
 if [ "${ACC_ONLY}" -eq 0 ]; then
   acc_info "stage 5/6: static invariants"
@@ -190,7 +190,7 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
   acc_ok "invariants clean"
 fi
 
-# Stage 6 — live acceptance suite ---------------------------------------
+# Stage 6, live acceptance suite ---------------------------------------
 
 if [ "${SKIP_ACC}" -eq 1 ]; then
   acc_info "stage 6/6: SKIPPED per --skip-acc"
@@ -198,9 +198,9 @@ if [ "${SKIP_ACC}" -eq 1 ]; then
   exit 0
 fi
 
-acc_info "stage 6/6: acceptance suite (TF_ACC=1) — this is the slow one"
+acc_info "stage 6/6: acceptance suite (TF_ACC=1), this is the slow one"
 
-# Always re-check preflight before launching acc — credentials may have
+# Always re-check preflight before launching acc, credentials may have
 # rotated since we started, and a 2-hour fail-on-credentials cycle is
 # the worst-case operator experience this script is designed to avoid.
 if [ "${ACC_ONLY}" -eq 1 ]; then

@@ -58,7 +58,7 @@ resource "truenas_reporting_exporter" "test" {
 }
 
 // TestAccReportingExporterResource_update flips the enabled flag on an
-// existing Graphite exporter. Two steps are sufficient — the resource
+// existing Graphite exporter. Two steps are sufficient, the resource
 // is regular (not a singleton) and the test cleans itself up on exit.
 func TestAccReportingExporterResource_update(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {

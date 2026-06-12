@@ -1,6 +1,6 @@
 package resources
 
-// Batch CRUD coverage tests — batch 4. Covers the storage (dataset/zvol/pool),
+// Batch CRUD coverage tests, batch 4. Covers the storage (dataset/zvol/pool),
 // VM, certificate, and app resources. These have more complex wire formats;
 // the tests rely on the handlers accumulating partial coverage via multiple
 // endpoint patterns.

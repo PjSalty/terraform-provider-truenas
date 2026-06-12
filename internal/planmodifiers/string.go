@@ -9,7 +9,7 @@ import (
 )
 
 // requiresReplaceString implements planmodifier.String for immutable string
-// attributes that cannot be changed in-place — any change forces resource
+// attributes that cannot be changed in-place, any change forces resource
 // replacement (destroy + create).
 type requiresReplaceString struct {
 	description string

@@ -37,7 +37,7 @@ func TestRequiresReplaceIfChangedInt64_Unchanged(t *testing.T) {
 }
 
 func TestRequiresReplaceIfChangedInt64_NullState(t *testing.T) {
-	// Null state means create — no replacement.
+	// Null state means create, no replacement.
 	m := planmodifiers.RequiresReplaceIfChangedInt64()
 	req := planmodifier.Int64Request{
 		StateValue: types.Int64Null(),

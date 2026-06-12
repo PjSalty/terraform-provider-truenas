@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
-// TestAccKMIPConfigResource_basic — singleton: KMIP service configuration
+// TestAccKMIPConfigResource_basic, singleton: KMIP service configuration
 // has a single instance and Delete is a no-op reset. enabled is left
 // false and server is empty so the test VM never tries to reach a real
 // KMIP server and no encryption keys are migrated.
@@ -50,7 +50,7 @@ resource "truenas_kmip_config" "test" {
 // TestAccKMIPConfigResource_update is intentionally a no-op skip.
 //
 // SCALE 25.10's KMIP service does not persist ANY user-set field while
-// `enabled=false` — the API normalizes the request body but the underlying
+// `enabled=false`, the API normalizes the request body but the underlying
 // store keeps the defaults until KMIP is actually enabled and a real KMIP
 // server is reachable. Both `port` and `ssl_version` were observed to
 // silently drift back to the defaults across every Update attempt.

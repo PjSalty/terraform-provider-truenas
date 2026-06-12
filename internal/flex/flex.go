@@ -1,11 +1,11 @@
 // Package flex provides conversion helpers between native Go types and the
 // Terraform plugin framework types (types.String, types.Int64, types.Bool,
 // types.List). The patterns encoded here appear dozens of times across the
-// resource layer — the package exists so future resources and reviews can
+// resource layer, the package exists so future resources and reviews can
 // ask "why didn't you use flex?" rather than re-implementing each
 // nil-check and ElementsAs call by hand.
 //
-// Helpers are intentionally tiny — each one encodes one well-understood rule so
+// Helpers are intentionally tiny, each one encodes one well-understood rule so
 // callers can compose them without leaking nil checks throughout the
 // Create/Read/Update paths.
 package flex
@@ -52,7 +52,7 @@ func Int64PointerValue(p *int) types.Int64 {
 }
 
 // Int64FromPointer converts a framework types.Int64 into a *int suitable
-// for the typed client. Null/unknown values produce nil — that is the
+// for the typed client. Null/unknown values produce nil, that is the
 // correct "leave this field alone" signal in every TrueNAS PATCH body we
 // emit today.
 func Int64FromPointer(i types.Int64) *int {
@@ -66,7 +66,7 @@ func Int64FromPointer(i types.Int64) *int {
 // Int64FromInt is a tiny convenience wrapper that casts a native int to
 // the framework's Int64Value. It exists so resource code can write
 // `flex.Int64FromInt(user.UID)` instead of the noisier
-// `types.Int64Value(int64(user.UID))` — the latter is the single most
+// `types.Int64Value(int64(user.UID))`, the latter is the single most
 // copied idiom across the Read paths.
 func Int64FromInt(i int) types.Int64 {
 	return types.Int64Value(int64(i))
@@ -96,7 +96,7 @@ func BoolFromPointer(b types.Bool) *bool {
 // StringsFromListValue expands a framework types.List of strings into a
 // native []string. It wraps the typical ElementsAs pattern so callers get
 // a properly diag-annotated error path in one line. A null or unknown
-// list returns nil without any diagnostics — callers that want strictness
+// list returns nil without any diagnostics, callers that want strictness
 // must check IsNull/IsUnknown themselves before calling.
 func StringsFromListValue(ctx context.Context, l types.List) ([]string, diag.Diagnostics) {
 	if l.IsNull() || l.IsUnknown() {

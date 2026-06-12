@@ -406,7 +406,7 @@ func (r *ReplicationResource) Delete(ctx context.Context, req resource.DeleteReq
 //   - Any transport other than LOCAL requires `ssh_credentials` to be set.
 //     SSH and SSH+NETCAT both need an SSH keypair; LOCAL replication does not.
 //   - `retention_policy=CUSTOM` requires `lifetime_value` and `lifetime_unit`
-//     to be set — otherwise snapshots never expire.
+//     to be set, otherwise snapshots never expire.
 func (r *ReplicationResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_replication")
 	if req.Plan.Raw.IsNull() {

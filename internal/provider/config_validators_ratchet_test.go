@@ -11,7 +11,7 @@ import (
 // MUST declare a ConfigValidators method. This is a ratchet: raising
 // the floor is cheap (commit the new floor alongside the new validator),
 // lowering it requires justification in a PR comment. The mechanism is
-// identical to TestIdempotencyCheckCoverage — a SLO-style gate that
+// identical to TestIdempotencyCheckCoverage, a SLO-style gate that
 // prevents the coverage from silently regressing when someone copies
 // a resource template that omitted its ConfigValidators hook.
 //
@@ -23,7 +23,7 @@ const configValidatorsFloor = 3
 // that declare a `func (r *XxxResource) ConfigValidators(` method and
 // fails if the count drops below configValidatorsFloor. Resources that
 // have an enum-style discriminator (create_type, type, protocol,
-// auth_method, mode) are the prime candidates — see
+// auth_method, mode) are the prime candidates, see
 // docs/guides/phased-rollout.md for the reference pattern and
 // internal/resources/certificate.go for the first implementation.
 func TestConfigValidatorsCoverage(t *testing.T) {
@@ -51,7 +51,7 @@ func TestConfigValidatorsCoverage(t *testing.T) {
 		t.Fatalf("ConfigValidators coverage dropped below floor: have %d, "+
 			"want ≥ %d. Files with ConfigValidators: %v\n\n"+
 			"This is a SLO-style ratchet. Either add a ConfigValidators hook "+
-			"to at least one more resource (preferred — raises the floor) "+
+			"to at least one more resource (preferred, raises the floor) "+
 			"or, if you intentionally removed one, lower configValidatorsFloor "+
 			"in this file with a PR-comment justification.",
 			count, configValidatorsFloor, files)

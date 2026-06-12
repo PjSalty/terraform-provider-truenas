@@ -399,7 +399,7 @@ func sweepNFSShares(_ string) error {
 		return fmt.Errorf("sweeping truenas_share_nfs: listing: %w", err)
 	}
 	for _, s := range shares {
-		// NFS shares have no name — match by comment or by dataset path.
+		// NFS shares have no name, match by comment or by dataset path.
 		if !sweeperHasAcctestPrefix(s.Comment) && !sweeperDatasetIsAcctest(s.Path) {
 			continue
 		}
@@ -508,7 +508,7 @@ func sweepISCSIInitiators(_ string) error {
 }
 
 // sweepISCSIAuths cannot reliably identify test fixtures (ISCSIAuth has only
-// Tag/User/Secret — all opaque numbers/strings). We sweep entries whose User
+// Tag/User/Secret, all opaque numbers/strings). We sweep entries whose User
 // matches the acctest prefix to stay safe.
 func sweepISCSIAuths(_ string) error {
 	ctx, cancel := sweepCtx()
@@ -1184,7 +1184,7 @@ func sweepVMDevices(_ string) error {
 //
 // These five sweepers were the "pending" entries in resourceSweeperExclusions
 // before Phase B. Each uses sweeperGetList because the client does not
-// expose a typed ListXxx method — the collection GET is fine because every
+// expose a typed ListXxx method, the collection GET is fine because every
 // resource type here returns a JSON array at its collection URL.
 
 func sweepACMEDNSAuthenticators(_ string) error {
@@ -1218,7 +1218,7 @@ func sweepApps(_ string) error {
 	for _, a := range apps {
 		// App.Name is the release name (unique per cluster), which is
 		// what test fixtures generate via randomName(). Match strictly
-		// on the acctest prefix — never sweep user-created apps.
+		// on the acctest prefix, never sweep user-created apps.
 		if !sweeperHasAcctestPrefix(a.Name) {
 			continue
 		}

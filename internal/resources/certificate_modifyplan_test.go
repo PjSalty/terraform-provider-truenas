@@ -102,7 +102,7 @@ func TestCertificate_ModifyPlan_Delete(t *testing.T) {
 }
 
 // TestCertificate_ModifyPlan_CreateTypeNull exercises the early return when
-// create_type is null — the cross-attribute rules can't fire without knowing
+// create_type is null, the cross-attribute rules can't fire without knowing
 // the intended create type, so ModifyPlan must leave the plan untouched.
 func TestCertificate_ModifyPlan_CreateTypeNull(t *testing.T) {
 	r := NewCertificateResource().(*CertificateResource)

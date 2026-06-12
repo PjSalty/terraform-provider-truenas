@@ -86,7 +86,7 @@ func TestDatasetDataSource_Read_Success(t *testing.T) {
 }
 
 func TestDatasetDataSource_Read_MinimalFields(t *testing.T) {
-	// Only required fields populated — none of the property pointers set.
+	// Only required fields populated, none of the property pointers set.
 	c := newWSServer(t.Context(), t, wsReturn(truenas.DatasetResponse{
 		ID:   "tank/minimal",
 		Name: "minimal",

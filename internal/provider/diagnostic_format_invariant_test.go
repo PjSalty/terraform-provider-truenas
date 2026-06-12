@@ -10,7 +10,7 @@ import (
 )
 
 // addErrorRE matches every Diagnostics.AddError call's summary string
-// — the first argument. The pattern handles a single-line summary
+// , the first argument. The pattern handles a single-line summary
 // (the dominant style in this codebase); multi-line summaries are
 // flagged manually if they appear because they're rare and worth a
 // human review.
@@ -35,7 +35,7 @@ var addAttributeErrorRE = regexp.MustCompile(`(?m)\.AddAttributeError\(\s*[^,]+,
 //
 // Each pattern starts with a capital letter. The TrueNAS-specific
 // acronyms iSCSI, NVMe-oF, SMB, NFS, ZFS, ACL, KMIP, SOPS, AD/LDAP/IPA
-// are recognised verbatim — they're industry conventions that the
+// are recognised verbatim, they're industry conventions that the
 // upstream API also uses in its own error messages.
 var allowedSummaryPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^Invalid [A-Za-z_]`),
@@ -57,18 +57,18 @@ var allowedSummaryPatterns = []*regexp.Regexp{
 // entry needs a rationale comment so the next reviewer can decide
 // whether the exemption is still justified.
 var allowedNonCanonicalSummaries = map[string]string{
-	"Validation Error":           "framework convention — used by per-attribute validators",
+	"Validation Error":           "framework convention, used by per-attribute validators",
 	"Resource Not Found":         "explicit not-found surface; doesn't fit 'Error <verbing>' shape",
-	"Required attribute missing": "framework convention — emitted by RequiredWhenEqual validator",
+	"Required attribute missing": "framework convention, emitted by RequiredWhenEqual validator",
 	"Disk Not Found":             "datasource lookup-by-name surface; '<Resource> Not Found' is the framework convention for this case",
 	"Pool Not Found":             "datasource lookup-by-name surface; '<Resource> Not Found' is the framework convention for this case",
 }
 
 // TestDiagnosticFormat_AddErrorSummaries scans every resource and
 // data-source source file for AddError / AddAttributeError calls and
-// asserts each summary follows one of the canonical shapes. A drift —
+// asserts each summary follows one of the canonical shapes. A drift -
 // "error creating X" (lowercase verb), "failed to do Y" (different
-// pattern), "Something went wrong" (no resource name) — surfaces as
+// pattern), "Something went wrong" (no resource name), surfaces as
 // a per-call failure with the exact file + summary.
 //
 // Why this matters at major-provider rigor: terraform plan output
@@ -115,7 +115,7 @@ func TestDiagnosticFormat_AddErrorSummaries(t *testing.T) {
 	}
 
 	if len(bad) > 0 {
-		// Dedupe — the same summary often appears multiple times.
+		// Dedupe, the same summary often appears multiple times.
 		seen := map[string]string{}
 		for _, b := range bad {
 			key := b.file + "::" + b.summary

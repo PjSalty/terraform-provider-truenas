@@ -8,7 +8,7 @@
 
 default: true
 
-# Line length — terraform-plugin-docs writes long wrapped attribute descriptions,
+# Line length, terraform-plugin-docs writes long wrapped attribute descriptions,
 # so we relax the default 80-char cap and allow links/tables to exceed.
 MD013:
   line_length: 160
@@ -21,15 +21,15 @@ MD013:
 MD012:
   maximum: 2
 
-# Fenced code block style — always use ``` (not ~~~).
+# Fenced code block style, always use ``` (not ~~~).
 MD048:
   style: backtick
 
-# Allow bare URLs — autolinks are fine.
+# Allow bare URLs, autolinks are fine.
 MD034: false
 
 # Allow inline HTML in docs pages (frontmatter + collapsible sections etc.)
 MD033: false
 
-# Allow first line to not be a heading — tfplugindocs frontmatter comes first.
+# Allow first line to not be a heading, tfplugindocs frontmatter comes first.
 MD041: false

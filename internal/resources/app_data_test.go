@@ -11,7 +11,7 @@ import (
 
 // TestAccAppDataSource_basic reads a specific TrueNAS App by id.
 // Env-gated because Apps require a dedicated apps pool + a known
-// pre-installed app name (TRUENAS_TEST_APP_NAME) — the datasource
+// pre-installed app name (TRUENAS_TEST_APP_NAME), the datasource
 // Read path is exercised without the heavyweight install in the
 // test.
 func TestAccAppDataSource_basic(t *testing.T) {

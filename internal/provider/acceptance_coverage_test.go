@@ -14,7 +14,7 @@ import (
 // containing at least one `func TestAcc...` function.
 //
 // This is the Phase J coverage ratchet. A resource without ANY
-// acceptance test is a resource we cannot claim works end-to-end —
+// acceptance test is a resource we cannot claim works end-to-end -
 // Create/Read/Update/Delete, schema validation, plan modifiers,
 // config validators, import state, and plan-time diagnostics all
 // land on the TestAcc surface in the Plugin Framework's testing
@@ -78,7 +78,7 @@ func TestAcceptanceTestCoverage(t *testing.T) {
 	}
 	if covered < acceptanceCoverageFloor {
 		t.Fatalf("acceptance test coverage ratchet regression: have %d "+
-			"resources with TestAcc*, want ≥ %d. This is a SLO ratchet — "+
+			"resources with TestAcc*, want ≥ %d. This is a SLO ratchet, "+
 			"if you intentionally removed a resource, lower "+
 			"acceptanceCoverageFloor in this test with a PR-comment "+
 			"justification.",

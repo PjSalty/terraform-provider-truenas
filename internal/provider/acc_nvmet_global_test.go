@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
-// TestAccNVMetGlobalResource_basic — singleton resource. Only one
+// TestAccNVMetGlobalResource_basic, singleton resource. Only one
 // instance exists on a TrueNAS SCALE system and Delete is a state-only
 // removal, so only Create+Read and Update paths are meaningful. Import
 // round-trips the ID ("1").
@@ -48,7 +48,7 @@ resource "truenas_nvmet_global" "test" {
 
 // TestAccNVMetGlobalResource_update toggles `xport_referral` to verify
 // the PUT /nvmet/global round-trip. The `ana` attribute is intentionally
-// NOT toggled — Asymmetric Namespace Access requires multi-controller
+// NOT toggled, Asymmetric Namespace Access requires multi-controller
 // hardware support and SCALE rejects ana=true with HTTP 422 on
 // single-node test VMs ("This platform does not support Asymmetric
 // Namespace Access(ANA).").

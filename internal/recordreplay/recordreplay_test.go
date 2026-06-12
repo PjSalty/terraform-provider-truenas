@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-// upstreamForTest stands in for a real TrueNAS — returns a fixed
+// upstreamForTest stands in for a real TrueNAS, returns a fixed
 // JSON payload for every request so the test asserts the proxy
 // captures + replays it correctly.
 func upstreamForTest(t *testing.T) *httptest.Server {
@@ -160,7 +160,7 @@ func TestRecorder_PreservesUpstreamBody(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if !strings.Contains(string(body), `"req":"shape"`) {
-		t.Errorf("upstream did not see request body — proxy ate it: %s", body)
+		t.Errorf("upstream did not see request body, proxy ate it: %s", body)
 	}
 
 	// Read fixture from disk and confirm it has request_body + response_body
@@ -225,7 +225,7 @@ func TestCanonicalJSONBody_ReorderStable(t *testing.T) {
 }
 
 // TestFlattenQuery_MultiValueTakesFirst verifies a query with
-// multiple values for the same key picks the first one — the
+// multiple values for the same key picks the first one, the
 // hash treats only the first as material to keep keys stable
 // across noise like duplicate "_=…" cache busters.
 func TestFlattenQuery_MultiValueTakesFirst(t *testing.T) {
@@ -307,7 +307,7 @@ func TestReplayer_RecordCachedHit(t *testing.T) {
 	}
 }
 
-// tlsSkipClient is the shared client for the tests below — the
+// tlsSkipClient is the shared client for the tests below, the
 // Recorder/Replayer use httptest.NewTLSServer which gives them
 // self-signed certs that the default http.DefaultClient won't
 // trust.
@@ -326,7 +326,7 @@ func tlsSkipClient() *http.Client {
 // unmarshal-fail path with crafted invalid UTF-8 JSON edge).
 func TestCanonicalJSONBody_EdgeShapes(t *testing.T) {
 	t.Parallel()
-	// Valid JSON that round-trips — exercises the happy path fully.
+	// Valid JSON that round-trips, exercises the happy path fully.
 	out := canonicalJSONBody([]byte(`[1, 2, {"k": null}]`))
 	if len(out) == 0 {
 		t.Error("expected canonical output")
@@ -334,7 +334,7 @@ func TestCanonicalJSONBody_EdgeShapes(t *testing.T) {
 }
 
 // TestRecorder_UpstreamCallFails: upstream URL parses but nothing
-// listens there — the proxy must surface 502.
+// listens there, the proxy must surface 502.
 func TestRecorder_UpstreamCallFails(t *testing.T) {
 	t.Parallel()
 	tmp := t.TempDir()
@@ -368,7 +368,7 @@ func TestRecorder_BadUpstreamRequestBuild(t *testing.T) {
 	req.URL.Path = "/bad\x00path"
 	resp, err := tlsSkipClient().Do(req)
 	if err != nil {
-		// transport may reject before the server sees it — acceptable;
+		// transport may reject before the server sees it, acceptable;
 		// the branch is best-effort covered via the 500 path below.
 		t.Skipf("transport rejected: %v", err)
 	}
@@ -406,7 +406,7 @@ func TestReplayer_CorruptFixture(t *testing.T) {
 // TestRecorder_HostHeaderSkipped drives Recorder.serve directly with a
 // crafted request whose Header map carries a "Host" key. Go's HTTP
 // server normally strips Host into req.Host, so this branch is only
-// reachable with a hand-built request — but the guard documents the
+// reachable with a hand-built request, but the guard documents the
 // httputil-equivalent behavior and must keep working.
 func TestRecorder_HostHeaderSkipped(t *testing.T) {
 	t.Parallel()

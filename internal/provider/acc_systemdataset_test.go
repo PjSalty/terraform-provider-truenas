@@ -10,7 +10,7 @@ import (
 
 // TestAccSystemDatasetResource_basic verifies that the singleton
 // systemdataset resource can be applied and imported. The `test` pool
-// is used as the hosting pool — this is the only pool available on the
+// is used as the hosting pool, this is the only pool available on the
 // acceptance test VM. Read is idempotent and does not alter state.
 func TestAccSystemDatasetResource_basic(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {
@@ -47,14 +47,14 @@ resource "truenas_systemdataset" "test" {
 }
 
 // TestAccSystemDatasetResource_disappears is not applicable to a
-// singleton — there is no out-of-band "delete" path. Kept as a skipped
+// singleton, there is no out-of-band "delete" path. Kept as a skipped
 // no-op so the gold-standard test triple is discoverable across all
 // storage resources.
 func TestAccSystemDatasetResource_disappears(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip(skipMsg)
 	}
-	t.Skip("systemdataset is a singleton — no out-of-band delete path exists")
+	t.Skip("systemdataset is a singleton, no out-of-band delete path exists")
 }
 
 // TestAccSystemDatasetResource_update applies the singleton twice with

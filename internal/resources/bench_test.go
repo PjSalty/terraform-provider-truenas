@@ -48,7 +48,7 @@ func BenchmarkDatasetMapResponseToModel(b *testing.B) {
 	}
 }
 
-// BenchmarkVMMapResponseToModel measures VMResource.mapResponseToModel —
+// BenchmarkVMMapResponseToModel measures VMResource.mapResponseToModel -
 // ~40 fields, all scalar copies, plus nullable string helpers.
 func BenchmarkVMMapResponseToModel(b *testing.B) {
 	archType := "x86_64"
@@ -99,7 +99,7 @@ func BenchmarkVMMapResponseToModel(b *testing.B) {
 	}
 }
 
-// BenchmarkCertificateMapResponseToModel measures the certificate mapping —
+// BenchmarkCertificateMapResponseToModel measures the certificate mapping -
 // many optional-string branches plus a SAN list.
 func BenchmarkCertificateMapResponseToModel(b *testing.B) {
 	cert := &truenas.Certificate{

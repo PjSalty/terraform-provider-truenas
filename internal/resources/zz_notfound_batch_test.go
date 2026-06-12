@@ -19,7 +19,7 @@ import (
 )
 
 // newWSNotFoundClient fails every method with the MatchNotFound shape
-// TrueNAS emits when an id filter matches zero rows — the canonical
+// TrueNAS emits when an id filter matches zero rows, the canonical
 // "deleted out of band" surface.
 func newWSNotFoundClient(ctx context.Context, t *testing.T) *wsclient.Client {
 	t.Helper()
@@ -108,7 +108,7 @@ func TestNotFound_ReadRemovesAndDeleteSucceeds(t *testing.T) {
 			r := tc.make(c)
 			sch := schemaOf(t, ctx, r)
 
-			// Read: must take the RemoveResource branch — no diagnostics.
+			// Read: must take the RemoveResource branch, no diagnostics.
 			readState := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str(tc.id)})
 			rResp := &resource.ReadResponse{State: readState}
 			r.Read(ctx, resource.ReadRequest{State: readState}, rResp)
@@ -116,7 +116,7 @@ func TestNotFound_ReadRemovesAndDeleteSucceeds(t *testing.T) {
 				t.Errorf("Read(not-found) produced diagnostics: %v", rResp.Diagnostics)
 			}
 
-			// Delete: must be idempotent — no diagnostics.
+			// Delete: must be idempotent, no diagnostics.
 			dResp := &resource.DeleteResponse{State: readState}
 			r.Delete(ctx, resource.DeleteRequest{State: readState}, dResp)
 			if dResp.Diagnostics.HasError() {

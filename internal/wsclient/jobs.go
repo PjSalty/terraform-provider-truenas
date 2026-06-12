@@ -98,7 +98,7 @@ func (c *Client) CallJob(ctx context.Context, method string, params []interface{
 }
 
 // GetJob returns the latest server-side state for a single job ID,
-// mirroring the REST client's GET /core/get_jobs?id=N. Idempotent —
+// mirroring the REST client's GET /core/get_jobs?id=N. Idempotent -
 // safe to retry on connection drop.
 func (c *Client) GetJob(ctx context.Context, jobID int64) (*jobInfo, error) {
 	result, err := c.Call(ctx, "core.get_jobs",

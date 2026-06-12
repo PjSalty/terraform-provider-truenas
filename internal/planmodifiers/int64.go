@@ -7,7 +7,7 @@ import (
 )
 
 // requiresReplaceInt64 implements planmodifier.Int64 for immutable numeric
-// attributes that cannot be changed in-place — any change forces resource
+// attributes that cannot be changed in-place, any change forces resource
 // replacement (destroy + create).
 type requiresReplaceInt64 struct {
 	description string

@@ -139,7 +139,7 @@ func TestRequestTimeout_Getter(t *testing.T) {
 }
 
 // TestIsNotFound_InvalidParamsENOENT exercises the new branch that
-// accepts CodeInvalidParams with a "[ENOENT]" message — the shape
+// accepts CodeInvalidParams with a "[ENOENT]" message, the shape
 // TrueNAS emits on cronjob.get_instance for missing ids.
 func TestIsNotFound_InvalidParamsENOENT(t *testing.T) {
 	t.Parallel()
@@ -179,7 +179,7 @@ func TestIsNotFound_InvalidParamsENOENT(t *testing.T) {
 // "MatchNotFound()" exception class name leaks into the RPC error
 // message under CodeMethodCallError without populating Data.
 //
-// Surfaced live on acc-ws-6 against SCALE 25.10 — destroyed Dataset
+// Surfaced live on acc-ws-6 against SCALE 25.10, destroyed Dataset
 // + Zvol + Cronjob fixtures all returned this shape, causing
 // 9 destroy-check failures.
 func TestIsNotFound_MatchNotFound(t *testing.T) {
@@ -213,7 +213,7 @@ func TestIsNotFound_MatchNotFound(t *testing.T) {
 }
 
 // TestIsNotFound_CallJobENOENT covers the long-running-job ENOENT
-// shape. certificate.delete and pool.delete are CallJob methods —
+// shape. certificate.delete and pool.delete are CallJob methods -
 // the inner job result error is wrapped in a "CallJob X failed:"
 // prefix that hides the [ENOENT] from the Data block.
 func TestIsNotFound_CallJobENOENT(t *testing.T) {
@@ -252,7 +252,7 @@ func TestIsNotFound_CallJobENOENT(t *testing.T) {
 // TestIsNotFound_CallJobFailureUnwrapped covers the fallback for the
 // CallJob failure path. CallJob wraps job failures with fmt.Errorf
 // ("CallJob X (id=N) failed: [ENOENT] ..."), so the inner *RPCError
-// is lost — errors.As returns false. The fallback scans the wrapper
+// is lost, errors.As returns false. The fallback scans the wrapper
 // text directly.
 func TestIsNotFound_CallJobFailureUnwrapped(t *testing.T) {
 	t.Parallel()

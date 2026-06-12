@@ -246,7 +246,7 @@ func TestWriteAll_CreateFails(t *testing.T) {
 func TestWriteAll_ExecuteFails(t *testing.T) {
 	_, _, _ = withSilentIO(t)
 	inTempDir(t, func() {
-		// Template that references an undefined field — Parse succeeds
+		// Template that references an undefined field, Parse succeeds
 		// (syntax is valid), Execute fails with "can't evaluate field".
 		err := writeAll([]scaffoldTarget{{
 			path: "out.txt",

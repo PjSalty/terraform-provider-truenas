@@ -13,7 +13,7 @@ import (
 
 // nvmetNamespaceConfig builds an HCL config that creates a subsystem
 // and a FILE-backed namespace inside it. Using a FILE backing avoids
-// the need for a zvol/pool prereq — TrueNAS will create the file on
+// the need for a zvol/pool prereq, TrueNAS will create the file on
 // demand in /var/run during testing.
 func nvmetNamespaceConfig(subsysName, devicePath string, enabled bool) string {
 	return fmt.Sprintf(`

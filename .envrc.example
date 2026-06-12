@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 #
-# .envrc.example — copy to .envrc.local (which is gitignored) and edit
+# .envrc.example, copy to .envrc.local (which is gitignored) and edit
 # in your real credentials. Source this file before running the local
 # acceptance test runner:
 #
@@ -12,7 +12,7 @@
 # Or use direnv: `direnv allow` once and .envrc.local loads automatically.
 
 # ---------------------------------------------------------------------
-# Required: the TEST TrueNAS host — NEVER point this at production
+# Required: the TEST TrueNAS host, NEVER point this at production
 # ---------------------------------------------------------------------
 #
 # The acceptance suite CREATES AND DESTROYS REAL RESOURCES (datasets,
@@ -20,7 +20,7 @@
 # would produce orphaned fixtures at best and destroy real data at
 # worst. The runner enforces a denylist (TRUENAS_PROD_DENY below)
 # and refuses to start if TRUENAS_URL resolves to a known prod host
-# — but the first line of defense is you, the operator, putting
+#, but the first line of defense is you, the operator, putting
 # the right URL here.
 #
 # Leave empty and uncomment with your TEST instance URL.
@@ -41,7 +41,7 @@ export TRUENAS_URL=""
 export TRUENAS_PROD_DENY="truenas.example.com"
 
 # API key created under Credentials → Local Users → root → API Keys.
-# DO NOT hardcode here in .envrc.local in plaintext — fetch from your
+# DO NOT hardcode here in .envrc.local in plaintext, fetch from your
 # secret store at shell start time. Example using SOPS:
 #
 #   export TRUENAS_API_KEY="$(sops -d ~/secrets/credentials.sops.yaml | yq -r '.terraform_provider_truenas.api_key')"
@@ -62,7 +62,7 @@ export TRUENAS_INSECURE_SKIP_VERIFY="true"
 export TRUENAS_TEST_POOL="tank"
 
 # Comma-separated disk device names used by TestAccPool_basic (which is
-# skipped by default — pool creation requires dedicated test disks).
+# skipped by default, pool creation requires dedicated test disks).
 # Example: "sdb,sdc"
 # export TRUENAS_TEST_POOL_DISKS=""
 

@@ -62,7 +62,7 @@ resource "truenas_filesystem_acl_template" "test" {
 
 // testAccCheckFilesystemACLTemplateExists is the positive guard used
 // before testAccCheckFilesystemACLTemplateDisappears tears the
-// template down out of band — without this guard, a missing-from-the-
+// template down out of band, without this guard, a missing-from-the-
 // start template would silently pass the disappears check vacuously.
 func testAccCheckFilesystemACLTemplateExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {

@@ -58,7 +58,7 @@ func TestJSONEquivalent_RealDiff(t *testing.T) {
 }
 
 func TestJSONEquivalent_InvalidStateJSON(t *testing.T) {
-	// Non-parseable state — modifier should leave plan unchanged.
+	// Non-parseable state, modifier should leave plan unchanged.
 	state := `not-json`
 	plan := `{"a":1}`
 	resp := runJSONEquivalent(state, plan)

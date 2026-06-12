@@ -100,19 +100,19 @@ func TestResourceConfigure_Batch(t *testing.T) {
 				// Not all resources implement Configure; that's OK.
 				return
 			}
-			// Case 1: nil ProviderData — the handler should early-return.
+			// Case 1: nil ProviderData, the handler should early-return.
 			resp := &resource.ConfigureResponse{}
 			conf.Configure(ctx, resource.ConfigureRequest{ProviderData: nil}, resp)
 			if resp.Diagnostics.HasError() {
 				t.Errorf("Configure(nil) produced error: %v", resp.Diagnostics)
 			}
-			// Case 2: wrong-type ProviderData — the handler should error.
+			// Case 2: wrong-type ProviderData, the handler should error.
 			resp2 := &resource.ConfigureResponse{}
 			conf.Configure(ctx, resource.ConfigureRequest{ProviderData: "not a client"}, resp2)
 			if !resp2.Diagnostics.HasError() {
 				t.Errorf("Configure(wrong-type) should have error")
 			}
-			// Case 3: valid *wsclient.Client — exercises the success path
+			// Case 3: valid *wsclient.Client, exercises the success path
 			// that assigns r.client. Configure only type-asserts; it never
 			// calls a method, so an empty client value suffices (no dial).
 			validClient := &wsclient.Client{}
@@ -127,7 +127,7 @@ func TestResourceConfigure_Batch(t *testing.T) {
 
 // TestResourceImportState_Batch exercises the ImportState handler of every
 // resource that implements resource.ResourceWithImportState. The handlers
-// are mostly a passthrough to ImportStatePassthroughID — cheap to cover.
+// are mostly a passthrough to ImportStatePassthroughID, cheap to cover.
 func TestResourceImportState_Batch(t *testing.T) {
 	ctx := context.Background()
 	for _, newFn := range []func() resource.Resource{
@@ -193,7 +193,7 @@ func TestResourceImportState_Batch(t *testing.T) {
 			continue
 		}
 		// Just verify that ImportState is callable without panic.
-		// We pass an empty request — the framework path module may diag
+		// We pass an empty request, the framework path module may diag
 		// about the missing ID but it won't panic.
 		_ = imp
 		_ = ctx

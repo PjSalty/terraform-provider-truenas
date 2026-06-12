@@ -22,7 +22,7 @@ type DirectoryServicesConfig struct {
 // DirectoryServicesUpdateRequest is the body for PUT /directoryservices
 // / directoryservices.update.
 //
-// Any field left as nil is omitted — matching the singleton-patch
+// Any field left as nil is omitted, matching the singleton-patch
 // pattern used by other config resources.
 type DirectoryServicesUpdateRequest struct {
 	ServiceType        *string                 `json:"service_type,omitempty"`

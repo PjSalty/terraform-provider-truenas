@@ -16,7 +16,7 @@ import (
 //
 //  1. Create a dataset under the existing `test` pool.
 //  2. Read it back and verify core attributes.
-//  3. ImportState round-trip — proves the import path and that every
+//  3. ImportState round-trip, proves the import path and that every
 //     attribute round-trips through plain state storage.
 //
 // This test is skipped unless TF_ACC=1 is set.
@@ -40,7 +40,7 @@ resource "truenas_dataset" "test" {
 				// creates the dataset (not updates/replaces) and that
 				// known attributes resolve to the expected defaults at
 				// plan time. PostApplyPostRefresh enforces the apply
-				// idempotency invariant — after a successful apply + a
+				// idempotency invariant, after a successful apply + a
 				// refresh, the next plan MUST be empty. Catches drift
 				// from Read returning values the state doesn't hold,
 				// default values that round-trip differently, and the

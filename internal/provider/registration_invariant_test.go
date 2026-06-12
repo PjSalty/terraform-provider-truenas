@@ -53,7 +53,7 @@ func camelToSnake(s string) string {
 // TestResourceRegistrationMatchesFilesystem parses provider.go for every
 // resources.NewXxxResource, factory reference and asserts that the
 // corresponding internal/resources/<snake>.go file exists. This closes
-// the "added to Resources() list but never wrote the file" gap — a
+// the "added to Resources() list but never wrote the file" gap, a
 // common drive-by refactor hazard in larger providers.
 //
 // The test does NOT enforce a 1:1 between the provider.go list and
@@ -67,7 +67,7 @@ func TestResourceRegistrationMatchesFilesystem(t *testing.T) {
 	}
 	matches := resourceConstructorRE.FindAllStringSubmatch(string(src), -1)
 	if len(matches) == 0 {
-		t.Fatal("no resources.NewXxxResource references parsed from provider.go — regex broken?")
+		t.Fatal("no resources.NewXxxResource references parsed from provider.go, regex broken?")
 	}
 
 	// Known tricky mappings that the naive camelToSnake would get wrong.
@@ -131,7 +131,7 @@ func TestResourceRegistrationMatchesFilesystem(t *testing.T) {
 	var gaps []string
 	for _, m := range matches {
 		camel := m[1]
-		// Skip DataSource constructors — they live in internal/datasources/
+		// Skip DataSource constructors, they live in internal/datasources/
 		// and this test is about resources/.
 		if strings.HasSuffix(camel, "Data") {
 			continue

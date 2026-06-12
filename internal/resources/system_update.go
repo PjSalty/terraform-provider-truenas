@@ -31,7 +31,7 @@ var (
 	_ resource.ResourceWithImportState = &SystemUpdateResource{}
 )
 
-// SystemUpdateResource manages the TrueNAS SCALE system update configuration —
+// SystemUpdateResource manages the TrueNAS SCALE system update configuration -
 // the auto-download toggle and the active release train. This resource does
 // not apply updates; it only governs how the system behaves when an update
 // becomes available. Applying an update remains a manual action.
@@ -65,12 +65,12 @@ func (r *SystemUpdateResource) Schema(ctx context.Context, _ resource.SchemaRequ
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true}),
 		},
 		Description: "Manages the TrueNAS SCALE system update configuration: the auto-download toggle " +
-			"and the active release train. This resource is a singleton — TrueNAS has exactly one " +
+			"and the active release train. This resource is a singleton, TrueNAS has exactly one " +
 			"update config per system. It does NOT execute updates; applying an update is a separate " +
 			"manual action outside Terraform's control. Use this resource to pin a train and/or " +
 			"disable auto-download so that SCALE updates never happen without a conscious action.",
 		MarkdownDescription: "Manages the TrueNAS SCALE system update configuration: the `auto_download` " +
-			"toggle and the active release `train`. This resource is a singleton — TrueNAS has exactly " +
+			"toggle and the active release `train`. This resource is a singleton, TrueNAS has exactly " +
 			"one update config per system. It does **not** execute updates; applying an update is a " +
 			"separate manual action outside Terraform's control. Use this resource to pin a train " +
 			"and/or disable auto-download so that SCALE updates never happen without a conscious action.",
@@ -85,11 +85,11 @@ func (r *SystemUpdateResource) Schema(ctx context.Context, _ resource.SchemaRequ
 			},
 			"auto_download": schema.BoolAttribute{
 				Description: "Whether TrueNAS should automatically download available updates into " +
-					"the local update cache. Defaults to false — the conservative pinning value. " +
+					"the local update cache. Defaults to false, the conservative pinning value. " +
 					"With auto_download disabled, updates never land on the system without an " +
 					"explicit operator action.",
 				MarkdownDescription: "Whether TrueNAS should automatically download available updates " +
-					"into the local update cache. Defaults to `false` — the conservative pinning value. " +
+					"into the local update cache. Defaults to `false`, the conservative pinning value. " +
 					"With `auto_download` disabled, updates never land on the system without an " +
 					"explicit operator action.",
 				Optional: true,
@@ -300,7 +300,7 @@ func (r *SystemUpdateResource) Update(ctx context.Context, req resource.UpdateRe
 }
 
 // Delete is a no-op that only removes the resource from Terraform state.
-// TrueNAS has no concept of "deleting" the update config — it always exists,
+// TrueNAS has no concept of "deleting" the update config, it always exists,
 // it's a system singleton. Destroying the resource therefore leaves the last
 // applied auto_download and train settings in place on the system. This
 // prevents a surprising reboot-risk vector where `terraform destroy` could

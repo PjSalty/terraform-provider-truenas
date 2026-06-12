@@ -7,7 +7,7 @@ import (
 )
 
 // TestAccSystemDatasetDataSource_basic reads the always-present
-// system dataset singleton. No fixture needed — every TrueNAS has
+// system dataset singleton. No fixture needed, every TrueNAS has
 // a system dataset.
 func TestAccSystemDatasetDataSource_basic(t *testing.T) {
 	dataSourceName := "data.truenas_systemdataset.test"

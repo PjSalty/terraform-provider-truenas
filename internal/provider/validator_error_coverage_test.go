@@ -21,7 +21,7 @@ var validatorErrorTestRE = regexp.MustCompile(`(?m)^func (TestAccValidator_\w+)\
 // Adding a new validator? Land it with at least one TestAccValidator_*
 // test exercising the failure path, then bump this number to match.
 // Removing one of these tests would silently drop a negative-path
-// guarantee — never do it without also removing the validator itself.
+// guarantee, never do it without also removing the validator itself.
 const validatorErrorTestMinimum = 22
 
 // TestValidatorErrorCoverage counts the TestAccValidator_* functions

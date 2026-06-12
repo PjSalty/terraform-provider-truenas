@@ -9,7 +9,7 @@ import (
 // TestAccSystemUpdate_schemaValidation validates that the
 // truenas_system_update resource schema compiles and the HCL config
 // parses correctly. It uses the PlanOnly + ExpectNonEmptyPlan pattern
-// to confirm the plan computes without actually writing to TrueNAS —
+// to confirm the plan computes without actually writing to TrueNAS -
 // the destroy_protection + read_only rails in the live smoke test under
 // examples/prod-smoke/ handle real prod verification.
 //

@@ -10,7 +10,7 @@ import (
 // in the schema-declared `Sensitive: true` registry triggers redaction.
 // The bug pattern this catches: a new resource ships a sensitive
 // attribute with a name that doesn't include any of the
-// sensitiveKeyFragments substrings — e.g. a future TrueNAS API adds
+// sensitiveKeyFragments substrings, e.g. a future TrueNAS API adds
 // "vault_unlock_phrase" or "kmip_handshake_pem". Schema marks it
 // sensitive (which keeps it out of the Terraform plan output) but
 // the client's redactor doesn't, so it leaks into logs / error
@@ -178,7 +178,7 @@ func TestRedact_RoundTripValidJSON(t *testing.T) {
 }
 
 // TestRedact_MessageStrings asserts redactMessage drops common
-// secret-bearing substrings from error message payloads — the place
+// secret-bearing substrings from error message payloads, the place
 // where API errors get re-surfaced to the user and to logs.
 func TestRedact_MessageStrings(t *testing.T) {
 	cases := []struct {

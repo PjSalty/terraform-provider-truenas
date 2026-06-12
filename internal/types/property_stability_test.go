@@ -18,7 +18,7 @@ import (
 //
 // must hold. A failure here means the type has a "lossy" Unmarshal
 // (typically because of a custom UnmarshalJSON that loses data, or
-// a field tag that's read-only) — which is the exact bug pattern
+// a field tag that's read-only), which is the exact bug pattern
 // that caused PR #12 (cloud_sync credentials nested-object).
 //
 // Inputs are the seed corpus from fuzz_common_test.go, which already
@@ -27,7 +27,7 @@ import (
 // type.
 func TestProperty_MarshalRoundTripStable(t_ *testing.T) {
 	// Use reflect on a static type registry so we don't have to enumerate
-	// 86 types by hand — and so adding a new type to internal/types
+	// 86 types by hand, and so adding a new type to internal/types
 	// automatically gets it covered.
 	zeros := []interface{}{
 		&t.ACLEntry{}, &t.ACLPerms{}, &t.ACMEDNSAuthenticator{}, &t.APIKey{},
@@ -54,7 +54,7 @@ func TestProperty_MarshalRoundTripStable(t_ *testing.T) {
 	}
 
 	// Subset of seeds that should produce a parseable value for most
-	// types — the round-trip check only makes sense when Unmarshal
+	// types, the round-trip check only makes sense when Unmarshal
 	// succeeded in the first place.
 	parseable := [][]byte{
 		[]byte(`{}`),
@@ -99,7 +99,7 @@ func TestProperty_MarshalRoundTripStable(t_ *testing.T) {
 }
 
 // TestProperty_UnmarshalUnknownFieldsTolerated asserts every type
-// accepts JSON containing unknown fields — TrueNAS adds attributes
+// accepts JSON containing unknown fields, TrueNAS adds attributes
 // between versions and a provider that errors on unknown fields
 // would break the minute the API ships a new field. Concrete shape
 // of the bug pattern: the type uses a strict decoder (DisallowUnknown
@@ -110,7 +110,7 @@ func TestProperty_UnmarshalUnknownFieldsTolerated(t_ *testing.T) {
 		&t.User{}, &t.Group{}, &t.ISCSITarget{}, &t.VM{},
 		&t.FilesystemACL{}, &t.KerberosKeytab{},
 	}
-	// Use only the unknown fields — adding an `id` here would conflict
+	// Use only the unknown fields, adding an `id` here would conflict
 	// with types that use string vs int IDs. The point of the test
 	// is "extra fields don't break decoding", not "id round-trips".
 	payload := []byte(`{"__future_field_v3":[1,2,3],"another_added_in_25_10":"value"}`)
@@ -122,7 +122,7 @@ func TestProperty_UnmarshalUnknownFieldsTolerated(t_ *testing.T) {
 			if err := json.Unmarshal(payload, v); err != nil {
 				// strings.Contains is fine: the test message guides the fix
 				if strings.Contains(err.Error(), "unknown field") {
-					t_.Errorf("type rejects unknown fields — would break on new API versions: %v", err)
+					t_.Errorf("type rejects unknown fields, would break on new API versions: %v", err)
 				} else {
 					t_.Errorf("unexpected unmarshal failure: %v", err)
 				}
