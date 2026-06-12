@@ -1,6 +1,6 @@
 # prod-smoke runbook
 
-This is the runbook for `examples/prod-smoke/` — the workspace you run
+This is the runbook for `examples/prod-smoke/`, the workspace you run
 against a production TrueNAS the first time you point this provider
 at it. It exists to give operators a deterministic, no-side-effects
 way to prove the provider can authenticate and read state.
@@ -23,7 +23,7 @@ way to prove the provider can authenticate and read state.
    plan. Re-arm `destroy_protection = true` immediately after the
    intentional destroy completes.
 
-The provider attribute names are identical in all three phases —
+The provider attribute names are identical in all three phases -
 only the boolean values change, so transitioning between phases is
 a one-line diff.
 
@@ -114,7 +114,7 @@ share, a cronjob, a tunable) is the typical Phase 2 scope.
 If your operator pushes a `terraform destroy` by mistake at this
 stage, the provider refuses every DELETE call before it reaches
 the wire. The TrueNAS host's access log will show no delete
-attempts — the safety rail catches them in-process.
+attempts, the safety rail catches them in-process.
 
 ## Phase 3: full lifecycle
 
@@ -130,10 +130,10 @@ Or in HCL, flip `destroy_protection = false` for the duration of
 the apply, then flip it back to `true` and re-run plan.
 
 The window during which `destroy_protection = false` is a
-deliberately short blast radius — minutes, not hours. The
+deliberately short blast radius, minutes, not hours. The
 "re-arm immediately" step is part of the runbook.
 
-## Soak window — when to advance
+## Soak window, when to advance
 
 The plan calls for a 7-day soak between v2.0.0-rc.1 and v2.0.0
 during which `terraform plan` runs daily against this workspace
@@ -142,7 +142,7 @@ and produces zero drift. The mechanics:
 - Run `terraform plan` daily (a CI cron is the easiest setup).
 - Any non-empty plan against an unchanged HCL is a regression to
   investigate before tagging v2.0.0.
-- Watch for "drift surfaces" — a resource attribute that the read
+- Watch for "drift surfaces", a resource attribute that the read
   path computes differently between releases. Schema-stable means
   zero drift on the read path.
 
@@ -153,7 +153,7 @@ any phase. Specifically:
 
 - Phase 1 cannot persist state changes by design.
 - Phase 2's create/update operations are themselves idempotent at
-  the provider layer — re-applying a plan that already converged
+  the provider layer, re-applying a plan that already converged
   is a no-op.
 - Phase 3's destroy is one-shot; re-running after a destroy is
   the regular apply lifecycle.

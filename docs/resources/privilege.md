@@ -2,12 +2,12 @@
 page_title: "truenas_privilege Resource - terraform-provider-truenas"
 subcategory: "Users & RBAC"
 description: |-
-  Manages a TrueNAS RBAC privilege — a named grant of roles to one or more local and/or directory-service groups.
+  Manages a TrueNAS RBAC privilege, a named grant of roles to one or more local and/or directory-service groups.
 ---
 
 # truenas_privilege (Resource)
 
-Manages a TrueNAS RBAC privilege — a named grant of roles to one or more local and/or directory-service groups.
+Manages a TrueNAS RBAC privilege, a named grant of roles to one or more local and/or directory-service groups.
 
 Managed attributes map directly to the TrueNAS SCALE API. Changes are applied
 via the JSON-RPC endpoint on the target system; mutations that cannot be

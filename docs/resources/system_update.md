@@ -8,7 +8,7 @@ description: |-
 # truenas_system_update (Resource)
 
 Manages the TrueNAS SCALE system update configuration: the auto-download
-toggle and the active release train. This resource is a **singleton** — TrueNAS
+toggle and the active release train. This resource is a **singleton**, TrueNAS
 has exactly one update config per system.
 
 It does **not** execute updates. Applying an update remains a separate manual
@@ -42,11 +42,11 @@ resource "truenas_system_update" "prod" {
 
 ### Optional
 
-- `auto_download` (Boolean) — Whether TrueNAS should automatically download
-  available updates into the local update cache. Defaults to `false` — the
+- `auto_download` (Boolean), Whether TrueNAS should automatically download
+  available updates into the local update cache. Defaults to `false`, the
   conservative pinning value. With `auto_download` disabled, updates never
   land on the system without an explicit operator action.
-- `train` (String) — The active release train (for example,
+- `train` (String), The active release train (for example,
   `TrueNAS-SCALE-Fangtooth`). When set, Terraform reconciles the selected
   train on every apply. When omitted, Terraform preserves whatever the
   system has configured and reports it as a computed attribute. Validated
@@ -54,13 +54,13 @@ resource "truenas_system_update" "prod" {
 
 ### Read-Only
 
-- `id` (String) — Fixed singleton identifier. Always `"system_update"`.
-- `current_version` (String) — The version of TrueNAS SCALE currently
+- `id` (String), Fixed singleton identifier. Always `"system_update"`.
+- `current_version` (String), The version of TrueNAS SCALE currently
   running on the system. Refreshed from `/system/info` on every Read.
-- `available_status` (String) — The pending-update status reported by the
+- `available_status` (String), The pending-update status reported by the
   TrueNAS update server. One of `AVAILABLE`, `UNAVAILABLE`, `REBOOT_REQUIRED`,
   `HA_UNAVAILABLE`. `UNAVAILABLE` is the normal steady-state value.
-- `available_version` (String) — When `available_status` is `AVAILABLE`,
+- `available_version` (String), When `available_status` is `AVAILABLE`,
   this is the version string of the pending update. Empty in all other
   states.
 

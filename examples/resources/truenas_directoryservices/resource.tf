@@ -1,4 +1,4 @@
-# Singleton — one directory services configuration per system.
+# Singleton, one directory services configuration per system.
 resource "truenas_directoryservices" "this" {
   service_type = "ACTIVEDIRECTORY"
   enable       = true

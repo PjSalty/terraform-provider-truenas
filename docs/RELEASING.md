@@ -4,7 +4,7 @@ The release process is **fully autonomous**. This document is the runbook for
 the rare case when you need to intervene manually (rollback, emergency fix,
 or rotating the maintenance token).
 
-## Normal flow — happy path
+## Normal flow, happy path
 
 There is no `git tag` step. Releases are driven by `CHANGELOG.md`:
 
@@ -25,9 +25,9 @@ That's it. No manual `git tag`. No manual `terraform-provider-truenas` push.
 
 ## Versioning rules
 
-- **Patch (`1.10.x`)** — bug fix, doc fix, dependency bump, no schema change.
-- **Minor (`1.x.0`)** — new resource, new optional attribute, new data source.
-- **Major (`2.0.0`)** — removed/renamed attribute, changed default that
+- **Patch (`1.10.x`)**, bug fix, doc fix, dependency bump, no schema change.
+- **Minor (`1.x.0`)**, new resource, new optional attribute, new data source.
+- **Major (`2.0.0`)**, removed/renamed attribute, changed default that
   breaks state, dropped TrueNAS SCALE version support.
 
 ## Rolling back a bad release
@@ -44,7 +44,7 @@ gh release delete v1.10.X --repo PjSalty/terraform-provider-truenas \
     --cleanup-tag --yes
 
 # 3. The Terraform Registry caches the version metadata for ~24h. To remove
-#    it sooner, open a registry support request — there is no public API for
+#    it sooner, open a registry support request, there is no public API for
 #    deleting a published provider version.
 ```
 

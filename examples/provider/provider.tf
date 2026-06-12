@@ -19,7 +19,7 @@ provider "truenas" {}
 #   api_key = var.truenas_api_key
 # }
 
-# Production safety — Phase 1: read-only plan against prod.
+# Production safety, Phase 1: read-only plan against prod.
 # Every POST/PUT/DELETE is refused at the client layer before it
 # reaches the network. The target TrueNAS never even sees the attempt.
 #
@@ -30,10 +30,10 @@ provider "truenas" {}
 #   request_timeout = "5m"  # tuned for loaded prod list endpoints
 # }
 
-# Production safety — Phase 3: safe-apply profile. Drops read_only so
+# Production safety, Phase 3: safe-apply profile. Drops read_only so
 # creates and updates flow, but keeps destroy_protection on so no
 # resource can be destroyed. This is the recommended first-apply
-# configuration against production TrueNAS — equivalent to per-resource
+# configuration against production TrueNAS, equivalent to per-resource
 # `deletion_protection` flags found in major Terraform providers, but
 # enforced at the wire for every resource in the provider at once.
 # See docs/guides/phased-rollout.md.
