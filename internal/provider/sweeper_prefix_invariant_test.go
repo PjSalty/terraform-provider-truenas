@@ -23,7 +23,7 @@ var sweepFuncRE = regexp.MustCompile(`(?m)^func (sweep[A-Z]\w*)\(_ string\) erro
 //	sweeperDatasetIsAcctest(id)
 //	sweep.HasAcctestPrefix(name)
 //
-// Word boundaries are intentionally not required — the helper names
+// Word boundaries are intentionally not required, the helper names
 // in this tree all follow the "Xxx[Is|Has]Acctest" pattern, and the
 // substring "Acctest" (capitalised) is unique enough across the test
 // tree that loose matching is safe.
@@ -46,7 +46,7 @@ var sweepPrefixOptOutRE = regexp.MustCompile(`(?m)//\s*sweep-no-prefix-guard:\s*
 //
 // Why: a sweeper without a prefix guard deletes EVERY upstream
 // resource of its kind that exists on the target TrueNAS. That's
-// catastrophic on any system that holds real data — exactly the
+// catastrophic on any system that holds real data, exactly the
 // "we ran the sweeper against prod by accident" failure mode that
 // makes operators afraid to use sweepers at all.
 //
@@ -66,7 +66,7 @@ func TestSweepersHaveAcctestPrefixGuard(t *testing.T) {
 	// opening brace and the next top-level closing brace.
 	funcMatches := sweepFuncRE.FindAllStringSubmatchIndex(body, -1)
 	if len(funcMatches) == 0 {
-		t.Fatal("no sweep<Name> functions found in sweeper_test.go — regex broken?")
+		t.Fatal("no sweep<Name> functions found in sweeper_test.go, regex broken?")
 	}
 
 	type fnSpan struct {
@@ -98,7 +98,7 @@ func TestSweepersHaveAcctestPrefixGuard(t *testing.T) {
 	}
 
 	if len(missing) > 0 {
-		t.Fatalf("%d sweeper(s) missing a prefix guard — every sweeper MUST either "+
+		t.Fatalf("%d sweeper(s) missing a prefix guard, every sweeper MUST either "+
 			"call an Acctest-prefix helper (sweeperHasAcctestPrefix, "+
 			"sweeperDatasetIsAcctest, etc.) OR carry an explicit "+
 			"// sweep-no-prefix-guard: <reason> comment. an unscoped sweeper "+

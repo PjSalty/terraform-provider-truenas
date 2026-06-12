@@ -13,7 +13,7 @@ import (
 // TestProvider_Configure_DestroyProtectionEnvVar verifies that
 // TRUENAS_DESTROY_PROTECTION=1 causes the provider to construct a
 // client with DestroyProtection=true, so every DELETE request will
-// fail with ErrDestroyProtected before reaching the network — while
+// fail with ErrDestroyProtected before reaching the network, while
 // POST and PUT still flow through normally.
 func TestProvider_Configure_DestroyProtectionEnvVar(t *testing.T) {
 	original := newClientFn
@@ -102,7 +102,7 @@ func TestProvider_Configure_DestroyProtectionHCLAttribute(t *testing.T) {
 }
 
 // TestProvider_Configure_DestroyProtectionHCLOverridesEnv verifies
-// that the HCL attribute takes precedence over the env var — same
+// that the HCL attribute takes precedence over the env var, same
 // precedence rule as ReadOnly. HCL is closer to the operator's intent.
 func TestProvider_Configure_DestroyProtectionHCLOverridesEnv(t *testing.T) {
 	original := newClientFn

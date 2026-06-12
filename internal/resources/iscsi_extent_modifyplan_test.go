@@ -77,7 +77,7 @@ func TestISCSIExtent_ModifyPlan_FileValid(t *testing.T) {
 
 func TestISCSIExtent_ModifyPlan_UnknownType(t *testing.T) {
 	r := NewISCSIExtentResource().(*ISCSIExtentResource)
-	// No type set — should not error on cross-attrs
+	// No type set, should not error on cross-attrs
 	resp := callModifyPlan(t, r, map[string]tftypes.Value{
 		"name": str("e1"),
 	})

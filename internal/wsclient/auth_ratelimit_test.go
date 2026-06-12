@@ -112,7 +112,7 @@ func fmtID(id uint64) string {
 	return string(b[i:])
 }
 
-// dialIfMissing isn't used here directly — it's the test's
+// dialIfMissing isn't used here directly, it's the test's
 // documentation that we lean on Client's own dial path because
 // wsclient.New(ctx, ...) calls both dial AND authenticate; we want
 // to drive authenticate in isolation, so we wire up a Client by
@@ -171,7 +171,7 @@ func TestAuthenticate_CtxCancelDuringBackoff(t *testing.T) {
 		t.Fatalf("dial: %v", err)
 	}
 
-	// Cancel shortly after the first EBUSY lands — the client will be
+	// Cancel shortly after the first EBUSY lands, the client will be
 	// sitting in its jittered backoff select.
 	go func() {
 		time.Sleep(100 * time.Millisecond)
@@ -189,7 +189,7 @@ func TestAuthenticate_CtxCancelDuringBackoff(t *testing.T) {
 
 // TestAuthenticate_DelayCapApplies rate-limits enough consecutive
 // attempts that the exponential backoff hits the 6s cap branch.
-// Slow (~20s of real backoff) — kept in the suite because the cap
+// Slow (~20s of real backoff), kept in the suite because the cap
 // branch otherwise never executes.
 func TestAuthenticate_DelayCapApplies(t *testing.T) {
 	t.Parallel()

@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-// testAccProtoV6ProviderFactories is used for acceptance testing — it
+// testAccProtoV6ProviderFactories is used for acceptance testing, it
 // wires up a real in-process provider server without a network round-trip.
 var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServer, error){
 	"truenas": providerserver.NewProtocol6WithError(New("test")()),
@@ -33,7 +33,7 @@ func testAccPreCheck(t *testing.T) {
 // Run with: TF_ACC=1 TRUENAS_URL=... TRUENAS_API_KEY=... go test ./internal/provider/...
 func TestAccProvider_Schema(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {
-		t.Skip("TF_ACC not set — skipping acceptance test")
+		t.Skip("TF_ACC not set, skipping acceptance test")
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },

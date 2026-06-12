@@ -7,7 +7,7 @@ import (
 )
 
 // TestAccPoolsDataSource_basic queries the pools list datasource and
-// asserts at least one pool surfaces — the acc env's TRUENAS_TEST_POOL
+// asserts at least one pool surfaces, the acc env's TRUENAS_TEST_POOL
 // must exist for this assertion to hold. Pure read-only collection
 // query.
 func TestAccPoolsDataSource_basic(t *testing.T) {

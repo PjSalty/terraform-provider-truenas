@@ -262,7 +262,7 @@ func (r *ISCSIInitiatorResource) Delete(ctx context.Context, req resource.Delete
 
 // ModifyPlan emits a plan-time Warning whenever the plan would destroy
 // this resource. Removing an initiator group invalidates the allow-list
-// for every target it's attached to — clients lose access.
+// for every target it's attached to, clients lose access.
 func (r *ISCSIInitiatorResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_iscsi_initiator")
 }

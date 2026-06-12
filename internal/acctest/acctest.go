@@ -6,7 +6,7 @@
 //
 // These helpers are NOT inside a _test.go file because they need to be
 // importable from test files in sibling packages. Nothing here should
-// ever be called from production code — runtime refers only to the
+// ever be called from production code, runtime refers only to the
 // TF_ACC / TRUENAS_URL / TRUENAS_API_KEY environment variables already
 // required by the plugin-testing framework itself.
 package acctest
@@ -35,7 +35,7 @@ const DefaultProdDeny = "truenas.example.com"
 // SkipMsg is the shared skip message used by every acceptance test when
 // TF_ACC is not set. Keeping it in one place makes grepping the SKIPs in
 // CI logs trivial.
-const SkipMsg = "TF_ACC not set — skipping acceptance test"
+const SkipMsg = "TF_ACC not set, skipping acceptance test"
 
 // PreCheck verifies the environment is configured for acceptance testing
 // against a real TrueNAS SCALE instance. Tests are expected to call this
@@ -67,12 +67,12 @@ func SkipIfNoAcc(t *testing.T) bool {
 // Client builds a live client.Client from the same environment variables
 // the provider uses. This is exclusively for `_disappears` test checks
 // that need to delete a resource out-of-band to verify the provider
-// detects and recovers from the drift. Never use this for anything else —
+// detects and recovers from the drift. Never use this for anything else -
 // all other infrastructure mutations must flow through Terraform.
 //
 // Refuses to build a client targeting any host in TRUENAS_PROD_DENY
 // (defaulted to the homelab production TrueNAS). This is the Go-side
-// counterpart to the same check in scripts/lib/_env.sh — defense in
+// counterpart to the same check in scripts/lib/_env.sh, defense in
 // depth so even an operator who bypasses the shell runner can't
 // accidentally point an _disappears test at production.
 func Client() (*wsclient.Client, error) {
@@ -104,7 +104,7 @@ func assertNotProd(rawURL string) error {
 		deny = DefaultProdDeny
 	}
 	if deny == "" {
-		// Operator explicitly disabled the check. We do not nag — the
+		// Operator explicitly disabled the check. We do not nag, the
 		// shell-side runner already does that, and forcing a noisy
 		// override here would just push contributors to comment this
 		// out instead of using the env var.

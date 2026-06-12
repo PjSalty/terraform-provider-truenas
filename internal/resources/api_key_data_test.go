@@ -51,7 +51,7 @@ data "truenas_api_key" "test" {
 `
 }
 
-// TestAccAPIKeyDataSource_notFound — sanity check that a missing
+// TestAccAPIKeyDataSource_notFound, sanity check that a missing
 // API key id surfaces as an error, not a silent empty result.
 func TestAccAPIKeyDataSource_notFound(t *testing.T) {
 	resource.Test(t, resource.TestCase{

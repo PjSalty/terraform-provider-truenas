@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
-// TestAccCloudSyncCredentialResource_basic — TrueNAS does NOT probe S3
+// TestAccCloudSyncCredentialResource_basic, TrueNAS does NOT probe S3
 // credentials at create time for /cloudsync/credentials (the probe is
 // deferred to cloudsync task create). provider_attributes_json is
 // sensitive and excluded from ImportStateVerify.
@@ -57,7 +57,7 @@ resource "truenas_cloudsync_credential" "test" {
 }
 
 // TestAccCloudSyncCredentialResource_update renames an existing S3
-// credential in place. Two steps are sufficient — the resource is a
+// credential in place. Two steps are sufficient, the resource is a
 // regular (not singleton) resource and the test cleans itself up on
 // exit.
 func TestAccCloudSyncCredentialResource_update(t *testing.T) {

@@ -562,7 +562,7 @@ func (r *DatasetResource) mapResponseToModel(dataset *truenas.DatasetResponse, m
 	}
 	// SCALE 25.10+ moved comments from top-level `comments` (always null)
 	// to `user_properties.comments`. GetComments() handles both shapes
-	// transparently — see internal/client/dataset.go.
+	// transparently, see internal/client/dataset.go.
 	model.Comments = types.StringValue(dataset.GetComments())
 	if dataset.Sync != nil {
 		model.Sync = types.StringValue(dataset.Sync.Value)
@@ -582,7 +582,7 @@ func (r *DatasetResource) mapResponseToModel(dataset *truenas.DatasetResponse, m
 		model.RecordSize = types.StringValue(dataset.RecordSize.Value)
 	}
 	// share_type is a create-time preset (applies ACL/case-sensitivity settings)
-	// not a persistent ZFS property — the API returns "GENERIC" on read regardless
+	// not a persistent ZFS property, the API returns "GENERIC" on read regardless
 	// of what was requested at create. Preserve the user's value if already set in
 	// the model; otherwise fall back to the API response or "GENERIC".
 	if !model.ShareType.IsNull() && !model.ShareType.IsUnknown() {

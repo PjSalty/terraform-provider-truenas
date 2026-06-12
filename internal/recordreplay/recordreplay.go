@@ -9,7 +9,7 @@
 // fragile (network blip → false failure). A recorded corpus lets
 // CI run the same coverage in seconds without touching live
 // infrastructure. Drift between the recorded corpus and the live
-// API surfaces as a fixture mismatch — which is itself a useful
+// API surfaces as a fixture mismatch, which is itself a useful
 // regression signal.
 //
 // Modes:
@@ -45,7 +45,7 @@ import (
 )
 
 // Fixture is the on-disk record of a single (request, response)
-// pair. Stored as JSON for portability and reviewability — a
+// pair. Stored as JSON for portability and reviewability, a
 // regression that touches the wire shape is visible in the diff.
 //
 // Bodies are base64-encoded []byte rather than RawMessage so the
@@ -67,7 +67,7 @@ type Fixture struct {
 // hash method + path + sorted query + body to handle the common
 // case where TrueNAS issues the same call with different transient
 // parameters (request IDs, timestamps). Headers are intentionally
-// EXCLUDED — they carry the X-Request-ID which differs every call.
+// EXCLUDED, they carry the X-Request-ID which differs every call.
 func Hash(method, path string, query url.Values, body []byte) string {
 	h := sha256.New()
 	h.Write([]byte(strings.ToUpper(method)))
@@ -226,7 +226,7 @@ func (r *Recorder) write(method, path string, query url.Values, body []byte, fx 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	h := Hash(method, path, query, body)
-	// Fixture is a flat struct of strings, ints, and []byte — MarshalIndent
+	// Fixture is a flat struct of strings, ints, and []byte, MarshalIndent
 	// cannot fail on it.
 	out, _ := json.MarshalIndent(fx, "", "  ")
 	_ = os.WriteFile(filepath.Join(r.Dir, h+".json"), out, 0o600)
@@ -263,7 +263,7 @@ func (rp *Replayer) URL() string { return rp.server.URL }
 func (rp *Replayer) Close() { rp.server.Close() }
 
 // Hits returns the number of fixtures served. Misses lists the
-// requests that had no matching fixture — CI assertion: len(Misses) == 0.
+// requests that had no matching fixture, CI assertion: len(Misses) == 0.
 func (rp *Replayer) Hits() int        { return rp.hits }
 func (rp *Replayer) Misses() []string { return rp.misses }
 
@@ -277,7 +277,7 @@ func (rp *Replayer) serve(w http.ResponseWriter, req *http.Request) {
 	// this is dev-time test tooling, not a user-facing input path.
 	data, err := os.ReadFile(filepath.Join(rp.Dir, h+".json")) //nolint:gosec // G304: hash-named file under the fixture dir
 	if err != nil {
-		// Miss — record + 404 so the caller sees the gap.
+		// Miss, record + 404 so the caller sees the gap.
 		rp.misses = append(rp.misses, fmt.Sprintf("%s %s (hash %s)", req.Method, req.URL.Path, h))
 		http.Error(w, "recordreplay: no fixture for "+req.Method+" "+req.URL.Path, http.StatusNotFound)
 		return

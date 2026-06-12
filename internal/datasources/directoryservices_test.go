@@ -83,7 +83,7 @@ func TestDirectoryServicesDataSource_Read_Enabled(t *testing.T) {
 }
 
 func TestDirectoryServicesDataSource_Read_Disabled(t *testing.T) {
-	// No service type, no credential — should produce null strings.
+	// No service type, no credential, should produce null strings.
 	c := newWSServer(t.Context(), t, wsReturn(truenas.DirectoryServicesConfig{
 		ID:     1,
 		Enable: false,

@@ -40,7 +40,7 @@ var (
 // checkin. The client layer handles this transparently so the resource
 // presents a simple CRUD interface to Terraform.
 //
-// Physical interfaces (type PHYSICAL) cannot be created via /interface —
+// Physical interfaces (type PHYSICAL) cannot be created via /interface -
 // they are discovered automatically from the host. This resource only
 // supports creating virtual interface types.
 type NetworkInterfaceResource struct {
@@ -269,7 +269,7 @@ func (r *NetworkInterfaceResource) Schema(ctx context.Context, _ resource.Schema
 // config-validation time. TrueNAS's /interface API silently accepts
 // a BRIDGE with empty bridge_members or a VLAN without vlan_tag and
 // then produces a broken interface that the user has to notice via
-// out-of-band tools — short-circuit those classes of mistakes here.
+// out-of-band tools, short-circuit those classes of mistakes here.
 //
 //   - type = "BRIDGE"           → bridge_members must be non-empty
 //   - type = "LINK_AGGREGATION" → lag_protocol and lag_ports required

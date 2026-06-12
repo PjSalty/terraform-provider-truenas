@@ -1,14 +1,14 @@
 # shellcheck shell=bash
 #
-# scripts/lib/_env.sh — shared env-loading and sanity helpers used by
+# scripts/lib/_env.sh, shared env-loading and sanity helpers used by
 # every script under scripts/acc*.sh.
 #
 # Sourced (not executed) by the entry-point scripts. Exposes:
-#   acc_load_env       — load .envrc.local + assert required vars exist
-#   acc_check_url      — TCP-connect check on TRUENAS_URL
-#   acc_check_auth     — `system.info` round-trip with the API key
-#   acc_check_pool     — verify TRUENAS_TEST_POOL exists on the host
-#   acc_color_*        — small color helpers for status output
+#   acc_load_env      , load .envrc.local + assert required vars exist
+#   acc_check_url     , TCP-connect check on TRUENAS_URL
+#   acc_check_auth    , `system.info` round-trip with the API key
+#   acc_check_pool    , verify TRUENAS_TEST_POOL exists on the host
+#   acc_color_*       , small color helpers for status output
 
 set -euo pipefail
 
@@ -56,7 +56,7 @@ acc_repo_root() {
 # missing piece so an operator who forgot to source .envrc.local gets
 # a hint instead of a confusing dial failure 30 minutes into the run.
 #
-# ACC_ENV_FILE overrides which file is sourced — the multi-version
+# ACC_ENV_FILE overrides which file is sourced, the multi-version
 # matrix points it at .envrc.local-25-04 / .envrc.local-26-beta per
 # leg so each run targets the right test VM. Without the override,
 # sourcing .envrc.local here would silently clobber the caller's
@@ -82,7 +82,7 @@ acc_load_env() {
   : "${TRUENAS_PROD_DENY:=truenas.example.com}"
   export TRUENAS_INSECURE_SKIP_VERIFY TRUENAS_TEST_POOL TRUENAS_PROD_DENY
 
-  # Safety rail #1 — refuse to run against a known production host.
+  # Safety rail #1, refuse to run against a known production host.
   # The acc suite creates and destroys REAL resources; pointing it
   # at prod by accident is a class of mistake this check exists to
   # prevent. The denylist is comma-separated; an exact case-
@@ -166,7 +166,7 @@ acc_check_url() {
 
 # acc_check_auth dials the JSON-RPC WebSocket API with the configured
 # key via cmd/wspreflight and verifies the system.info round-trip.
-# WS-based (not REST curl) because TrueNAS 26 removed /api/v2.0 — this
+# WS-based (not REST curl) because TrueNAS 26 removed /api/v2.0, this
 # probe travels exactly the path the provider itself uses.
 # Caches the probe output for acc_check_pool.
 ACC_PREFLIGHT_JSON=""

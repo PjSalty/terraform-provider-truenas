@@ -56,12 +56,12 @@ resource "truenas_directoryservices" "test" {
 //  3. Poll until directoryservices.status reports HEALTHY
 //  4. Disable directoryservices (leave the domain)
 //  5. Destroy kerberos_realm
-//  6. Verify clean state — directoryservices reverts to null
+//  6. Verify clean state, directoryservices reverts to null
 //     service_type, kerberos_realm row gone, TrueNAS not joined.
 //
 // Env-gated: requires TRUENAS_TEST_AD=1 plus TRUENAS_TEST_AD_DC,
 // TRUENAS_TEST_AD_REALM, TRUENAS_TEST_AD_ADMIN_PRINCIPAL. Skips
-// when missing — full AD lifecycle is invasive (modifies hostname
+// when missing, full AD lifecycle is invasive (modifies hostname
 // keytab, /etc/krb5.conf, joins host to domain) and shouldn't run
 // on every CI invocation. Run against a throwaway Samba AD-DC.
 //
@@ -71,7 +71,7 @@ resource "truenas_directoryservices" "test" {
 // a host machine account on the DC.
 func TestAccDirectoryServices_fullADLifecycle(t *testing.T) {
 	if os.Getenv("TRUENAS_TEST_AD") != "1" {
-		t.Skip("TRUENAS_TEST_AD=1 not set; AD lifecycle test is invasive — gates behind explicit opt-in")
+		t.Skip("TRUENAS_TEST_AD=1 not set; AD lifecycle test is invasive, gates behind explicit opt-in")
 	}
 	dcAddr := os.Getenv("TRUENAS_TEST_AD_DC")
 	realm := os.Getenv("TRUENAS_TEST_AD_REALM")
@@ -97,7 +97,7 @@ func TestAccDirectoryServices_fullADLifecycle(t *testing.T) {
 				),
 			},
 			// Step 2: enable AD with KERBEROS_PRINCIPAL credential.
-			// This is the JOIN step — TrueNAS contacts the DC, creates
+			// This is the JOIN step, TrueNAS contacts the DC, creates
 			// a host machine account, gets a keytab, and updates
 			// /etc/krb5.conf + nsswitch.conf.
 			{

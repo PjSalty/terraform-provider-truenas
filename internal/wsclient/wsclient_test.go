@@ -105,7 +105,7 @@ func TestFailPending(t *testing.T) {
 	}
 	// failPending now passes the error through transportErr (preserving
 	// the error chain so callers can errors.Is against ErrConnectionLost
-	// / ErrShuttingDown). The Error field stays nil — wire-level
+	// / ErrShuttingDown). The Error field stays nil, wire-level
 	// RPCErrors are a different code path.
 	r1, ok1 := <-ch1
 	if !ok1 || r1 == nil || r1.transportErr == nil || !errors.Is(r1.transportErr, sentinel) {
@@ -122,7 +122,7 @@ func TestFailPending(t *testing.T) {
 
 func TestFailPending_fullChannel(t *testing.T) {
 	c := &Client{pending: make(map[uint64]chan *rpcResponse)}
-	// Channel with cap=1, pre-filled — failPending's send must drop, not block.
+	// Channel with cap=1, pre-filled, failPending's send must drop, not block.
 	ch := make(chan *rpcResponse, 1)
 	ch <- &rpcResponse{ID: 99}
 	c.pending[1] = ch
@@ -174,7 +174,7 @@ func TestNewCorrelationIDFrom_failure(t *testing.T) {
 }
 
 func TestNewCorrelationIDFrom_partial(t *testing.T) {
-	// Read returns short — io.ReadFull surfaces ErrUnexpectedEOF.
+	// Read returns short, io.ReadFull surfaces ErrUnexpectedEOF.
 	r := bytes.NewReader([]byte{1, 2, 3})
 	id := newCorrelationIDFrom(r)
 	if id == "" {

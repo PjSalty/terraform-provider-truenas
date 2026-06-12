@@ -11,7 +11,7 @@ import (
 // crudMethodRE matches the opening line of each of the four CRUD method
 // signatures in a Plugin Framework resource. The capture group picks up
 // the method name (Create, Read, Update, Delete) so the test can report
-// gaps precisely. ImportState is intentionally NOT in this list — it is
+// gaps precisely. ImportState is intentionally NOT in this list, it is
 // a thin wrapper around resource.ImportStatePassthroughID in every file
 // and needs no logging of its own.
 var crudMethodRE = regexp.MustCompile(`func \([a-z] \*\w+Resource\) (Create|Read|Update|Delete)\(`)
@@ -73,7 +73,7 @@ func TestCRUDLogging(t *testing.T) {
 		for _, g := range gaps {
 			lines = append(lines, "  "+g.file+" "+g.method)
 		}
-		t.Fatalf("the following CRUD methods do not emit any tflog call — "+
+		t.Fatalf("the following CRUD methods do not emit any tflog call, "+
 			"operators debugging a plan/apply will have no breadcrumbs:\n%s\n\n"+
 			"Fix by adding at least `tflog.Trace(ctx, \"<Method> <Resource> start\")` "+
 			"at the top of each CRUD method. See internal/resources/dataset.go for "+
@@ -84,7 +84,7 @@ func TestCRUDLogging(t *testing.T) {
 // findFuncBodyEnd returns the index of the matching "\n}\n" (or "\n}" at
 // EOF) that closes the function whose body starts at `start`. Relies on
 // the gofmt convention that the closing `}` of a top-level function is
-// always at column 0 — any nested `}` will be indented. This is simpler
+// always at column 0, any nested `}` will be indented. This is simpler
 // and more robust than trying to brace-count inside string literals.
 func findFuncBodyEnd(text string, start int) int {
 	idx := start

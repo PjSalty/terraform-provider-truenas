@@ -22,7 +22,7 @@ var testAccFuncRE = regexp.MustCompile(`(?m)^func (TestAcc\w+)\(t \*testing\.T\)
 // out the entire body with t.Skip (used for tests that need extra
 // infrastructure like dedicated disks).
 //
-// The check is intentionally permissive on placement — PreCheck and
+// The check is intentionally permissive on placement, PreCheck and
 // t.Skip can appear anywhere in the function body, not just on the
 // first line. The goal is to catch tests that forgot both, not to
 // police where they are.
@@ -43,7 +43,7 @@ var precheckOrSkipRE = regexp.MustCompile(`(PreCheck:|t\.Skip\()`)
 //
 // Without this invariant a contributor can add a new TestAcc that
 // silently bypasses the gating and starts failing on developer
-// workstations that lack the test VM credentials — exactly the kind
+// workstations that lack the test VM credentials, exactly the kind
 // of "ran on my machine but flakes in CI" pattern this provider's
 // other invariants are designed to prevent.
 func TestAcceptanceTestsHavePreCheckOrSkip(t *testing.T) {
@@ -65,7 +65,7 @@ func TestAcceptanceTestsHavePreCheckOrSkip(t *testing.T) {
 				name := fn[1]
 				body := extractFunctionBody(text, fn[0])
 				if body == "" {
-					// Defensive — extractFunctionBody returns "" only
+					// Defensive, extractFunctionBody returns "" only
 					// if the function couldn't be located, which would
 					// indicate a malformed source file. Skip rather
 					// than fail.
@@ -99,7 +99,7 @@ func TestAcceptanceTestsHavePreCheckOrSkip(t *testing.T) {
 //
 // We use brace-matching rather than a Go AST parser because the
 // invariant tests in this package have stuck with regex+string for
-// simplicity — see registration_invariant_test.go for the precedent.
+// simplicity, see registration_invariant_test.go for the precedent.
 func extractFunctionBody(src, signature string) string {
 	idx := strings.Index(src, signature)
 	if idx < 0 {

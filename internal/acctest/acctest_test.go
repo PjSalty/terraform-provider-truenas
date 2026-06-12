@@ -199,7 +199,7 @@ func TestPIDSuffix(t *testing.T) {
 //   - Wrong-shape URLs surface a clean error instead of silently
 //     bypassing the check.
 //
-// The destructive default — building a client at all — is gated
+// The destructive default, building a client at all, is gated
 // behind these checks. Each subtest snapshots/restores env so they
 // can run in any order without polluting siblings.
 func TestClient_RejectsProdHost(t *testing.T) {
@@ -246,7 +246,7 @@ func TestClient_RejectsProdHost(t *testing.T) {
 		t.Setenv("TRUENAS_PROD_DENY", "")
 		// Client() still has to construct a real *client.Client; we
 		// don't assert success there because the URL may not resolve
-		// — only that the prod-deny error is no longer in the path.
+		//, only that the prod-deny error is no longer in the path.
 		_, err := acctest.Client()
 		if err != nil && strings.Contains(err.Error(), "TRUENAS_PROD_DENY") {
 			t.Errorf("empty TRUENAS_PROD_DENY should disable the check; got: %v", err)
@@ -276,7 +276,7 @@ func TestClient_RejectsProdHost(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error on malformed URL")
 		}
-		// Either parse error OR "no hostname" — both are acceptable
+		// Either parse error OR "no hostname", both are acceptable
 		// outcomes that prevent the destructive default.
 		if !strings.Contains(err.Error(), "not a valid URL") &&
 			!strings.Contains(err.Error(), "no hostname") {
@@ -287,7 +287,7 @@ func TestClient_RejectsProdHost(t *testing.T) {
 	t.Run("URL parses but has no hostname", func(t *testing.T) {
 		restore := envSandbox(t)
 		defer restore()
-		// "https:/path" — url.Parse succeeds (single slash makes it
+		// "https:/path", url.Parse succeeds (single slash makes it
 		// a path-only URL with empty host) but Hostname() returns "",
 		// triggering the no-hostname guard inside assertNotProd.
 		t.Setenv("TRUENAS_URL", "https:/path-only")

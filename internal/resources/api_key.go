@@ -269,7 +269,7 @@ func (r *APIKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 // ModifyPlan emits a plan-time Warning whenever the plan would destroy
 // this resource. Destroying an API key revokes API access for anything
-// holding the key — operators should see the warning before they apply.
+// holding the key, operators should see the warning before they apply.
 // Non-blocking; pair with the destroy_protection rail for hard stops.
 func (r *APIKeyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_api_key")

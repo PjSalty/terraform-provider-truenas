@@ -58,7 +58,7 @@ func (r *MailConfigResource) Metadata(_ context.Context, req resource.MetadataRe
 
 func (r *MailConfigResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{Blocks: map[string]schema.Block{"timeouts": timeouts.Block(ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true})}, Description: "Manages the email/SMTP configuration on TrueNAS SCALE. " +
-		"This is a singleton resource — only one instance can exist.",
+		"This is a singleton resource, only one instance can exist.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "The configuration ID (always 1).",

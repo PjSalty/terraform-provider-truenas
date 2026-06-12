@@ -2,7 +2,7 @@ package types_test
 
 import "testing"
 
-// commonSeeds is the corpus every type-fuzz target adds — a mix of
+// commonSeeds is the corpus every type-fuzz target adds, a mix of
 // well-formed JSON shapes, edge JSON, and malformed bytes. Go's fuzz
 // engine mutates these so the per-target seed list stays small.
 var commonSeeds = [][]byte{
@@ -24,7 +24,7 @@ var commonSeeds = [][]byte{
 	[]byte(`{"unknown_field":42,"another":[1,2,3]}`),
 	[]byte(`{"id":1,"nested":{"deep":{"deeper":{"x":1}}}}`),
 	[]byte(`{"id":null,"name":null}`),
-	// malformed JSON — should error, not panic
+	// malformed JSON, should error, not panic
 	[]byte(`{`),
 	[]byte(`{"id":}`),
 	[]byte(`{"id":1,`),

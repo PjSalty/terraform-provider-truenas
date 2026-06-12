@@ -94,7 +94,7 @@ func (c *Client) GetPoolByName(ctx context.Context, name string) (*types.Pool, e
 // CreatePool creates a new ZFS pool. The underlying pool.create RPC is
 // a job (vdev assembly takes seconds-to-minutes for large pools).
 // CallJob waits for terminal state, then this client looks up the
-// placed pool by name — relying on the job's result field is unsafe
+// placed pool by name, relying on the job's result field is unsafe
 // across SCALE point releases.
 func (c *Client) CreatePool(ctx context.Context, req *types.PoolCreateRequest) (*types.Pool, error) {
 	tflog.Trace(ctx, "CreatePool (ws) start")

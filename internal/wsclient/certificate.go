@@ -14,7 +14,7 @@ import (
 // JSON-RPC method namespace for certificates: certificate.{...}.
 //
 // certificate.create / certificate.update / certificate.delete are
-// asynchronous — the server returns a job ID and the actual work
+// asynchronous, the server returns a job ID and the actual work
 // (key generation, ACME flow, file removal) happens in the background.
 // CallJob handles the core.get_jobs polling.
 //

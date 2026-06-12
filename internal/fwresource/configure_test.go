@@ -27,7 +27,7 @@ func TestConfigureClient_Nil(t *testing.T) {
 
 func TestConfigureClient_OK(t *testing.T) {
 	t.Parallel()
-	// No need to dial — ConfigureClient asserts the type, doesn't
+	// No need to dial, ConfigureClient asserts the type, doesn't
 	// invoke any method on the client. An empty *wsclient.Client
 	// has the right concrete type.
 	cli := &wsclient.Client{}

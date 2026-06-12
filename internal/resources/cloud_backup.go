@@ -470,7 +470,7 @@ func (r *CloudBackupResource) mapResponseToModel(ctx context.Context, cb *truena
 	model.ID = types.StringValue(strconv.Itoa(cb.ID))
 	model.Description = types.StringValue(cb.Description)
 	model.Path = types.StringValue(cb.Path)
-	// credentials may be an object { id, name, provider } or an int — try both.
+	// credentials may be an object { id, name, provider } or an int, try both.
 	credsID := extractCredentialsID(cb.Credentials)
 	model.Credentials = types.Int64Value(int64(credsID))
 	if len(cb.Attributes) > 0 {
@@ -634,7 +634,7 @@ func filterJSONByKeys(server, reference string) (string, error) {
 	// a raw array or null), fall through to "no filter" and emit the full
 	// server object. This is the drift-suppression contract for first-import
 	// paths where the caller cannot yet know the key-set shape. Returning
-	// nil here is NOT error-swallowing — it's documented behavior.
+	// nil here is NOT error-swallowing, it's documented behavior.
 	//nolint:nilerr // intentional decode-fallback; see doc comment above
 	if err := rdec.Decode(&refMap); err != nil {
 		out, _ := json.Marshal(serverMap)

@@ -87,7 +87,7 @@ func TestServeHTTP_marshalResponseFails(t *testing.T) {
 }
 
 // TestCall_clientClosedDuringCall covers the c.closed branch in
-// callOnce — the Client is shut down while the call is waiting for
+// callOnce, the Client is shut down while the call is waiting for
 // its response.
 func TestCall_clientClosedDuringCall(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -547,7 +547,7 @@ func TestLogWriteResult(t *testing.T) {
 // TestServeHTTP_writeFails covers the conn.Write error log+return
 // branch in serveHTTP. Achieved by replacing marshalTestResponse
 // with one that returns oversized output exceeding the read limit
-// the *client* would accept — but that path doesn't fail the server
+// the *client* would accept, but that path doesn't fail the server
 // Write. Easier: have the handler wait long enough that the test
 // server's WS write context (5s) times out, OR drop the conn from
 // the client side mid-handler. The second is what we do here, with
@@ -623,7 +623,7 @@ func TestDial_failedUpgrade(t *testing.T) {
 	}
 }
 
-// (TestSendFrame_writeCtxCanceled removed — superseded by
+// (TestSendFrame_writeCtxCanceled removed, superseded by
 // TestSendFrame_ctxCanceled which uses a past-deadline context that
 // reliably triggers the err branch without racing the kernel buffer.)
 

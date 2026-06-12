@@ -2,7 +2,7 @@ package resources
 
 // Batch CRUD coverage tests. Each test drives Create/Read/Update/Delete against
 // an httptest mock server. The mock answers every request with a canned JSON
-// body — the goal is to exercise the resource code paths rather than verify
+// body, the goal is to exercise the resource code paths rather than verify
 // wire-format correctness.
 
 import (
@@ -53,7 +53,7 @@ func newWSJSONServerClient(t *testing.T, body map[string]interface{}) *wsclient.
 // (records them as t.Errorf rather than t.Fatalf) so coverage accumulates
 // across handlers even if one branch errors out. For many resources, some
 // branches error because the mock response doesn't perfectly match what the
-// code expects — that's fine, the unreached-path coverage still compiles.
+// code expects, that's fine, the unreached-path coverage still compiles.
 func crudDrive(t *testing.T, r resource.Resource, client interface{}, id string, planVals map[string]tftypes.Value) {
 	t.Helper()
 	ctx := context.Background()

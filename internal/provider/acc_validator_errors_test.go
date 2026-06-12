@@ -199,7 +199,7 @@ resource "truenas_init_script" "bad_when" {
 
 // TestAccValidator_NVMetPort_trtypeOneOf locks the nvmet_port.addr_trtype
 // enum (TCP, RDMA, FC). The transport-type API is the kind of value
-// TrueNAS extends silently when new hardware ships — locking the enum
+// TrueNAS extends silently when new hardware ships, locking the enum
 // surfaces it.
 func TestAccValidator_NVMetPort_trtypeOneOf(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {
@@ -409,7 +409,7 @@ resource "truenas_iscsi_targetextent" "bad_lunid" {
 }
 
 // TestAccValidator_Certificate_lifetimeOutOfRange covers the
-// certificate.lifetime int64validator.Between(1, 36500) — values
+// certificate.lifetime int64validator.Between(1, 36500), values
 // outside the [1, 36500] day range must be rejected before reaching
 // the API.
 func TestAccValidator_Certificate_lifetimeOutOfRange(t *testing.T) {
@@ -478,7 +478,7 @@ func TestAccValidator_Cronjob_userTooLong(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				// 33 chars — POSIX usernames cap at 32.
+				// 33 chars, POSIX usernames cap at 32.
 				Config: `
 resource "truenas_cronjob" "bad_user" {
   user            = "thisuserislongerthanthirtytwochars"
@@ -529,7 +529,7 @@ func TestAccValidator_NVMetSubsys_nameTooLong(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				// 254 'x' characters — one over the 253-char limit.
+				// 254 'x' characters, one over the 253-char limit.
 				Config: fmt.Sprintf(`
 resource "truenas_nvmet_subsys" "bad_name" {
   name = %q

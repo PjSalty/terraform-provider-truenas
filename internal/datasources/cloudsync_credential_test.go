@@ -115,7 +115,7 @@ func TestCloudSyncCredentialDataSource_Read_NotFoundByName(t *testing.T) {
 }
 
 func TestCloudSyncCredentialDataSource_Read_EmptyProvider(t *testing.T) {
-	// Provider map without "type" key — provider_type should be empty string.
+	// Provider map without "type" key, provider_type should be empty string.
 	c := newWSServer(t.Context(), t, wsReturn(truenas.CloudSyncCredential{
 		ID:       3,
 		Name:     "bare",

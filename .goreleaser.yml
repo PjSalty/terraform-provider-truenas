@@ -69,7 +69,7 @@ signs:
     artifacts: checksum
     signature: "${artifact}.sig"
 
-# SBOM generation via syft — requires syft to be on PATH at release time.
+# SBOM generation via syft, requires syft to be on PATH at release time.
 # id=sbom (not "default") so checksum.ids can exclude these artifacts; the
 # Terraform Registry rejects releases whose SHA256SUMS lists files outside
 # the archive set.

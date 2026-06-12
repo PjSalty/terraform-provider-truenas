@@ -14,7 +14,7 @@ import (
 //
 // Mirrors client.ErrDestroyProtected from the legacy REST package; same
 // operator-facing semantics, new transport. The intended use is the
-// safe-apply profile — the operator's first real apply against prod
+// safe-apply profile, the operator's first real apply against prod
 // can create + update but cannot delete until they explicitly opt out.
 var ErrDestroyProtected = errors.New("truenas wsclient is in destroy-protected mode: refusing to send destructive call. Set destroy_protection=false (or unset TRUENAS_DESTROY_PROTECTION) to allow destructive operations")
 

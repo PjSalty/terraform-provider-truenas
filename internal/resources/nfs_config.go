@@ -64,7 +64,7 @@ func (r *NFSConfigResource) Metadata(_ context.Context, req resource.MetadataReq
 
 func (r *NFSConfigResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{Blocks: map[string]schema.Block{"timeouts": timeouts.Block(ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true})}, Description: "Manages the NFS service configuration on TrueNAS SCALE. " +
-		"This is a singleton resource — only one instance can exist.",
+		"This is a singleton resource, only one instance can exist.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "The configuration ID (always 1).",
@@ -265,7 +265,7 @@ func (r *NFSConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest
 
 	tflog.Debug(ctx, "Deleting NFS config resource (resetting to defaults)")
 
-	// Reset to defaults — singleton cannot be deleted
+	// Reset to defaults, singleton cannot be deleted
 	servers := 2
 	allowNonroot := false
 	v4Krb := false

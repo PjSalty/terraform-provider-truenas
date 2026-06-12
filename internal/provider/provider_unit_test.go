@@ -234,7 +234,7 @@ func TestProvider_Configure_BadConfig(t *testing.T) {
 	schemaResp := provider.SchemaResponse{}
 	p.Schema(context.Background(), provider.SchemaRequest{}, &schemaResp)
 
-	// Build a raw value with api_key as a Bool instead of String — this
+	// Build a raw value with api_key as a Bool instead of String, this
 	// produces a type-mismatch error from req.Config.Get.
 	badType := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{

@@ -15,7 +15,7 @@ import (
 
 func TestAccVM_basic(t *testing.T) {
 	resourceName := "truenas_vm.test"
-	// SCALE 25.10 schema: VM names must be alphanumeric only — no hyphens.
+	// SCALE 25.10 schema: VM names must be alphanumeric only, no hyphens.
 	name := "tfacctestvm"
 
 	resource.Test(t, resource.TestCase{

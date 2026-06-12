@@ -59,7 +59,7 @@ func (r *PrivilegeResource) Schema(ctx context.Context, _ resource.SchemaRequest
 	emptyInt64List := types.ListValueMust(types.Int64Type, nil)
 
 	resp.Schema = schema.Schema{
-		Description: "Manages a TrueNAS RBAC privilege — a named grant of roles to one or " +
+		Description: "Manages a TrueNAS RBAC privilege, a named grant of roles to one or " +
 			"more local and/or directory-service groups.",
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{

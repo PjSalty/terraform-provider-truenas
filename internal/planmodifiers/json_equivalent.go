@@ -17,7 +17,7 @@ import (
 // Use on any attribute declared as a JSON string whose canonical form
 // the server may normalize (reorder keys, strip whitespace, drop
 // server-added defaults). Pair it with a server-side `mapResponseToModel`
-// that filters to the user's original key set — the plan modifier is
+// that filters to the user's original key set, the plan modifier is
 // the last defense line for round-trip stability.
 type jsonEquivalent struct {
 	description string
@@ -57,19 +57,19 @@ func (m jsonEquivalent) PlanModifyString(_ context.Context, req planmodifier.Str
 
 	var planObj, stateObj any
 	if err := json.Unmarshal([]byte(plan), &planObj); err != nil {
-		return // not parseable JSON — let the diff stand
+		return // not parseable JSON, let the diff stand
 	}
 	if err := json.Unmarshal([]byte(state), &stateObj); err != nil {
 		return
 	}
 
 	// Re-encode both sides canonically and compare. json.Marshal can't
-	// fail here — the inputs are Go types decoded via json.Unmarshal, so
+	// fail here, the inputs are Go types decoded via json.Unmarshal, so
 	// they're guaranteed to be marshalable.
 	planCanon, _ := json.Marshal(planObj)
 	stateCanon, _ := json.Marshal(stateObj)
 	if bytes.Equal(planCanon, stateCanon) {
-		// Plan matches state semantically — preserve state so the framework
+		// Plan matches state semantically, preserve state so the framework
 		// doesn't report a change.
 		resp.PlanValue = types.StringValue(state)
 	}

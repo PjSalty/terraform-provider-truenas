@@ -47,7 +47,7 @@ func allDataSources() []dataSourceCase {
 		{"user", NewUserDataSource, "_user"},
 		{"vm", NewVMDataSource, "_vm"},
 		{"vms", NewVMsDataSource, "_vms"},
-		// v0.5.0 — parity expansion
+		// v0.5.0, parity expansion
 		{"iscsi_target", NewISCSITargetDataSource, "_iscsi_target"},
 		{"iscsi_portal", NewISCSIPortalDataSource, "_iscsi_portal"},
 		{"iscsi_extent", NewISCSIExtentDataSource, "_iscsi_extent"},

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# scripts/acc-preflight.sh — run only the pre-flight checks against
+# scripts/acc-preflight.sh, run only the pre-flight checks against
 # the test TrueNAS. Useful when you want to confirm credentials work
 # without sitting through a 2-hour acceptance run, or when triaging
 # a "the acc suite is failing every test" report.
@@ -22,4 +22,4 @@ acc_check_url
 acc_check_auth
 acc_check_pool
 
-acc_ok "preflight green — test TrueNAS is reachable, authenticated, and ready"
+acc_ok "preflight green, test TrueNAS is reachable, authenticated, and ready"

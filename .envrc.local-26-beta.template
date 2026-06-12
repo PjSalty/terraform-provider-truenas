@@ -1,4 +1,4 @@
-# Test TrueNAS 26.0.0-BETA.1 — forward-compat multi-version
+# Test TrueNAS 26.0.0-BETA.1, forward-compat multi-version
 # Copy this template to .envrc.local-26-beta and fill in credentials
 # after walking the manual installer for the 26-BETA test instance.
 

@@ -15,7 +15,7 @@ import (
 // systemdataset.{config, update}.
 //
 // systemdataset.update is asynchronous on the server (pool moves can
-// take many seconds — actual data is copied between pools). CallJob
+// take many seconds, actual data is copied between pools). CallJob
 // waits for terminal state, then a follow-on systemdataset.config
 // fetches the final placed configuration.
 const systemDatasetPollInterval = 1 * time.Second

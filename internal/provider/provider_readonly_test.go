@@ -100,7 +100,7 @@ func TestProvider_Configure_ReadOnlyHCLAttribute(t *testing.T) {
 
 // TestProvider_Configure_ReadOnlyHCLOverridesEnv verifies that the HCL
 // attribute takes precedence over the env var when both are set. HCL wins
-// because it is closer to the operator's intent — the env var is a
+// because it is closer to the operator's intent, the env var is a
 // shell-level default, the HCL value is the explicit module choice.
 func TestProvider_Configure_ReadOnlyHCLOverridesEnv(t *testing.T) {
 	original := newClientFn

@@ -64,7 +64,7 @@ func (r *AppResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 func (r *AppResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a deployed application on TrueNAS SCALE (Docker/iX). " +
-			"Install is asynchronous — the provider waits for the underlying job to complete. " +
+			"Install is asynchronous, the provider waits for the underlying job to complete. " +
 			"Default timeouts: 30m for create/update (app install involves image pulls + chart deployment), 10m for delete.",
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{
@@ -128,7 +128,7 @@ func (r *AppResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp
 			},
 			"version": schema.StringAttribute{
 				Description: "The app chart version to install (e.g. '1.2.3'). " +
-					"Defaults to 'latest'. Immutable after creation — use the TrueNAS " +
+					"Defaults to 'latest'. Immutable after creation, use the TrueNAS " +
 					"upgrade workflow for in-place version changes.",
 				Optional: true,
 				Computed: true,
@@ -143,7 +143,7 @@ func (r *AppResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp
 			},
 			"values": schema.StringAttribute{
 				Description: "JSON-encoded values object passed to the app. Arbitrary chart " +
-					"configuration — the provider does not validate structure.",
+					"configuration, the provider does not validate structure.",
 				Optional: true,
 				Computed: true,
 				Default:  stringdefault.StaticString("{}"),
@@ -157,7 +157,7 @@ func (r *AppResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp
 				},
 			},
 			"remove_ix_volumes": schema.BoolAttribute{
-				Description: "On destroy, also remove ix-volumes (default false — DANGEROUS).",
+				Description: "On destroy, also remove ix-volumes (default false, DANGEROUS).",
 				Optional:    true,
 				Computed:    true,
 				PlanModifiers: []planmodifier.Bool{
@@ -373,7 +373,7 @@ func (r *AppResource) mapResponseToModel(app *truenas.App, model *AppResourceMod
 	model.UpgradeAvailable = types.BoolValue(app.UpgradeAvailable)
 	model.HumanVersion = types.StringValue(app.HumanVersion)
 	// version handling: if the user asked for "latest" (or left it
-	// unknown/null), we preserve that in state — the resolved concrete
+	// unknown/null), we preserve that in state, the resolved concrete
 	// version is exposed via human_version. Only when the user pinned a
 	// specific version do we store the server's reported value (which
 	// should match what they asked for).
