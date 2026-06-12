@@ -141,7 +141,7 @@ type Client struct {
 	requestTimeout time.Duration
 
 	// RetryPolicy is the public knob test code historically poked
-	// to assert retry behaviour against the REST client. Kept
+	// to assert retry behavior against the REST client. Kept
 	// exported for test-suite compatibility during the v2.0
 	// WebSocket cutover; the wsclient retry path consults this
 	// field exactly like the REST client did.

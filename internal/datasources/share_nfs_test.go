@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -18,7 +19,7 @@ func TestNewShareNFSDataSource(t *testing.T) {
 
 func TestShareNFSDataSource_Schema(t *testing.T) {
 	ds := NewShareNFSDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "path", "aliases", "comment", "hosts", "read_only",
@@ -32,7 +33,7 @@ func TestShareNFSDataSource_Schema(t *testing.T) {
 }
 
 func TestShareNFSDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.NFSShare{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.NFSShare{
 		ID:           42,
 		Path:         "/mnt/tank/exports",
 		Aliases:      []string{"/exports"},
@@ -49,7 +50,7 @@ func TestShareNFSDataSource_Read_Success(t *testing.T) {
 	ds := NewShareNFSDataSource().(*ShareNFSDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(42)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(42)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -75,12 +76,12 @@ func TestShareNFSDataSource_Read_Success(t *testing.T) {
 }
 
 func TestShareNFSDataSource_Read_EmptyLists(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.NFSShare{ID: 1, Path: "/mnt/tank/x", Enabled: false}))
+	c := newWSServer(t.Context(), t, wsReturn(truenas.NFSShare{ID: 1, Path: "/mnt/tank/x", Enabled: false}))
 
 	ds := NewShareNFSDataSource().(*ShareNFSDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(1)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(1)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -93,12 +94,12 @@ func TestShareNFSDataSource_Read_EmptyLists(t *testing.T) {
 }
 
 func TestShareNFSDataSource_Read_NotFound(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewShareNFSDataSource().(*ShareNFSDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
@@ -106,12 +107,12 @@ func TestShareNFSDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestShareNFSDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewShareNFSDataSource().(*ShareNFSDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(1)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(1)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

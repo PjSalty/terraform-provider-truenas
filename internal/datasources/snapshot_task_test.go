@@ -18,7 +18,7 @@ func TestNewSnapshotTaskDataSource(t *testing.T) {
 
 func TestSnapshotTaskDataSource_Schema(t *testing.T) {
 	ds := NewSnapshotTaskDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	for _, want := range []string{
 		"id", "dataset", "recursive", "lifetime_value", "lifetime_unit",
 		"naming_schema", "enabled", "allow_empty", "exclude",
@@ -31,7 +31,7 @@ func TestSnapshotTaskDataSource_Schema(t *testing.T) {
 }
 
 func TestSnapshotTaskDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.SnapshotTask{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.SnapshotTask{
 		ID:           11,
 		Dataset:      "tank/data",
 		Recursive:    true,
@@ -48,7 +48,7 @@ func TestSnapshotTaskDataSource_Read_Success(t *testing.T) {
 
 	ds := NewSnapshotTaskDataSource().(*SnapshotTaskDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(11)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(11)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -76,7 +76,7 @@ func TestSnapshotTaskDataSource_Read_Empty(t *testing.T) {
 	}))
 	ds := NewSnapshotTaskDataSource().(*SnapshotTaskDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(1)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(1)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -90,7 +90,7 @@ func TestSnapshotTaskDataSource_Read_NotFound(t *testing.T) {
 	}))
 	ds := NewSnapshotTaskDataSource().(*SnapshotTaskDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

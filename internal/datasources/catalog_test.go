@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
@@ -16,7 +17,7 @@ func TestNewCatalogDataSource(t *testing.T) {
 
 func TestCatalogDataSource_Schema(t *testing.T) {
 	ds := NewCatalogDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{"id", "label", "preferred_trains", "location"} {
 		if _, ok := attrs[want]; !ok {
@@ -26,7 +27,7 @@ func TestCatalogDataSource_Schema(t *testing.T) {
 }
 
 func TestCatalogDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.Catalog{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.Catalog{
 		ID:              "TRUENAS",
 		Label:           "TRUENAS",
 		PreferredTrains: []string{"stable", "community"},
@@ -36,7 +37,7 @@ func TestCatalogDataSource_Read_Success(t *testing.T) {
 	ds := NewCatalogDataSource().(*CatalogDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -57,7 +58,7 @@ func TestCatalogDataSource_Read_Success(t *testing.T) {
 
 func TestCatalogDataSource_Read_EmptyID(t *testing.T) {
 	// Should default ID to "catalog" when blank.
-	c := newWSServer(t, wsReturn(truenas.Catalog{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.Catalog{
 		ID:              "",
 		Label:           "TRUENAS",
 		PreferredTrains: []string{},
@@ -66,7 +67,7 @@ func TestCatalogDataSource_Read_EmptyID(t *testing.T) {
 	ds := NewCatalogDataSource().(*CatalogDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -79,12 +80,12 @@ func TestCatalogDataSource_Read_EmptyID(t *testing.T) {
 }
 
 func TestCatalogDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewCatalogDataSource().(*CatalogDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
