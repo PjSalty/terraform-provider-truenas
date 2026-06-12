@@ -54,33 +54,33 @@ internal/
 ### `internal/client`
 
 Implements the TrueNAS REST API as a typed Go client. One file per API
-domain (`dataset.go`, `share_nfs.go`, `iscsi_target.go`, etc.) — this keeps
+domain (`dataset.go`, `share_nfs.go`, `iscsi_target.go`, etc.), this keeps
 diffs small and matches the layout of `internal/resources`.
 
 Key types:
 
-- `Client` — holds base URL, API key, HTTP client, and retry policy.
-- `APIError` — wraps a non-2xx response, including status code, body, and
+- `Client`, holds base URL, API key, HTTP client, and retry policy.
+- `APIError`, wraps a non-2xx response, including status code, body, and
   parsed error message. Use `errors.As(err, &apiErr)` to access fields.
-- `IsNotFound(err)` — returns true for HTTP 404 *or* TrueNAS's "422 does not
+- `IsNotFound(err)`, returns true for HTTP 404 *or* TrueNAS's "422 does not
   exist" responses (the API isn't consistent about which it returns). Every
   resource Delete handler uses this to make `terraform destroy` idempotent.
 
 The client retries idempotent methods (GET / PUT / DELETE / HEAD) on
 transient failures (429 / 5xx / transport errors) with exponential backoff
-and `Retry-After` honoring. POST is not retried on HTTP errors — only on
-transport errors where we know the request body never reached the server —
+and `Retry-After` honoring. POST is not retried on HTTP errors, only on
+transport errors where we know the request body never reached the server -
 to avoid duplicate creates.
 
 ### `internal/resources`
 
 One file per Terraform resource. Each resource implements:
 
-- `resource.Resource` — `Metadata`, `Schema`, `Configure`, `Create`, `Read`,
+- `resource.Resource`, `Metadata`, `Schema`, `Configure`, `Create`, `Read`,
   `Update`, `Delete`.
-- `resource.ResourceWithImportState` — `ImportState` (numeric ID passthrough
+- `resource.ResourceWithImportState`, `ImportState` (numeric ID passthrough
   for most, compound IDs for a few).
-- `resource.ResourceWithModifyPlan` (optional) — cross-attribute validation
+- `resource.ResourceWithModifyPlan` (optional), cross-attribute validation
   at plan time.
 
 Every resource uses a `timeouts.Block` for per-resource Create/Read/Update/
@@ -94,11 +94,11 @@ plus singletons for global config (`system_info`, `network_config`, etc.).
 
 ### `internal/provider`
 
-- `provider.go` — provider registration, `Resources()` / `DataSources()`
+- `provider.go`, provider registration, `Resources()` / `DataSources()`
   registries.
-- `acc_*_test.go` — acceptance tests (one file per resource), guarded by
+- `acc_*_test.go`, acceptance tests (one file per resource), guarded by
   `TF_ACC=1`.
-- `sweeper_test.go` — sweeper registrations that clean up abandoned test
+- `sweeper_test.go`, sweeper registrations that clean up abandoned test
   fixtures via `go test -sweep=all`.
 
 ## Schema and state flow
@@ -151,7 +151,7 @@ Client-level retries are handled in `client.doRequest`:
 - Backoff is exponential with up to 25% jitter, capped at `policy.MaxDelay`.
 - Context cancellation aborts the retry loop immediately.
 
-Resource-level retries are handled by `timeouts.Block` — long-running
+Resource-level retries are handled by `timeouts.Block`, long-running
 operations like `truenas_pool` create or `truenas_certificate` ACME issuance
 extend the default timeout via per-resource defaults.
 

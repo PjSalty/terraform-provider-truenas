@@ -2,12 +2,12 @@
 page_title: "truenas_systemdataset Resource - terraform-provider-truenas"
 subcategory: "Storage"
 description: |-
-  Manages the TrueNAS system dataset pool assignment. This is a singleton — only one instance of this resource can exist per TrueNAS system.
+  Manages the TrueNAS system dataset pool assignment. This is a singleton, only one instance of this resource can exist per TrueNAS system.
 ---
 
 # truenas_systemdataset (Resource)
 
-Manages the TrueNAS system dataset pool assignment. This is a singleton — only one instance of this resource can exist per TrueNAS system.
+Manages the TrueNAS system dataset pool assignment. This is a singleton, only one instance of this resource can exist per TrueNAS system.
 
 Managed attributes map directly to the TrueNAS SCALE API. Changes are applied
 via the JSON-RPC endpoint on the target system; mutations that cannot be

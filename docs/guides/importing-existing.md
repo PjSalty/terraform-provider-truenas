@@ -158,9 +158,9 @@ terraform plan
 
 Review the diff. Any attributes shown as changing need to be added to your configuration to match the actual state. Common attributes that need explicit values after import:
 
-- `compression`, `atime`, `sync`, `snapdir` — ZFS properties inherited from pool defaults
-- `schedule_*` fields — cron schedule fields
-- `lifetime_value`, `lifetime_unit` — retention settings
+- `compression`, `atime`, `sync`, `snapdir`, ZFS properties inherited from pool defaults
+- `schedule_*` fields, cron schedule fields
+- `lifetime_value`, `lifetime_unit`, retention settings
 
 ### Step 5: Iterate Until Clean Plan
 
@@ -185,4 +185,4 @@ terraform state show truenas_dataset.media
 
 **Don't modify resources before importing.** Wait until the resource is fully imported and your configuration matches before making changes.
 
-**Handle computed attributes carefully.** Attributes like `id` and `mount_point` are computed by TrueNAS — don't include them in your configuration.
+**Handle computed attributes carefully.** Attributes like `id` and `mount_point` are computed by TrueNAS, don't include them in your configuration.
