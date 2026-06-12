@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.3] - 2026-06-12
+
+### Fixed
+
+- `truenas_cloud_sync` import and refresh no longer fail with
+  "cannot unmarshal object into Go struct field" - the REST API
+  returns `credentials` as a nested object on GET/list, and the
+  client now accepts both the object and the bare id forms.
+  Contributed by @xam464 (#12).
+
+### Security
+
+- `golang.org/x/crypto` 0.52.0, `golang.org/x/net` 0.55.0, and
+  Go toolchain 1.25.11 - clears GO-2026-5039, GO-2026-5037,
+  GO-2026-5026, and GO-2026-4971 flagged by govulncheck.
+
 ## [1.10.2] - 2026-04-25
 
 ### Fixed
