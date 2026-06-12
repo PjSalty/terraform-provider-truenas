@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- Network Interface ---
@@ -16,7 +16,7 @@ func TestNetworkInterfaceResource_MapResponseToModel_Cases(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name        string
-		iface       *client.NetworkInterface
+		iface       *truenas.NetworkInterface
 		wantID      string
 		wantType    string
 		wantDHCP    bool
@@ -25,7 +25,7 @@ func TestNetworkInterfaceResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name: "bridge interface",
-			iface: &client.NetworkInterface{
+			iface: &truenas.NetworkInterface{
 				ID: "br0", Name: "br0", Type: "BRIDGE", Description: "br",
 				BridgeMembers: []string{"eth0", "eth1"},
 			},
@@ -33,9 +33,9 @@ func TestNetworkInterfaceResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "vlan interface with static address",
-			iface: &client.NetworkInterface{
+			iface: &truenas.NetworkInterface{
 				ID: "vlan10", Name: "vlan10", Type: "VLAN",
-				Aliases: []client.NetworkInterfaceAlias{
+				Aliases: []truenas.NetworkInterfaceAlias{
 					{Type: "INET", Address: "10.0.0.1", Netmask: 24},
 				},
 				VlanParentInterface: "eth0",
@@ -45,7 +45,7 @@ func TestNetworkInterfaceResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "lag interface",
-			iface: &client.NetworkInterface{
+			iface: &truenas.NetworkInterface{
 				ID: "bond0", Name: "bond0", Type: "LINK_AGGREGATION",
 				LagProtocol: "LACP",
 				LagPorts:    []string{"eth2", "eth3"},
@@ -54,7 +54,7 @@ func TestNetworkInterfaceResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "dhcp interface",
-			iface: &client.NetworkInterface{
+			iface: &truenas.NetworkInterface{
 				ID: "eth0", Name: "eth0", Type: "PHYSICAL",
 				IPv4DHCP: true, MTU: intPtr(1500),
 			},
@@ -109,13 +109,13 @@ func TestStaticRouteResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &StaticRouteResource{}
 	cases := []struct {
 		name  string
-		route *client.StaticRoute
+		route *truenas.StaticRoute
 		want  StaticRouteResourceModel
 	}{
-		{name: "basic route", route: &client.StaticRoute{ID: 1, Destination: "10.0.0.0/8", Gateway: "192.168.1.1", Description: "office"}},
-		{name: "ipv6 route", route: &client.StaticRoute{ID: 2, Destination: "fd00::/8", Gateway: "fe80::1"}},
-		{name: "default route", route: &client.StaticRoute{ID: 3, Destination: "0.0.0.0/0", Gateway: "192.168.1.254"}},
-		{name: "no description", route: &client.StaticRoute{ID: 4, Destination: "172.16.0.0/12", Gateway: "10.1.1.1"}},
+		{name: "basic route", route: &truenas.StaticRoute{ID: 1, Destination: "10.0.0.0/8", Gateway: "192.168.1.1", Description: "office"}},
+		{name: "ipv6 route", route: &truenas.StaticRoute{ID: 2, Destination: "fd00::/8", Gateway: "fe80::1"}},
+		{name: "default route", route: &truenas.StaticRoute{ID: 3, Destination: "0.0.0.0/0", Gateway: "192.168.1.254"}},
+		{name: "no description", route: &truenas.StaticRoute{ID: 4, Destination: "172.16.0.0/12", Gateway: "10.1.1.1"}},
 	}
 	for _, tc := range cases {
 		_ = tc.want
@@ -163,12 +163,12 @@ func TestDNSNameserverResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &DNSNameserverResource{}
 	cases := []struct {
 		name string
-		cfg  *client.NetworkConfig
+		cfg  *truenas.NetworkConfig
 	}{
-		{name: "three nameservers", cfg: &client.NetworkConfig{Nameserver1: "1.1.1.1", Nameserver2: "8.8.8.8", Nameserver3: "9.9.9.9"}},
-		{name: "single nameserver", cfg: &client.NetworkConfig{Nameserver1: "10.0.0.1"}},
-		{name: "all empty", cfg: &client.NetworkConfig{}},
-		{name: "ipv6 nameserver", cfg: &client.NetworkConfig{Nameserver1: "2606:4700:4700::1111"}},
+		{name: "three nameservers", cfg: &truenas.NetworkConfig{Nameserver1: "1.1.1.1", Nameserver2: "8.8.8.8", Nameserver3: "9.9.9.9"}},
+		{name: "single nameserver", cfg: &truenas.NetworkConfig{Nameserver1: "10.0.0.1"}},
+		{name: "all empty", cfg: &truenas.NetworkConfig{}},
+		{name: "ipv6 nameserver", cfg: &truenas.NetworkConfig{Nameserver1: "2606:4700:4700::1111"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -212,12 +212,12 @@ func TestTunableResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &TunableResource{}
 	cases := []struct {
 		name    string
-		tunable *client.Tunable
+		tunable *truenas.Tunable
 	}{
-		{name: "sysctl tunable", tunable: &client.Tunable{ID: 1, Type: "SYSCTL", Var: "net.ipv4.tcp_keepalive_time", Value: "60", Enabled: true}},
-		{name: "udev tunable", tunable: &client.Tunable{ID: 2, Type: "UDEV", Var: "test", Value: "val", Comment: "udev test"}},
-		{name: "disabled tunable", tunable: &client.Tunable{ID: 3, Type: "SYSCTL", Var: "x", Value: "1", Enabled: false}},
-		{name: "zfs tunable", tunable: &client.Tunable{ID: 4, Type: "ZFS", Var: "zfs_arc_max", Value: "1073741824", Enabled: true}},
+		{name: "sysctl tunable", tunable: &truenas.Tunable{ID: 1, Type: "SYSCTL", Var: "net.ipv4.tcp_keepalive_time", Value: "60", Enabled: true}},
+		{name: "udev tunable", tunable: &truenas.Tunable{ID: 2, Type: "UDEV", Var: "test", Value: "val", Comment: "udev test"}},
+		{name: "disabled tunable", tunable: &truenas.Tunable{ID: 3, Type: "SYSCTL", Var: "x", Value: "1", Enabled: false}},
+		{name: "zfs tunable", tunable: &truenas.Tunable{ID: 4, Type: "ZFS", Var: "zfs_arc_max", Value: "1073741824", Enabled: true}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -264,12 +264,12 @@ func TestInitScriptResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &InitScriptResource{}
 	cases := []struct {
 		name   string
-		script *client.InitScript
+		script *truenas.InitScript
 	}{
-		{name: "command prejenkins", script: &client.InitScript{ID: 1, Type: "COMMAND", Command: "echo hi", When: "POSTINIT", Enabled: true, Timeout: 10}},
-		{name: "script preinit", script: &client.InitScript{ID: 2, Type: "SCRIPT", Script: "/mnt/tank/init.sh", When: "PREINIT", Enabled: true, Timeout: 30}},
-		{name: "disabled script", script: &client.InitScript{ID: 3, Type: "COMMAND", Command: "x", When: "POSTINIT", Enabled: false}},
-		{name: "shutdown script", script: &client.InitScript{ID: 4, Type: "COMMAND", Command: "sync", When: "SHUTDOWN", Enabled: true, Comment: "sync"}},
+		{name: "command prejenkins", script: &truenas.InitScript{ID: 1, Type: "COMMAND", Command: "echo hi", When: "POSTINIT", Enabled: true, Timeout: 10}},
+		{name: "script preinit", script: &truenas.InitScript{ID: 2, Type: "SCRIPT", Script: "/mnt/tank/init.sh", When: "PREINIT", Enabled: true, Timeout: 30}},
+		{name: "disabled script", script: &truenas.InitScript{ID: 3, Type: "COMMAND", Command: "x", When: "POSTINIT", Enabled: false}},
+		{name: "shutdown script", script: &truenas.InitScript{ID: 4, Type: "COMMAND", Command: "sync", When: "SHUTDOWN", Enabled: true, Comment: "sync"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

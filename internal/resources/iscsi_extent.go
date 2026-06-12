@@ -23,9 +23,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -37,7 +38,7 @@ var (
 
 // ISCSIExtentResource manages an iSCSI extent.
 type ISCSIExtentResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // ISCSIExtentResourceModel describes the resource data model.
@@ -190,11 +191,11 @@ func (r *ISCSIExtentResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -211,7 +212,7 @@ func (r *ISCSIExtentResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createReq := &client.ISCSIExtentCreateRequest{
+	createReq := &truenas.ISCSIExtentCreateRequest{
 		Name:      plan.Name.ValueString(),
 		Type:      plan.Type.ValueString(),
 		Blocksize: int(plan.Blocksize.ValueInt64()),
@@ -271,7 +272,7 @@ func (r *ISCSIExtentResource) Read(ctx context.Context, req resource.ReadRequest
 
 	extent, err := r.client.GetISCSIExtent(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -315,7 +316,7 @@ func (r *ISCSIExtentResource) Update(ctx context.Context, req resource.UpdateReq
 	enabled := plan.Enabled.ValueBool()
 	readOnly := plan.ReadOnly.ValueBool()
 
-	updateReq := &client.ISCSIExtentUpdateRequest{
+	updateReq := &truenas.ISCSIExtentUpdateRequest{
 		Name:      plan.Name.ValueString(),
 		Type:      plan.Type.ValueString(),
 		Blocksize: int(plan.Blocksize.ValueInt64()),
@@ -375,7 +376,7 @@ func (r *ISCSIExtentResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err = r.client.DeleteISCSIExtent(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "iSCSI extent already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -410,9 +411,18 @@ func (r *ISCSIExtentResource) ModifyPlan(ctx context.Context, req resource.Modif
 	}
 	extentType := config.Type.ValueString()
 
-	diskSet := !config.Disk.IsNull() && !config.Disk.IsUnknown() && config.Disk.ValueString() != ""
-	pathSet := !config.Path.IsNull() && !config.Path.IsUnknown() && config.Path.ValueString() != ""
-	filesizeSet := !config.Filesize.IsNull() && !config.Filesize.IsUnknown() && config.Filesize.ValueInt64() > 0
+	// Treat unknown as "value will appear at apply time" — the framework
+	// re-runs ModifyPlan after the dependency resolves. Without this
+	// carve-out a wired-from-sibling config (e.g.
+	// `path = truenas_dataset.x.mount_point`) fails plan with a spurious
+	// "Missing path" diagnostic.
+	if config.Disk.IsUnknown() || config.Path.IsUnknown() || config.Filesize.IsUnknown() {
+		return
+	}
+
+	diskSet := !config.Disk.IsNull() && config.Disk.ValueString() != ""
+	pathSet := !config.Path.IsNull() && config.Path.ValueString() != ""
+	filesizeSet := !config.Filesize.IsNull() && config.Filesize.ValueInt64() > 0
 
 	switch extentType {
 	case "DISK":
@@ -449,7 +459,7 @@ func (r *ISCSIExtentResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ISCSIExtentResource) mapResponseToModel(extent *client.ISCSIExtent, model *ISCSIExtentResourceModel) {
+func (r *ISCSIExtentResource) mapResponseToModel(extent *truenas.ISCSIExtent, model *ISCSIExtentResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(extent.ID))
 	model.Name = types.StringValue(extent.Name)
 	model.Type = types.StringValue(extent.Type)

@@ -2,10 +2,10 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewAppsDataSource(t *testing.T) {
@@ -23,11 +23,9 @@ func TestAppsDataSource_Schema(t *testing.T) {
 }
 
 func TestAppsDataSource_Read_Success(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.App{
-			{ID: "a", Name: "a", State: "RUNNING", Version: "1.0", UpgradeAvailable: false, CustomApp: false},
-			{ID: "b", Name: "b", State: "STOPPED", Version: "2.0", UpgradeAvailable: true, CustomApp: true},
-		})
+	c := newWSServer(t, wsReturn([]truenas.App{
+		{ID: "a", Name: "a", State: "RUNNING", Version: "1.0", UpgradeAvailable: false, CustomApp: false},
+		{ID: "b", Name: "b", State: "STOPPED", Version: "2.0", UpgradeAvailable: true, CustomApp: true},
 	}))
 
 	ds := NewAppsDataSource().(*AppsDataSource)
@@ -50,9 +48,7 @@ func TestAppsDataSource_Read_Success(t *testing.T) {
 }
 
 func TestAppsDataSource_Read_Empty(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.App{})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.App{}))
 
 	ds := NewAppsDataSource().(*AppsDataSource)
 	ds.client = c
@@ -70,9 +66,7 @@ func TestAppsDataSource_Read_Empty(t *testing.T) {
 }
 
 func TestAppsDataSource_Read_ServerError(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewAppsDataSource().(*AppsDataSource)
 	ds.client = c

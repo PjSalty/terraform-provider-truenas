@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- CronJob ---
@@ -15,12 +15,12 @@ func TestCronJobResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &CronJobResource{}
 	cases := []struct {
 		name string
-		job  *client.CronJob
+		job  *truenas.CronJob
 	}{
-		{name: "basic daily", job: &client.CronJob{ID: 1, User: "root", Command: "/usr/bin/true", Enabled: true, Schedule: client.Schedule{Minute: "0", Hour: "3", Dom: "*", Month: "*", Dow: "*"}}},
-		{name: "with stdout", job: &client.CronJob{ID: 2, User: "apps", Command: "/bin/echo", Stdout: true, Stderr: true, Enabled: true, Schedule: client.Schedule{Minute: "*/5", Hour: "*", Dom: "*", Month: "*", Dow: "*"}}},
-		{name: "disabled", job: &client.CronJob{ID: 3, User: "u", Command: "/x", Schedule: client.Schedule{Minute: "30", Hour: "1", Dom: "1", Month: "1", Dow: "0"}}},
-		{name: "with desc", job: &client.CronJob{ID: 4, User: "root", Command: "backup", Description: "nightly backup", Enabled: true, Schedule: client.Schedule{Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "basic daily", job: &truenas.CronJob{ID: 1, User: "root", Command: "/usr/bin/true", Enabled: true, Schedule: truenas.Schedule{Minute: "0", Hour: "3", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "with stdout", job: &truenas.CronJob{ID: 2, User: "apps", Command: "/bin/echo", Stdout: true, Stderr: true, Enabled: true, Schedule: truenas.Schedule{Minute: "*/5", Hour: "*", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "disabled", job: &truenas.CronJob{ID: 3, User: "u", Command: "/x", Schedule: truenas.Schedule{Minute: "30", Hour: "1", Dom: "1", Month: "1", Dow: "0"}}},
+		{name: "with desc", job: &truenas.CronJob{ID: 4, User: "root", Command: "backup", Description: "nightly backup", Enabled: true, Schedule: truenas.Schedule{Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*"}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -70,12 +70,12 @@ func TestRsyncTaskResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &RsyncTaskResource{}
 	cases := []struct {
 		name string
-		task *client.RsyncTask
+		task *truenas.RsyncTask
 	}{
-		{name: "push ssh", task: &client.RsyncTask{ID: 1, Path: "/mnt/tank/x", Remotehost: "remote", Remoteport: 22, Mode: "SSH", Direction: "PUSH", User: "root", Enabled: true, Schedule: client.Schedule{Minute: "0", Hour: "4", Dom: "*", Month: "*", Dow: "*"}}},
-		{name: "pull module", task: &client.RsyncTask{ID: 2, Path: "/mnt/tank/y", Remotehost: "h2", Mode: "MODULE", Remotemodule: "backup", Direction: "PULL", User: "root", Schedule: client.Schedule{Minute: "15", Hour: "*", Dom: "*", Month: "*", Dow: "*"}}},
-		{name: "disabled task", task: &client.RsyncTask{ID: 3, Path: "/x", Remotehost: "h", Mode: "SSH", User: "u", Schedule: client.Schedule{Minute: "0", Hour: "0", Dom: "1", Month: "1", Dow: "1"}}},
-		{name: "with desc", task: &client.RsyncTask{ID: 4, Path: "/a", Remotehost: "b", Mode: "SSH", Direction: "PUSH", User: "u", Desc: "hi", Enabled: true, Schedule: client.Schedule{Minute: "*", Hour: "*", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "push ssh", task: &truenas.RsyncTask{ID: 1, Path: "/mnt/tank/x", Remotehost: "remote", Remoteport: 22, Mode: "SSH", Direction: "PUSH", User: "root", Enabled: true, Schedule: truenas.Schedule{Minute: "0", Hour: "4", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "pull module", task: &truenas.RsyncTask{ID: 2, Path: "/mnt/tank/y", Remotehost: "h2", Mode: "MODULE", Remotemodule: "backup", Direction: "PULL", User: "root", Schedule: truenas.Schedule{Minute: "15", Hour: "*", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "disabled task", task: &truenas.RsyncTask{ID: 3, Path: "/x", Remotehost: "h", Mode: "SSH", User: "u", Schedule: truenas.Schedule{Minute: "0", Hour: "0", Dom: "1", Month: "1", Dow: "1"}}},
+		{name: "with desc", task: &truenas.RsyncTask{ID: 4, Path: "/a", Remotehost: "b", Mode: "SSH", Direction: "PUSH", User: "u", Desc: "hi", Enabled: true, Schedule: truenas.Schedule{Minute: "*", Hour: "*", Dom: "*", Month: "*", Dow: "*"}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -125,12 +125,12 @@ func TestScrubTaskResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &ScrubTaskResource{}
 	cases := []struct {
 		name string
-		task *client.ScrubTask
+		task *truenas.ScrubTask
 	}{
-		{name: "basic", task: &client.ScrubTask{ID: 1, Pool: 1, PoolName: "tank", Threshold: 35, Description: "monthly", Enabled: true, Schedule: client.Schedule{Minute: "0", Hour: "0", Dom: "1", Month: "*", Dow: "*"}}},
-		{name: "weekly", task: &client.ScrubTask{ID: 2, Pool: 2, PoolName: "ssd", Threshold: 7, Enabled: true, Schedule: client.Schedule{Minute: "0", Hour: "3", Dom: "*", Month: "*", Dow: "0"}}},
-		{name: "disabled", task: &client.ScrubTask{ID: 3, Pool: 3, PoolName: "x", Threshold: 30, Schedule: client.Schedule{Minute: "0", Hour: "1", Dom: "*", Month: "*", Dow: "*"}}},
-		{name: "zero threshold", task: &client.ScrubTask{ID: 4, Pool: 4, PoolName: "p4", Threshold: 0, Enabled: true, Schedule: client.Schedule{Minute: "0", Hour: "0", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "basic", task: &truenas.ScrubTask{ID: 1, Pool: 1, PoolName: "tank", Threshold: 35, Description: "monthly", Enabled: true, Schedule: truenas.Schedule{Minute: "0", Hour: "0", Dom: "1", Month: "*", Dow: "*"}}},
+		{name: "weekly", task: &truenas.ScrubTask{ID: 2, Pool: 2, PoolName: "ssd", Threshold: 7, Enabled: true, Schedule: truenas.Schedule{Minute: "0", Hour: "3", Dom: "*", Month: "*", Dow: "0"}}},
+		{name: "disabled", task: &truenas.ScrubTask{ID: 3, Pool: 3, PoolName: "x", Threshold: 30, Schedule: truenas.Schedule{Minute: "0", Hour: "1", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "zero threshold", task: &truenas.ScrubTask{ID: 4, Pool: 4, PoolName: "p4", Threshold: 0, Enabled: true, Schedule: truenas.Schedule{Minute: "0", Hour: "0", Dom: "*", Month: "*", Dow: "*"}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -174,12 +174,12 @@ func TestSnapshotTaskResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &SnapshotTaskResource{}
 	cases := []struct {
 		name string
-		task *client.SnapshotTask
+		task *truenas.SnapshotTask
 	}{
-		{name: "hourly", task: &client.SnapshotTask{ID: 1, Dataset: "tank/data", Recursive: true, Lifetime: 2, LifetimeUnit: "WEEK", NamingSchema: "auto-%Y-%m-%d_%H-%M", Enabled: true, Schedule: client.Schedule{Minute: "0", Hour: "*", Dom: "*", Month: "*", Dow: "*"}}},
-		{name: "daily", task: &client.SnapshotTask{ID: 2, Dataset: "tank/home", Lifetime: 30, LifetimeUnit: "DAY", NamingSchema: "auto-%Y%m%d", Enabled: true, Schedule: client.Schedule{Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*"}}},
-		{name: "allow empty", task: &client.SnapshotTask{ID: 3, Dataset: "tank/x", Lifetime: 1, LifetimeUnit: "YEAR", NamingSchema: "auto", AllowEmpty: true, Enabled: true, Schedule: client.Schedule{Minute: "0", Hour: "0", Dom: "1", Month: "1", Dow: "*"}}},
-		{name: "disabled", task: &client.SnapshotTask{ID: 4, Dataset: "t/d", Lifetime: 1, LifetimeUnit: "HOUR", NamingSchema: "s", Schedule: client.Schedule{Minute: "0", Hour: "0", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "hourly", task: &truenas.SnapshotTask{ID: 1, Dataset: "tank/data", Recursive: true, Lifetime: 2, LifetimeUnit: "WEEK", NamingSchema: "auto-%Y-%m-%d_%H-%M", Enabled: true, Schedule: truenas.Schedule{Minute: "0", Hour: "*", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "daily", task: &truenas.SnapshotTask{ID: 2, Dataset: "tank/home", Lifetime: 30, LifetimeUnit: "DAY", NamingSchema: "auto-%Y%m%d", Enabled: true, Schedule: truenas.Schedule{Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*"}}},
+		{name: "allow empty", task: &truenas.SnapshotTask{ID: 3, Dataset: "tank/x", Lifetime: 1, LifetimeUnit: "YEAR", NamingSchema: "auto", AllowEmpty: true, Enabled: true, Schedule: truenas.Schedule{Minute: "0", Hour: "0", Dom: "1", Month: "1", Dow: "*"}}},
+		{name: "disabled", task: &truenas.SnapshotTask{ID: 4, Dataset: "t/d", Lifetime: 1, LifetimeUnit: "HOUR", NamingSchema: "s", Schedule: truenas.Schedule{Minute: "0", Hour: "0", Dom: "*", Month: "*", Dow: "*"}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -230,12 +230,12 @@ func TestReplicationResource_MapResponseToModel_Cases(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name string
-		repl *client.Replication
+		repl *truenas.Replication
 	}{
-		{name: "push local", repl: &client.Replication{ID: 1, Name: "r1", Direction: "PUSH", Transport: "LOCAL", SourceDatasets: []string{"tank/a"}, TargetDataset: "tank/b", Enabled: true}},
-		{name: "pull ssh", repl: &client.Replication{ID: 2, Name: "r2", Direction: "PULL", Transport: "SSH", SourceDatasets: []string{"remote/a"}, TargetDataset: "tank/r", SSHCredentials: 5, Enabled: true, Recursive: true}},
-		{name: "with retention", repl: &client.Replication{ID: 3, Name: "r3", Direction: "PUSH", Transport: "LOCAL", SourceDatasets: []string{"t/s1", "t/s2"}, TargetDataset: "u/d", LifetimeValue: 7, LifetimeUnit: "DAY", RetentionPolicy: "CUSTOM"}},
-		{name: "with naming schema", repl: &client.Replication{ID: 4, Name: "r4", Direction: "PUSH", Transport: "SSH", SourceDatasets: []string{"p/s"}, TargetDataset: "p/t", NamingSchema: []string{"auto-%Y-%m-%d"}, AlsoIncludeNamingSchema: []string{"snap-%Y%m%d"}}},
+		{name: "push local", repl: &truenas.Replication{ID: 1, Name: "r1", Direction: "PUSH", Transport: "LOCAL", SourceDatasets: []string{"tank/a"}, TargetDataset: "tank/b", Enabled: true}},
+		{name: "pull ssh", repl: &truenas.Replication{ID: 2, Name: "r2", Direction: "PULL", Transport: "SSH", SourceDatasets: []string{"remote/a"}, TargetDataset: "tank/r", SSHCredentials: 5, Enabled: true, Recursive: true}},
+		{name: "with retention", repl: &truenas.Replication{ID: 3, Name: "r3", Direction: "PUSH", Transport: "LOCAL", SourceDatasets: []string{"t/s1", "t/s2"}, TargetDataset: "u/d", LifetimeValue: 7, LifetimeUnit: "DAY", RetentionPolicy: "CUSTOM"}},
+		{name: "with naming schema", repl: &truenas.Replication{ID: 4, Name: "r4", Direction: "PUSH", Transport: "SSH", SourceDatasets: []string{"p/s"}, TargetDataset: "p/t", NamingSchema: []string{"auto-%Y-%m-%d"}, AlsoIncludeNamingSchema: []string{"snap-%Y%m%d"}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

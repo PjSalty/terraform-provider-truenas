@@ -20,17 +20,20 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
 	_ resource.Resource                = &NVMetPortResource{}
 	_ resource.ResourceWithImportState = &NVMetPortResource{}
+	_ resource.ResourceWithModifyPlan  = &NVMetPortResource{}
 )
 
 // NVMetPortResource manages an NVMe-oF transport port.
 type NVMetPortResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // NVMetPortResourceModel describes the resource data model.
@@ -137,11 +140,11 @@ func (r *NVMetPortResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -158,7 +161,7 @@ func (r *NVMetPortResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	createReq := &client.NVMetPortCreateRequest{
+	createReq := &truenas.NVMetPortCreateRequest{
 		AddrTrtype: plan.AddrTrtype.ValueString(),
 		AddrTraddr: plan.AddrTraddr.ValueString(),
 	}
@@ -222,7 +225,7 @@ func (r *NVMetPortResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	port, err := r.client.GetNVMetPort(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -263,7 +266,7 @@ func (r *NVMetPortResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	updateReq := &client.NVMetPortUpdateRequest{}
+	updateReq := &truenas.NVMetPortUpdateRequest{}
 	if !plan.AddrTrtype.IsNull() && !plan.AddrTrtype.IsUnknown() {
 		v := plan.AddrTrtype.ValueString()
 		updateReq.AddrTrtype = &v
@@ -328,7 +331,7 @@ func (r *NVMetPortResource) Delete(ctx context.Context, req resource.DeleteReque
 	tflog.Debug(ctx, "Deleting nvmet_port", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteNVMetPort(ctx, id); err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "NVMe-oF port already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -341,6 +344,13 @@ func (r *NVMetPortResource) Delete(ctx context.Context, req resource.DeleteReque
 	tflog.Trace(ctx, "Delete NVMetPort success")
 }
 
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a port closes the transport listener;
+// clients lose all connectivity to subsystems advertised on it.
+func (r *NVMetPortResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_port")
+}
+
 func (r *NVMetPortResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	if _, err := strconv.Atoi(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("NVMe-oF port ID must be numeric: %s", err))
@@ -349,7 +359,7 @@ func (r *NVMetPortResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NVMetPortResource) mapResponseToModel(port *client.NVMetPort, model *NVMetPortResourceModel) {
+func (r *NVMetPortResource) mapResponseToModel(port *truenas.NVMetPort, model *NVMetPortResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(port.ID))
 	model.Index = types.Int64Value(int64(port.Index))
 	model.AddrTrtype = types.StringValue(port.AddrTrtype)

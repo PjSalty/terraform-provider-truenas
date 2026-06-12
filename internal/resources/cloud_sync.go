@@ -22,8 +22,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -34,7 +35,7 @@ var (
 
 // CloudSyncResource manages a TrueNAS cloud sync task.
 type CloudSyncResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // CloudSyncResourceModel describes the resource data model.
@@ -168,11 +169,11 @@ func (r *CloudSyncResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -189,13 +190,13 @@ func (r *CloudSyncResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	createReq := &client.CloudSyncCreateRequest{
+	createReq := &truenas.CloudSyncCreateRequest{
 		Path:         plan.Path.ValueString(),
 		Credentials:  int(plan.Credentials.ValueInt64()),
 		Direction:    plan.Direction.ValueString(),
 		TransferMode: plan.TransferMode.ValueString(),
 		Enabled:      plan.Enabled.ValueBool(),
-		Schedule: client.Schedule{
+		Schedule: truenas.Schedule{
 			Minute: plan.Minute.ValueString(),
 			Hour:   plan.Hour.ValueString(),
 			Dom:    plan.Dom.ValueString(),
@@ -258,7 +259,7 @@ func (r *CloudSyncResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	cs, err := r.client.GetCloudSync(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -300,7 +301,7 @@ func (r *CloudSyncResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	enabled := plan.Enabled.ValueBool()
-	schedule := &client.Schedule{
+	schedule := &truenas.Schedule{
 		Minute: plan.Minute.ValueString(),
 		Hour:   plan.Hour.ValueString(),
 		Dom:    plan.Dom.ValueString(),
@@ -308,7 +309,7 @@ func (r *CloudSyncResource) Update(ctx context.Context, req resource.UpdateReque
 		Dow:    plan.Dow.ValueString(),
 	}
 
-	updateReq := &client.CloudSyncUpdateRequest{
+	updateReq := &truenas.CloudSyncUpdateRequest{
 		Path:         plan.Path.ValueString(),
 		Credentials:  int(plan.Credentials.ValueInt64()),
 		Direction:    plan.Direction.ValueString(),
@@ -369,7 +370,7 @@ func (r *CloudSyncResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	err = r.client.DeleteCloudSync(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Cloud sync task already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -398,7 +399,7 @@ func (r *CloudSyncResource) ImportState(ctx context.Context, req resource.Import
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *CloudSyncResource) mapResponseToModel(cs *client.CloudSync, model *CloudSyncResourceModel) {
+func (r *CloudSyncResource) mapResponseToModel(cs *truenas.CloudSync, model *CloudSyncResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(cs.ID))
 	model.Description = types.StringValue(cs.Description)
 	model.Path = types.StringValue(cs.Path)

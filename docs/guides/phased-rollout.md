@@ -141,7 +141,7 @@ export TRUENAS_DESTROY_PROTECTION=1
 
 ```sh
 terraform plan   # re-verify the diff is the ONE change
-terraform apply  # POST/PUT flow; DELETE refused
+terraform apply  # create/update flow; delete refused
 ```
 
 If your HCL accidentally removed a resource, the apply surfaces the

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -35,6 +36,11 @@ resource "truenas_alert_service" "test" {
   })
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_alert_service.test", "name", name),
 					resource.TestCheckResourceAttr("truenas_alert_service.test", "type", "Mail"),
@@ -81,7 +87,12 @@ resource "truenas_alert_service" "test" {
 			},
 			{
 				Config: cfg("CRITICAL"),
-				Check:  resource.TestCheckResourceAttr("truenas_alert_service.test", "level", "CRITICAL"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_alert_service.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_alert_service.test", "level", "CRITICAL"),
 			},
 		},
 	})

@@ -5,8 +5,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/fwresource"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestConfigureClient_Nil(t *testing.T) {
@@ -27,10 +27,10 @@ func TestConfigureClient_Nil(t *testing.T) {
 
 func TestConfigureClient_OK(t *testing.T) {
 	t.Parallel()
-	cli, err := client.NewWithOptions("https://example.invalid", "key", true)
-	if err != nil {
-		t.Fatalf("build client: %v", err)
-	}
+	// No need to dial — ConfigureClient asserts the type, doesn't
+	// invoke any method on the client. An empty *wsclient.Client
+	// has the right concrete type.
+	cli := &wsclient.Client{}
 	req := resource.ConfigureRequest{ProviderData: cli}
 	resp := &resource.ConfigureResponse{}
 	got, ok := fwresource.ConfigureClient(req, resp)
@@ -38,7 +38,7 @@ func TestConfigureClient_OK(t *testing.T) {
 		t.Fatalf("valid ProviderData must return ok=true, diags=%v", resp.Diagnostics)
 	}
 	if got != cli {
-		t.Fatalf("want same *client.Client, got %v", got)
+		t.Fatalf("want same *wsclient.Client, got %v", got)
 	}
 }
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func int64Ptr(i int64) *int64 { return &i }
@@ -16,7 +16,7 @@ func TestVMResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &VMResource{}
 	cases := []struct {
 		name     string
-		vm       *client.VM
+		vm       *truenas.VM
 		wantID   string
 		wantName string
 		wantCPU  int64
@@ -25,7 +25,7 @@ func TestVMResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name:     "minimal vm",
-			vm:       &client.VM{ID: 1, Name: "vm1", Vcpus: 2, Cores: 1, Threads: 1, Memory: 2048, Bootloader: "UEFI"},
+			vm:       &truenas.VM{ID: 1, Name: "vm1", Vcpus: 2, Cores: 1, Threads: 1, Memory: 2048, Bootloader: "UEFI"},
 			wantID:   "1",
 			wantName: "vm1",
 			wantCPU:  2,
@@ -33,16 +33,16 @@ func TestVMResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "running vm",
-			vm: &client.VM{
+			vm: &truenas.VM{
 				ID: 2, Name: "running", Vcpus: 4, Cores: 2, Threads: 2, Memory: 8192,
 				Bootloader: "UEFI", Autostart: true,
-				Status: &client.VMStatus{State: "RUNNING"},
+				Status: &truenas.VMStatus{State: "RUNNING"},
 			},
 			wantID: "2", wantName: "running", wantCPU: 4, wantMem: 8192, wantStat: "RUNNING",
 		},
 		{
 			name: "vm with min memory",
-			vm: &client.VM{
+			vm: &truenas.VM{
 				ID: 3, Name: "dyn", Vcpus: 2, Cores: 1, Threads: 1, Memory: 4096,
 				MinMemory:  int64Ptr(2048),
 				Bootloader: "UEFI",
@@ -51,21 +51,21 @@ func TestVMResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name:   "vm with nil status",
-			vm:     &client.VM{ID: 4, Name: "stopped", Vcpus: 1, Cores: 1, Threads: 1, Memory: 512, Bootloader: "UEFI"},
+			vm:     &truenas.VM{ID: 4, Name: "stopped", Vcpus: 1, Cores: 1, Threads: 1, Memory: 512, Bootloader: "UEFI"},
 			wantID: "4", wantName: "stopped", wantCPU: 1, wantMem: 512, wantStat: "",
 		},
 		{
 			name: "vm with high resources",
-			vm: &client.VM{
+			vm: &truenas.VM{
 				ID: 5, Name: "big", Vcpus: 16, Cores: 8, Threads: 2, Memory: 65536,
 				Bootloader: "UEFI", Autostart: true,
-				Status: &client.VMStatus{State: "STOPPED"},
+				Status: &truenas.VMStatus{State: "STOPPED"},
 			},
 			wantID: "5", wantName: "big", wantCPU: 16, wantMem: 65536, wantStat: "STOPPED",
 		},
 		{
 			name: "vm with BIOS bootloader",
-			vm: &client.VM{
+			vm: &truenas.VM{
 				ID: 6, Name: "legacy", Vcpus: 1, Cores: 1, Threads: 1, Memory: 1024,
 				Bootloader: "BIOS", Autostart: false,
 			},
@@ -73,7 +73,7 @@ func TestVMResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "vm with description",
-			vm: &client.VM{
+			vm: &truenas.VM{
 				ID: 7, Name: "desc", Vcpus: 2, Cores: 1, Threads: 2, Memory: 2048,
 				Description: "test vm", Bootloader: "UEFI",
 			},
@@ -81,10 +81,10 @@ func TestVMResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "vm suspended",
-			vm: &client.VM{
+			vm: &truenas.VM{
 				ID: 8, Name: "paused", Vcpus: 4, Cores: 2, Threads: 2, Memory: 4096,
 				Bootloader: "UEFI",
-				Status:     &client.VMStatus{State: "SUSPENDED"},
+				Status:     &truenas.VMStatus{State: "SUSPENDED"},
 			},
 			wantID: "8", wantName: "paused", wantCPU: 4, wantMem: 4096, wantStat: "SUSPENDED",
 		},
@@ -136,14 +136,14 @@ func TestVMDeviceResource_MapResponseToModel_Cases(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name      string
-		dev       *client.VMDevice
+		dev       *truenas.VMDevice
 		wantID    string
 		wantVM    int64
 		wantOrder int64
 	}{
 		{
 			name: "disk device",
-			dev: &client.VMDevice{
+			dev: &truenas.VMDevice{
 				ID: 1, VM: 5, Order: intPtr(1001),
 				Attributes: map[string]interface{}{"dtype": "DISK", "path": "/dev/zvol/tank/v1"},
 			},
@@ -151,7 +151,7 @@ func TestVMDeviceResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "nic device no order",
-			dev: &client.VMDevice{
+			dev: &truenas.VMDevice{
 				ID: 2, VM: 5,
 				Attributes: map[string]interface{}{"dtype": "NIC", "nic_attach": "br0"},
 			},
@@ -159,7 +159,7 @@ func TestVMDeviceResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "display device",
-			dev: &client.VMDevice{
+			dev: &truenas.VMDevice{
 				ID: 3, VM: 7, Order: intPtr(1),
 				Attributes: map[string]interface{}{"dtype": "DISPLAY"},
 			},
@@ -167,7 +167,7 @@ func TestVMDeviceResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "cdrom device",
-			dev: &client.VMDevice{
+			dev: &truenas.VMDevice{
 				ID: 4, VM: 1, Order: intPtr(999),
 				Attributes: map[string]interface{}{"dtype": "CDROM"},
 			},
@@ -175,7 +175,7 @@ func TestVMDeviceResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "raw device",
-			dev: &client.VMDevice{
+			dev: &truenas.VMDevice{
 				ID: 5, VM: 10, Order: intPtr(100),
 				Attributes: map[string]interface{}{
 					"dtype":      "RAW",
@@ -188,7 +188,7 @@ func TestVMDeviceResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "pci passthrough",
-			dev: &client.VMDevice{
+			dev: &truenas.VMDevice{
 				ID: 6, VM: 20, Order: intPtr(500),
 				Attributes: map[string]interface{}{
 					"dtype":  "PCI",
@@ -199,7 +199,7 @@ func TestVMDeviceResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "usb device",
-			dev: &client.VMDevice{
+			dev: &truenas.VMDevice{
 				ID: 7, VM: 30,
 				Attributes: map[string]interface{}{"dtype": "USB"},
 			},

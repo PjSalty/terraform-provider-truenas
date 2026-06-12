@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // TestAccCatalogResource_basic — singleton: TrueNAS only supports one
@@ -28,6 +29,11 @@ resource "truenas_catalog" "test" {
   preferred_trains = ["stable"]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_catalog.test", "preferred_trains.#", "1"),
 					resource.TestCheckResourceAttr("truenas_catalog.test", "preferred_trains.0", "stable"),
@@ -67,6 +73,11 @@ resource "truenas_catalog" "test" {
   preferred_trains = ["community", "stable"]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_catalog.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_catalog.test", "preferred_trains.#", "2"),
 					resource.TestCheckResourceAttr("truenas_catalog.test", "preferred_trains.0", "community"),
@@ -106,7 +117,7 @@ resource "truenas_catalog" "test" {
 						ctx, cancel := testAccCtx()
 						defer cancel()
 						drift := []string{"community"}
-						_, err = c.UpdateCatalog(ctx, &client.CatalogUpdateRequest{PreferredTrains: &drift})
+						_, err = c.UpdateCatalog(ctx, &truenas.CatalogUpdateRequest{PreferredTrains: &drift})
 						return err
 					},
 				),

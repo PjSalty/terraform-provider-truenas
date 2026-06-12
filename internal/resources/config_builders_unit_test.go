@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // Config resources share an identical pattern: buildUpdateRequest maps a
@@ -342,7 +342,7 @@ func TestNVMetGlobalResource_BuildUpdateRequest(t *testing.T) {
 
 func TestFTPConfigResource_MapResponseToModel(t *testing.T) {
 	r := &FTPConfigResource{}
-	cases := []*client.FTPConfig{
+	cases := []*truenas.FTPConfig{
 		{Port: 21, Clients: 32, Banner: "TrueNAS FTP"},
 		{Port: 21, TLS: true, Banner: "FTPS"},
 		{Port: 2121, OnlyAnonymous: true},
@@ -374,7 +374,7 @@ func TestFTPConfigResource_MapResponseToModel(t *testing.T) {
 
 func TestSMBConfigResource_MapResponseToModel(t *testing.T) {
 	r := &SMBConfigResource{}
-	cases := []*client.SMBConfig{
+	cases := []*truenas.SMBConfig{
 		{NetbiosName: "TRUENAS", Workgroup: "WORKGROUP"},
 		{NetbiosName: "FS01", Workgroup: "CORP", Description: "file server"},
 		{NetbiosName: "LEGACY", Workgroup: "OLD", EnableSMB1: true},
@@ -451,7 +451,7 @@ func TestSSHConfigResource_BuildUpdateRequest(t *testing.T) {
 func TestSSHConfigResource_MapResponseToModel(t *testing.T) {
 	r := &SSHConfigResource{}
 	ctx := testCtx()
-	cases := []*client.SSHConfig{
+	cases := []*truenas.SSHConfig{
 		{TCPPort: 22, PasswordAuth: true, TCPFwd: true},
 		{TCPPort: 2222, PasswordAuth: false, KerberosAuth: false, Compression: true},
 		{TCPPort: 22, SFTPLogLevel: "INFO", SFTPLogFacility: "AUTH"},
@@ -524,7 +524,7 @@ func TestDNSNameserverResource_BuildUpdateRequest(t *testing.T) {
 
 func TestDNSNameserverResource_MapResponseToModel(t *testing.T) {
 	r := &DNSNameserverResource{}
-	cases := []*client.NetworkConfig{
+	cases := []*truenas.NetworkConfig{
 		{Nameserver1: "1.1.1.1", Nameserver2: "", Nameserver3: ""},
 		{Nameserver1: "1.1.1.1", Nameserver2: "8.8.8.8", Nameserver3: ""},
 		{Nameserver1: "1.1.1.1", Nameserver2: "8.8.8.8", Nameserver3: "9.9.9.9"},
@@ -548,7 +548,7 @@ func TestDNSNameserverResource_MapResponseToModel(t *testing.T) {
 
 func TestNVMetGlobalResource_MapResponseToModel(t *testing.T) {
 	r := &NVMetGlobalResource{}
-	cases := []*client.NVMetGlobal{
+	cases := []*truenas.NVMetGlobal{
 		{Basenqn: "nqn.base"},
 		{Basenqn: "nqn.rdma", Rdma: true},
 		{Basenqn: "nqn.ak", Ana: true, Kernel: true},

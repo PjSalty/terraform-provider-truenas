@@ -15,7 +15,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // BenchmarkDatasetMapResponseToModel measures the cost of mapping a
@@ -23,21 +23,21 @@ import (
 // into a DatasetResourceModel. Dataset has the broadest field surface of
 // any storage resource.
 func BenchmarkDatasetMapResponseToModel(b *testing.B) {
-	ds := &client.DatasetResponse{
+	ds := &truenas.DatasetResponse{
 		ID:            "tank/apps/postgres/data",
 		MountPoint:    "/mnt/tank/apps/postgres/data",
 		Type:          "FILESYSTEM",
-		Compression:   &client.PropertyValue{Value: "LZ4"},
-		Atime:         &client.PropertyValue{Value: "OFF"},
-		Deduplication: &client.PropertyValue{Value: "OFF"},
-		Quota:         &client.PropertyRawVal{Rawvalue: "1073741824", Value: "1073741824"},
-		Refquota:      &client.PropertyRawVal{Rawvalue: "536870912", Value: "536870912"},
-		Sync:          &client.PropertyValue{Value: "ALWAYS"},
-		Snapdir:       &client.PropertyValue{Value: "VISIBLE"},
-		Copies:        &client.PropertyValue{Value: "2"},
-		Readonly:      &client.PropertyValue{Value: "OFF"},
-		RecordSize:    &client.PropertyValue{Value: "128K"},
-		ShareType:     &client.PropertyValue{Value: "SMB"},
+		Compression:   &truenas.PropertyValue{Value: "LZ4"},
+		Atime:         &truenas.PropertyValue{Value: "OFF"},
+		Deduplication: &truenas.PropertyValue{Value: "OFF"},
+		Quota:         &truenas.PropertyRawVal{Rawvalue: "1073741824", Value: "1073741824"},
+		Refquota:      &truenas.PropertyRawVal{Rawvalue: "536870912", Value: "536870912"},
+		Sync:          &truenas.PropertyValue{Value: "ALWAYS"},
+		Snapdir:       &truenas.PropertyValue{Value: "VISIBLE"},
+		Copies:        &truenas.PropertyValue{Value: "2"},
+		Readonly:      &truenas.PropertyValue{Value: "OFF"},
+		RecordSize:    &truenas.PropertyValue{Value: "128K"},
+		ShareType:     &truenas.PropertyValue{Value: "SMB"},
 	}
 	r := &DatasetResource{}
 
@@ -59,7 +59,7 @@ func BenchmarkVMMapResponseToModel(b *testing.B) {
 	nodeset := "0"
 	minMem := int64(512 * 1024 * 1024)
 
-	vm := &client.VM{
+	vm := &truenas.VM{
 		ID:                    42,
 		Name:                  "bench-vm",
 		Description:           "benchmark fixture",
@@ -88,7 +88,7 @@ func BenchmarkVMMapResponseToModel(b *testing.B) {
 		TrustedPlatformModule: false,
 		HypervEnlightenments:  false,
 		EnableSecureBoot:      true,
-		Status:                &client.VMStatus{State: "RUNNING"},
+		Status:                &truenas.VMStatus{State: "RUNNING"},
 	}
 	r := &VMResource{}
 
@@ -102,7 +102,7 @@ func BenchmarkVMMapResponseToModel(b *testing.B) {
 // BenchmarkCertificateMapResponseToModel measures the certificate mapping —
 // many optional-string branches plus a SAN list.
 func BenchmarkCertificateMapResponseToModel(b *testing.B) {
-	cert := &client.Certificate{
+	cert := &truenas.Certificate{
 		ID:                 7,
 		Name:               "bench-cert",
 		CertificateData:    "-----BEGIN CERTIFICATE-----\nMIIBenchmark\n-----END CERTIFICATE-----",
@@ -137,7 +137,7 @@ func BenchmarkCertificateMapResponseToModel(b *testing.B) {
 // which exercises JSON canonicalization (attributes_json) in addition to
 // scalar field copies.
 func BenchmarkCloudBackupMapResponseToModel(b *testing.B) {
-	cb := &client.CloudBackup{
+	cb := &truenas.CloudBackup{
 		ID:          123,
 		Description: "nightly restic",
 		Path:        "/mnt/tank/data",
@@ -145,7 +145,7 @@ func BenchmarkCloudBackupMapResponseToModel(b *testing.B) {
 		Attributes: json.RawMessage(
 			`{"bucket":"backups","folder":"/nightly","encryption":"aes256","chunk_size":16}`,
 		),
-		Schedule: client.CloudBackupSchedule{
+		Schedule: truenas.CloudBackupSchedule{
 			Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*",
 		},
 		PreScript:       "echo start",

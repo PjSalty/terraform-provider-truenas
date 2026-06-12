@@ -2,10 +2,14 @@ package resources_test
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestAccReplication_local(t *testing.T) {
@@ -41,8 +45,93 @@ func testAccCheckReplicationDestroy(resourceName string) resource.TestCheckFunc 
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("replication ID not set")
 		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return fmt.Errorf("replication ID %q is not numeric: %w", rs.Primary.ID, err)
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return fmt.Errorf("building API client: %w", err)
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		_, err = c.GetReplication(ctx, id)
+		if err == nil {
+			return fmt.Errorf("replication %d still exists upstream after Terraform removed it", id)
+		}
+		if !wsclient.IsNotFound(err) {
+			return fmt.Errorf("unexpected error checking removal of replication %d: %w", id, err)
+		}
 		return nil
 	}
+}
+
+func testAccCheckReplicationExists(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if _, err := c.GetReplication(ctx, id); err != nil {
+			return fmt.Errorf("replication %d should exist but lookup failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func testAccCheckReplicationDisappears(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found in state: %s", resourceName)
+		}
+		id, err := strconv.Atoi(rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		c, err := acctest.Client()
+		if err != nil {
+			return err
+		}
+		ctx, cancel := acctest.Ctx()
+		defer cancel()
+		if err := c.DeleteReplication(ctx, id); err != nil {
+			return fmt.Errorf("out-of-band delete of replication %d failed: %w", id, err)
+		}
+		return nil
+	}
+}
+
+func TestAccReplication_disappears(t *testing.T) {
+	pool := testAccDatasetPool()
+	resourceName := "truenas_replication.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckReplicationDestroy(resourceName),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccReplicationConfigLocal(pool),
+				Check:  testAccCheckReplicationExists(resourceName),
+			},
+			{
+				Config:             testAccReplicationConfigLocal(pool),
+				Check:              testAccCheckReplicationDisappears(resourceName),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
 }
 
 func testAccReplicationConfigLocal(pool string) string {

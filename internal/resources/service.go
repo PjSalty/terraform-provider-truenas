@@ -18,7 +18,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 
 // ServiceResource manages a TrueNAS service.
 type ServiceResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // ServiceResourceModel describes the resource data model.
@@ -93,11 +94,11 @@ func (r *ServiceResource) Configure(_ context.Context, req resource.ConfigureReq
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -132,7 +133,7 @@ func (r *ServiceResource) Create(ctx context.Context, req resource.CreateRequest
 
 	// Update the enable flag
 	enable := plan.Enable.ValueBool()
-	err = r.client.UpdateService(ctx, svc.ID, &client.ServiceUpdateRequest{
+	err = r.client.UpdateService(ctx, svc.ID, &truenas.ServiceUpdateRequest{
 		Enable: enable,
 	})
 	if err != nil {
@@ -194,7 +195,7 @@ func (r *ServiceResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	svc, err := r.client.GetService(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -241,7 +242,7 @@ func (r *ServiceResource) Update(ctx context.Context, req resource.UpdateRequest
 	serviceName := plan.Service.ValueString()
 	enable := plan.Enable.ValueBool()
 
-	err = r.client.UpdateService(ctx, id, &client.ServiceUpdateRequest{
+	err = r.client.UpdateService(ctx, id, &truenas.ServiceUpdateRequest{
 		Enable: enable,
 	})
 	if err != nil {
@@ -310,7 +311,7 @@ func (r *ServiceResource) Delete(ctx context.Context, req resource.DeleteRequest
 	_ = r.client.StopService(ctx, serviceName)
 
 	// Disable the service
-	err = r.client.UpdateService(ctx, id, &client.ServiceUpdateRequest{
+	err = r.client.UpdateService(ctx, id, &truenas.ServiceUpdateRequest{
 		Enable: false,
 	})
 	if err != nil {

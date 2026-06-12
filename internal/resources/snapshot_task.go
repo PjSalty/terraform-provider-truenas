@@ -21,8 +21,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -33,7 +34,7 @@ var (
 
 // SnapshotTaskResource manages a periodic snapshot task.
 type SnapshotTaskResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // SnapshotTaskResourceModel describes the resource data model.
@@ -162,11 +163,11 @@ func (r *SnapshotTaskResource) Configure(_ context.Context, req resource.Configu
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -183,7 +184,7 @@ func (r *SnapshotTaskResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	createReq := &client.SnapshotTaskCreateRequest{
+	createReq := &truenas.SnapshotTaskCreateRequest{
 		Dataset:      plan.Dataset.ValueString(),
 		Recursive:    plan.Recursive.ValueBool(),
 		Lifetime:     int(plan.Lifetime.ValueInt64()),
@@ -191,7 +192,7 @@ func (r *SnapshotTaskResource) Create(ctx context.Context, req resource.CreateRe
 		NamingSchema: plan.NamingSchema.ValueString(),
 		Enabled:      plan.Enabled.ValueBool(),
 		AllowEmpty:   plan.AllowEmpty.ValueBool(),
-		Schedule: client.Schedule{
+		Schedule: truenas.Schedule{
 			Minute: plan.Minute.ValueString(),
 			Hour:   plan.Hour.ValueString(),
 			Dom:    plan.Dom.ValueString(),
@@ -238,7 +239,7 @@ func (r *SnapshotTaskResource) Read(ctx context.Context, req resource.ReadReques
 
 	task, err := r.client.GetSnapshotTask(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -282,7 +283,7 @@ func (r *SnapshotTaskResource) Update(ctx context.Context, req resource.UpdateRe
 	recursive := plan.Recursive.ValueBool()
 	enabled := plan.Enabled.ValueBool()
 	allowEmpty := plan.AllowEmpty.ValueBool()
-	schedule := &client.Schedule{
+	schedule := &truenas.Schedule{
 		Minute: plan.Minute.ValueString(),
 		Hour:   plan.Hour.ValueString(),
 		Dom:    plan.Dom.ValueString(),
@@ -290,7 +291,7 @@ func (r *SnapshotTaskResource) Update(ctx context.Context, req resource.UpdateRe
 		Dow:    plan.Dow.ValueString(),
 	}
 
-	updateReq := &client.SnapshotTaskUpdateRequest{
+	updateReq := &truenas.SnapshotTaskUpdateRequest{
 		Dataset:      plan.Dataset.ValueString(),
 		Recursive:    &recursive,
 		Lifetime:     int(plan.Lifetime.ValueInt64()),
@@ -337,7 +338,7 @@ func (r *SnapshotTaskResource) Delete(ctx context.Context, req resource.DeleteRe
 
 	err = r.client.DeleteSnapshotTask(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Snapshot task already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -366,7 +367,7 @@ func (r *SnapshotTaskResource) ImportState(ctx context.Context, req resource.Imp
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *SnapshotTaskResource) mapResponseToModel(task *client.SnapshotTask, model *SnapshotTaskResourceModel) {
+func (r *SnapshotTaskResource) mapResponseToModel(task *truenas.SnapshotTask, model *SnapshotTaskResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(task.ID))
 	model.Dataset = types.StringValue(task.Dataset)
 	model.Recursive = types.BoolValue(task.Recursive)

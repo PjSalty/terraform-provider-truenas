@@ -2,11 +2,11 @@
 
 [![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-brightgreen.svg)](LICENSE)
 [![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.0-623CE4)](https://www.terraform.io/)
-[![TrueNAS SCALE](https://img.shields.io/badge/TrueNAS%20SCALE-24.04%2B-0095D5)](https://www.truenas.com/truenas-scale/)
+[![TrueNAS SCALE](https://img.shields.io/badge/TrueNAS%20SCALE-25.10%2B-0095D5)](https://www.truenas.com/truenas-scale/)
 
 Terraform provider for managing
 [TrueNAS SCALE](https://www.truenas.com/truenas-scale/) storage, network,
-and virtualization resources through the REST API v2.0. Built on
+and virtualization resources over JSON-RPC 2.0 (WebSocket). Built on
 `terraform-plugin-framework`.
 
 ---
@@ -30,7 +30,7 @@ terraform {
   required_providers {
     truenas = {
       source  = "PjSalty/truenas"
-      version = "~> 1.10"
+      version = "~> 2.0"
     }
   }
 }
@@ -83,16 +83,16 @@ resource "truenas_snapshot_task" "media_hourly" {
 
 ## Authentication
 
-The provider authenticates to the TrueNAS REST API with an API key.
+The provider authenticates via the JSON-RPC handshake using an API key.
 
 | Argument               | Environment Variable          | Required | Description                                                                                                                                            |
 | ---------------------- | ----------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `url`                  | `TRUENAS_URL`                 | yes      | Base URL of the TrueNAS instance (HTTPS).                                                                                                              |
 | `api_key`              | `TRUENAS_API_KEY`             | yes      | API key created under Credentials → API Keys.                                                                                                          |
 | `insecure_skip_verify` | `TRUENAS_INSECURE_SKIP_VERIFY` | no       | Skip TLS verification for self-signed test environments. Never enable this against production.                                                        |
-| `read_only`            | `TRUENAS_READONLY`            | no       | When true, the provider refuses every mutating request (POST/PUT/DELETE) before it reaches the network. See [Read-only mode](#read-only-mode-safety-rail). |
+| `read_only`            | `TRUENAS_READONLY`            | no       | When true, the provider refuses every mutating JSON-RPC call before it reaches the network. See [Read-only mode](#read-only-mode-safety-rail). |
 
-The provider normalizes the base URL and appends `/api/v2.0` automatically.
+The provider normalizes the base URL and connects to `/api/current` (the JSON-RPC WebSocket endpoint) automatically.
 API keys should be stored in a secret manager (e.g. SOPS, Vault,
 Vaultwarden) and injected via environment variables in CI.
 
@@ -104,10 +104,11 @@ export TRUENAS_API_KEY="1-abc123..."
 ### Read-only mode (safety rail)
 
 For phased production rollout, set `read_only = true` (HCL) or
-`TRUENAS_READONLY=1` (env). When enabled, every mutating request
-(POST/PUT/DELETE) fails with `ErrReadOnly` **before any network call
-is made** — the target TrueNAS instance never even sees the attempt,
-not even in its access log.
+`TRUENAS_READONLY=1` (env). When enabled, every mutating JSON-RPC call
+(`*.create`, `*.update`, `*.delete`, plus named mutators like
+`pool.export`) fails with `ErrReadOnly` **before any wire call is
+made** — the target TrueNAS instance never even sees the attempt,
+not even in its middlewared audit log.
 
 ```hcl
 provider "truenas" {
@@ -340,14 +341,26 @@ example under `examples/data-sources/<name>/data-source.tf`.
 
 | Provider Version | TrueNAS SCALE | Terraform | Go (build) |
 | ---------------- | ------------- | --------- | ---------- |
+| `2.0.x`          | **25.10+** (full) · 25.04 (partial) · 26.0-BETA (tracked) | `>= 1.5` | `>= 1.26` |
+| `1.10.x`         | 24.04 – 25.04 | `>= 1.0`  | `>= 1.23`  |
 | `0.4.x`          | 24.04 – 25.10 | `>= 1.0`  | `>= 1.23`  |
 | `0.3.x`          | 24.04 – 25.04 | `>= 1.0`  | `>= 1.23`  |
 | `0.1.x`          | 24.04         | `>= 1.0`  | `>= 1.22`  |
 
-SCALE 25.10 introduced several schema-breaking changes (alert services,
-dataset comments) that the 0.4.x provider handles transparently; older
-provider versions will surface spurious drift when pointed at a 25.10
-instance.
+v2.0 is validated against live instances of each line:
+
+- **SCALE 25.10** — fully supported; the complete acceptance suite
+  passes (147/147).
+- **SCALE 25.04** — works for the common surface (126/141), but
+  several resources model APIs that don't exist there: `nvmet_*`
+  (NVMe-oF arrived in 25.10), the unified `truenas_directory_services`
+  resource, the 25.10 SMB share `purpose` vocabulary, and some
+  `alert_service` types. If you need those resources on 25.04, stay on
+  `1.10.x` until you upgrade SCALE.
+- **SCALE 26.0-BETA** — 143/147; the four failures are 26.0 API drift
+  (`service.start` signature, SMB config shape) tracked for a v2.x
+  release alongside 26.0 final. Note 26.0 removes the REST API
+  entirely, so the v1.x line cannot work there at all.
 
 ## Development
 

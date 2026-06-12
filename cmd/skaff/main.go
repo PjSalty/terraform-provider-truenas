@@ -157,7 +157,7 @@ func scaffoldResource(name string) error {
 			tmpl: resourceTemplate,
 		},
 		{
-			path: filepath.Join("internal", "client", name+".go"),
+			path: filepath.Join("internal", "wsclient", name+".go"),
 			tmpl: clientTemplate,
 		},
 		{
@@ -263,12 +263,13 @@ const resourceTemplate = `package resources
 // }
 `
 
-const clientTemplate = `package client
+const clientTemplate = `package wsclient
 
 // TODO: implement Get{{.CamelName}}, Create{{.CamelName}}, Update{{.CamelName}},
-// Delete{{.CamelName}} client methods here. See internal/client/dataset.go for
-// reference. Every client method needs httptest-mocked unit tests in
-// internal/client/{{.Name}}_test.go.
+// Delete{{.CamelName}} client methods here. See internal/wsclient/dataset.go
+// for reference. Every client method needs unit tests in
+// internal/wsclient/{{.Name}}_test.go using NewTestServer from
+// internal/wsclient/testserver.go.
 `
 
 const docTemplate = `---
