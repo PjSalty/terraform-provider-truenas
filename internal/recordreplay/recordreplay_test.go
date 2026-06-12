@@ -283,7 +283,9 @@ func TestReplayer_RecordCachedHit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRecorder: %v", err)
 	}
-	_, _ = tlsSkipClient().Get(rec.URL() + "/api/v2.0/system/info")
+	if r, gerr := tlsSkipClient().Get(rec.URL() + "/api/v2.0/system/info"); gerr == nil {
+		_ = r.Body.Close()
+	}
 	rec.Close()
 
 	rp, err := NewReplayer(tmp)

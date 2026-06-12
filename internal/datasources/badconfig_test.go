@@ -17,7 +17,7 @@ import (
 // req.Config.Get() to execute.
 func badConfig(t *testing.T, ds datasource.DataSource) tfsdk.Config {
 	t.Helper()
-	schemaResp := getDataSourceSchema(t, ds)
+	schemaResp := getDataSourceSchema(t.Context(), t, ds)
 
 	// Build a throwaway schema that contains a single attribute of the wrong
 	// type ("__bad"), so Config.Get reflects into a struct that doesn't have

@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
@@ -16,14 +17,14 @@ func TestNewVMsDataSource(t *testing.T) {
 
 func TestVMsDataSource_Schema(t *testing.T) {
 	ds := NewVMsDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	if _, ok := resp.Schema.GetAttributes()["vms"]; !ok {
 		t.Errorf("missing attribute: vms")
 	}
 }
 
 func TestVMsDataSource_Read_Multiple(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.VM{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.VM{
 		{ID: 1, Name: "vm-a", Memory: 1024, Vcpus: 1, Cores: 2, Status: &truenas.VMStatus{State: "RUNNING"}},
 		{ID: 2, Name: "vm-b", Memory: 2048, Vcpus: 2, Cores: 4},
 	}))
@@ -31,7 +32,7 @@ func TestVMsDataSource_Read_Multiple(t *testing.T) {
 	ds := NewVMsDataSource().(*VMsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -45,12 +46,12 @@ func TestVMsDataSource_Read_Multiple(t *testing.T) {
 }
 
 func TestVMsDataSource_Read_Empty(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.VM{}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.VM{}))
 
 	ds := NewVMsDataSource().(*VMsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -63,12 +64,12 @@ func TestVMsDataSource_Read_Empty(t *testing.T) {
 }
 
 func TestVMsDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewVMsDataSource().(*VMsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

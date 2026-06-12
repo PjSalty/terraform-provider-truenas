@@ -81,14 +81,14 @@ func GetList(ctx context.Context, _ interface{}, path string, out interface{}) e
 		},
 	}
 	url := strings.TrimRight(baseURL, "/") + "/api/v2.0" + path
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody) //nolint:gosec // G704: dev-time sweeper hits the operator-configured TRUENAS_URL
 	if err != nil {
 		return fmt.Errorf("sweep.GetList: build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := hc.Do(req)
+	resp, err := hc.Do(req) //nolint:gosec // G704: same operator-configured target as above
 	if err != nil {
 		return fmt.Errorf("GET %s: %w", path, err)
 	}

@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -12,7 +13,7 @@ import (
 
 func TestCertificateDataSource_Schema(t *testing.T) {
 	ds := NewCertificateDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "name", "issuer", "valid_from", "valid_until", "san",
@@ -41,12 +42,12 @@ func TestCertificateDataSource_Read_Success(t *testing.T) {
 		},
 		{ID: 8, Name: "other"},
 	}
-	c := newWSServer(t, wsReturn(certs))
+	c := newWSServer(t.Context(), t, wsReturn(certs))
 
 	ds := NewCertificateDataSource().(*CertificateDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{
 		"name": strVal("wildcard"),
 	})
 	resp := callRead(context.Background(), ds, cfg)
@@ -80,12 +81,12 @@ func TestCertificateDataSource_Read_NotFound(t *testing.T) {
 	// WS GetCertificateByName sends a server-side name filter; a
 	// no-match lookup returns an EMPTY list (unlike the REST client
 	// which listed everything and filtered client-side).
-	c := newWSServer(t, wsReturn([]truenas.Certificate{}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Certificate{}))
 
 	ds := NewCertificateDataSource().(*CertificateDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{
 		"name": strVal("missing"),
 	})
 	resp := callRead(context.Background(), ds, cfg)
@@ -95,12 +96,12 @@ func TestCertificateDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestCertificateDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewCertificateDataSource().(*CertificateDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{
 		"name": strVal("any"),
 	})
 	resp := callRead(context.Background(), ds, cfg)
@@ -110,14 +111,14 @@ func TestCertificateDataSource_Read_ServerError(t *testing.T) {
 }
 
 func TestCertificateDataSource_Read_EmptySAN(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Certificate{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Certificate{
 		{ID: 1, Name: "bare", Common: "x", SAN: nil},
 	}))
 
 	ds := NewCertificateDataSource().(*CertificateDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("bare")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("bare")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
