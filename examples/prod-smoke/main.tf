@@ -3,7 +3,7 @@
 //
 // prod-smoke: a minimal Terraform workspace for the FIRST run of this
 // provider against a production TrueNAS SCALE host. Both safety rails
-// are armed by default — `read_only = true` (provider refuses every
+// are armed by default, `read_only = true` (provider refuses every
 // mutating request) plus `destroy_protection = true` (provider refuses
 // every DELETE request). With those flags set, this configuration
 // physically cannot mutate or destroy anything in the target system,
@@ -99,7 +99,7 @@ data "truenas_dataset" "smoke" {
 }
 
 // ---------------------------------------------------------------------
-// Outputs — proof that the provider talked to the box and read state.
+// Outputs, proof that the provider talked to the box and read state.
 // ---------------------------------------------------------------------
 
 output "truenas_version" {

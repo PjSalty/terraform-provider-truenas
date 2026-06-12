@@ -2,12 +2,12 @@
 page_title: "truenas_app Resource - terraform-provider-truenas"
 subcategory: "Applications"
 description: |-
-  Manages a deployed application on TrueNAS SCALE (Docker/iX). Install is asynchronous — the provider waits for the underlying job to complete.
+  Manages a deployed application on TrueNAS SCALE (Docker/iX). Install is asynchronous, the provider waits for the underlying job to complete.
 ---
 
 # truenas_app (Resource)
 
-Manages a deployed application on TrueNAS SCALE (Docker/iX). Install is asynchronous — the provider waits for the underlying job to complete.
+Manages a deployed application on TrueNAS SCALE (Docker/iX). Install is asynchronous, the provider waits for the underlying job to complete.
 
 Managed attributes map directly to the TrueNAS SCALE API. Changes are applied
 via the JSON-RPC endpoint on the target system; mutations that cannot be
@@ -38,10 +38,10 @@ The following arguments are supported:
 * `app_name` - (Required) The app name. Must be lowercase alphanumeric with hyphens, starting with a letter (e.g. 'my-app'). Immutable after creation. Changing this attribute forces a new resource to be created.
 * `catalog_app` - (Required) The catalog app slug to install (e.g. 'minio', 'plex'). Immutable after creation. Changing this attribute forces a new resource to be created.
 * `train` - (Optional) The catalog train (e.g. 'stable', 'enterprise', 'community'). Immutable after creation. Default: `stable`. Changing this attribute forces a new resource to be created.
-* `version` - (Optional) The app chart version to install (e.g. '1.2.3'). Defaults to 'latest'. Immutable after creation — use the TrueNAS upgrade workflow for in-place version changes. Default: `latest`. Changing this attribute forces a new resource to be created.
-* `values` - (Optional) JSON-encoded values object passed to the app. Arbitrary chart configuration — the provider does not validate structure. Default: `{}`.
+* `version` - (Optional) The app chart version to install (e.g. '1.2.3'). Defaults to 'latest'. Immutable after creation, use the TrueNAS upgrade workflow for in-place version changes. Default: `latest`. Changing this attribute forces a new resource to be created.
+* `values` - (Optional) JSON-encoded values object passed to the app. Arbitrary chart configuration, the provider does not validate structure. Default: `{}`.
 * `remove_images` - (Optional) On destroy, remove associated container images (default true).
-* `remove_ix_volumes` - (Optional) On destroy, also remove ix-volumes (default false — DANGEROUS).
+* `remove_ix_volumes` - (Optional) On destroy, also remove ix-volumes (default false, DANGEROUS).
 * `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
 
 ### Timeouts

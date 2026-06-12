@@ -6,7 +6,7 @@ conventions and the quality bar established by major HashiCorp-maintained
 Terraform providers.
 
 Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
-For security issues, follow [SECURITY.md](SECURITY.md) — **do not open a
+For security issues, follow [SECURITY.md](SECURITY.md), **do not open a
 public issue for vulnerabilities**.
 
 ## Table of contents
@@ -34,7 +34,7 @@ public issue for vulnerabilities**.
 - [tfplugindocs](https://github.com/hashicorp/terraform-plugin-docs)
 - [goreleaser](https://goreleaser.com/) v2.15+
 - [pre-commit](https://pre-commit.com/) (recommended)
-- A TrueNAS SCALE 25.10+ test VM (for acceptance tests — **never** your
+- A TrueNAS SCALE 25.10+ test VM (for acceptance tests, **never** your
   production TrueNAS)
 
 ## Quickstart
@@ -114,7 +114,7 @@ go test -run TestCreateDataset ./internal/wsclient/  # single test
 
 **Coverage requirement**: **100.0%** on every package. CI enforces this as a
 gate. If a new branch genuinely cannot be tested, delete the defensive code
-instead — don't suppress coverage.
+instead, don't suppress coverage.
 
 ### Acceptance tests
 
@@ -137,11 +137,11 @@ Use a dedicated expendable test VM only.
 
 Every new resource must have the full acceptance-test triad:
 
-- `TestAcc<Res>Resource_basic` — happy path create/read/import/destroy
-- `TestAcc<Res>Resource_update` — verify Update without replacement
-- `TestAcc<Res>Resource_disappears` — out-of-band delete, provider recovers
+- `TestAcc<Res>Resource_basic`, happy path create/read/import/destroy
+- `TestAcc<Res>Resource_update`, verify Update without replacement
+- `TestAcc<Res>Resource_disappears`, out-of-band delete, provider recovers
 
-Singleton config resources use `_basic` + `_update` (no `_disappears` — you
+Singleton config resources use `_basic` + `_update` (no `_disappears`, you
 can't delete a singleton).
 
 ### Fuzz tests
@@ -199,7 +199,7 @@ checklist below.
      `internal/planmodifiers` where applicable.
 4. **Register** the resource in `internal/provider/provider.go` under
    `Resources()`.
-5. **Add matching data source** in `internal/datasources/<name>.go` — every
+5. **Add matching data source** in `internal/datasources/<name>.go`, every
    resource should have a matching data source.
 6. **Add tests**:
    - Unit tests for schema/metadata/configure/CRUD in
@@ -221,18 +221,18 @@ checklist below.
 
 Follow steps 1, 2 (if client methods don't already exist), and 6-11 above,
 but targeted at `internal/datasources/` instead of `internal/resources/`.
-Data sources are read-only — no Create/Update/Delete.
+Data sources are read-only, no Create/Update/Delete.
 
 ## Validators, plan modifiers, and flex helpers
 
-- **`internal/validators`** — reusable attribute validators:
+- **`internal/validators`**, reusable attribute validators:
   `ZFSPath()`, `IPOrCIDR()`, `HostOrIP()`, `CompressionAlgorithm()`.
-- **`internal/planmodifiers`** — framework plan modifiers:
+- **`internal/planmodifiers`**, framework plan modifiers:
   `RequiresReplaceIfChanged()`.
-- **`internal/flex`** — framework<->Go type conversion helpers:
+- **`internal/flex`**, framework<->Go type conversion helpers:
   `StringPointerValue`, `Int64PointerValue`, `StringListValue`, etc. Prefer
   these over hand-rolled conversions.
-- **`internal/fwresource`** — framework resource base helpers:
+- **`internal/fwresource`**, framework resource base helpers:
   `ConfigureClient` for the `Configure` boilerplate.
 
 ## Documentation
@@ -245,7 +245,7 @@ tfplugindocs validate              # verify registry format is correct
 ```
 
 Hand-written guides live under `docs/guides/`. Do not commit generated docs
-that conflict with your changes — always regenerate after schema edits.
+that conflict with your changes, always regenerate after schema edits.
 
 ## Changelog entries
 
@@ -316,5 +316,5 @@ See [`.goreleaser.yml`](.goreleaser.yml) for the full release configuration.
 
 - Open an issue with the `question` label.
 - Check existing issues and MRs before opening a new one.
-- For security issues, follow [SECURITY.md](SECURITY.md) — do not disclose
+- For security issues, follow [SECURITY.md](SECURITY.md), do not disclose
   publicly.

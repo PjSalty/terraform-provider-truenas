@@ -12,7 +12,7 @@ This guide covers everything you need to know about moving from the v1.x release
 ## TL;DR
 
 - **The default transport flips from REST to JSON-RPC 2.0 over WebSocket.** This is the *only* user-visible change.
-- **No schema changes.** Existing Terraform configurations and state files keep working — every resource and data source ID, attribute, and import path is identical to v1.x.
+- **No schema changes.** Existing Terraform configurations and state files keep working, every resource and data source ID, attribute, and import path is identical to v1.x.
 - **Recommended upgrade flow:** bump the version constraint, run `terraform init -upgrade`, then `terraform plan`. A clean plan shows no drift.
 
 ## Why v2.0?
@@ -39,7 +39,7 @@ v2.0 is validated against live instances: 147/147 acceptance tests on
 
 **25.04 partial support**: the WebSocket transport works (25.04 is when
 `/api/current` landed), but several resources model middleware APIs
-that 25.04 simply doesn't have — `nvmet_*` (NVMe-oF target support
+that 25.04 simply doesn't have, `nvmet_*` (NVMe-oF target support
 arrived in 25.10), the unified `truenas_directory_services` resource,
 the 25.10 SMB share `purpose` vocabulary, and some `alert_service`
 types. Plans touching those resources fail with method-not-found
@@ -47,7 +47,7 @@ errors on 25.04. If you need them, upgrade SCALE first; otherwise
 v2.0 on 25.04 is fine for the common surface.
 
 **26.0-BETA**: 4 known failures from 26.0 API drift (`service.start`
-signature change, SMB config shape) — tracked for a v2.x release
+signature change, SMB config shape), tracked for a v2.x release
 alongside 26.0 final. 26.0 removes REST entirely, so v1.x cannot
 target it at all.
 
@@ -57,13 +57,13 @@ If the provider Configure step fails with a websocket dial error against a SCALE
 
 iX's published timeline for the REST API at `/api/v2.0`:
 
-- **SCALE 25.04** — deprecated; alert fires on every call.
-- **SCALE 26.04** — removed entirely.
+- **SCALE 25.04**, deprecated; alert fires on every call.
+- **SCALE 26.04**, removed entirely.
 
 This provider's timeline:
 
-- **v1.x** — REST is the default. WebSocket is opt-in alpha via `transport = "websocket"`.
-- **v2.0** — WebSocket only. The REST client code has been deleted. Fully supported on SCALE 25.10+; 25.04 works with a reduced resource surface (see above).
+- **v1.x**, REST is the default. WebSocket is opt-in alpha via `transport = "websocket"`.
+- **v2.0**, WebSocket only. The REST client code has been deleted. Fully supported on SCALE 25.10+; 25.04 works with a reduced resource surface (see above).
 
 ## Upgrade procedure
 
@@ -82,7 +82,7 @@ This provider's timeline:
 
 2. Run `terraform init -upgrade`. The lockfile (`.terraform.lock.hcl`) updates with the v2.0 provider hashes.
 
-3. Run `terraform plan`. A clean plan should show **no resource changes** — only the provider version line moves.
+3. Run `terraform plan`. A clean plan should show **no resource changes**, only the provider version line moves.
 
 4. If the plan is clean, run `terraform apply`. The first apply re-Configures the provider and opens the WebSocket connection. After that it behaves identically to v1.x.
 
@@ -90,7 +90,7 @@ If you see any resource diff that doesn't match a real intent change, see "Rollb
 
 ## Rollback
 
-If something goes wrong after the upgrade — unexpected diffs, dial errors, or any other regression — pin to the v1.x line:
+If something goes wrong after the upgrade, unexpected diffs, dial errors, or any other regression, pin to the v1.x line:
 
 ```hcl
 terraform {
@@ -107,7 +107,7 @@ Then `terraform init -upgrade`. The v1.x provider continues to support SCALE 24.
 
 ## Behavioral parity
 
-Every resource and data source produces the same `terraform plan` output as v1.x against the test VM — IDs, attributes, validators, plan modifiers, and import paths are identical. If you find a case where v2.0 disagrees with v1.10.2 on a resource shape, that's a bug.
+Every resource and data source produces the same `terraform plan` output as v1.x against the test VM, IDs, attributes, validators, plan modifiers, and import paths are identical. If you find a case where v2.0 disagrees with v1.10.2 on a resource shape, that's a bug.
 
 Two areas where the wire shape differs from v1.x but the observable user behavior is identical:
 
@@ -123,14 +123,14 @@ The wsclient's reconnect logic transparently retries idempotent in-flight calls 
 
 ## What does NOT change
 
-- **Provider attributes**: `url`, `api_key`, `insecure_skip_verify`, `read_only`, `destroy_protection`, `request_timeout` — all unchanged.
+- **Provider attributes**: `url`, `api_key`, `insecure_skip_verify`, `read_only`, `destroy_protection`, `request_timeout`, all unchanged.
 - **Resource and data source schemas**: every one of the 63 resources and their data sources keeps the same attributes, types, validators, plan modifiers, and import paths.
 - **State file format**: existing state files load directly into v2.0. No `terraform state` migration is required.
 - **Acceptance test coverage**: the v2.0 acc suite runs the full resource matrix against live TrueNAS 25.10 over WebSocket. Tiered coverage gates protect the low-level packages at 100%.
 
 ## Stability guarantees (v2.x)
 
-Same shape as v1.x: schema-stable across the major version, breaking changes gated behind v3.0. The transport cutover in v2.0 was *not* a schema break — schemas are byte-identical with v1.10.2.
+Same shape as v1.x: schema-stable across the major version, breaking changes gated behind v3.0. The transport cutover in v2.0 was *not* a schema break, schemas are byte-identical with v1.10.2.
 
 No further v2.x → v2.x breaking changes are scheduled. The acc suite gates the schema contract.
 
