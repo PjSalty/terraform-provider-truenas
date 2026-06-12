@@ -19,7 +19,7 @@ func TestNewISCSIExtentDataSource(t *testing.T) {
 
 func TestISCSIExtentDataSource_Schema(t *testing.T) {
 	ds := NewISCSIExtentDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	for _, want := range []string{"id", "name", "type", "disk", "path", "filesize", "blocksize", "rpm", "enabled", "comment", "readonly", "xen", "insecure_tpc"} {
 		if _, ok := resp.Schema.GetAttributes()[want]; !ok {
 			t.Errorf("missing attribute: %s", want)
@@ -28,7 +28,7 @@ func TestISCSIExtentDataSource_Schema(t *testing.T) {
 }
 
 func TestISCSIExtentDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.ISCSIExtent{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.ISCSIExtent{
 		ID:        4,
 		Name:      "ext1",
 		Type:      "DISK",
@@ -43,7 +43,7 @@ func TestISCSIExtentDataSource_Read_Success(t *testing.T) {
 
 	ds := NewISCSIExtentDataSource().(*ISCSIExtentDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(4)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(4)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -71,7 +71,7 @@ func TestISCSIExtentDataSource_Read_NotFound(t *testing.T) {
 	}))
 	ds := NewISCSIExtentDataSource().(*ISCSIExtentDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -18,7 +19,7 @@ func TestNewKerberosRealmDataSource(t *testing.T) {
 
 func TestKerberosRealmDataSource_Schema(t *testing.T) {
 	ds := NewKerberosRealmDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{"id", "realm", "primary_kdc", "kdc", "admin_server", "kpasswd_server"} {
 		if _, ok := attrs[want]; !ok {
@@ -29,7 +30,7 @@ func TestKerberosRealmDataSource_Schema(t *testing.T) {
 
 func TestKerberosRealmDataSource_Read_Success(t *testing.T) {
 	primary := "kdc.example.com"
-	c := newWSServer(t, wsReturn(truenas.KerberosRealm{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.KerberosRealm{
 		ID:            3,
 		Realm:         "EXAMPLE.COM",
 		PrimaryKDC:    &primary,
@@ -41,7 +42,7 @@ func TestKerberosRealmDataSource_Read_Success(t *testing.T) {
 	ds := NewKerberosRealmDataSource().(*KerberosRealmDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(3)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(3)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -61,7 +62,7 @@ func TestKerberosRealmDataSource_Read_Success(t *testing.T) {
 }
 
 func TestKerberosRealmDataSource_Read_NoPrimaryKDC(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.KerberosRealm{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.KerberosRealm{
 		ID:    1,
 		Realm: "X",
 		KDC:   []string{},
@@ -70,7 +71,7 @@ func TestKerberosRealmDataSource_Read_NoPrimaryKDC(t *testing.T) {
 	ds := NewKerberosRealmDataSource().(*KerberosRealmDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(1)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(1)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -83,12 +84,12 @@ func TestKerberosRealmDataSource_Read_NoPrimaryKDC(t *testing.T) {
 }
 
 func TestKerberosRealmDataSource_Read_NotFound(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewKerberosRealmDataSource().(*KerberosRealmDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

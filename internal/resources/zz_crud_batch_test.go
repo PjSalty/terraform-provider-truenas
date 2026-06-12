@@ -7,47 +7,15 @@ package resources
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-)
 
-// jsonHandler returns an http.HandlerFunc that always replies with the given
-// body for GET/POST/PUT and echoes `true` for DELETE. For endpoints that
-// return async jobs, the `core/get_jobs` path is handled specially to
-// return a completed job.
-func jsonHandler(body map[string]interface{}) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		// Handle job polling: any path matching core/get_jobs returns
-		// a list containing one SUCCESS job.
-		if strings.Contains(req.URL.Path, "core/get_jobs") {
-			_ = json.NewEncoder(w).Encode([]interface{}{
-				map[string]interface{}{
-					"id":     1,
-					"state":  "SUCCESS",
-					"result": body,
-				},
-			})
-			return
-		}
-		// Handle async-create POSTs that return an int job ID.
-		if req.Method == http.MethodPost && strings.HasSuffix(req.URL.Path, "/app") {
-			_, _ = w.Write([]byte("1"))
-			return
-		}
-		if req.Method == http.MethodDelete {
-			_, _ = w.Write([]byte("true"))
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-}
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
+)
 
 // wsJSONHandler is the JSON-RPC twin of jsonHandler: every method
 // returns the supplied body, deletes return true, and core.get_jobs

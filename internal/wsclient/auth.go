@@ -11,18 +11,18 @@ import (
 )
 
 // authJitterDelay returns a uniformly-jittered backoff in the range
-// [base, base*3) capped at max. Used by authenticate() to spread
+// [base, base*3) capped at maxDelay. Used by authenticate() to spread
 // concurrent retries off the rate-limit window when multiple acc
 // tests dial the same TrueNAS simultaneously.
-func authJitterDelay(base, max time.Duration) time.Duration {
+func authJitterDelay(base, maxDelay time.Duration) time.Duration {
 	if base <= 0 {
 		return 0
 	}
 	// rand.Float64 ∈ [0, 1); scale into [1, 3) so the jittered delay
 	// straddles `base` rather than just adding a fraction on top.
 	d := time.Duration(float64(base) * (1 + rand.Float64()*2)) //nolint:gosec // jitter doesn't need crypto rand
-	if d > max {
-		return max
+	if d > maxDelay {
+		return maxDelay
 	}
 	return d
 }
@@ -75,7 +75,7 @@ func (c *Client) authenticate(ctx context.Context) error {
 		jittered := authJitterDelay(delay, maxDelay)
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("authenticate: %w (last error: %v)", ctx.Err(), err)
+			return fmt.Errorf("authenticate: %w (last error: %w)", ctx.Err(), err)
 		case <-time.After(jittered):
 		}
 		delay *= 2
