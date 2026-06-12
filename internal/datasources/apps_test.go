@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
@@ -16,14 +17,14 @@ func TestNewAppsDataSource(t *testing.T) {
 
 func TestAppsDataSource_Schema(t *testing.T) {
 	ds := NewAppsDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	if _, ok := resp.Schema.GetAttributes()["apps"]; !ok {
 		t.Errorf("missing attribute: apps")
 	}
 }
 
 func TestAppsDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.App{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.App{
 		{ID: "a", Name: "a", State: "RUNNING", Version: "1.0", UpgradeAvailable: false, CustomApp: false},
 		{ID: "b", Name: "b", State: "STOPPED", Version: "2.0", UpgradeAvailable: true, CustomApp: true},
 	}))
@@ -31,7 +32,7 @@ func TestAppsDataSource_Read_Success(t *testing.T) {
 	ds := NewAppsDataSource().(*AppsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -48,12 +49,12 @@ func TestAppsDataSource_Read_Success(t *testing.T) {
 }
 
 func TestAppsDataSource_Read_Empty(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.App{}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.App{}))
 
 	ds := NewAppsDataSource().(*AppsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -66,12 +67,12 @@ func TestAppsDataSource_Read_Empty(t *testing.T) {
 }
 
 func TestAppsDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewAppsDataSource().(*AppsDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

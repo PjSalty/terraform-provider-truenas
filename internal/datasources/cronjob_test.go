@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -18,7 +19,7 @@ func TestNewCronJobDataSource(t *testing.T) {
 
 func TestCronJobDataSource_Schema(t *testing.T) {
 	ds := NewCronJobDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "user", "command", "description", "enabled",
@@ -32,7 +33,7 @@ func TestCronJobDataSource_Schema(t *testing.T) {
 }
 
 func TestCronJobDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.CronJob{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.CronJob{
 		ID:          5,
 		User:        "root",
 		Command:     "/usr/bin/backup.sh",
@@ -52,7 +53,7 @@ func TestCronJobDataSource_Read_Success(t *testing.T) {
 	ds := NewCronJobDataSource().(*CronJobDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(5)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(5)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -78,12 +79,12 @@ func TestCronJobDataSource_Read_Success(t *testing.T) {
 }
 
 func TestCronJobDataSource_Read_NotFound(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewCronJobDataSource().(*CronJobDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
@@ -91,7 +92,7 @@ func TestCronJobDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestCronJobDataSource_Read_DisabledJob(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.CronJob{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.CronJob{
 		ID: 1, Enabled: false,
 		Schedule: truenas.Schedule{Minute: "*/5"},
 	}))
@@ -99,7 +100,7 @@ func TestCronJobDataSource_Read_DisabledJob(t *testing.T) {
 	ds := NewCronJobDataSource().(*CronJobDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(1)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(1)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)

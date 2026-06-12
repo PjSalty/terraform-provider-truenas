@@ -38,7 +38,7 @@ func TestWarnOnDestroy_AllResources(t *testing.T) {
 		{"vmware", NewVMwareResource().(resource.ResourceWithModifyPlan)},
 	}
 	for _, c := range cases {
-		c := c
+
 		t.Run(c.name, func(t *testing.T) {
 			resp := callModifyPlanDelete(t, c.r)
 			if resp == nil {

@@ -19,7 +19,7 @@ func TestNewKeychainCredentialDataSource(t *testing.T) {
 
 func TestKeychainCredentialDataSource_Schema(t *testing.T) {
 	ds := NewKeychainCredentialDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	for _, want := range []string{"id", "name", "type", "attributes_json"} {
 		if _, ok := resp.Schema.GetAttributes()[want]; !ok {
 			t.Errorf("missing attribute: %s", want)
@@ -28,7 +28,7 @@ func TestKeychainCredentialDataSource_Schema(t *testing.T) {
 }
 
 func TestKeychainCredentialDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.KeychainCredential{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.KeychainCredential{
 		ID:   4,
 		Name: "backup-key",
 		Type: "SSH_KEY_PAIR",
@@ -40,7 +40,7 @@ func TestKeychainCredentialDataSource_Read_Success(t *testing.T) {
 
 	ds := NewKeychainCredentialDataSource().(*KeychainCredentialDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(4)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(4)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -65,7 +65,7 @@ func TestKeychainCredentialDataSource_Read_NilAttributes(t *testing.T) {
 	}))
 	ds := NewKeychainCredentialDataSource().(*KeychainCredentialDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(1)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(1)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -84,7 +84,7 @@ func TestKeychainCredentialDataSource_Read_NotFound(t *testing.T) {
 	}))
 	ds := NewKeychainCredentialDataSource().(*KeychainCredentialDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

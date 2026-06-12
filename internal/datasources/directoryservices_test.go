@@ -2,9 +2,10 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"strings"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
@@ -17,7 +18,7 @@ func TestNewDirectoryServicesDataSource(t *testing.T) {
 
 func TestDirectoryServicesDataSource_Schema(t *testing.T) {
 	ds := NewDirectoryServicesDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "service_type", "enable", "enable_account_cache",
@@ -33,7 +34,7 @@ func TestDirectoryServicesDataSource_Schema(t *testing.T) {
 func TestDirectoryServicesDataSource_Read_Enabled(t *testing.T) {
 	svcType := "ACTIVEDIRECTORY"
 	realm := "EXAMPLE.COM"
-	c := newWSServer(t, wsReturn(truenas.DirectoryServicesConfig{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.DirectoryServicesConfig{
 		ID:                 1,
 		ServiceType:        &svcType,
 		Enable:             true,
@@ -53,7 +54,7 @@ func TestDirectoryServicesDataSource_Read_Enabled(t *testing.T) {
 	ds := NewDirectoryServicesDataSource().(*DirectoryServicesDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -83,7 +84,7 @@ func TestDirectoryServicesDataSource_Read_Enabled(t *testing.T) {
 
 func TestDirectoryServicesDataSource_Read_Disabled(t *testing.T) {
 	// No service type, no credential — should produce null strings.
-	c := newWSServer(t, wsReturn(truenas.DirectoryServicesConfig{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.DirectoryServicesConfig{
 		ID:     1,
 		Enable: false,
 	}))
@@ -91,7 +92,7 @@ func TestDirectoryServicesDataSource_Read_Disabled(t *testing.T) {
 	ds := NewDirectoryServicesDataSource().(*DirectoryServicesDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -108,12 +109,12 @@ func TestDirectoryServicesDataSource_Read_Disabled(t *testing.T) {
 }
 
 func TestDirectoryServicesDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewDirectoryServicesDataSource().(*DirectoryServicesDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

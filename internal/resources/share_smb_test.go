@@ -252,7 +252,6 @@ func TestAccSMBShare_purposePreset_25_10(t *testing.T) {
 		{name: "VEEAM_REPOSITORY_SHARE", skip: "requires TrueNAS enterprise license"},
 	}
 	for i, pc := range presets {
-		i, pc := i, pc
 		preset := pc.name
 		t.Run(preset, func(t *testing.T) {
 			if pc.skip != "" {
