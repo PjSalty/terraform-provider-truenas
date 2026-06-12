@@ -21,7 +21,7 @@ import (
 // newWSNotFoundClient fails every method with the MatchNotFound shape
 // TrueNAS emits when an id filter matches zero rows — the canonical
 // "deleted out of band" surface.
-func newWSNotFoundClient(t *testing.T) *wsclient.Client {
+func newWSNotFoundClient(ctx context.Context, t *testing.T) *wsclient.Client {
 	t.Helper()
 	ts := wsclient.NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		if strings.HasSuffix(method, ".delete") {
@@ -36,7 +36,7 @@ func newWSNotFoundClient(t *testing.T) *wsclient.Client {
 			Message: "Method call error: MatchNotFound() (EINVAL)",
 		}
 	})
-	c, err := ts.NewClient(context.Background())
+	c, err := ts.NewClient(ctx)
 	if err != nil {
 		t.Fatalf("testserver NewClient: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestNotFound_ReadRemovesAndDeleteSucceeds(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			c := newWSNotFoundClient(t)
+			c := newWSNotFoundClient(ctx, t)
 			r := tc.make(c)
 			sch := schemaOf(t, ctx, r)
 

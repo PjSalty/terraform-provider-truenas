@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -12,7 +13,7 @@ import (
 
 func TestGroupDataSource_Schema(t *testing.T) {
 	ds := NewGroupDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{"id", "name", "gid", "smb", "builtin", "sudo_commands"} {
 		if _, ok := attrs[want]; !ok {
@@ -22,7 +23,7 @@ func TestGroupDataSource_Schema(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Group{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Group{
 		{ID: 1, GID: 100, Name: "wheel", Builtin: true, SMB: false},
 		{
 			ID:           42,
@@ -37,7 +38,7 @@ func TestGroupDataSource_Read_Success(t *testing.T) {
 	ds := NewGroupDataSource().(*GroupDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("admins")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("admins")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -60,12 +61,12 @@ func TestGroupDataSource_Read_Success(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_EmptySudo(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Group{{ID: 1, Name: "users", GID: 100}}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Group{{ID: 1, Name: "users", GID: 100}}))
 
 	ds := NewGroupDataSource().(*GroupDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("users")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("users")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -78,12 +79,12 @@ func TestGroupDataSource_Read_EmptySudo(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_NotFound(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Group{{ID: 1, Name: "other"}}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Group{{ID: 1, Name: "other"}}))
 
 	ds := NewGroupDataSource().(*GroupDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("missing")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("missing")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
@@ -91,12 +92,12 @@ func TestGroupDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestGroupDataSource_Read_ListError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewGroupDataSource().(*GroupDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("any")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("any")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

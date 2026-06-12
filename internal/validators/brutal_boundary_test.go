@@ -42,7 +42,7 @@ func validatorReq(val string) validator.StringRequest {
 func runBoundaryTable(t *testing.T, name string, v validator.String, table []boundaryCase) {
 	t.Helper()
 	for _, tc := range table {
-		tc := tc
+
 		// Subtest name encodes both the kind AND the truncated value
 		// so test runner output points straight at the offending row.
 		shortVal := tc.value
@@ -292,7 +292,7 @@ func TestBrutal_ZFSPath_BoundaryTable(t *testing.T) {
 		{"unicode-cjk", "tank/データ", true},
 		{"unicode-emoji", "tank/💾", true},
 		{"unicode-combining", "tank/café", true},
-		{"unicode-rtl", "tank/‮tank", true},
+		{"unicode-rtl", "tank/\u202etank", true},
 
 		// Injection patterns
 		{"sql-injection", "tank/data'; DROP--", true},
@@ -382,7 +382,7 @@ func TestBrutal_NullUnknownAcceptance(t *testing.T) {
 		"CompressionAlgorithm": lv.CompressionAlgorithm(),
 	}
 	for name, v := range validators {
-		v := v
+
 		t.Run(name+"/null", func(t *testing.T) {
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), validator.StringRequest{

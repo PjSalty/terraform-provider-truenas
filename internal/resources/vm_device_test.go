@@ -13,15 +13,6 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
-// testAccVMDeviceTargetVM returns the numeric ID of the VM used as the parent
-// for device tests. The VM must already exist on the test server.
-func testAccVMDeviceTargetVM() string {
-	if v := os.Getenv("TRUENAS_TEST_VM_ID"); v != "" {
-		return v
-	}
-	return "1"
-}
-
 func TestAccVMDevice_display(t *testing.T) {
 	// Match the _disappears gate: VM device tests need an existing
 	// parent VM that this suite does NOT create (VM-create is heavy
