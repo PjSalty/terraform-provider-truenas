@@ -32,7 +32,7 @@ func TestContract_RPCErrorMatrix(t *testing.T) {
 		{"invalid_request", CodeInvalidRequest, "Invalid Request", `null`, false, CodeInvalidRequest},
 		{"method_not_found_is_NOT_resource_404", CodeMethodNotFound,
 			"Method does not exist", `null`,
-			// IsNotFound treats CodeMethodNotFound as NotFound — that's a
+			// IsNotFound treats CodeMethodNotFound as NotFound, that's a
 			// deliberate semantic choice in wsclient (commented in
 			// errors.go line 28) because the server emits this when an
 			// endpoint is removed in a TrueNAS version skew.
@@ -44,7 +44,7 @@ func TestContract_RPCErrorMatrix(t *testing.T) {
 		{"too_many_concurrent", CodeTooManyConcurrent, "Too many concurrent calls",
 			`null`, false, CodeTooManyConcurrent},
 
-		// MethodCallError variants — these are the rich ones IsNotFound
+		// MethodCallError variants, these are the rich ones IsNotFound
 		// digs into via errname + reason.
 		{"method_call_ENOENT", CodeMethodCallError, "Method call error",
 			`{"error":2,"errname":"ENOENT","reason":"file not found"}`,
@@ -95,7 +95,7 @@ func TestContract_RPCErrorMatrix(t *testing.T) {
 			}
 			var rpcErr *RPCError
 			if !errors.As(err, &rpcErr) {
-				t.Fatalf("error %v does not wrap *RPCError — wsclient lost the error class", err)
+				t.Fatalf("error %v does not wrap *RPCError, wsclient lost the error class", err)
 			}
 			if rpcErr.Code != tc.wantErrCode {
 				t.Errorf("RPCError.Code = %d, want %d (wsclient mutated the wire code)",

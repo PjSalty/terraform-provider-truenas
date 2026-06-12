@@ -10,14 +10,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
-// The pool resource is marked Beta — full create/destroy cycles are not
+// The pool resource is marked Beta, full create/destroy cycles are not
 // exercised because the test VM has a single `test` pool that must not be
 // destroyed. These tests read and import the existing pool via a data
 // source chain to discover its numeric ID at runtime.
 
 // TestAccPoolResource_basic resolves the `test` pool's numeric ID via the
 // pool data source, then performs a read-only verification check. It does
-// NOT create a Terraform-managed pool — creation is covered by unit tests
+// NOT create a Terraform-managed pool, creation is covered by unit tests
 // and live manual runs only, because destroy would wipe all of /mnt/test.
 func TestAccPoolResource_basic(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {
@@ -43,7 +43,7 @@ data "truenas_pool" "test" {
 	})
 }
 
-// TestAccPoolResource_disappears is not applicable to the pool resource —
+// TestAccPoolResource_disappears is not applicable to the pool resource -
 // the only test pool on the VM cannot be destroyed without wiping the
 // test environment. Kept as an explicit skip so the test name is discoverable.
 func TestAccPoolResource_disappears(t *testing.T) {
@@ -55,7 +55,7 @@ func TestAccPoolResource_disappears(t *testing.T) {
 
 // TestAccPoolResource_update verifies that an imported pool resource
 // can be read cleanly. All pool attributes are RequiresReplace, so
-// "update" is effectively a no-op — we prove read + plan stability.
+// "update" is effectively a no-op, we prove read + plan stability.
 func TestAccPoolResource_update(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip(skipMsg)

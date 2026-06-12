@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
-// TestAccSNMPConfigResource_basic — singleton: SNMP service
+// TestAccSNMPConfigResource_basic, singleton: SNMP service
 // configuration has a single instance and Delete is a no-op reset.
 // Uses community="public" (the TrueNAS default) so the test does not
 // leave a custom community string behind.

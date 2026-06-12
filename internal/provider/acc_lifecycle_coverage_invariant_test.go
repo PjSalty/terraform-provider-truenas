@@ -17,7 +17,7 @@ import (
 //
 // Where <phase> is one of basic, update, disappears, plus any number
 // of resource-specific phases (chap, ipv6, etc). NOTE: we do NOT
-// capture _import here — by convention this codebase exercises import
+// capture _import here, by convention this codebase exercises import
 // via an `ImportState: true` TestStep inside _basic, not via a
 // separate _import function. The import-presence check below scans
 // the test file for that literal instead.
@@ -51,7 +51,7 @@ var importStateStepRE = regexp.MustCompile(`ImportState:\s+true,`)
 //     available (a cloud credential, a VMware host, etc) and ships
 //     a t.Skip stub.
 var lifecycleResourceExclusions = map[string]map[string]string{
-	// Data sources accessed through a "Resource" test function — the
+	// Data sources accessed through a "Resource" test function, the
 	// test is a data-only smoke check, no lifecycle to exercise.
 	"Catalog": {"update": "data-source: TRUENAS catalog is system-managed, only readable",
 		"disappears": "data-source", "import": "data-source"},
@@ -59,7 +59,7 @@ var lifecycleResourceExclusions = map[string]map[string]string{
 		"disappears": "data-source", "basic": "data-source: covered via truenas_pool data source",
 		"import": "data-source"},
 
-	// Per-host config singletons — disappears does not apply
+	// Per-host config singletons, disappears does not apply
 	// (Delete is a no-op reset). _import via the standard
 	// ImportState TestStep is fine for most of them; we list
 	// only the ones that genuinely lack it.
@@ -86,7 +86,7 @@ var lifecycleResourceExclusions = map[string]map[string]string{
 	"KerberosKeytab":     {"import": "file is base64 opaque and may be re-encoded; covered by basic step"},
 	"KeychainCredential": {"import": "attributes map contains write-only credential payloads"},
 
-	// Env-gated / beta — full lifecycle deferred until the test
+	// Env-gated / beta, full lifecycle deferred until the test
 	// environment can support the resource. The base test ships a
 	// t.Skip stub when the relevant TRUENAS_TEST_* env var is unset.
 	"App":                 {"update": "beta: full app install too slow/flaky for CI", "import": "beta", "disappears": "beta"},
@@ -98,13 +98,13 @@ var lifecycleResourceExclusions = map[string]map[string]string{
 	// Resources that use a custom-named basic step rather than
 	// _basic, OR that lack a separate _update because they have
 	// no Optional updatable attributes worth toggling.
-	"NFSShare": {"update": "covered by ShareNFS — NFSShare is an alias unit-test name"},
+	"NFSShare": {"update": "covered by ShareNFS, NFSShare is an alias unit-test name"},
 }
 
 // TestAcceptanceLifecycleCoverage walks every TestAcc*_<phase> function
 // across internal/provider/acc_*_test.go and internal/resources/*_test.go
 // and verifies that every resource family has the four core lifecycle
-// phases (basic, update, import, disappears) — or appears in
+// phases (basic, update, import, disappears), or appears in
 // lifecycleResourceExclusions with a rationale per missing phase.
 //
 // Why: major-provider rigor requires every resource to have its full
@@ -162,7 +162,7 @@ func TestAcceptanceLifecycleCoverage(t *testing.T) {
 			if strings.HasPrefix(name, "Validator") {
 				continue
 			}
-			// Skip data-source test functions — they're not resources.
+			// Skip data-source test functions, they're not resources.
 			if strings.Contains(name, "DataSource") {
 				continue
 			}

@@ -1,7 +1,7 @@
 // Package planhelpers contains reusable resource.ModifyPlan helpers
 // that surface operator-facing warnings at plan time. Unlike the
 // client-layer destroy-protection rail (internal/client/destroy_protection.go),
-// these helpers run inside `terraform plan` — so the operator SEES
+// these helpers run inside `terraform plan`, so the operator SEES
 // the warning before they run `terraform apply`, not only after a
 // wire request is refused. The two layers are complementary:
 //
@@ -33,10 +33,10 @@ import (
 //	    planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_dataset")
 //	}
 //
-// The helper is a no-op for create and update actions — it fires
+// The helper is a no-op for create and update actions, it fires
 // only on the specific shape "plan is null, state is not null".
 // It cannot be used to BLOCK a destroy (use destroy_protection for
-// that) — it only informs.
+// that), it only informs.
 func WarnOnDestroy(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse, resourceType string) {
 	// Destroy detection: a destroy plan has a null raw plan and a
 	// non-null raw state. Create has null state and non-null plan;
@@ -54,7 +54,7 @@ func WarnOnDestroy(ctx context.Context, req resource.ModifyPlanRequest, resp *re
 	// the caller-supplied ctx through so tflog/trace correlation in the
 	// framework GetAttribute path is preserved (contextcheck).
 	var id string
-	// We intentionally ignore the diag here — if the state can't be read,
+	// We intentionally ignore the diag here, if the state can't be read,
 	// the destroy still warrants a warning, just without the specific ID.
 	_ = req.State.GetAttribute(ctx, pathRootID(), &id)
 	if id == "" {

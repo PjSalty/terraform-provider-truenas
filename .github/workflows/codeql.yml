@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    # Weekly Monday 04:00 UTC — out of phase with the CI vuln scan (06:00) so
+    # Weekly Monday 04:00 UTC, out of phase with the CI vuln scan (06:00) so
     # findings from one feed don't drown findings from the other.
     - cron: '0 4 * * 1'
 

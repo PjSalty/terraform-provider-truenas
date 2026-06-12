@@ -7,7 +7,7 @@ import (
 )
 
 // TestAccVMsDataSource_basic queries the VMs list. No fixture
-// needed — the list datasource returns whatever VMs exist (zero
+// needed, the list datasource returns whatever VMs exist (zero
 // is a valid result on a fresh test instance). Validates the
 // datasource Read path itself, not specific VM data.
 func TestAccVMsDataSource_basic(t *testing.T) {

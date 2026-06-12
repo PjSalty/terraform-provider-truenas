@@ -1,6 +1,6 @@
 package validators_test
 
-// Benchmarks for the hot validators — IPOrCIDR and ZFSPath are run at
+// Benchmarks for the hot validators, IPOrCIDR and ZFSPath are run at
 // plan-time for every resource that uses them, so their per-call cost
 // matters for large configurations. Validation failures aren't measured;
 // only the happy path, which is what real plans exercise most often.

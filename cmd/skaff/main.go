@@ -7,7 +7,7 @@
 //	go run ./cmd/skaff datasource <name>
 //
 // The generated files follow the conventions documented in CONTRIBUTING.md.
-// The tool refuses to overwrite existing files — rename or delete them first
+// The tool refuses to overwrite existing files, rename or delete them first
 // if you want to regenerate.
 package main
 
@@ -35,7 +35,7 @@ var (
 	osCreate   func(string) (*os.File, error)  = os.Create
 )
 
-const usage = `skaff — scaffold new terraform-provider-truenas resources.
+const usage = `skaff, scaffold new terraform-provider-truenas resources.
 
 Usage:
   skaff resource <name>     Generate a new resource skeleton
@@ -108,7 +108,7 @@ func buildData(name string) scaffoldData {
 		Name:        name,
 		CamelName:   snakeToCamel(name),
 		TypeName:    "truenas_" + name,
-		Description: "TODO — describe what this manages on TrueNAS SCALE.",
+		Description: "TODO, describe what this manages on TrueNAS SCALE.",
 	}
 }
 
@@ -291,12 +291,12 @@ description: |-
 
 ## Argument Reference
 
-* TODO — list each required / optional argument
+* TODO, list each required / optional argument
 
 ## Attribute Reference
 
-* ` + "`id`" + ` — Identifier.
-* TODO — list computed attributes
+* ` + "`id`" + `, Identifier.
+* TODO, list computed attributes
 
 ## Import
 
@@ -346,11 +346,11 @@ description: |-
 
 ## Argument Reference
 
-* TODO — lookup arguments
+* TODO, lookup arguments
 
 ## Attribute Reference
 
-* TODO — returned attributes
+* TODO, returned attributes
 `
 
 const dataSourceExampleTemplate = `data "{{.TypeName}}" "example" {

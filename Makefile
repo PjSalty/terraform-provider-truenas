@@ -64,24 +64,24 @@ prod-ready:
 	@echo "==> Request timeout plumbing"
 	$(GO) test -count=1 -run '^TestRequestTimeout_' ./internal/client/
 	$(GO) test -count=1 -run '^TestProvider_Configure_RequestTimeout' ./internal/provider/
-	@echo "==> Phase C — plan-modifier hygiene"
+	@echo "==> Phase C, plan-modifier hygiene"
 	$(GO) test -count=1 -run '^TestRequiresReplaceRespectsUseStateForUnknown$$' ./internal/provider/
 	$(GO) test -count=1 -run '^TestOptionalComputedHasUseStateForUnknown$$' ./internal/provider/
 	$(GO) test -count=1 -run '^TestPEMEquivalent' ./internal/planmodifiers/
-	@echo "==> Phase C — request ID correlation"
+	@echo "==> Phase C, request ID correlation"
 	$(GO) test -count=1 -run '^(TestNewRequestID|TestDoRequest_EmitsXRequestIDHeader|TestDoRequest_RetriesShareRequestID)' ./internal/client/
-	@echo "==> Phase D — destroy protection safety rail"
+	@echo "==> Phase D, destroy protection safety rail"
 	$(GO) test -count=1 -run '^TestDestroyProtection' ./internal/client/
 	$(GO) test -count=1 -run '^TestProvider_Configure_(DestroyProtection|SafeApply)' ./internal/provider/
-	@echo "==> Phase E — config-time cross-attribute validators"
+	@echo "==> Phase E, config-time cross-attribute validators"
 	$(GO) test -count=1 -run '^TestRequiredWhenEqual' ./internal/resourcevalidators/
 	$(GO) test -count=1 -run '^TestConfigValidatorsCoverage$$' ./internal/provider/
-	@echo "==> Phase F — plan-time destroy warnings"
+	@echo "==> Phase F, plan-time destroy warnings"
 	$(GO) test -count=1 -run '^TestWarnOnDestroy' ./internal/planhelpers/
 	$(GO) test -count=1 -run '^TestDestroyWarningCoverage$$' ./internal/provider/
-	@echo "==> Phase G — secret redaction in error diagnostics"
+	@echo "==> Phase G, secret redaction in error diagnostics"
 	$(GO) test -count=1 -run '^(TestIsSensitiveKey|TestRedact|TestAPIErrorBodyNeverLeaksSecrets|TestDoOnceRedacts)' ./internal/client/
-	@echo "==> Phase H — strict static analysis (golangci-lint, 18 linters)"
+	@echo "==> Phase H, strict static analysis (golangci-lint, 18 linters)"
 	@test -x "$(GOLANGCI_LINT)" || { \
 		echo "ERROR: golangci-lint not found at $(GOLANGCI_LINT)"; \
 		echo "Install via:"; \
@@ -89,12 +89,12 @@ prod-ready:
 		exit 1; \
 	}
 	$(GOLANGCI_LINT) run --timeout=5m $(PKGS)
-	@echo "==> Phase I — docs & examples coverage ratchet"
+	@echo "==> Phase I, docs & examples coverage ratchet"
 	$(GO) test -count=1 -run '^TestDocs(Coverage|NoPlaceholders)$$' ./internal/provider/
-	@echo "==> Phase J — acceptance test coverage ratchet"
+	@echo "==> Phase J, acceptance test coverage ratchet"
 	$(GO) test -count=1 -run '^TestAcceptanceTestCoverage$$' ./internal/provider/
 	@echo
-	@echo "All Phase B+C+D+E+F+G+H+I+J battle-hardening invariants green — safe to tag."
+	@echo "All Phase B+C+D+E+F+G+H+I+J battle-hardening invariants green, safe to tag."
 
 ## testacc: Run acceptance tests against a real TrueNAS instance. Requires TRUENAS_URL, TRUENAS_API_KEY.
 ##          Low-level entry. Prefer `make acc` for the full six-stage pipeline
@@ -114,7 +114,7 @@ acc:
 acc-skip:
 	./scripts/acc.sh --skip-acc
 
-## acc-only: Live acceptance suite only — assumes cheap stages already green.
+## acc-only: Live acceptance suite only, assumes cheap stages already green.
 acc-only:
 	./scripts/acc.sh --acc-only
 
@@ -167,7 +167,7 @@ tidy:
 docs:
 	$(TFPLUGINDOCS) validate --provider-name truenas ./
 
-## docs-regen: DANGEROUS — regenerate docs from scratch. Strips custom
+## docs-regen: DANGEROUS, regenerate docs from scratch. Strips custom
 ## subcategory/prose; only use when bulk-bootstrapping a new resource
 ## or after a schema-wide attribute rename. Review the diff carefully
 ## before committing; most of the time you want `make docs` only.
@@ -188,13 +188,13 @@ help:
 
 ## mutation: Run mutation testing on high-leverage packages. NOTE: go-mutesting tooling has
 ##           a sandboxing bug where manually-applied mutants kill tests but the tool
-##           reports PASS. Scores below are nominal — empirical mutation testing requires
+##           reports PASS. Scores below are nominal, empirical mutation testing requires
 ##           a different harness (e.g. gremlin or hand-rolled). Tracked as v2.x polish.
 ##           Requires go-mutesting: go install github.com/avito-tech/go-mutesting/cmd/go-mutesting@latest
 ##           Baselines (2026-06-08):
-##             internal/validators        — 0.84 kill score
-##             internal/resourcevalidators — 0.47 kill score (7k/8p/1dup/15) BELOW TARGET
-##             internal/planmodifiers     — 0.49 kill score (17k/18p/4dup/35) BELOW TARGET
+##             internal/validators       , 0.84 kill score
+##             internal/resourcevalidators, 0.47 kill score (7k/8p/1dup/15) BELOW TARGET
+##             internal/planmodifiers    , 0.49 kill score (17k/18p/4dup/35) BELOW TARGET
 mutation:
 	@command -v go-mutesting >/dev/null || (echo "install: go install github.com/avito-tech/go-mutesting/cmd/go-mutesting@latest" && exit 1)
 	@echo "==> mutation testing validators"

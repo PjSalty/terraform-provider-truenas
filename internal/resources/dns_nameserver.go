@@ -21,7 +21,7 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
-// ipRegex matches IPv4 or simple IPv6 addresses. Intentionally permissive —
+// ipRegex matches IPv4 or simple IPv6 addresses. Intentionally permissive -
 // server-side validation is authoritative; we only reject obvious garbage.
 var ipRegex = regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}$|^[0-9a-fA-F:]+$`)
 

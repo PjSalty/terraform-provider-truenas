@@ -1,5 +1,5 @@
 // Package resourcevalidators contains cross-attribute resource
-// ConfigValidators — the Plugin Framework equivalent of the
+// ConfigValidators, the Plugin Framework equivalent of the
 // `ConflictsWith`, `ExactlyOneOf`, and conditional-requirement
 // helpers found in many Terraform providers. Each validator returned
 // by this package is
@@ -40,7 +40,7 @@ import (
 //
 // Discriminator values that are unknown at validate time (for
 // example, a reference to another resource's output) cause the
-// validator to silently skip — the framework will re-validate at
+// validator to silently skip, the framework will re-validate at
 // plan time when the reference resolves.
 func RequiredWhenEqual(discriminator, trigger string, required []string) resource.ConfigValidator {
 	return requiredWhenEqualValidator{
@@ -72,18 +72,18 @@ func (v requiredWhenEqualValidator) ValidateResource(ctx context.Context, req re
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// Unknown discriminator: can't know yet — defer to plan time.
+	// Unknown discriminator: can't know yet, defer to plan time.
 	if discVal.IsNull() || discVal.IsUnknown() {
 		return
 	}
 	if discVal.ValueString() != v.trigger {
 		return
 	}
-	// Trigger matched — every required attribute must be non-null
+	// Trigger matched, every required attribute must be non-null
 	// and non-empty. We report EACH missing attribute individually so
 	// the operator sees the full punch list, not just the first one.
 	// Crucially we short-circuit on per-call GetAttribute errors only,
-	// not on the cumulative diagnostic bag — otherwise the first
+	// not on the cumulative diagnostic bag, otherwise the first
 	// AddAttributeError would silence every subsequent check.
 	for _, name := range v.required {
 		var val types.String

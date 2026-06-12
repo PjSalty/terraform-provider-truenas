@@ -8,7 +8,7 @@ import (
 )
 
 // TestAccAppsDataSource_basic queries the apps list. Env-gated
-// because TrueNAS Apps require a dedicated apps pool configured —
+// because TrueNAS Apps require a dedicated apps pool configured -
 // the test won't pass on an instance where the Apps service isn't
 // enabled. The datasource itself doesn't fail when zero apps exist,
 // so this validates the Read path round-trips.

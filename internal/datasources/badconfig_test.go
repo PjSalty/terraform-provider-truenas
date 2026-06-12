@@ -80,7 +80,7 @@ func TestAllDataSources_Read_BadConfig(t *testing.T) {
 	for _, tc := range dataSourcesWithConfigGet() {
 		t.Run(tc.name, func(t *testing.T) {
 			ds := tc.newFn()
-			// No client needed — Read must return before any API call.
+			// No client needed, Read must return before any API call.
 			cfg := badConfig(t, ds)
 			resp := callRead(context.Background(), ds, cfg)
 			if !resp.Diagnostics.HasError() {

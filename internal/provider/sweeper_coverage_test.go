@@ -30,8 +30,8 @@ import (
 // to fail. That prevents accidental drift between the sweeper set and
 // the resource set as the provider grows.
 var resourceSweeperExclusions = map[string]string{
-	"alertclasses":      "singleton: Delete resets alertclasses to {} — no list endpoint, no fixtures to sweep",
-	"catalog":           "singleton: Delete resets preferred_trains — catalog itself cannot be destroyed",
+	"alertclasses":      "singleton: Delete resets alertclasses to {}, no list endpoint, no fixtures to sweep",
+	"catalog":           "singleton: Delete resets preferred_trains, catalog itself cannot be destroyed",
 	"directoryservices": "singleton: Delete resets directory services config to defaults",
 	"ftp_config":        "singleton: Delete resets FTP config to defaults",
 	"kmip_config":       "singleton: Delete resets KMIP config to defaults",
@@ -45,11 +45,11 @@ var resourceSweeperExclusions = map[string]string{
 	"system_update":     "singleton: Delete is a no-op by design (prevents surprise-reboot footgun); no list endpoint, no fixtures to sweep",
 	"systemdataset":     "singleton: Delete resets system dataset pool to boot-pool",
 	"ups_config":        "singleton: Delete resets UPS config to defaults",
-	"network_interface": "dangerous: listing returns real NICs that cannot be distinguished from fixtures — sweeping risks host disconnect",
+	"network_interface": "dangerous: listing returns real NICs that cannot be distinguished from fixtures, sweeping risks host disconnect",
 	"pool":              "dangerous: sweeping pools would destroy storage backing real filesystems",
 	"service":           "dangerous: sweeping services would disable running system services",
 	"dns_nameserver":    "pending: part of /network/configuration nameservers slice, needs composite sweeper",
-	"filesystem_acl":    "pending: not directly listable — path-based; needs a known-fixture-paths inventory",
+	"filesystem_acl":    "pending: not directly listable, path-based; needs a known-fixture-paths inventory",
 }
 
 // sweeperRegistrationRE matches every call to resource.AddTestSweepers
@@ -73,7 +73,7 @@ func TestSweeperCoverage(t *testing.T) {
 		registered[m[1]] = struct{}{}
 	}
 	if len(registered) == 0 {
-		t.Fatal("no registered sweepers parsed from sweeper_test.go — regex broken?")
+		t.Fatal("no registered sweepers parsed from sweeper_test.go, regex broken?")
 	}
 
 	matches, err := filepath.Glob("../resources/*.go")
@@ -89,7 +89,7 @@ func TestSweeperCoverage(t *testing.T) {
 		resourceSet[strings.TrimSuffix(base, ".go")] = struct{}{}
 	}
 	if len(resourceSet) == 0 {
-		t.Fatal("no resource files found in ../resources — running from wrong dir?")
+		t.Fatal("no resource files found in ../resources, running from wrong dir?")
 	}
 
 	var missing []string
@@ -130,6 +130,6 @@ func TestSweeperCoverage(t *testing.T) {
 	}
 	if len(overlap) > 0 {
 		t.Fatalf("resources appear in BOTH the exclusion list and the registered "+
-			"sweepers: %v — pick one", overlap)
+			"sweepers: %v, pick one", overlap)
 	}
 }

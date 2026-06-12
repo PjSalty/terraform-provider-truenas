@@ -26,7 +26,7 @@ func main() {
 
 // run parses args from the given slice and calls serveFn. Factored out of
 // main so the dispatch can be unit-tested without actually binding a Serve
-// socket — tests stub serveFn and logFatal.
+// socket, tests stub serveFn and logFatal.
 func run(args []string) {
 	fs := flag.NewFlagSet("terraform-provider-truenas", flag.ContinueOnError)
 	var debug bool

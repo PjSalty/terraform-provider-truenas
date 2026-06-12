@@ -7,7 +7,7 @@ import (
 )
 
 // requiresReplaceBool implements planmodifier.Bool for immutable boolean
-// attributes that cannot be flipped in-place — any change forces resource
+// attributes that cannot be flipped in-place, any change forces resource
 // replacement (destroy + create).
 type requiresReplaceBool struct {
 	description string

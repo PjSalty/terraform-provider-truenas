@@ -16,7 +16,7 @@ import (
 // in a resource file: `"name": schema.XxxAttribute{ ... },`. The capture
 // groups are (1) the attribute name and (2) the block body. The body
 // match is non-greedy and relies on balanced braces being rare at the
-// top level of attribute definitions — good enough for the static
+// top level of attribute definitions, good enough for the static
 // scan we need here.
 var attributeBlockRE = regexp.MustCompile(`(?m)^\s*"(\w+)":\s*schema\.\w+Attribute\{((?:[^{}]|\{[^{}]*\})*?)\}`)
 
@@ -28,7 +28,7 @@ var attributeBlockRE = regexp.MustCompile(`(?m)^\s*"(\w+)":\s*schema\.\w+Attribu
 // Without that pairing, the Plugin Framework marks the plan value as
 // Unknown ("known after apply") on any apply where the user omitted
 // the attribute from HCL. RequiresReplace then sees Unknown != state
-// value and falsely forces a destroy+create cycle — exactly the bug
+// value and falsely forces a destroy+create cycle, exactly the bug
 // we hit on certificate.key_type during the live TF_ACC run that
 // shipped v1.1.0. See internal/resources/certificate.go:key_type for
 // the reference pattern.
@@ -73,7 +73,7 @@ func TestRequiresReplaceRespectsUseStateForUnknown(t *testing.T) {
 				continue
 			}
 			// Verify UseStateForUnknown appears before RequiresReplace in the
-			// slice — order matters for the framework's plan modifier pipeline.
+			// slice, order matters for the framework's plan modifier pipeline.
 			useIdx := strings.Index(body, "UseStateForUnknown()")
 			repIdx := strings.Index(body, "RequiresReplace()")
 			if useIdx > repIdx {
@@ -91,7 +91,7 @@ func TestRequiresReplaceRespectsUseStateForUnknown(t *testing.T) {
 			lines = append(lines, "  "+g.file+":"+g.attr)
 		}
 		t.Fatalf("the following Optional+Computed+RequiresReplace attributes are "+
-			"MISSING UseStateForUnknown() (or have it in the wrong slice position) — "+
+			"MISSING UseStateForUnknown() (or have it in the wrong slice position), "+
 			"the Plugin Framework will plan them as Unknown on a subsequent apply "+
 			"when the user omits them from HCL, and RequiresReplace will then "+
 			"falsely force destroy+create:\n%s\n\n"+
@@ -119,7 +119,7 @@ func hasField(body, name string) bool {
 // modifiers, (b) declare a Default, or (c) appear in the exclusion map
 // below with a documented rationale. Without one of those, every
 // subsequent `terraform plan` will show the attribute as
-// "(known after apply)" — phantom diffs that train operators to ignore
+// "(known after apply)", phantom diffs that train operators to ignore
 // real drift. This is the #1 cosmetic quality gap that separated the
 // v1.0.0 shape from the established provider quality bar and was
 // remediated in Phase C.
@@ -132,10 +132,10 @@ func TestOptionalComputedHasUseStateForUnknown(t *testing.T) {
 	// Populate this ONLY when the server legitimately changes the value
 	// on every read (counters, live stats, derived fields) OR the
 	// attribute appears inside a historical SchemaV0 used exclusively
-	// for state migration. Most attributes should NOT be in here — the
+	// for state migration. Most attributes should NOT be in here, the
 	// default behavior is to preserve state when config is null.
 	exclusions := map[string]string{
-		"cronjob.go:description": "appears in cronjobSchemaV0, the frozen v0 schema used by UpgradeState — historical shape must not be modified or state migration breaks",
+		"cronjob.go:description": "appears in cronjobSchemaV0, the frozen v0 schema used by UpgradeState, historical shape must not be modified or state migration breaks",
 	}
 
 	matches, err := filepath.Glob("../resources/*.go")
@@ -176,7 +176,7 @@ func TestOptionalComputedHasUseStateForUnknown(t *testing.T) {
 	}
 	if len(gaps) > 0 {
 		t.Fatalf("the following Optional+Computed attributes are missing "+
-			"UseStateForUnknown() and have no Default — every `terraform plan` "+
+			"UseStateForUnknown() and have no Default, every `terraform plan` "+
 			"will show them as (known after apply) phantom diffs and train "+
 			"operators to ignore real drift:\n%s\n\n"+
 			"Fix by adding `xplanmodifier.UseStateForUnknown()` (where x is "+

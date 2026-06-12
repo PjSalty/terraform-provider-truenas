@@ -34,7 +34,7 @@ func TestSystemInfoDataSource_Metadata(t *testing.T) {
 	// Cast to concrete for Metadata method.
 	_ = ds
 	_ = resp
-	// Not critical — exercised via provider test; skip.
+	// Not critical, exercised via provider test; skip.
 }
 
 func TestSystemInfoDataSource_Read_Success(t *testing.T) {
@@ -113,7 +113,7 @@ func TestSystemInfoDataSource_Read_InvalidJSON(t *testing.T) {
 }
 
 func TestSystemInfoDataSource_Read_PartialLoadavg(t *testing.T) {
-	// Only 2 loadavg entries — code should not panic and fields should be null.
+	// Only 2 loadavg entries, code should not panic and fields should be null.
 	c := newWSServer(t.Context(), t, wsReturn(map[string]interface{}{
 		"version":  "v1",
 		"hostname": "h",

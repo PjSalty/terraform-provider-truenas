@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
-// TestAccMailConfigResource_basic — singleton: mail service configuration
+// TestAccMailConfigResource_basic, singleton: mail service configuration
 // has a single instance and Delete is a no-op reset. Uses a dummy
 // outgoing server so the test never sends real email.
 func TestAccMailConfigResource_basic(t *testing.T) {

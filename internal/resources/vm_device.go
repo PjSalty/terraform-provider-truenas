@@ -111,7 +111,7 @@ func (r *VMDeviceResource) Schema(ctx context.Context, _ resource.SchemaRequest,
 					"For example DISK uses path, type (AHCI/VIRTIO), iotype; NIC uses type, mac, nic_attach; " +
 					"DISPLAY uses resolution, bind, port, password, web; CDROM uses path; " +
 					"RAW uses path, type, size; PCI uses pptdev; USB uses controller_type, usb. " +
-					"DISPLAY devices may contain a VNC/SPICE password — marked sensitive.",
+					"DISPLAY devices may contain a VNC/SPICE password, marked sensitive.",
 				Required:    true,
 				Sensitive:   true,
 				ElementType: types.StringType,
@@ -145,7 +145,7 @@ func vmDeviceAttrsToAPI(ctx context.Context, dtype string, tfMap types.Map) map[
 	}
 
 	// ElementsAs into map[string]string cannot fail when the schema is
-	// map(string) — any type mismatch would be caught earlier at Plan.Get.
+	// map(string), any type mismatch would be caught earlier at Plan.Get.
 	var raw map[string]string
 	_ = tfMap.ElementsAs(ctx, &raw, false)
 
@@ -326,7 +326,7 @@ func (r *VMDeviceResource) Delete(ctx context.Context, req resource.DeleteReques
 
 // ModifyPlan emits a plan-time Warning whenever the plan would destroy
 // this resource. Removing a VM device detaches storage / NICs / GPUs
-// from a running VM — the next VM start sees missing hardware.
+// from a running VM, the next VM start sees missing hardware.
 func (r *VMDeviceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_vm_device")
 }
@@ -351,7 +351,7 @@ func (r *VMDeviceResource) mapResponseToModel(ctx context.Context, dev *truenas.
 	// Capture the user-supplied attribute keys BEFORE overwriting the model, so
 	// we can filter the server response down to just those keys. TrueNAS fills
 	// in device-specific defaults (e.g. DISPLAY grows `web_port`, DISK grows
-	// `logical_sectorsize`, etc.) that the user never wrote — without filtering
+	// `logical_sectorsize`, etc.) that the user never wrote, without filtering
 	// we'd hit "inconsistent result after apply" every Create.
 	priorKeys := map[string]bool{}
 	if !model.Attributes.IsNull() && !model.Attributes.IsUnknown() {

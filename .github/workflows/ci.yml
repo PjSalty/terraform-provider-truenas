@@ -47,7 +47,7 @@ jobs:
           # the canonical coverage source for those layers. Tier 1
           # holds high; Tier 2 gets floors.
           #
-          # Mirrors scripts/acc.sh stage 4 — keep in sync.
+          # Mirrors scripts/acc.sh stage 4, keep in sync.
           declare -A TIER1=(
             [github.com/PjSalty/terraform-provider-truenas/internal/types]=100
             [github.com/PjSalty/terraform-provider-truenas/internal/validators]=100
@@ -105,7 +105,7 @@ jobs:
           echo "total coverage: ${TOTAL}%"
 
           if [ "$fail" -gt 0 ]; then
-            echo "${fail} package(s) below their coverage floor — blocking merge"
+            echo "${fail} package(s) below their coverage floor, blocking merge"
             exit 1
           fi
 

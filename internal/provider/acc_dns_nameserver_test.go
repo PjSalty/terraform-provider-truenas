@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
-// TestAccDNSNameserverResource_basic — singleton: DNS nameserver
+// TestAccDNSNameserverResource_basic, singleton: DNS nameserver
 // config is part of network_config. Delete is a no-op reset (TrueNAS
 // keeps whatever value is currently set), so import + destroy are not
 // meaningful for this singleton.
@@ -46,7 +46,7 @@ resource "truenas_dns_nameserver" "test" {
 // ensures the test is idempotent and reverts any mutation it made.
 //
 // No _disappears test exists because this is a singleton: the backend
-// has no API to "delete" it — Delete is a no-op reset — so there is
+// has no API to "delete" it, Delete is a no-op reset, so there is
 // nothing meaningful to test for out-of-band deletion drift.
 func TestAccDNSNameserverResource_update(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {

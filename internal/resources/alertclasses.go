@@ -2,7 +2,7 @@
 //
 // Singleton resource. Using a nested Map attribute rather than a JSON string
 // because every map value has the same well-typed shape
-// ({level, policy, proactive_support}) across all alert classes — this gives
+// ({level, policy, proactive_support}) across all alert classes, this gives
 // users proper validation and IDE completion without jsonencode boilerplate.
 package resources
 

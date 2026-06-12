@@ -72,7 +72,7 @@ linters:
           - godot
           - prealloc
           - unparam
-          # Phase H: gosec in tests is dominated by false positives —
+          # Phase H: gosec in tests is dominated by false positives -
           # G304 (os.ReadFile with a glob-sourced variable), G306
           # (0644 file perms on scratch test files), G117 (test
           # fixtures with "privatekey" JSON fields), G101 (fake
@@ -80,7 +80,7 @@ linters:
           # None of these reach production. Security-relevant gosec
           # rules still apply to non-test files.
           - gosec
-          # Phase H: usestdlibvars in tests is cosmetic — the status
+          # Phase H: usestdlibvars in tests is cosmetic, the status
           # codes (422, 500, 404) are self-documenting in the context
           # of an HTTP test server assertion. Enforcing stdlib name
           # replacement everywhere would churn 22+ test files without

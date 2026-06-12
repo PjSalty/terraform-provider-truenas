@@ -44,7 +44,7 @@ var passthroughRE = regexp.MustCompile(`resource\.ImportStatePassthrough(ID|Stri
 // invariant remains useful as a drive-by-refactor guard.
 //
 // This is the same shape of static check as TestResourcesHaveTimeouts
-// Block and TestResourceRequiresReplaceConsistent — it runs in the
+// Block and TestResourceRequiresReplaceConsistent, it runs in the
 // unit-test layer with no real TrueNAS required, so it gates every PR
 // without needing the acceptance test VM.
 func TestResourcesHaveImportStateImplemented(t *testing.T) {
@@ -64,7 +64,7 @@ func TestResourcesHaveImportStateImplemented(t *testing.T) {
 		}
 		text := string(src)
 
-		// Resource doesn't claim importability — skip. Singleton
+		// Resource doesn't claim importability, skip. Singleton
 		// resources (e.g. ssh_config) intentionally do not implement
 		// ResourceWithImportState because there's nothing to import.
 		if !importStateDeclRE.MatchString(text) {
@@ -75,7 +75,7 @@ func TestResourcesHaveImportStateImplemented(t *testing.T) {
 		if strings.Contains(text, "// import: custom") {
 			continue
 		}
-		// Importable resource with no passthrough call — bug.
+		// Importable resource with no passthrough call, bug.
 		if !passthroughRE.MatchString(text) {
 			missing = append(missing, base)
 		}

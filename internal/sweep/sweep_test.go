@@ -149,7 +149,7 @@ func TestGetList_BadJSON(t *testing.T) {
 }
 
 func TestGetList_DialFail(t *testing.T) {
-	// Point at an unreachable address — the http.Client's Do call
+	// Point at an unreachable address, the http.Client's Do call
 	// will return a dial error which exercises the GET-failure branch.
 	t.Setenv("TRUENAS_URL", "https://127.0.0.1:1")
 	t.Setenv("TRUENAS_API_KEY", "k")

@@ -70,9 +70,9 @@ func (r *DirectoryServicesResource) Schema(ctx context.Context, _ resource.Schem
 		Description: "Manages the TrueNAS directory services singleton configuration " +
 			"(ACTIVEDIRECTORY, IPA, or LDAP). Only one directory service can be " +
 			"active at a time. Creating this resource configures the service; " +
-			"deleting it disables the service (it does not unjoin from AD — use " +
+			"deleting it disables the service (it does not unjoin from AD, use " +
 			"the TrueNAS UI/CLI or `enable = false` first)." + "\n\n" +
-			"**Stability: Alpha.** Not end-to-end verified — requires a real Active Directory, LDAP, or FreeIPA server. Schema matches the TrueNAS REST API.",
+			"**Stability: Alpha.** Not end-to-end verified, requires a real Active Directory, LDAP, or FreeIPA server. Schema matches the TrueNAS REST API.",
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{
 				Create: true,
@@ -356,7 +356,7 @@ func (r *DirectoryServicesResource) mapResponseToModel(cfg *truenas.DirectorySer
 		model.ServiceType.ValueString() == "" {
 		model.ServiceType = types.StringValue("")
 	}
-	// else: keep the plan/state service_type — the next refresh
+	// else: keep the plan/state service_type, the next refresh
 	// will surface the drift (e.g. directoryservices.status will
 	// report the join failed).
 	// Same pattern as kerberos_realm: TrueNAS' directoryservices.update
@@ -375,10 +375,10 @@ func (r *DirectoryServicesResource) mapResponseToModel(cfg *truenas.DirectorySer
 	} else if model.Enable.ValueBool() == cfg.Enable {
 		model.Enable = types.BoolValue(cfg.Enable)
 	}
-	// else: response disagrees with plan — keep plan, surface drift
+	// else: response disagrees with plan, keep plan, surface drift
 	// on the next refresh so the operator sees that the join didn't
 	// take. This is the only place we can detect "the API accepted
-	// our request but didn't actually do what we asked" — the
+	// our request but didn't actually do what we asked", the
 	// failure shows up in directoryservices.status.
 	model.EnableAccountCache = types.BoolValue(cfg.EnableAccountCache)
 	model.EnableDNSUpdates = types.BoolValue(cfg.EnableDNSUpdates)
@@ -386,11 +386,11 @@ func (r *DirectoryServicesResource) mapResponseToModel(cfg *truenas.DirectorySer
 		model.Timeout.ValueInt64() == int64(cfg.Timeout) {
 		model.Timeout = types.Int64Value(int64(cfg.Timeout))
 	}
-	// else: response disagrees — keep plan.
+	// else: response disagrees, keep plan.
 
 	// kerberos_realm: when service_type is null (directoryservices
 	// disabled with no active type), TrueNAS' GET returns null even
-	// if the operator sent a realm on the most recent update — the
+	// if the operator sent a realm on the most recent update, the
 	// field only persists alongside an active service_type. To
 	// avoid a "Provider produced inconsistent result" error after
 	// Apply (the plan had a non-empty value, the response has null),
@@ -407,7 +407,7 @@ func (r *DirectoryServicesResource) mapResponseToModel(cfg *truenas.DirectorySer
 		// no prior state).
 		model.KerberosRealm = types.StringValue("")
 	}
-	// else: keep the existing model.KerberosRealm — the plan/state
+	// else: keep the existing model.KerberosRealm, the plan/state
 	// value the operator just sent.
 
 	// Preserve user-supplied credential_json / configuration_json if already

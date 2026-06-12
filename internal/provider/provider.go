@@ -24,7 +24,7 @@ var _ provider.Provider = &TrueNASProvider{}
 // client.  It is a package-level variable so tests can substitute a fake that
 // returns an error and exercise the error-handling branch.
 //
-// v2.0 ships JSON-RPC over WebSocket only — REST was retired ahead of
+// v2.0 ships JSON-RPC over WebSocket only, REST was retired ahead of
 // SCALE 26 (which removes REST entirely from the upstream API). The
 // constructor takes a ctx for the dial+auth handshake; the lifetime
 // of the resulting *wsclient.Client is independent of that ctx.
@@ -83,7 +83,7 @@ func (p *TrueNASProvider) Schema(_ context.Context, _ provider.SchemaRequest, re
 			"read_only": schema.BoolAttribute{
 				Description: "When true, the provider refuses every mutating request " +
 					"(POST/PUT/DELETE) before it reaches the network. Intended for phased " +
-					"production rollout — point the provider at a real TrueNAS instance, " +
+					"production rollout, point the provider at a real TrueNAS instance, " +
 					"run `terraform plan`, and be physically unable to mutate anything. " +
 					"Any resource that would be changed surfaces as a normal Terraform " +
 					"error rather than a partial write. Can also be set via the " +
@@ -173,7 +173,7 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 	}
 
 	// Create the API client. v2.0 ships the JSON-RPC over WebSocket
-	// transport only — the dial+auth handshake runs under the Configure
+	// transport only, the dial+auth handshake runs under the Configure
 	// ctx so a Terraform-side timeout cancels it cleanly.
 	c, err := newClientFn(ctx, url, apiKey, insecureSkipVerify)
 	if err != nil {
@@ -186,7 +186,7 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 	// Read-only safety rail: read_only=true (HCL) or TRUENAS_READONLY={1,true}
 	// (env) makes the provider refuse every mutating request (POST/PUT/DELETE)
-	// before it reaches the network. Intended for phased production rollout —
+	// before it reaches the network. Intended for phased production rollout -
 	// point the provider at a real TrueNAS, run `terraform plan`, and be
 	// physically unable to mutate anything. A surprised or buggy plan
 	// surfaces as a normal Terraform error instead of a partial write.
@@ -201,7 +201,7 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 	}
 	if readOnly {
 		c.ReadOnly = true
-		tflog.Warn(ctx, "TrueNAS provider is in read-only mode — all mutating requests will fail with ErrReadOnly", map[string]interface{}{
+		tflog.Warn(ctx, "TrueNAS provider is in read-only mode, all mutating requests will fail with ErrReadOnly", map[string]interface{}{
 			"url": url,
 		})
 	}
@@ -222,7 +222,7 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 	}
 	if destroyProtection {
 		c.DestroyProtection = true
-		tflog.Warn(ctx, "TrueNAS provider is in destroy-protected mode — DELETE requests will fail with ErrDestroyProtected", map[string]interface{}{
+		tflog.Warn(ctx, "TrueNAS provider is in destroy-protected mode, DELETE requests will fail with ErrDestroyProtected", map[string]interface{}{
 			"url": url,
 		})
 	}
@@ -302,7 +302,7 @@ func (p *TrueNASProvider) Resources(_ context.Context) []func() resource.Resourc
 		resources.NewAPIKeyResource,
 		resources.NewKeychainCredentialResource,
 		resources.NewACMEDNSAuthenticatorResource,
-		// v0.4.0 — resource expansion wave 1 (18 resources)
+		// v0.4.0, resource expansion wave 1 (18 resources)
 		resources.NewVMResource,
 		resources.NewVMDeviceResource,
 		resources.NewAppResource,
@@ -314,7 +314,7 @@ func (p *TrueNASProvider) Resources(_ context.Context) []func() resource.Resourc
 		resources.NewPoolResource,
 		resources.NewNetworkInterfaceResource,
 		resources.NewSystemDatasetResource,
-		// v1.10.0 — SCALE update control (auto_download + train pinning)
+		// v1.10.0, SCALE update control (auto_download + train pinning)
 		resources.NewSystemUpdateResource,
 		resources.NewNVMetGlobalResource,
 		resources.NewNVMetHostResource,
@@ -323,7 +323,7 @@ func (p *TrueNASProvider) Resources(_ context.Context) []func() resource.Resourc
 		resources.NewNVMetNamespaceResource,
 		resources.NewNVMetHostSubsysResource,
 		resources.NewNVMetPortSubsysResource,
-		// v0.4.0 — resource expansion wave 2 (7 resources)
+		// v0.4.0, resource expansion wave 2 (7 resources)
 		resources.NewVMwareResource,
 		resources.NewCloudBackupResource,
 		resources.NewReportingExporterResource,
@@ -346,7 +346,7 @@ func (p *TrueNASProvider) DataSources(_ context.Context) []func() datasource.Dat
 		datasources.NewGroupDataSource,
 		datasources.NewServiceDataSource,
 		datasources.NewCertificateDataSource,
-		// v0.4.0 data sources — expansion
+		// v0.4.0 data sources, expansion
 		datasources.NewVMDataSource,
 		datasources.NewPrivilegeDataSource,
 		datasources.NewKerberosRealmDataSource,
@@ -363,7 +363,7 @@ func (p *TrueNASProvider) DataSources(_ context.Context) []func() datasource.Dat
 		datasources.NewPoolsDataSource,
 		datasources.NewAppsDataSource,
 		datasources.NewCloudSyncCredentialDataSource,
-		// v0.5.0 — resource/data-source parity expansion
+		// v0.5.0, resource/data-source parity expansion
 		datasources.NewISCSITargetDataSource,
 		datasources.NewISCSIPortalDataSource,
 		datasources.NewISCSIExtentDataSource,

@@ -30,7 +30,7 @@ resource "truenas_vm_device" "test" {
     resolution = %q
     bind       = "127.0.0.1"
     # SCALE 25.10 requires DISPLAY ports >= 5900 (VNC range) and a
-    # non-empty password. The password here is dummy — the test VM
+    # non-empty password. The password here is dummy, the test VM
     # isn't reachable externally and the VM is never actually started.
     port       = "5900"
     web        = "true"

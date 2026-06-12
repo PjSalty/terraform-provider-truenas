@@ -1,7 +1,7 @@
 // reporting_exporter.go
 //
 // Uses an `attributes_json` string because the `attributes` payload is
-// polymorphic (discriminated by `exporter_type`) — e.g. Graphite uses
+// polymorphic (discriminated by `exporter_type`), e.g. Graphite uses
 // destination_ip/destination_port/namespace while other types may differ.
 // Users pass `attributes_json = jsonencode({ exporter_type = "GRAPHITE", ... })`.
 package resources
@@ -86,7 +86,7 @@ func (r *ReportingExporterResource) Schema(ctx context.Context, _ resource.Schem
 			"attributes_json": schema.StringAttribute{
 				Description: "Exporter-specific attributes as a JSON object, including `exporter_type`. " +
 					"Example: jsonencode({exporter_type=\"GRAPHITE\", destination_ip=\"1.2.3.4\", destination_port=2003, namespace=\"truenas\"}). " +
-					"May contain credentials (passwords, tokens) for remote exporters — marked sensitive.",
+					"May contain credentials (passwords, tokens) for remote exporters, marked sensitive.",
 				Required:  true,
 				Sensitive: true,
 			},
@@ -274,7 +274,7 @@ func (r *ReportingExporterResource) mapResponseToModel(e *truenas.ReportingExpor
 	if len(e.Attributes) > 0 {
 		// Preserve the user-supplied subset of attributes. TrueNAS fills in
 		// defaults server-side (matching_charts, send_names_instead_of_ids, ...)
-		// that the user never wrote — if we stored the full response, every
+		// that the user never wrote, if we stored the full response, every
 		// subsequent plan would show spurious drift.
 		prior := model.AttributesJSON.ValueString()
 		if filtered, err := filterJSONByKeys(string(e.Attributes), prior); err == nil {

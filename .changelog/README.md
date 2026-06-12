@@ -31,7 +31,7 @@ changie merge
 `changie batch` collects all `unreleased/*.yaml` entries into a single
 `v1.2.3.md` file under `.changelog/`. `changie merge` rewrites the top-level
 `CHANGELOG.md` from those batched files. Both operations are idempotent and
-reversible — only the final merged `CHANGELOG.md` is shipped in releases.
+reversible, only the final merged `CHANGELOG.md` is shipped in releases.
 
 ## Configuration
 

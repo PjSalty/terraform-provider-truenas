@@ -9,7 +9,7 @@ import (
 
 // destroyWarnFloor is the minimum number of resource files that MUST
 // call planhelpers.WarnOnDestroy from their ModifyPlan hook. This is
-// a SLO-style ratchet — raising it is cheap (commit the new floor
+// a SLO-style ratchet, raising it is cheap (commit the new floor
 // with the new WarnOnDestroy call), lowering it requires a documented
 // reason in the PR comment. The same mechanism as
 // TestIdempotencyCheckCoverage and TestConfigValidatorsCoverage.
@@ -51,7 +51,7 @@ func TestDestroyWarningCoverage(t *testing.T) {
 		t.Fatalf("plan-time destroy warning coverage dropped: have %d, "+
 			"want ≥ %d. Files with WarnOnDestroy: %v\n\n"+
 			"This is a ratchet. Either add a WarnOnDestroy call to at "+
-			"least one more destructive resource (preferred — bump the "+
+			"least one more destructive resource (preferred, bump the "+
 			"floor) or, if you intentionally removed one, lower "+
 			"destroyWarnFloor in this file with a PR-comment justification.",
 			len(files), destroyWarnFloor, files)

@@ -1011,7 +1011,7 @@ func TestDirectoryServicesResource_Delete_LeaveFails(t *testing.T) {
 	})
 	dResp := &resource.DeleteResponse{State: st}
 	r.Delete(ctx, resource.DeleteRequest{State: st}, dResp)
-	// Leave failure is best-effort (warn only) — delete must still succeed.
+	// Leave failure is best-effort (warn only), delete must still succeed.
 	if dResp.Diagnostics.HasError() {
 		t.Errorf("Delete should tolerate leave failure: %v", dResp.Diagnostics)
 	}
@@ -1075,7 +1075,7 @@ func TestFilesystemACLResource_ReadbackFails(t *testing.T) {
 
 	t.Run("Delete getacl-fails", func(t *testing.T) {
 		// Delete reads the current ACL to build the reset request; a
-		// failure there must surface (or be tolerated — assert no panic).
+		// failure there must surface (or be tolerated, assert no panic).
 		c := newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "everything fails"}
 		})

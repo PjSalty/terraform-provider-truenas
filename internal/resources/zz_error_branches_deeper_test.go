@@ -30,7 +30,7 @@ import (
 // its `err != nil` branch.
 func newBadRequestClient(t *testing.T) (*wsclient.Client, func()) {
 	t.Helper()
-	// Every method call fails with a generic CallError — the JSON-RPC
+	// Every method call fails with a generic CallError, the JSON-RPC
 	// equivalent of the REST-era always-400 httptest server. The error
 	// is deliberately NOT a not-found shape so resource handlers enter
 	// their `err != nil` diagnostic branch rather than RemoveResource.
@@ -52,7 +52,7 @@ func newBadRequestClient(t *testing.T) (*wsclient.Client, func()) {
 // as the Raw, which causes Plan.Get / State.Get to return diagnostics. This
 // exercises the `if resp.Diagnostics.HasError() { return }` branches that
 // sit right after plan.Get / state.Get calls throughout every resource
-// handler. The test ignores all results — the point is coverage, not
+// handler. The test ignores all results, the point is coverage, not
 // correctness.
 func driveBadPlanCRUD(t *testing.T, r resource.Resource) {
 	t.Helper()
@@ -88,7 +88,7 @@ func driveBadPlanCRUD(t *testing.T, r resource.Resource) {
 
 // drive400CRUD runs Create/Read/Update/Delete against a 400 server for the
 // given resource, using the supplied plan values map and id. The test
-// tolerates diagnostic errors — they are expected.
+// tolerates diagnostic errors, they are expected.
 func drive400CRUD(t *testing.T, r resource.Resource, id string, planVals map[string]tftypes.Value) {
 	t.Helper()
 	ctx := context.Background()

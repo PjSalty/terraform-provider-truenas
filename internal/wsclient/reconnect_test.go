@@ -93,7 +93,7 @@ func TestReconnectIfNeeded_dialFailure(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected redial failure, got nil")
 	}
-	// Either the deadline or a wrapped dial error is acceptable —
+	// Either the deadline or a wrapped dial error is acceptable -
 	// both prove the redial loop ran out without success.
 }
 

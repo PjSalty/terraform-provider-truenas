@@ -158,7 +158,7 @@ func (ts *TestServer) serveHTTP(w http.ResponseWriter, r *http.Request) {
 
 		out, err := marshalTestResponse(resp)
 		if err != nil {
-			// Truly unreachable in normal use — resp is a well-typed
+			// Truly unreachable in normal use, resp is a well-typed
 			// map with json-friendly values. Log and bail rather than
 			// tb.Fatalf so a fault-injection test that swaps
 			// marshalTestResponse can exercise this branch without
@@ -178,7 +178,7 @@ func (ts *TestServer) serveHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // logWriteResult logs a write failure if there was one. Extracted to
-// keep serveHTTP branchless on the rare error case — testing a real
+// keep serveHTTP branchless on the rare error case, testing a real
 // mid-write WebSocket disconnect is race-prone, but a direct call to
 // this helper covers both the err and no-err paths trivially.
 func (ts *TestServer) logWriteResult(err error) {
@@ -202,8 +202,8 @@ func (ts *TestServer) SetHandler(h TestHandler) {
 // whether the kernel has flushed the FIN by the time the call's
 // sendFrame runs). Used to exercise reconnect logic.
 //
-// The httptest.Server itself remains alive — only the WS conns are
-// dropped — so reconnect tests can issue a follow-up dial against
+// The httptest.Server itself remains alive, only the WS conns are
+// dropped, so reconnect tests can issue a follow-up dial against
 // the same URL.
 func (ts *TestServer) CloseConnection() {
 	ts.mu.Lock()

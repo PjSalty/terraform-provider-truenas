@@ -51,7 +51,7 @@ func (r *KerberosKeytabResource) Schema(ctx context.Context, _ resource.SchemaRe
 	resp.Schema = schema.Schema{
 		Description: "Manages a Kerberos keytab entry on TrueNAS. Uploaded keytabs are merged " +
 			"into the system keytab at /etc/krb5.keytab." + "\n\n" +
-			"**Stability: GA.** Full `_basic` + `_disappears` + `_update` acceptance test triad verified live against TrueNAS SCALE 25.10 with a minimal MIT-format keytab fixture. Full integration with a real KDC has not been observed — the keytab is accepted and persisted correctly but never used for authentication during acc tests.",
+			"**Stability: GA.** Full `_basic` + `_disappears` + `_update` acceptance test triad verified live against TrueNAS SCALE 25.10 with a minimal MIT-format keytab fixture. Full integration with a real KDC has not been observed, the keytab is accepted and persisted correctly but never used for authentication during acc tests.",
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{
 				Create: true,
@@ -129,7 +129,7 @@ func (r *KerberosKeytabResource) Create(ctx context.Context, req resource.Create
 	}
 
 	r.mapResponseToModel(keytab, &plan)
-	// Preserve plan value for file — API may return normalized/re-encoded bytes.
+	// Preserve plan value for file, API may return normalized/re-encoded bytes.
 	plan.File = types.StringValue(createReq.File)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
@@ -251,7 +251,7 @@ func (r *KerberosKeytabResource) Delete(ctx context.Context, req resource.Delete
 
 // ModifyPlan emits a plan-time Warning whenever the plan would destroy
 // this resource. Removing a keytab breaks any service that uses it for
-// Kerberos auth — typically SMB shares with AD bindings.
+// Kerberos auth, typically SMB shares with AD bindings.
 func (r *KerberosKeytabResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_kerberos_keytab")
 }

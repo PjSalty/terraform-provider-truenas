@@ -16,7 +16,7 @@ import (
 // randomUUID returns a random UUID v4 string. NVMe-oF hostnqn values
 // that start with `nqn.2014-08.org.nvmexpress:uuid:` require a
 // canonical 8-4-4-4-12 hex UUID tail, so `shortSuffix()` was
-// insufficient — TrueNAS rejects arbitrary suffixes.
+// insufficient, TrueNAS rejects arbitrary suffixes.
 func randomUUID(t *testing.T) string {
 	t.Helper()
 	b := make([]byte, 16)
@@ -70,7 +70,7 @@ resource "truenas_nvmet_host" "test" {
 // dhchapKey1 and dhchapKey2 are real DHCHAP-1 keys with HMAC=00 (none),
 // generated as: 32 random secret bytes + 4-byte CRC32 → base64. SCALE
 // 25.10 validates the key structure ("Unexpected key termination") so
-// arbitrary base64 payloads are rejected. These are static fixtures —
+// arbitrary base64 payloads are rejected. These are static fixtures -
 // the secret material is dummy and the keys are never used for real
 // NVMe-oF authentication during acceptance testing.
 const (

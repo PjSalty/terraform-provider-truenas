@@ -2,7 +2,7 @@ package resources
 
 // Fuzz tests for JSON helpers used in round-tripping TrueNAS API payloads.
 // Property under test: each helper must never panic for any input string.
-// Returning an error is fine — the helpers are fed user-supplied and
+// Returning an error is fine, the helpers are fed user-supplied and
 // server-supplied JSON, both of which may be malformed.
 
 import (
