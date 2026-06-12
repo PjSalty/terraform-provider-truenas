@@ -10,33 +10,43 @@
     "helpers:pinGitHubActionDigests"
   ],
   "labels": ["dependencies", "renovate"],
-  "assignees": [],
-  "reviewers": [],
   "schedule": ["before 6am on monday"],
   "timezone": "Etc/UTC",
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "rangeStrategy": "pin",
+  "baseBranches": ["dev"],
+  "platformAutomerge": true,
   "postUpdateOptions": [
     "gomodTidy",
     "gomodUpdateImportPaths"
   ],
   "packageRules": [
     {
-      "description": "Group all non-major Go module updates",
+      "description": "Auto-merge non-major Go module updates after CI green",
       "matchManagers": ["gomod"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "go modules (non-major)"
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "go modules (non-major)",
+      "automerge": true,
+      "automergeType": "pr"
     },
     {
-      "description": "Separate major Go module updates",
+      "description": "Auto-merge GitHub Actions digest pins",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "Major Go module updates require human review",
       "matchManagers": ["gomod"],
       "matchUpdateTypes": ["major"],
       "groupName": "go modules (major)",
-      "labels": ["dependencies", "renovate", "major"]
+      "labels": ["dependencies", "renovate", "major"],
+      "automerge": false
     },
     {
-      "description": "Terraform plugin framework ecosystem needs careful review",
+      "description": "Plugin framework ecosystem requires human review (schema-affecting)",
       "matchManagers": ["gomod"],
       "matchPackagePatterns": [
         "^github.com/hashicorp/terraform-plugin-framework",
@@ -47,20 +57,22 @@
       ],
       "groupName": "terraform-plugin-framework",
       "labels": ["dependencies", "renovate", "plugin-framework"],
-      "reviewers": []
+      "automerge": false
     },
     {
-      "description": "Security updates land immediately",
+      "description": "Security advisories: open immediately, auto-merge if non-major and CI green",
       "matchUpdateTypes": ["patch"],
       "matchCurrentVersion": "!/^0/",
-      "automerge": false,
-      "labels": ["dependencies", "renovate", "security"]
+      "labels": ["dependencies", "renovate", "security"],
+      "automerge": true,
+      "automergeType": "pr"
     }
   ],
   "vulnerabilityAlerts": {
     "enabled": true,
     "labels": ["dependencies", "renovate", "security"],
-    "schedule": ["at any time"]
+    "schedule": ["at any time"],
+    "automerge": true
   },
   "osvVulnerabilityAlerts": true
 }

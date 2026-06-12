@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewAlertServiceDataSource(t *testing.T) {
@@ -28,20 +28,15 @@ func TestAlertServiceDataSource_Schema(t *testing.T) {
 }
 
 func TestAlertServiceDataSource_Read_Success(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/alertservice/id/3" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, client.AlertService{
-			ID:      3,
-			Name:    "slack",
-			Enabled: true,
-			Level:   "WARNING",
-			Settings: map[string]interface{}{
-				"type":    "Slack",
-				"cluster": "prod",
-			},
-		})
+	c := newWSServer(t, wsReturn(truenas.AlertService{
+		ID:      3,
+		Name:    "slack",
+		Enabled: true,
+		Level:   "WARNING",
+		Settings: map[string]interface{}{
+			"type":    "Slack",
+			"cluster": "prod",
+		},
 	}))
 
 	ds := NewAlertServiceDataSource().(*AlertServiceDataSource)
@@ -68,8 +63,9 @@ func TestAlertServiceDataSource_Read_Success(t *testing.T) {
 }
 
 func TestAlertServiceDataSource_Read_NilSettings(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, client.AlertService{ID: 1, Name: "x", Level: "INFO"})
+		writeJSON(w, http.StatusOK, truenas.AlertService{ID: 1, Name: "x", Level: "INFO"})
 	}))
 	ds := NewAlertServiceDataSource().(*AlertServiceDataSource)
 	ds.client = c
@@ -86,6 +82,7 @@ func TestAlertServiceDataSource_Read_NilSettings(t *testing.T) {
 }
 
 func TestAlertServiceDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))

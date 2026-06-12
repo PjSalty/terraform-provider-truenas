@@ -36,3 +36,10 @@ live-test/
 
 # Local env
 .envrc.local
+*.html
+report.json
+go-mutesting-*
+.envrc.local-25-04
+.envrc.local-26-beta
+skaff
+wspreflight

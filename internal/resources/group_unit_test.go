@@ -6,14 +6,14 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestGroupResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &GroupResource{}
 	cases := []struct {
 		name     string
-		group    *client.Group
+		group    *truenas.Group
 		wantID   string
 		wantName string
 		wantGID  int64
@@ -22,14 +22,14 @@ func TestGroupResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name:     "minimal group",
-			group:    &client.Group{ID: 1, GID: 1000, Name: "users"},
+			group:    &truenas.Group{ID: 1, GID: 1000, Name: "users"},
 			wantID:   "1",
 			wantName: "users",
 			wantGID:  1000,
 		},
 		{
 			name:     "SMB group with sudo commands",
-			group:    &client.Group{ID: 5, GID: 2000, Name: "smbusers", SMB: true, SudoCommands: []string{"/bin/ls", "/usr/bin/git"}},
+			group:    &truenas.Group{ID: 5, GID: 2000, Name: "smbusers", SMB: true, SudoCommands: []string{"/bin/ls", "/usr/bin/git"}},
 			wantID:   "5",
 			wantName: "smbusers",
 			wantGID:  2000,
@@ -38,28 +38,28 @@ func TestGroupResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name:     "group with zero GID",
-			group:    &client.Group{ID: 0, GID: 0, Name: "wheel"},
+			group:    &truenas.Group{ID: 0, GID: 0, Name: "wheel"},
 			wantID:   "0",
 			wantName: "wheel",
 			wantGID:  0,
 		},
 		{
 			name:     "builtin group",
-			group:    &client.Group{ID: 42, GID: 42, Name: "builtin", Builtin: true},
+			group:    &truenas.Group{ID: 42, GID: 42, Name: "builtin", Builtin: true},
 			wantID:   "42",
 			wantName: "builtin",
 			wantGID:  42,
 		},
 		{
 			name:     "group with high GID",
-			group:    &client.Group{ID: 999, GID: 65533, Name: "nobody"},
+			group:    &truenas.Group{ID: 999, GID: 65533, Name: "nobody"},
 			wantID:   "999",
 			wantName: "nobody",
 			wantGID:  65533,
 		},
 		{
 			name:     "SMB builtin admins",
-			group:    &client.Group{ID: 544, GID: 544, Name: "administrators", SMB: true, Builtin: true},
+			group:    &truenas.Group{ID: 544, GID: 544, Name: "administrators", SMB: true, Builtin: true},
 			wantID:   "544",
 			wantName: "administrators",
 			wantGID:  544,
@@ -67,7 +67,7 @@ func TestGroupResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "group with five sudo commands",
-			group: &client.Group{
+			group: &truenas.Group{
 				ID: 300, GID: 3000, Name: "ops",
 				SudoCommands: []string{"/bin/ls", "/bin/ps", "/bin/df", "/bin/du", "/bin/free"},
 			},

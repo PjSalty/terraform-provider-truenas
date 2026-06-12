@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -25,6 +26,14 @@ resource "truenas_iscsi_initiator" "test" {
   initiators = []
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_iscsi_initiator.test", plancheck.ResourceActionCreate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_iscsi_initiator.test", "comment", "acctest"),
 					resource.TestCheckResourceAttrSet("truenas_iscsi_initiator.test", "id"),
@@ -65,6 +74,11 @@ resource "truenas_iscsi_initiator" "test" {
   initiators = ["iqn.2026-04.com.example:test"]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_iscsi_initiator.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_iscsi_initiator.test", "comment", "updated"),
 					resource.TestCheckResourceAttr("truenas_iscsi_initiator.test", "initiators.#", "1"),

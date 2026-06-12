@@ -2,14 +2,18 @@
 page_title: "Provider: TrueNAS"
 description: |-
   The TrueNAS provider is used to manage storage, network, and virtualization
-  resources on a TrueNAS SCALE system through its REST API v2.0.
+  resources on a TrueNAS SCALE system through its JSON-RPC 2.0 API over WebSocket.
 ---
 
 # TrueNAS Provider
 
 The TrueNAS provider is used to interact with the resources supported by
-TrueNAS SCALE 24.04 and later. The provider needs to be configured with a
-base URL and an API key before it can be used.
+TrueNAS SCALE over its JSON-RPC 2.0 WebSocket API. Fully supported on
+SCALE 25.10 and later. SCALE 25.04 works for the common resource surface
+but lacks the APIs behind `nvmet_*`, `truenas_directory_services`, the
+25.10 SMB `purpose` vocabulary, and some alert service types — use the
+v1.10.x provider line there if you need those. The provider needs to be
+configured with a base URL and an API key before it can be used.
 
 Use the navigation to the left to read about the available resources and
 data sources.
@@ -21,7 +25,7 @@ terraform {
   required_providers {
     truenas = {
       source  = "PjSalty/truenas"
-      version = "~> 1.0"
+      version = "~> 2.0"
     }
   }
 }
@@ -41,7 +45,10 @@ resource "truenas_dataset" "example" {
 
 The provider authenticates with a TrueNAS SCALE API key, generated
 through the TrueNAS web UI under **Credentials → Local Users → root →
-API Keys**. The key is sent as a `Bearer` token on every HTTP request.
+API Keys**. The key is passed to the `auth.login_with_api_key`
+JSON-RPC method during the WebSocket handshake; once the handshake
+succeeds the connection is authenticated for the lifetime of the
+client.
 
 Credentials can be provided in three ways, listed in order of precedence:
 
@@ -54,8 +61,9 @@ Credentials can be provided in three ways, listed in order of precedence:
 ## Safety rails
 
 For the first `terraform plan` against a production system, set
-`read_only = true`. Every mutating HTTP request (POST, PUT, DELETE) is
-refused at the client layer before any network call is made:
+`read_only = true`. Every mutating JSON-RPC call (every `*.create`, `*.update`,
+`*.delete`, plus the named mutators like `pool.export`) is refused
+at the client layer before any wire call is made:
 
 ```terraform
 provider "truenas" {
@@ -67,8 +75,8 @@ provider "truenas" {
 
 For the first `terraform apply` that performs real writes, leave
 `read_only = false` but set `destroy_protection = true`. Creates and
-updates flow through normally; DELETE requests are still refused at the
-client layer:
+updates flow through normally; deletes (`*.delete`, `pool.export`,
+etc.) are still refused at the client layer:
 
 ```terraform
 provider "truenas" {
@@ -95,15 +103,17 @@ at `examples/prod-smoke/` in the provider repository.
 - `api_key` (String, Sensitive) API key for authenticating with TrueNAS
   SCALE. Can also be set via the `TRUENAS_API_KEY` environment variable.
 - `destroy_protection` (Boolean) When true, the provider refuses every
-  DELETE request at the client layer before the network call. Can also
-  be set via the `TRUENAS_DESTROY_PROTECTION` environment variable.
+  destructive JSON-RPC call (every `*.delete`, plus named mutators
+  like `pool.export`) at the client layer before the wire call.
+  Can also be set via the `TRUENAS_DESTROY_PROTECTION` environment
+  variable.
 - `insecure_skip_verify` (Boolean) Skip TLS certificate verification.
   Only use this for self-signed test environments. Can also be set via
   the `TRUENAS_INSECURE_SKIP_VERIFY` environment variable.
 - `read_only` (Boolean) When true, the provider refuses every mutating
-  request (POST/PUT/DELETE) at the client layer before the network
-  call. Can also be set via the `TRUENAS_READ_ONLY` environment variable.
-- `request_timeout` (String) Per-HTTP-request timeout as a Go
+  JSON-RPC call at the client layer before the wire call. Can also
+  be set via the `TRUENAS_READ_ONLY` environment variable.
+- `request_timeout` (String) Per-JSON-RPC-call timeout as a Go
   `time.Duration` string (for example `"60s"`, `"2m"`). Defaults to
   `60s` if unset.
 - `url` (String) Base URL of the TrueNAS SCALE instance (for example

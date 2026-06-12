@@ -17,17 +17,20 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
 	_ resource.Resource                = &KeychainCredentialResource{}
 	_ resource.ResourceWithImportState = &KeychainCredentialResource{}
+	_ resource.ResourceWithModifyPlan  = &KeychainCredentialResource{}
 )
 
 // KeychainCredentialResource manages a TrueNAS keychain credential (SSH keypairs, etc).
 type KeychainCredentialResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // KeychainCredentialResourceModel describes the resource data model.
@@ -89,11 +92,11 @@ func (r *KeychainCredentialResource) Configure(_ context.Context, req resource.C
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -120,7 +123,7 @@ func (r *KeychainCredentialResource) Create(ctx context.Context, req resource.Cr
 		}
 	}
 
-	createReq := &client.KeychainCredentialCreateRequest{
+	createReq := &truenas.KeychainCredentialCreateRequest{
 		Name:       plan.Name.ValueString(),
 		Type:       plan.Type.ValueString(),
 		Attributes: attrs,
@@ -165,7 +168,7 @@ func (r *KeychainCredentialResource) Read(ctx context.Context, req resource.Read
 
 	cred, err := r.client.GetKeychainCredential(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -216,7 +219,7 @@ func (r *KeychainCredentialResource) Update(ctx context.Context, req resource.Up
 		}
 	}
 
-	updateReq := &client.KeychainCredentialUpdateRequest{
+	updateReq := &truenas.KeychainCredentialUpdateRequest{
 		Name:       plan.Name.ValueString(),
 		Attributes: attrs,
 	}
@@ -257,7 +260,7 @@ func (r *KeychainCredentialResource) Delete(ctx context.Context, req resource.De
 
 	err = r.client.DeleteKeychainCredential(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Keychain credential already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -270,6 +273,13 @@ func (r *KeychainCredentialResource) Delete(ctx context.Context, req resource.De
 	tflog.Trace(ctx, "Delete KeychainCredential success")
 }
 
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing a keychain credential breaks any replication,
+// cloud sync, or rsync task that references it.
+func (r *KeychainCredentialResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_keychain_credential")
+}
+
 func (r *KeychainCredentialResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	if _, err := strconv.Atoi(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Keychain credential ID must be numeric: %s", err))
@@ -278,7 +288,7 @@ func (r *KeychainCredentialResource) ImportState(ctx context.Context, req resour
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *KeychainCredentialResource) mapResponseToModel(ctx context.Context, cred *client.KeychainCredential, model *KeychainCredentialResourceModel) {
+func (r *KeychainCredentialResource) mapResponseToModel(ctx context.Context, cred *truenas.KeychainCredential, model *KeychainCredentialResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(cred.ID))
 	model.Name = types.StringValue(cred.Name)
 	model.Type = types.StringValue(cred.Type)

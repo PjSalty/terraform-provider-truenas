@@ -22,8 +22,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -34,7 +35,7 @@ var (
 
 // ReplicationResource manages a ZFS replication task.
 type ReplicationResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // ReplicationResourceModel describes the resource data model.
@@ -189,11 +190,11 @@ func (r *ReplicationResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -212,7 +213,7 @@ func (r *ReplicationResource) Create(ctx context.Context, req resource.CreateReq
 
 	var sourceDatasets []string
 	resp.Diagnostics.Append(plan.SourceDatasets.ElementsAs(ctx, &sourceDatasets, false)...)
-	createReq := &client.ReplicationCreateRequest{
+	createReq := &truenas.ReplicationCreateRequest{
 		Name:            plan.Name.ValueString(),
 		Direction:       plan.Direction.ValueString(),
 		Transport:       plan.Transport.ValueString(),
@@ -282,7 +283,7 @@ func (r *ReplicationResource) Read(ctx context.Context, req resource.ReadRequest
 
 	repl, err := r.client.GetReplication(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -329,7 +330,7 @@ func (r *ReplicationResource) Update(ctx context.Context, req resource.UpdateReq
 	auto := plan.Auto.ValueBool()
 	enabled := plan.Enabled.ValueBool()
 
-	updateReq := &client.ReplicationUpdateRequest{
+	updateReq := &truenas.ReplicationUpdateRequest{
 		Name:            plan.Name.ValueString(),
 		Direction:       plan.Direction.ValueString(),
 		Transport:       plan.Transport.ValueString(),
@@ -387,7 +388,7 @@ func (r *ReplicationResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err = r.client.DeleteReplication(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Replication task already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -453,7 +454,7 @@ func (r *ReplicationResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *ReplicationResource) mapResponseToModel(ctx context.Context, repl *client.Replication, model *ReplicationResourceModel) {
+func (r *ReplicationResource) mapResponseToModel(ctx context.Context, repl *truenas.Replication, model *ReplicationResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(repl.ID))
 	model.Name = types.StringValue(repl.Name)
 	model.Direction = types.StringValue(repl.Direction)

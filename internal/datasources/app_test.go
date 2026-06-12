@@ -2,12 +2,12 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewAppDataSource(t *testing.T) {
@@ -31,18 +31,16 @@ func TestAppDataSource_Schema(t *testing.T) {
 }
 
 func TestAppDataSource_Read_Success(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, client.App{
-			ID:               "jellyfin",
-			Name:             "jellyfin",
-			State:            "RUNNING",
-			UpgradeAvailable: true,
-			LatestVersion:    "1.2.0",
-			HumanVersion:     "1.1.0 (abc)",
-			Version:          "1.1.0",
-			CustomApp:        false,
-			Migrated:         true,
-		})
+	c := newWSServer(t, wsReturn(truenas.App{
+		ID:               "jellyfin",
+		Name:             "jellyfin",
+		State:            "RUNNING",
+		UpgradeAvailable: true,
+		LatestVersion:    "1.2.0",
+		HumanVersion:     "1.1.0 (abc)",
+		Version:          "1.1.0",
+		CustomApp:        false,
+		Migrated:         true,
 	}))
 
 	ds := NewAppDataSource().(*AppDataSource)
@@ -71,9 +69,7 @@ func TestAppDataSource_Read_Success(t *testing.T) {
 }
 
 func TestAppDataSource_Read_ServerError(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewAppDataSource().(*AppDataSource)
 	ds.client = c
@@ -86,11 +82,11 @@ func TestAppDataSource_Read_ServerError(t *testing.T) {
 }
 
 func TestAppDataSource_Read_ListResponse(t *testing.T) {
-	// GetApp falls back to parsing a single-element list.
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.App{
-			{ID: "nextcloud", Name: "nextcloud", State: "STOPPED"},
-		})
+	// REST-era GetApp had a single-element-list fallback; the WS
+	// app.get_instance contract returns a bare object. Keep the test
+	// name for history but assert the object path.
+	c := newWSServer(t, wsReturn(truenas.App{
+		ID: "nextcloud", Name: "nextcloud", State: "STOPPED",
 	}))
 
 	ds := NewAppDataSource().(*AppDataSource)
@@ -109,9 +105,7 @@ func TestAppDataSource_Read_ListResponse(t *testing.T) {
 }
 
 func TestAppDataSource_Read_EmptyList(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, []client.App{})
-	}))
+	c := newWSServer(t, wsReturn([]truenas.App{}))
 
 	ds := NewAppDataSource().(*AppDataSource)
 	ds.client = c

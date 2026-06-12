@@ -18,8 +18,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -30,7 +31,7 @@ var (
 
 // ISCSIAuthResource manages an iSCSI CHAP credential set.
 type ISCSIAuthResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 type ISCSIAuthResourceModel struct {
@@ -128,11 +129,11 @@ func (r *ISCSIAuthResource) Configure(_ context.Context, req resource.ConfigureR
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -149,7 +150,7 @@ func (r *ISCSIAuthResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	createReq := &client.ISCSIAuthCreateRequest{
+	createReq := &truenas.ISCSIAuthCreateRequest{
 		Tag:           int(plan.Tag.ValueInt64()),
 		User:          plan.User.ValueString(),
 		Secret:        plan.Secret.ValueString(),
@@ -191,7 +192,7 @@ func (r *ISCSIAuthResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	a, err := r.client.GetISCSIAuth(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -236,7 +237,7 @@ func (r *ISCSIAuthResource) Update(ctx context.Context, req resource.UpdateReque
 	peersecret := plan.Peersecret.ValueString()
 	discoveryAuth := plan.DiscoveryAuth.ValueString()
 
-	updateReq := &client.ISCSIAuthUpdateRequest{
+	updateReq := &truenas.ISCSIAuthUpdateRequest{
 		Tag:           &tag,
 		User:          &user,
 		Secret:        &secret,
@@ -275,7 +276,7 @@ func (r *ISCSIAuthResource) Delete(ctx context.Context, req resource.DeleteReque
 	}
 
 	if err := r.client.DeleteISCSIAuth(ctx, id); err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "iSCSI auth already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -303,7 +304,7 @@ func (r *ISCSIAuthResource) ImportState(ctx context.Context, req resource.Import
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("peersecret"), types.StringValue(""))...)
 }
 
-func (r *ISCSIAuthResource) mapResponseToModel(a *client.ISCSIAuth, model *ISCSIAuthResourceModel) {
+func (r *ISCSIAuthResource) mapResponseToModel(a *truenas.ISCSIAuth, model *ISCSIAuthResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(a.ID))
 	model.Tag = types.Int64Value(int64(a.Tag))
 	model.User = types.StringValue(a.User)

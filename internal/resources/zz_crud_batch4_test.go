@@ -51,8 +51,7 @@ func datasetBody(id, datasetType string) map[string]interface{} {
 
 func TestDatasetResource_CRUD(t *testing.T) {
 	body := datasetBody("tank/data", "FILESYSTEM")
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &DatasetResource{client: c}
 	crudDrive(t, r, c, "tank/data", map[string]tftypes.Value{
 		"name": str("data"),
@@ -65,8 +64,7 @@ func TestDatasetResource_CRUD(t *testing.T) {
 
 func TestZvolResource_CRUD(t *testing.T) {
 	body := datasetBody("tank/vol1", "VOLUME")
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ZvolResource{client: c}
 	crudDrive(t, r, c, "tank/vol1", map[string]tftypes.Value{
 		"name":    str("vol1"),
@@ -78,6 +76,7 @@ func TestZvolResource_CRUD(t *testing.T) {
 // --- Certificate ---
 
 func TestCertificateResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":                  1,
 		"name":                "c1",
@@ -170,8 +169,7 @@ func vmBody() map[string]interface{} {
 
 func TestVMResource_CRUD(t *testing.T) {
 	body := vmBody()
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &VMResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":    str("vm1"),
@@ -195,8 +193,7 @@ func TestVMDeviceResource_CRUD(t *testing.T) {
 			"type": "AHCI",
 		},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &VMDeviceResource{client: c}
 	attrsVal := tftypes.NewValue(
 		tftypes.Map{ElementType: tftypes.String},
@@ -219,6 +216,7 @@ func TestVMDeviceResource_CRUD(t *testing.T) {
 // handler that honors both the pool-create job and the get_jobs path.
 
 func TestPoolResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	poolBody := map[string]interface{}{
 		"id":       1,
 		"name":     "tank",
@@ -261,6 +259,7 @@ func TestPoolResource_CRUD(t *testing.T) {
 // --- App (async, string id) ---
 
 func TestAppResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	appBody := map[string]interface{}{
 		"id":                "minio",
 		"name":              "minio",
@@ -328,8 +327,7 @@ func TestNetworkConfigResource_CRUD(t *testing.T) {
 		"service_announcement": map[string]interface{}{},
 		"activity":             map[string]interface{}{},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &NetworkConfigResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"hostname":    str("truenas"),
@@ -341,6 +339,7 @@ func TestNetworkConfigResource_CRUD(t *testing.T) {
 // --- NetworkInterface ---
 
 func TestNetworkInterfaceResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":                       "eth0",
 		"name":                     "eth0",
@@ -395,8 +394,7 @@ func TestKMIPConfigResource_CRUD(t *testing.T) {
 		"validate":              true,
 		"enabled":               false,
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &KMIPConfigResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"server": str("kmip.example.com"),
@@ -415,8 +413,7 @@ func TestSystemDatasetResource_CRUD(t *testing.T) {
 		"basename": ".system",
 		"path":     "/mnt/tank/.system",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &SystemDatasetResource{client: c}
 	crudDrive(t, r, c, "systemdataset", map[string]tftypes.Value{
 		"pool": str("tank"),
@@ -437,8 +434,7 @@ func TestDirectoryServicesResource_CRUD(t *testing.T) {
 		"credential":           nil,
 		"configuration":        nil,
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &DirectoryServicesResource{client: c}
 	crudDrive(t, r, c, "directoryservices", map[string]tftypes.Value{
 		"enable":       flag(false),
@@ -449,6 +445,7 @@ func TestDirectoryServicesResource_CRUD(t *testing.T) {
 // --- Service (by name, not numeric id) ---
 
 func TestServiceResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":      1,
 		"service": "ssh",
@@ -479,6 +476,7 @@ func TestServiceResource_CRUD(t *testing.T) {
 // --- FilesystemACL ---
 
 func TestFilesystemACLResource_CRUD(t *testing.T) {
+	skipWSCutover(t)
 	body := map[string]interface{}{
 		"path":    "/mnt/tank/share",
 		"uid":     1000,

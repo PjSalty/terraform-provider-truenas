@@ -18,7 +18,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 
 // SNMPConfigResource manages the TrueNAS SNMP configuration.
 type SNMPConfigResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // SNMPConfigResourceModel describes the resource data model.
@@ -163,11 +164,11 @@ func (r *SNMPConfigResource) Configure(_ context.Context, req resource.Configure
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -271,7 +272,7 @@ func (r *SNMPConfigResource) Delete(ctx context.Context, _ resource.DeleteReques
 	v3AuthType := "SHA"
 	v3Password := ""
 
-	_, err := r.client.UpdateSNMPConfig(ctx, &client.SNMPConfigUpdateRequest{
+	_, err := r.client.UpdateSNMPConfig(ctx, &truenas.SNMPConfigUpdateRequest{
 		Community:  &community,
 		Contact:    &contact,
 		Location:   &location,
@@ -294,8 +295,8 @@ func (r *SNMPConfigResource) ImportState(ctx context.Context, req resource.Impor
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *SNMPConfigResource) buildUpdateRequest(plan *SNMPConfigResourceModel) *client.SNMPConfigUpdateRequest {
-	updateReq := &client.SNMPConfigUpdateRequest{}
+func (r *SNMPConfigResource) buildUpdateRequest(plan *SNMPConfigResourceModel) *truenas.SNMPConfigUpdateRequest {
+	updateReq := &truenas.SNMPConfigUpdateRequest{}
 
 	if !plan.Community.IsNull() && !plan.Community.IsUnknown() {
 		v := plan.Community.ValueString()
@@ -337,7 +338,7 @@ func (r *SNMPConfigResource) buildUpdateRequest(plan *SNMPConfigResourceModel) *
 	return updateReq
 }
 
-func (r *SNMPConfigResource) mapResponseToModel(config *client.SNMPConfig, model *SNMPConfigResourceModel) {
+func (r *SNMPConfigResource) mapResponseToModel(config *truenas.SNMPConfig, model *SNMPConfigResourceModel) {
 	model.ID = types.StringValue("1")
 	model.Community = types.StringValue(config.Community)
 	model.Contact = types.StringValue(config.Contact)
