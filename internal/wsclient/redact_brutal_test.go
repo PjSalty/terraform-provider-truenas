@@ -71,7 +71,7 @@ func TestRedact_ExhaustivelyEnumerateSensitiveKeys(t *testing.T) {
 	}
 
 	for _, k := range knownSensitiveAttrs {
-		k := k
+
 		t.Run(k, func(t *testing.T) {
 			if !isSensitiveKey(k) {
 				t.Errorf("isSensitiveKey(%q) = false; the schema marks this attribute "+
@@ -140,7 +140,7 @@ func TestRedact_NestedAndArrayShapes(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
+
 		t.Run(c.name, func(t *testing.T) {
 			out := redactJSONBody([]byte(c.body))
 			if strings.Contains(string(out), c.shouldNot) {
@@ -192,7 +192,7 @@ func TestRedact_MessageStrings(t *testing.T) {
 		{"json fragment", `error: invalid password "myp4ssword"`, "myp4ssword"},
 	}
 	for _, c := range cases {
-		c := c
+
 		t.Run(c.name, func(t *testing.T) {
 			out := redactMessage(c.in)
 			if strings.Contains(out, c.hide) {

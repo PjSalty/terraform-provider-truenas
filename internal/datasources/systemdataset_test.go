@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
@@ -16,7 +17,7 @@ func TestNewSystemDatasetDataSource(t *testing.T) {
 
 func TestSystemDatasetDataSource_Schema(t *testing.T) {
 	ds := NewSystemDatasetDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{"id", "pool", "pool_set", "uuid", "basename", "path"} {
 		if _, ok := attrs[want]; !ok {
@@ -26,7 +27,7 @@ func TestSystemDatasetDataSource_Schema(t *testing.T) {
 }
 
 func TestSystemDatasetDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.SystemDataset{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.SystemDataset{
 		ID:       1,
 		Pool:     "tank",
 		PoolSet:  true,
@@ -38,7 +39,7 @@ func TestSystemDatasetDataSource_Read_Success(t *testing.T) {
 	ds := NewSystemDatasetDataSource().(*SystemDatasetDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -64,12 +65,12 @@ func TestSystemDatasetDataSource_Read_Success(t *testing.T) {
 }
 
 func TestSystemDatasetDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewSystemDatasetDataSource().(*SystemDatasetDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

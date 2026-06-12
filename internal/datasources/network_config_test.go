@@ -2,16 +2,17 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"net/http"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNetworkConfigDataSource_Schema(t *testing.T) {
 	ds := NewNetworkConfigDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"hostname", "domain", "nameserver1", "nameserver2", "nameserver3",
@@ -24,7 +25,7 @@ func TestNetworkConfigDataSource_Schema(t *testing.T) {
 }
 
 func TestNetworkConfigDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.NetworkConfig{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.NetworkConfig{
 		ID:          1,
 		Hostname:    "truenas",
 		Domain:      "local",
@@ -38,7 +39,7 @@ func TestNetworkConfigDataSource_Read_Success(t *testing.T) {
 	ds := NewNetworkConfigDataSource().(*NetworkConfigDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -58,12 +59,12 @@ func TestNetworkConfigDataSource_Read_Success(t *testing.T) {
 }
 
 func TestNetworkConfigDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewNetworkConfigDataSource().(*NetworkConfigDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
@@ -80,7 +81,7 @@ func TestNetworkConfigDataSource_Read_InvalidJSON(t *testing.T) {
 	ds := NewNetworkConfigDataSource().(*NetworkConfigDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, nil)
+	cfg := buildConfig(t.Context(), t, ds, nil)
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
