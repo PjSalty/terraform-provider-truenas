@@ -11,7 +11,7 @@ This guide walks you through setting up the TrueNAS Terraform provider from scra
 
 ## Prerequisites
 
-- TrueNAS SCALE 25.10 or later (25.04 works with a reduced resource surface — see the version matrix in the README)
+- TrueNAS SCALE 25.10 or later (25.04 works with a reduced resource surface, see the version matrix in the README)
 - Terraform 1.5 or later installed locally
 - Network access to your TrueNAS instance
 
@@ -20,7 +20,7 @@ This guide walks you through setting up the TrueNAS Terraform provider from scra
 1. Log in to the TrueNAS web interface.
 2. Navigate to **Credentials → API Keys**.
 3. Click **Add** and give your key a descriptive name (e.g., `terraform`).
-4. Copy the generated API key — it is only shown once.
+4. Copy the generated API key, it is only shown once.
 
 ~> **Security Note:** Store this API key in a secrets manager or Terraform variable. Never commit it to version control.
 

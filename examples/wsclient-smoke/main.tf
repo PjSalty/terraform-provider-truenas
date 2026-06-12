@@ -4,7 +4,7 @@
 // wsclient-smoke: a tiny Terraform workspace whose only job is to
 // prove the WebSocket transport can authenticate and read state from
 // the target TrueNAS. Use this when you want to test the WebSocket
-// path specifically — for example, when validating that a SCALE
+// path specifically, for example, when validating that a SCALE
 // upgrade did not break the /api/current endpoint, or when
 // debugging connectivity through a load balancer.
 //
