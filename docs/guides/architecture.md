@@ -58,18 +58,18 @@ Implements the TrueNAS JSON-RPC 2.0 API over a persistent WebSocket
 connection at `/api/current`. One file per API domain (`dataset.go`,
 `share_nfs.go`, `iscsi_target.go`, etc.) so diffs stay small and the
 layout mirrors `internal/resources`. v2.0 ships WebSocket as the
-*only* transport — the v1.x REST client was deleted as part of the
+*only* transport, the v1.x REST client was deleted as part of the
 cutover.
 
 Key types:
 
-- `Client` — holds the base URL, API key, persistent WebSocket
+- `Client`, holds the base URL, API key, persistent WebSocket
   connection, pending-call multiplexer, RetryPolicy, and the
   ReadOnly + DestroyProtection safety rails.
-- `RPCError` — wraps a JSON-RPC 2.0 error frame. Use
+- `RPCError`, wraps a JSON-RPC 2.0 error frame. Use
   `errors.As(err, &rpcErr)` to access `.Code`, `.Message`, and
   `.Data`.
-- `IsNotFound(err)` — returns true for the three error shapes
+- `IsNotFound(err)`, returns true for the three error shapes
   TrueNAS uses to signal "this id doesn't exist":
   `CodeMethodNotFound`, `CodeMethodCallError` with `errname=ENOENT`,
   and `CodeInvalidParams` with `[ENOENT]` in the message body. Every
@@ -80,7 +80,7 @@ The client retries calls flagged `Idempotent: true` on connection
 loss with exponential backoff. The `authenticate` path retries on
 TrueNAS' `[EBUSY] Rate Limit Exceeded` with decorrelated jitter so
 concurrent acc tests don't pile back into the rate-limit window in
-lockstep. Mutating calls are never retried automatically — the
+lockstep. Mutating calls are never retried automatically, the
 caller decides whether replay is safe.
 
 ### `internal/types`
@@ -94,11 +94,11 @@ plugin-framework's `types` package.
 
 One file per Terraform resource. Each resource implements:
 
-- `resource.Resource` — `Metadata`, `Schema`, `Configure`, `Create`, `Read`,
+- `resource.Resource`, `Metadata`, `Schema`, `Configure`, `Create`, `Read`,
   `Update`, `Delete`.
-- `resource.ResourceWithImportState` — `ImportState` (numeric ID passthrough
+- `resource.ResourceWithImportState`, `ImportState` (numeric ID passthrough
   for most, compound IDs for a few).
-- `resource.ResourceWithModifyPlan` (optional) — cross-attribute validation
+- `resource.ResourceWithModifyPlan` (optional), cross-attribute validation
   at plan time.
 
 Every resource uses a `timeouts.Block` for per-resource Create/Read/Update/
@@ -112,11 +112,11 @@ plus singletons for global config (`system_info`, `network_config`, etc.).
 
 ### `internal/provider`
 
-- `provider.go` — provider registration, `Resources()` / `DataSources()`
+- `provider.go`, provider registration, `Resources()` / `DataSources()`
   registries.
-- `acc_*_test.go` — acceptance tests (one file per resource), guarded by
+- `acc_*_test.go`, acceptance tests (one file per resource), guarded by
   `TF_ACC=1`.
-- `sweeper_test.go` — sweeper registrations that clean up abandoned test
+- `sweeper_test.go`, sweeper registrations that clean up abandoned test
   fixtures via `go test -sweep=all`.
 
 ## Schema and state flow
@@ -167,13 +167,13 @@ Client-level retries are handled in `wsclient.Call`:
 
 - Calls flagged `Idempotent: true` retry on `ErrConnectionLost` after a
   reconnect+re-authenticate.
-- Mutating calls (the default) never retry automatically — the caller
+- Mutating calls (the default) never retry automatically, the caller
   decides whether replay is safe.
 - The `authenticate` handshake retries on TrueNAS' `[EBUSY] Rate Limit
   Exceeded` with decorrelated jitter (up to 12 attempts, 200ms → 6s).
 - Context cancellation aborts the retry loop immediately.
 
-Resource-level retries are handled by `timeouts.Block` — long-running
+Resource-level retries are handled by `timeouts.Block`, long-running
 operations like `truenas_pool` create or `truenas_certificate` ACME issuance
 extend the default timeout via per-resource defaults.
 

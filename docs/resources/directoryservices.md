@@ -2,12 +2,12 @@
 page_title: "truenas_directoryservices Resource - terraform-provider-truenas"
 subcategory: "Auth & Integration"
 description: |-
-  Manages the TrueNAS directory services singleton configuration (ACTIVEDIRECTORY, IPA, or LDAP). Only one directory service can be active at a time. Creating this resource configures the service; deleting it disables the service (it does not unjoin from AD — use the TrueNAS UI/CLI or `enable = false` first).
+  Manages the TrueNAS directory services singleton configuration (ACTIVEDIRECTORY, IPA, or LDAP). Only one directory service can be active at a time. Creating this resource configures the service; deleting it disables the service (it does not unjoin from AD, use the TrueNAS UI/CLI or `enable = false` first).
 ---
 
 # truenas_directoryservices (Resource)
 
-Manages the TrueNAS directory services singleton configuration (ACTIVEDIRECTORY, IPA, or LDAP). Only one directory service can be active at a time. Creating this resource configures the service; deleting it disables the service (it does not unjoin from AD — use the TrueNAS UI/CLI or `enable = false` first).
+Manages the TrueNAS directory services singleton configuration (ACTIVEDIRECTORY, IPA, or LDAP). Only one directory service can be active at a time. Creating this resource configures the service; deleting it disables the service (it does not unjoin from AD, use the TrueNAS UI/CLI or `enable = false` first).
 
 Managed attributes map directly to the TrueNAS SCALE API. Changes are applied
 via the JSON-RPC endpoint on the target system; mutations that cannot be
@@ -18,7 +18,7 @@ represented in-place force a resource replacement as noted below.
 ### Basic
 
 ```terraform
-# Singleton — one directory services configuration per system.
+# Singleton, one directory services configuration per system.
 resource "truenas_directoryservices" "this" {
   service_type = "ACTIVEDIRECTORY"
   enable       = true
