@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// messageRedactRegexps mirrors client.messageRedactRegexps — patterns
+// messageRedactRegexps mirrors client.messageRedactRegexps, patterns
 // that catch secret material in error message bodies even when the
 // key-name match misses (headers with hyphens, URLs with basic-auth,
 // bearer tokens). Kept in sync manually with the REST client copy.
@@ -20,7 +20,7 @@ var messageRedactRegexps = []*regexp.Regexp{
 
 // sensitiveKeyFragments mirrors client.sensitiveKeyFragments. We keep a
 // duplicate copy in this package rather than importing the REST client
-// because the REST package is being deleted in v2.1 — duplicating the
+// because the REST package is being deleted in v2.1, duplicating the
 // list now lets the wsclient stand alone without an awkward inter-
 // package dependency for a 30-element slice.
 //
@@ -159,13 +159,13 @@ func walkRedact(v interface{}) interface{} {
 // redactMessage scrubs a parsed error message string for substrings of
 // the form `<sensitive-key>=<value>` or `'<sensitive-key>': '<value>'`.
 // TrueNAS middlewared sometimes echoes offending request fields in
-// validation errors; this catches the common case. Best-effort —
+// validation errors; this catches the common case. Best-effort -
 // key-based body redaction in redactJSONBody is authoritative.
 func redactMessage(msg string) string {
 	if msg == "" {
 		return msg
 	}
-	// Pattern-based pass first — catches URLs with basic-auth,
+	// Pattern-based pass first, catches URLs with basic-auth,
 	// header values with hyphens (X-API-Key, Authorization), and
 	// bare Bearer tokens that the key-fragment match would miss.
 	for _, re := range messageRedactRegexps {

@@ -63,7 +63,7 @@ func nullState() tfsdk.State {
 }
 
 // TestWarnOnDestroy_DestroyEmitsWarning is the happy path: plan is
-// null (destroy), state holds a resource — the helper must emit
+// null (destroy), state holds a resource, the helper must emit
 // exactly one Warning whose summary names the resource type and ID.
 func TestWarnOnDestroy_DestroyEmitsWarning(t *testing.T) {
 	req := resource.ModifyPlanRequest{
@@ -91,7 +91,7 @@ func TestWarnOnDestroy_DestroyEmitsWarning(t *testing.T) {
 	}
 }
 
-// TestWarnOnDestroy_CreateIsNoOp: plan present, state null — this is
+// TestWarnOnDestroy_CreateIsNoOp: plan present, state null, this is
 // a create. No warning.
 func TestWarnOnDestroy_CreateIsNoOp(t *testing.T) {
 	req := resource.ModifyPlanRequest{
@@ -105,7 +105,7 @@ func TestWarnOnDestroy_CreateIsNoOp(t *testing.T) {
 	}
 }
 
-// TestWarnOnDestroy_UpdateIsNoOp: both plan and state present — this
+// TestWarnOnDestroy_UpdateIsNoOp: both plan and state present, this
 // is an update. No warning.
 func TestWarnOnDestroy_UpdateIsNoOp(t *testing.T) {
 	req := resource.ModifyPlanRequest{
@@ -119,7 +119,7 @@ func TestWarnOnDestroy_UpdateIsNoOp(t *testing.T) {
 	}
 }
 
-// TestWarnOnDestroy_BothNullNoOp: neither plan nor state — the
+// TestWarnOnDestroy_BothNullNoOp: neither plan nor state, the
 // resource is not in the plan at all. No warning.
 func TestWarnOnDestroy_BothNullNoOp(t *testing.T) {
 	req := resource.ModifyPlanRequest{
@@ -135,7 +135,7 @@ func TestWarnOnDestroy_BothNullNoOp(t *testing.T) {
 
 // TestWarnOnDestroy_EmptyIDFallback exercises the `if id == "" { id =
 // "(unknown)" }` branch. State is non-null, plan is null (destroy),
-// but the id attribute value is an empty string — the warning should
+// but the id attribute value is an empty string, the warning should
 // still emit with the "(unknown)" placeholder rather than an empty
 // quoted string. Closes the last ~11% gap on WarnOnDestroy.
 func TestWarnOnDestroy_EmptyIDFallback(t *testing.T) {

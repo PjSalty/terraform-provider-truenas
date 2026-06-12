@@ -230,7 +230,7 @@ func (r *NVMetPortSubsysResource) Delete(ctx context.Context, req resource.Delet
 
 // ModifyPlan emits a plan-time Warning whenever the plan would destroy
 // this resource. Removing a port-subsys mapping stops advertising the
-// subsystem on that transport port — clients on that listener lose
+// subsystem on that transport port, clients on that listener lose
 // visibility of the subsystem's namespaces.
 func (r *NVMetPortSubsysResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_port_subsys")

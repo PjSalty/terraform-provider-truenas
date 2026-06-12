@@ -13,7 +13,7 @@ import (
 
 // replicationPrereqs returns a Terraform snippet creating two datasets
 // on the `test` pool for LOCAL replication. LOCAL transport does not
-// require an SSH credential, which keeps the test hermetic — we simply
+// require an SSH credential, which keeps the test hermetic, we simply
 // replicate test/<src> into test/<dst>.
 func replicationPrereqs(src, dst string) string {
 	return fmt.Sprintf(`

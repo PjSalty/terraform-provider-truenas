@@ -25,7 +25,7 @@ import (
 // to ensure each resource-local function body executes at least once.
 //
 // This is the minimum-viable complement to the static TestPhaseFHooksWired
-// ratchet in internal/provider/ — the ratchet verifies the CALL exists
+// ratchet in internal/provider/, the ratchet verifies the CALL exists
 // in source, this test verifies the call actually RUNS under coverage.
 func TestPhaseF_ModifyPlanCoverage(t *testing.T) {
 	cases := []struct {
@@ -60,7 +60,7 @@ func TestPhaseF_ModifyPlanCoverage(t *testing.T) {
 			// modifyplan_helpers_test.go that constructs a valid
 			// ModifyPlanRequest for the given resource's Schema and
 			// feeds it through. It returns the populated response so
-			// the test can check diagnostics — here we only assert
+			// the test can check diagnostics, here we only assert
 			// the call didn't panic and produced no errors.
 			resp := callModifyPlanDelete(t, mp)
 			if resp.Diagnostics.HasError() {
@@ -70,11 +70,11 @@ func TestPhaseF_ModifyPlanCoverage(t *testing.T) {
 			// The destroy path MUST emit at least one warning (the
 			// WarnOnDestroy helper's output). If the helper was
 			// accidentally removed from the ModifyPlan body, no
-			// warning fires and we catch the regression here — a
+			// warning fires and we catch the regression here, a
 			// dynamic complement to the TestDestroyWarningCoverage
 			// static ratchet.
 			if len(resp.Diagnostics.Warnings()) == 0 {
-				t.Errorf("%s.ModifyPlan emitted no warnings on destroy — "+
+				t.Errorf("%s.ModifyPlan emitted no warnings on destroy, "+
 					"WarnOnDestroy call missing or broken?", tc.name)
 			}
 		})

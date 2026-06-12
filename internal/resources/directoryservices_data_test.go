@@ -7,7 +7,7 @@ import (
 )
 
 // TestAccDirectoryServicesDataSource_basic reads the always-present
-// directoryservices singleton. No fixture needed — every TrueNAS
+// directoryservices singleton. No fixture needed, every TrueNAS
 // has a directoryservices config (defaults to enable=false,
 // service_type=null on a fresh install).
 //

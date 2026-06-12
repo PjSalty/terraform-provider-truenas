@@ -148,7 +148,7 @@ func TestCall_noRetryWhenNotIdempotent(t *testing.T) {
 	}
 
 	// CodeMethodCallError is a server-rejected response, not a transport
-	// drop — so the retry path is irrelevant. Call returns immediately
+	// drop, so the retry path is irrelevant. Call returns immediately
 	// with the typed RPCError regardless of Idempotent.
 	_, err = c.Call(ctx, "pool.dataset.create", []interface{}{}, CallOptions{Idempotent: false})
 	var rpcErr *RPCError

@@ -83,7 +83,7 @@ type CallOptions struct {
 	// names (e.g. system.reboot).
 	Destroys bool
 	// disableReconnect, when true, suppresses the retry loop's
-	// reconnectIfNeeded branch. Internal-only — set by authenticate()
+	// reconnectIfNeeded branch. Internal-only, set by authenticate()
 	// when called from inside reconnectIfNeeded so a transport drop
 	// during the auth handshake surfaces immediately rather than
 	// recursively re-entering the reconnect path (which would deadlock
@@ -129,7 +129,7 @@ type Client struct {
 	closeMu  sync.Mutex
 	isClosed bool
 
-	// lifetime is the context tied to the Client's life — created in
+	// lifetime is the context tied to the Client's life, created in
 	// New(), canceled in Close(). Passed to recvLoop so its conn.Read
 	// can be unblocked by Close(). Distinct from any request-scoped
 	// context the Configure caller passes in.
@@ -171,7 +171,7 @@ type rpcRequest struct {
 // response. Result is held as RawMessage so callers can decode the
 // inner value into the per-method typed result struct.
 //
-// transportErr is internal-only — it carries a synthesized error from
+// transportErr is internal-only, it carries a synthesized error from
 // failPending() that needs to surface up to call.go's retry loop with
 // its error chain intact (so errors.Is(err, ErrConnectionLost) still
 // matches). Wire responses always have transportErr nil.
@@ -268,7 +268,7 @@ func (c *Client) SetRetryPolicy(p RetryPolicy) {
 
 // Close shuts down the WebSocket connection and signals every in-flight
 // Call to return ErrShuttingDown. Safe to call multiple times. Always
-// returns nil — the Close error from nhooyr is ignored because by the
+// returns nil, the Close error from nhooyr is ignored because by the
 // time we are calling it, we no longer care.
 func (c *Client) Close() error {
 	c.closeMu.Lock()
@@ -302,7 +302,7 @@ func (c *Client) Close() error {
 // field carries err with its error chain intact, so call.go's retry
 // loop can errors.Is() against ErrConnectionLost / ErrShuttingDown
 // and decide whether to retry. We deliberately do NOT wrap err inside
-// an *RPCError — that flattens the chain and breaks the reconnect
+// an *RPCError, that flattens the chain and breaks the reconnect
 // contract for in-flight idempotent calls.
 func (c *Client) failPending(err error) {
 	c.pendingMu.Lock()
@@ -325,7 +325,7 @@ func (c *Client) nextRequestID() uint64 {
 // newCorrelationID returns a 16-char lowercase hex correlation ID,
 // threaded through tflog lines for a single Call. Distinct from the
 // JSON-RPC request ID (which is uint64 and round-tripped to the
-// server) — this one is for log correlation only.
+// server), this one is for log correlation only.
 func newCorrelationID() string {
 	return newCorrelationIDFrom(rand.Reader)
 }

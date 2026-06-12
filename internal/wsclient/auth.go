@@ -35,7 +35,7 @@ func authJitterDelay(base, maxDelay time.Duration) time.Duration {
 //
 // The handshake is non-idempotent (a successful login changes server
 // session state), so we do not flag it Idempotent. It also is not
-// classified as mutating for the read-only gate's purposes — a read-
+// classified as mutating for the read-only gate's purposes, a read-
 // only client still needs to authenticate before it can read.
 func (c *Client) authenticate(ctx context.Context) error {
 	// TrueNAS' authentication middleware throttles rapid-fire auth

@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
-// TestAccUPSConfigResource_basic — singleton: UPS daemon configuration
+// TestAccUPSConfigResource_basic, singleton: UPS daemon configuration
 // has a single instance and Delete is a no-op reset. The test uses
 // SLAVE mode with a dummy remote host so the TrueNAS test VM never
 // tries to drive a physical UPS.
@@ -47,7 +47,7 @@ resource "truenas_ups_config" "test" {
 }
 
 // TestAccUPSConfigResource_update toggles the description field on the
-// singleton UPS config. Only the description is mutated — every other
+// singleton UPS config. Only the description is mutated, every other
 // field affects real UPS behaviour and could leave the test VM in a
 // broken state. Third step restores the default ("") so the shared
 // test VM is left in a predictable state.

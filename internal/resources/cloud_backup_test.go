@@ -147,7 +147,7 @@ func TestAccCloudBackup_disappears(t *testing.T) {
 // testAccCheckCloudBackupDestroy verifies the cloud_backup is gone
 // from the upstream after Terraform removes it. A green check here on
 // a leaked resource is exactly the failure mode the static
-// TestAcceptanceTestsHaveCheckDestroy invariant exists to flag — and
+// TestAcceptanceTestsHaveCheckDestroy invariant exists to flag, and
 // this is the behavioral counterpart that actually verifies the
 // removal happened.
 func testAccCheckCloudBackupDestroy(resourceName string) resource.TestCheckFunc {

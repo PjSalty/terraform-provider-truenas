@@ -304,7 +304,7 @@ func (r *PoolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	tflog.Trace(ctx, "Update Pool start")
 
 	// The pool resource has RequiresReplace on all mutable fields, so Update
-	// is effectively a no-op — Terraform will destroy+recreate on change.
+	// is effectively a no-op, Terraform will destroy+recreate on change.
 	// We still need to carry forward the planned state.
 	var plan PoolResourceModel
 	diags := req.Plan.Get(ctx, &plan)

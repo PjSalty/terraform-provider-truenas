@@ -30,7 +30,7 @@ var updateActionRE = regexp.MustCompile(`plancheck\.ExpectResourceAction\([^)]+p
 //   - The "update" step is a no-op by design (same-value re-apply
 //     because the only safe mutation against a shared test VM is none).
 //   - The change attribute is RequiresReplace, so the plan is Replace,
-//     not Update. (These could instead assert ResourceActionReplace —
+//     not Update. (These could instead assert ResourceActionReplace -
 //     left as a follow-up.)
 //   - The resource is a data source / read-only / gated test that
 //     can't be safely mutated against the test VM.
@@ -40,7 +40,7 @@ var updatePlanCheckExclusions = map[string]string{
 	"acc_nvmet_host_subsys_test.go": "host_id is RequiresReplace; the _update test step is a destroy+create by design, not an in-place Update",
 	"acc_nvmet_port_subsys_test.go": "subsys_id is RequiresReplace; the _update test step is a destroy+create by design, not an in-place Update",
 	"acc_pool_test.go":              "data source: pools are managed out-of-band, no Update path through the provider",
-	"acc_systemdataset_test.go":     "_update applies same pool value as basic — singleton with one available pool on the test VM, no meaningful mutation",
+	"acc_systemdataset_test.go":     "_update applies same pool value as basic, singleton with one available pool on the test VM, no meaningful mutation",
 }
 
 // TestUpdatePlanCheckCoverage scans every acc_*_test.go in
@@ -49,7 +49,7 @@ var updatePlanCheckExclusions = map[string]string{
 // appears in updatePlanCheckExclusions with rationale.
 //
 // Without the check, an _update test can pass while silently running
-// destroy+create instead of in-place update — exactly the failure
+// destroy+create instead of in-place update, exactly the failure
 // mode that breaks the day someone accidentally adds RequiresReplace
 // to a Required attribute. End-state TestCheck assertions still pass
 // because the value is the same after recreate. The plan-shape

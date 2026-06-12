@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
-// TestAccAlertClassesResource_basic — singleton: alert classes config
+// TestAccAlertClassesResource_basic, singleton: alert classes config
 // has a single instance and Delete is a no-op reset. The classes map
 // uses a single well-known alert class (ZpoolCapacityNotice) with its
 // default policy so the test does not perturb real alert routing on

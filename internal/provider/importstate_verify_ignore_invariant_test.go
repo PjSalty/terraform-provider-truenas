@@ -117,7 +117,7 @@ var allowedIgnoreFields = map[string]string{
 // To extend: when a test legitimately needs a new ignore, add a
 // "<file_basename>::<field>" entry to allowedIgnoreFields with the
 // shortest honest reason. If the reason is "Read doesn't return
-// what we Create" — that's a provider bug, fix it instead of adding
+// what we Create", that's a provider bug, fix it instead of adding
 // to the registry.
 func TestImportStateVerifyIgnoreEntriesAreDocumented(t *testing.T) {
 	var testFiles []string
@@ -136,7 +136,7 @@ func TestImportStateVerifyIgnoreEntriesAreDocumented(t *testing.T) {
 	var seen []entry
 
 	for _, f := range testFiles {
-		// Skip self — the invariant test contains regex examples that
+		// Skip self, the invariant test contains regex examples that
 		// look like real ImportStateVerifyIgnore entries to the scanner.
 		if strings.HasSuffix(f, "importstate_verify_ignore_invariant_test.go") {
 			continue
@@ -157,7 +157,7 @@ func TestImportStateVerifyIgnoreEntriesAreDocumented(t *testing.T) {
 	}
 
 	if len(seen) == 0 {
-		t.Fatal("no ImportStateVerifyIgnore entries found — regex broken?")
+		t.Fatal("no ImportStateVerifyIgnore entries found, regex broken?")
 	}
 
 	// Find entries missing from the registry.
@@ -180,7 +180,7 @@ func TestImportStateVerifyIgnoreEntriesAreDocumented(t *testing.T) {
 		for _, e := range undocumented {
 			lines = append(lines, "  \""+e.file+"::"+e.field+"\": \"<rationale>\",")
 		}
-		t.Fatalf("%d undocumented ImportStateVerifyIgnore entries — add each to "+
+		t.Fatalf("%d undocumented ImportStateVerifyIgnore entries, add each to "+
 			"allowedIgnoreFields with a one-line rationale. If the reason is \"Read "+
 			"doesn't return what Create posted\" that is a provider bug, fix it "+
 			"instead of hiding it:\n%s",
@@ -201,7 +201,7 @@ func TestImportStateVerifyIgnoreEntriesAreDocumented(t *testing.T) {
 	if len(stale) > 0 {
 		sort.Strings(stale)
 		t.Fatalf("%d stale entries in allowedIgnoreFields that reference test/field pairs "+
-			"that no longer exist in the tree — remove them to keep the registry honest:\n  %s",
+			"that no longer exist in the tree, remove them to keep the registry honest:\n  %s",
 			len(stale), strings.Join(stale, "\n  "))
 	}
 

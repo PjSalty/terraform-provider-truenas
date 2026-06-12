@@ -11,7 +11,7 @@ import (
 
 // configureTypeAssertRE matches every Configure body's
 // `req.ProviderData.(*wsclient.Client)` type assertion. The pattern
-// is intentionally narrow — we want to catch the canonical shape
+// is intentionally narrow, we want to catch the canonical shape
 // and flag deviations.
 var configureTypeAssertRE = regexp.MustCompile(`req\.ProviderData\.\(\*(\w+)\.Client\)`)
 
@@ -81,7 +81,7 @@ func TestConfigureUsesWSClient(t *testing.T) {
 		t.Errorf("stale internal/client import found in:\n  %s\n\n"+
 			"The internal/client package was deleted in the v2.0 cutover. "+
 			"Import internal/wsclient instead (and internal/types if you "+
-			"need struct shapes — aliased as `truenas` in the resource "+
+			"need struct shapes, aliased as `truenas` in the resource "+
 			"convention to avoid collision with the plugin-framework "+
 			"types package).",
 			strings.Join(importOffenders, "\n  "))

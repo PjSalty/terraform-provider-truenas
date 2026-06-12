@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# scripts/acc-disappears.sh — run only the *_disappears acceptance
+# scripts/acc-disappears.sh, run only the *_disappears acceptance
 # tests. These are the out-of-band-delete recovery tests that prove
 # the resource's Read handler properly removes from state on 404.
 #

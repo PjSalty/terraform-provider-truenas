@@ -10,7 +10,7 @@ import (
 // JSON-RPC method is classified as mutating. The gate is enforced
 // BEFORE the request hits the wire, so the target server cannot
 // observe even a dropped mutating request. Mirrors client.ErrReadOnly
-// from the legacy REST package — same operator-facing semantics, new
+// from the legacy REST package, same operator-facing semantics, new
 // transport.
 var ErrReadOnly = errors.New("truenas wsclient is in read-only mode: refusing to send mutating call")
 
@@ -22,7 +22,7 @@ var ErrReadOnly = errors.New("truenas wsclient is in read-only mode: refusing to
 // method opt-in.
 //
 // Anything not in this list is treated as mutating by default. Callers
-// that know a method is safe but does not match the pattern (rare —
+// that know a method is safe but does not match the pattern (rare -
 // mostly utility helpers like "core.ping") can pass CallOptions{Read:
 // true} to bypass the gate explicitly.
 var readOnlyMethodSuffixes = []string{

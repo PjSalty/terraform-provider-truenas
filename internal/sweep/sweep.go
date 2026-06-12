@@ -8,7 +8,7 @@
 // v2.0 cutover note: production resource I/O is JSON-RPC over
 // WebSocket via internal/wsclient. The sweepers continue to use
 // REST GETs because the collection-list endpoints have no direct
-// typed equivalents on the wsclient call surface — instead of
+// typed equivalents on the wsclient call surface, instead of
 // dragging the full REST client into sweep just for a handful of
 // GETs, we issue them inline against /api/v2.0/<path> here. The
 // transient http.Client is owned by GetList; production code never
@@ -29,7 +29,7 @@ import (
 
 // AcctestPrefix is the canonical name prefix every acceptance test
 // resource carries. Sweepers compare fixture names against this
-// prefix before destroying — anything not starting with it is left
+// prefix before destroying, anything not starting with it is left
 // alone, protecting any non-test resources on the target TrueNAS.
 const AcctestPrefix = "tf-acc-"
 
@@ -63,7 +63,7 @@ func DatasetIsAcctest(id string) bool {
 // given path (e.g. "/iscsi/portal") and unmarshals the response into
 // the provided target slice. Builds the http.Client and base URL
 // from TRUENAS_URL / TRUENAS_API_KEY / TRUENAS_INSECURE_SKIP_VERIFY
-// env vars — the same vars the production wsclient binds to. Used
+// env vars, the same vars the production wsclient binds to. Used
 // only by sweepers; production resource I/O flows over WebSocket.
 func GetList(ctx context.Context, _ interface{}, path string, out interface{}) error {
 	baseURL := os.Getenv("TRUENAS_URL")

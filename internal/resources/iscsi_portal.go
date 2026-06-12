@@ -103,7 +103,7 @@ func (r *ISCSIPortalResource) Schema(ctx context.Context, _ resource.SchemaReque
 						"port": schema.Int64Attribute{
 							Description: "Port reported by the server (always 3260 on " +
 								"SCALE 25.10+). On 25.10+ the API no longer accepts " +
-								"this field in create/update bodies — the provider " +
+								"this field in create/update bodies, the provider " +
 								"silently drops any user-supplied value.",
 							Optional:           true,
 							Computed:           true,

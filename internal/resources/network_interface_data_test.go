@@ -12,7 +12,7 @@ import (
 // TestAccNetworkInterfaceDataSource_basic queries an existing network
 // interface by id. We don't create a fixture because creating network
 // interfaces is invasive (may require a known physical parent NIC,
-// can disconnect the test TrueNAS from the lab network) — we
+// can disconnect the test TrueNAS from the lab network), we
 // env-gate the test on TRUENAS_TEST_PARENT_INTERFACE and read the
 // pre-existing primary interface.
 func TestAccNetworkInterfaceDataSource_basic(t *testing.T) {

@@ -25,12 +25,12 @@ var (
 )
 
 // SystemDatasetResource manages the TrueNAS system dataset pool assignment.
-// This is a singleton — only one system dataset configuration exists.
+// This is a singleton, only one system dataset configuration exists.
 // PUT /systemdataset is asynchronous and the client layer waits for the
 // job to complete.
 //
 // Delete resets the pool to null, which lets TrueNAS pick a default (boot
-// pool) — this mirrors the behavior of the other singleton resources in
+// pool), this mirrors the behavior of the other singleton resources in
 // this provider (e.g. ssh_config).
 type SystemDatasetResource struct {
 	client *wsclient.Client
@@ -57,7 +57,7 @@ func (r *SystemDatasetResource) Metadata(_ context.Context, req resource.Metadat
 
 func (r *SystemDatasetResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages the TrueNAS system dataset pool assignment. This is a singleton — " +
+		Description: "Manages the TrueNAS system dataset pool assignment. This is a singleton, " +
 			"only one instance of this resource can exist per TrueNAS system. " +
 			"Default timeouts: 20m for create/update (system dataset move requires service restarts), 10m for delete.",
 		Blocks: map[string]schema.Block{
@@ -228,7 +228,7 @@ func buildSystemDatasetUpdate(plan *SystemDatasetResourceModel) *truenas.SystemD
 	if !plan.Pool.IsNull() && !plan.Pool.IsUnknown() {
 		v := plan.Pool.ValueString()
 		if v == "" {
-			// Empty string means "reset to default" — send explicit null.
+			// Empty string means "reset to default", send explicit null.
 			updateReq.Pool = nil
 		} else {
 			updateReq.Pool = &v

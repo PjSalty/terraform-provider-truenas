@@ -62,7 +62,7 @@ type DatasetUpdateRequest struct {
 // SCALE version notes:
 //   - 25.04 and earlier: top-level `comments` is `*PropertyValue`
 //   - 25.10+: top-level `comments` is always null; comments now live under
-//     `user_properties.comments.parsed` — see UserProperties below.
+//     `user_properties.comments.parsed`, see UserProperties below.
 type DatasetResponse struct {
 	ID             string                    `json:"id"`
 	Name           string                    `json:"name"`
@@ -82,7 +82,7 @@ type DatasetResponse struct {
 	Readonly       *PropertyValue            `json:"readonly"`
 	RecordSize     *PropertyValue            `json:"recordsize"`
 	ShareType      *PropertyValue            `json:"share_type"`
-	// Zvol-specific properties — only populated when Type == "VOLUME".
+	// Zvol-specific properties, only populated when Type == "VOLUME".
 	Volsize      *PropertyRawVal `json:"volsize"`
 	Volblocksize *PropertyValue  `json:"volblocksize"`
 }

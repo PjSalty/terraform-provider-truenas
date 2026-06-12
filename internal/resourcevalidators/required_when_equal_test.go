@@ -16,7 +16,7 @@ import (
 )
 
 // fakeSchema is the tiniest possible schema we can hand the framework
-// to build a Config object for validator tests — just the discriminator
+// to build a Config object for validator tests, just the discriminator
 // plus the two required attributes the test validator cares about.
 var fakeSchema = schema.Schema{
 	Attributes: map[string]schema.Attribute{
@@ -95,7 +95,7 @@ func TestRequiredWhenEqual_TriggerMatchedMissingOne(t *testing.T) {
 }
 
 func TestRequiredWhenEqual_TriggerNotMatched(t *testing.T) {
-	// Different create_type — validator should be a no-op even when the
+	// Different create_type, validator should be a no-op even when the
 	// required attrs are unset. Other create_type values have their own
 	// rules; this validator only fires for its trigger value.
 	resp := run(t, "CERTIFICATE_CREATE_CSR", "__null__", "__null__")
@@ -105,7 +105,7 @@ func TestRequiredWhenEqual_TriggerNotMatched(t *testing.T) {
 }
 
 func TestRequiredWhenEqual_DiscriminatorNull(t *testing.T) {
-	// Discriminator itself is null — framework will catch that via
+	// Discriminator itself is null, framework will catch that via
 	// the Required: true attribute. Our validator must not double-error.
 	resp := run(t, "__null__", "__null__", "__null__")
 	if resp.Diagnostics.HasError() {
@@ -160,7 +160,7 @@ func TestRequiredWhenEqual_RequiredAttributeUnknown(t *testing.T) {
 	objType := fakeSchema.Type().TerraformType(context.Background()).(tftypes.Object)
 	raw := tftypes.NewValue(objType, map[string]tftypes.Value{
 		"create_type": tftypes.NewValue(tftypes.String, "CERTIFICATE_CREATE_IMPORTED"),
-		// certificate is unknown — interpolated from another resource
+		// certificate is unknown, interpolated from another resource
 		"certificate": tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
 		// privatekey is set
 		"privatekey": tftypes.NewValue(tftypes.String, "-----BEGIN..."),
@@ -180,7 +180,7 @@ func TestRequiredWhenEqual_RequiredAttributeUnknown(t *testing.T) {
 // `if resp.Diagnostics.HasError()` early-return after the first
 // GetAttribute call on the discriminator. This fires when the
 // discriminator attribute name references a path that doesn't exist
-// in the provided schema — e.g., because a developer typoed the
+// in the provided schema, e.g., because a developer typoed the
 // attribute name in the validator constructor. The validator must
 // surface the error and not proceed to check the required list.
 func TestRequiredWhenEqual_DiscriminatorGetAttributeError(t *testing.T) {
@@ -213,13 +213,13 @@ func TestRequiredWhenEqual_RequiredGetAttributeError(t *testing.T) {
 	}
 	resp := &resource.ValidateConfigResponse{}
 	v.ValidateResource(context.Background(), req, resp)
-	// Should have errors — both from the GetAttribute failure AND from
+	// Should have errors, both from the GetAttribute failure AND from
 	// the "certificate" attribute being null.
 	errs := resp.Diagnostics.Errors()
 	if len(errs) < 1 {
 		t.Errorf("expected at least one error, got none")
 	}
-	// Assert that at least one error mentions "certificate" — proving
+	// Assert that at least one error mentions "certificate", proving
 	// the loop continued past the bad "nonexistent" entry and still
 	// checked the real one.
 	found := false

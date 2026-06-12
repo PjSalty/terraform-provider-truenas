@@ -26,7 +26,7 @@ func TestAccNetworkInterfaceResource_basic(t *testing.T) {
 	}
 	iface := os.Getenv("TRUENAS_TEST_IFACE")
 	if iface == "" {
-		t.Skip("TRUENAS_TEST_IFACE not set — skipping network_interface import test")
+		t.Skip("TRUENAS_TEST_IFACE not set, skipping network_interface import test")
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -60,7 +60,7 @@ resource "truenas_network_interface" "test" {
 // A third step restores the original description ("") so the shared
 // test VM is left in a predictable state.
 //
-// Skipped unless TRUENAS_TEST_IFACE is set — same rationale as _basic.
+// Skipped unless TRUENAS_TEST_IFACE is set, same rationale as _basic.
 // No _disappears test: deleting an interface mid-test would very
 // likely break the provider's own connection to the TrueNAS API.
 func TestAccNetworkInterfaceResource_update(t *testing.T) {
@@ -69,7 +69,7 @@ func TestAccNetworkInterfaceResource_update(t *testing.T) {
 	}
 	iface := os.Getenv("TRUENAS_TEST_IFACE")
 	if iface == "" {
-		t.Skip("TRUENAS_TEST_IFACE not set — skipping network_interface update test")
+		t.Skip("TRUENAS_TEST_IFACE not set, skipping network_interface update test")
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },

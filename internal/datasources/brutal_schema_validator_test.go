@@ -17,7 +17,7 @@ import (
 // Mirror of internal/resources/brutal_schema_validator_test.go for
 // the datasource side. Datasources have a smaller attribute surface
 // per type (read-only lookup keys, no Required Create-side fields)
-// but the same wired-validator panic class still applies — a
+// but the same wired-validator panic class still applies, a
 // stringvalidator.LengthBetween that panics on input X stops
 // terraform mid-plan regardless of whether it sits behind a
 // resource or a datasource.

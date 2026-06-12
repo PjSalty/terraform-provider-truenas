@@ -1,7 +1,7 @@
 // filesystem_acl_template.go
 //
 // Uses an `acl_json` string for the ACL payload because ACE entries are
-// polymorphic between NFS4 and POSIX1E templates — NFS4 uses a full
+// polymorphic between NFS4 and POSIX1E templates, NFS4 uses a full
 // perms/flags object, POSIX1E uses a simpler perm string. Mashing both
 // shapes into one nested block would be fragile, so we accept a JSON
 // list instead: `acl_json = jsonencode([{tag = "owner@", type = "ALLOW", ...}])`.

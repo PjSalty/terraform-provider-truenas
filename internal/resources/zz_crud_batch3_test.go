@@ -1,6 +1,6 @@
 package resources
 
-// Batch CRUD coverage tests — batch 3. Covers the iscsi/nvmet/share families
+// Batch CRUD coverage tests, batch 3. Covers the iscsi/nvmet/share families
 // and remaining singletons.
 
 import (
@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
-// --- FTPConfig (singleton) — Create just echoes through Update; no separate fn ---
+// --- FTPConfig (singleton), Create just echoes through Update; no separate fn ---
 
 func TestFTPConfigResource_CreateOnly(t *testing.T) {
 	body := map[string]interface{}{

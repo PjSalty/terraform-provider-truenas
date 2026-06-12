@@ -53,7 +53,7 @@ func (r *NVMetGlobalResource) Metadata(_ context.Context, req resource.MetadataR
 func (r *NVMetGlobalResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages the NVMe-oF global configuration on TrueNAS SCALE. " +
-			"This is a singleton resource — only one instance can exist. Delete " +
+			"This is a singleton resource, only one instance can exist. Delete " +
 			"does not reset the remote configuration; it only removes the resource " +
 			"from Terraform state.",
 		Blocks: map[string]schema.Block{

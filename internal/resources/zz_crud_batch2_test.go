@@ -1,6 +1,6 @@
 package resources
 
-// Batch CRUD coverage tests — batch 2. See zz_crud_batch_test.go for the
+// Batch CRUD coverage tests, batch 2. See zz_crud_batch_test.go for the
 // approach. This file covers the cloud/task/replication families.
 
 import (

@@ -49,7 +49,7 @@ func TestWarnOnDestroy_AllResources(t *testing.T) {
 			}
 			// The destroy warning is a Warning-level diagnostic. Each
 			// resource's ModifyPlan should add at least one warning that
-			// mentions "destroy" — let the planhelpers package own the
+			// mentions "destroy", let the planhelpers package own the
 			// exact wording.
 			if len(resp.Diagnostics.Warnings()) == 0 {
 				t.Errorf("expected WarnOnDestroy to emit a Warning, got none")

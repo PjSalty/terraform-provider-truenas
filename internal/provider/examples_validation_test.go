@@ -15,7 +15,7 @@ import (
 // TestExamplesResourceHCLValid ensures every examples/resources/truenas_*/resource.tf
 // parses as valid HCL syntax. This catches broken example snippets before
 // they ship to the Terraform registry. It does not run `terraform plan`,
-// so it only checks syntax — not semantic validity against the schema.
+// so it only checks syntax, not semantic validity against the schema.
 func TestExamplesResourceHCLValid(t *testing.T) {
 	t.Parallel()
 

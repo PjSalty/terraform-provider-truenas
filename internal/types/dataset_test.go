@@ -104,7 +104,7 @@ func TestDatasetResponse_GetComments_topLevelEmpty(t *testing.T) {
 }
 
 // Smoke-test that DatasetResponse round-trips a typical TrueNAS payload
-// without panicking — exercises the full struct shape including pointer
+// without panicking, exercises the full struct shape including pointer
 // PropertyValue fields and nested user_properties.
 func TestDatasetResponse_unmarshalSmoke(t *testing.T) {
 	body := []byte(`{

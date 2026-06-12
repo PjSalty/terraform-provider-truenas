@@ -12,7 +12,7 @@ import (
 )
 
 // TestAccUserResource_basic excludes `password` from ImportStateVerify
-// because TrueNAS never returns the password on read — the API exposes
+// because TrueNAS never returns the password on read, the API exposes
 // only a hashed value, so the plaintext plan value cannot round-trip.
 func TestAccUserResource_basic(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {

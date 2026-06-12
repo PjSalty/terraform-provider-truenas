@@ -25,7 +25,7 @@ type CloudSync struct {
 //
 // Mirrors the same fix on internal/client/cloud_sync.go's CloudSync
 // (originally PR #12, Max Poelman). The shape difference is in the
-// TrueNAS API itself, not the transport — JSON-RPC over WebSocket
+// TrueNAS API itself, not the transport, JSON-RPC over WebSocket
 // carries the same payload.
 func (cs *CloudSync) UnmarshalJSON(data []byte) error {
 	type Alias CloudSync

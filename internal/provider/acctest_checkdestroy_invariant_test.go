@@ -23,23 +23,23 @@ var dataSourceTestFileRE = regexp.MustCompile(`_data_test\.go$`)
 //
 // Each entry should mirror an entry in singletonsByDesign (see
 // read_removes_on_notfound_invariant_test.go); the two lists are
-// allowed to diverge intentionally — see the comment on each.
+// allowed to diverge intentionally, see the comment on each.
 var singletonResourceTestFiles = map[string]string{
-	"alertclasses_test.go":      "singleton — destroy resets the singleton alertclasses config to default",
-	"directoryservices_test.go": "singleton — destroy disables the directory service",
+	"alertclasses_test.go":      "singleton, destroy resets the singleton alertclasses config to default",
+	"directoryservices_test.go": "singleton, destroy disables the directory service",
 	"dns_nameserver_test.go":    "config entries live inside the network_config singleton",
-	"filesystem_acl_test.go":    "path-scoped — destroy resets ACL to defaults on the path, the path itself is the dataset's concern",
-	"ftp_config_test.go":        "singleton — destroy resets the singleton",
-	"kmip_config_test.go":       "singleton — destroy resets the singleton",
-	"mail_config_test.go":       "singleton — destroy resets the singleton",
-	"network_config_test.go":    "singleton — destroy resets the singleton",
-	"nfs_config_test.go":        "singleton — destroy resets the singleton",
-	"smb_config_test.go":        "singleton — destroy resets the singleton",
-	"snmp_config_test.go":       "singleton — destroy resets the singleton",
-	"ssh_config_test.go":        "singleton — destroy resets the singleton",
-	"systemdataset_test.go":     "singleton — destroy resets pool assignment to boot pool",
-	"system_update_test.go":     "singleton — destroy resets the singleton",
-	"ups_config_test.go":        "singleton — destroy resets the singleton",
+	"filesystem_acl_test.go":    "path-scoped, destroy resets ACL to defaults on the path, the path itself is the dataset's concern",
+	"ftp_config_test.go":        "singleton, destroy resets the singleton",
+	"kmip_config_test.go":       "singleton, destroy resets the singleton",
+	"mail_config_test.go":       "singleton, destroy resets the singleton",
+	"network_config_test.go":    "singleton, destroy resets the singleton",
+	"nfs_config_test.go":        "singleton, destroy resets the singleton",
+	"smb_config_test.go":        "singleton, destroy resets the singleton",
+	"snmp_config_test.go":       "singleton, destroy resets the singleton",
+	"ssh_config_test.go":        "singleton, destroy resets the singleton",
+	"systemdataset_test.go":     "singleton, destroy resets pool assignment to boot pool",
+	"system_update_test.go":     "singleton, destroy resets the singleton",
+	"ups_config_test.go":        "singleton, destroy resets the singleton",
 }
 
 // TestAcceptanceTestsHaveCheckDestroy verifies that every TestAcc
@@ -47,7 +47,7 @@ var singletonResourceTestFiles = map[string]string{
 // registers a CheckDestroy callback in its resource.TestCase. Without
 // CheckDestroy, the destroy step is exercised by the framework but
 // the framework can't verify the upstream actually removed the
-// resource — a leaking destroy code path produces a green test on
+// resource, a leaking destroy code path produces a green test on
 // state that's silently broken server-side.
 //
 // This is the per-acc-test analogue of major-provider rigor
@@ -64,7 +64,7 @@ var singletonResourceTestFiles = map[string]string{
 //     boilerplate that doesn't catch real bugs.
 //   - Tests whose entire body is `t.Skip(...)`: no Steps to verify.
 //
-// The static-analysis form here is intentionally conservative — the
+// The static-analysis form here is intentionally conservative, the
 // allowlist explains every exception so the next contributor can
 // see at a glance which tests are off the hook and why.
 func TestAcceptanceTestsHaveCheckDestroy(t *testing.T) {
@@ -118,7 +118,7 @@ func TestAcceptanceTestsHaveCheckDestroy(t *testing.T) {
 		t.Fatalf("the following acceptance tests do not register a CheckDestroy "+
 			"callback. Without it, a leaking destroy code path produces a "+
 			"green test even when the upstream did not actually remove the "+
-			"resource — exactly the kind of silent acceptance-test failure "+
+			"resource, exactly the kind of silent acceptance-test failure "+
 			"this static check is designed to surface:\n  %s\n\n"+
 			"Fix by adding the standard pattern to each test:\n\n"+
 			"  resource.Test(t, resource.TestCase{\n"+

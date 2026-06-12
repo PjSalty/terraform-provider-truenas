@@ -1,6 +1,6 @@
 package types
 
-// SystemDataset represents the TrueNAS system dataset configuration —
+// SystemDataset represents the TrueNAS system dataset configuration -
 // a singleton describing which pool hosts internal system data
 // (samba, reports, syslog, ...).
 //

@@ -10,12 +10,12 @@ import (
 
 // crudMethodInvariantRE matches every CRUD method signature in a resource
 // file. The first capture group is the method name (Create/Read/
-// Update/Delete) — used to dispatch per-method invariants.
+// Update/Delete), used to dispatch per-method invariants.
 var crudMethodInvariantRE = regexp.MustCompile(
 	`func \(r \*\w+\) (Create|Read|Update|Delete)\(ctx context\.Context, req resource\.\w+Request, resp \*resource\.\w+Response\) \{`)
 
 // methodBodyAfter returns the body of a CRUD method starting at the
-// matched signature line. The body ends at the matching brace —
+// matched signature line. The body ends at the matching brace -
 // approximated by counting `{` / `}` from the function opening
 // brace until balance hits zero. Sufficient for the tokens we're
 // looking for (which all sit at the top of the body anyway).
@@ -65,7 +65,7 @@ func crudFiles() ([]string, error) {
 // Read method calls resp.State.Set OR resp.State.RemoveResource
 // before returning. A Read that returns without touching State
 // silently keeps the prior state, masking out-of-band changes the
-// API would otherwise expose — the user sees stale data and a clean
+// API would otherwise expose, the user sees stale data and a clean
 // plan even though something on the server changed. This is one of
 // the easiest bugs to introduce while editing and one of the hardest
 // to spot in code review.
@@ -136,8 +136,8 @@ func TestCRUDDiscipline_ReadAlwaysWritesState(t *testing.T) {
 // "Get<ResourceType>" (the typed lookup) or "GetX(ctx," where X is
 // a generic placeholder, OR explicitly handles the response with
 // state mapping, we trust the author had the right pattern in
-// mind. False negatives here are acceptable; false positives —
-// flagging a correct implementation — would create review noise.
+// mind. False negatives here are acceptable; false positives -
+// flagging a correct implementation, would create review noise.
 func TestCRUDDiscipline_CreateReadsBackResource(t *testing.T) {
 	files, err := crudFiles()
 	if err != nil {
@@ -178,13 +178,13 @@ func TestCRUDDiscipline_CreateReadsBackResource(t *testing.T) {
 }
 
 // TestCRUDDiscipline_DeleteHandlesNotFound asserts every Delete
-// method tolerates the resource already being gone — calling Delete
+// method tolerates the resource already being gone, calling Delete
 // on an already-deleted resource must not error.
 //
 // The pattern caught: A Delete that propagates the underlying 404
 // error from the API breaks the `terraform destroy` retry loop.
 // Terraform Plugin Framework treats a Delete error as a destruction
-// failure, so the plan after the failure still has the resource —
+// failure, so the plan after the failure still has the resource -
 // and the next `apply` will try to destroy it again, hitting the
 // same 404 forever.
 //
@@ -202,25 +202,25 @@ func TestCRUDDiscipline_DeleteHandlesNotFound(t *testing.T) {
 		t.Fatalf("enumerate: %v", err)
 	}
 	exempt := map[string]string{
-		// Singleton resources can't be "deleted" — Delete is a
+		// Singleton resources can't be "deleted", Delete is a
 		// no-op or a config reset, so the not-found branch is
 		// unreachable.
-		"alertclasses.go":           "singleton config resource — Delete is a no-op",
-		"directoryservices.go":      "singleton config resource — Delete is a no-op",
-		"ftp_config.go":             "singleton config resource — Delete is a no-op",
-		"kmip_config.go":            "singleton config resource — Delete is a no-op",
-		"mail_config.go":            "singleton config resource — Delete is a no-op",
-		"network_config.go":         "singleton config resource — Delete is a no-op",
-		"nfs_config.go":             "singleton config resource — Delete is a no-op",
-		"nvmet_global.go":           "singleton config resource — Delete is a no-op",
-		"smb_config.go":             "singleton config resource — Delete is a no-op",
-		"snmp_config.go":            "singleton config resource — Delete is a no-op",
-		"ssh_config.go":             "singleton config resource — Delete is a no-op",
-		"ups_config.go":             "singleton config resource — Delete is a no-op",
-		"system_update.go":          "singleton config resource — Delete is a no-op",
-		"systemdataset.go":          "singleton config resource — Delete is a no-op",
-		"service.go":                "singleton config resource — Delete is a no-op",
-		"dns_nameserver.go":         "singleton config resource — Delete clears nameservers via network_config update; no 404 path",
+		"alertclasses.go":           "singleton config resource, Delete is a no-op",
+		"directoryservices.go":      "singleton config resource, Delete is a no-op",
+		"ftp_config.go":             "singleton config resource, Delete is a no-op",
+		"kmip_config.go":            "singleton config resource, Delete is a no-op",
+		"mail_config.go":            "singleton config resource, Delete is a no-op",
+		"network_config.go":         "singleton config resource, Delete is a no-op",
+		"nfs_config.go":             "singleton config resource, Delete is a no-op",
+		"nvmet_global.go":           "singleton config resource, Delete is a no-op",
+		"smb_config.go":             "singleton config resource, Delete is a no-op",
+		"snmp_config.go":            "singleton config resource, Delete is a no-op",
+		"ssh_config.go":             "singleton config resource, Delete is a no-op",
+		"ups_config.go":             "singleton config resource, Delete is a no-op",
+		"system_update.go":          "singleton config resource, Delete is a no-op",
+		"systemdataset.go":          "singleton config resource, Delete is a no-op",
+		"service.go":                "singleton config resource, Delete is a no-op",
+		"dns_nameserver.go":         "singleton config resource, Delete clears nameservers via network_config update; no 404 path",
 		"reporting_exporter.go":     "Delete is reporting_exporter.delete which doesn't 404 (always succeeds)",
 		"acme_dns_authenticator.go": "Delete error handling deferred to client; covered by 404 client tests",
 	}

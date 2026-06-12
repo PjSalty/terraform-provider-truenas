@@ -17,7 +17,7 @@ import (
 //	        ...
 //
 // Any non-zero version is a real schema migration that breaks state
-// compatibility for users who pinned to an older provider version —
+// compatibility for users who pinned to an older provider version -
 // unless the resource ships a corresponding StateUpgrader and a test
 // that proves the upgrade works.
 var schemaVersionRE = regexp.MustCompile(`(?m)^\s+Version:\s+(\d+),`)
@@ -42,7 +42,7 @@ var upgradeStateInterfaceRE = regexp.MustCompile(`resource\.ResourceWithUpgradeS
 // version will have their state silently mis-parsed unless the
 // resource implements StateUpgrader for every prior version. Forgetting
 // to ship the upgrader is one of the highest-blast-radius mistakes a
-// provider author can make — it manifests as either "all attributes
+// provider author can make, it manifests as either "all attributes
 // nulled out" or "plan wants to recreate everything" on the user's
 // next plan, which can mean data loss.
 //
@@ -75,7 +75,7 @@ func TestResourcesWithSchemaVersionHaveUpgradeState(t *testing.T) {
 		s := string(src)
 
 		// Find the schema version. Multiple matches are possible if a
-		// resource has nested schemas — we only care about the first
+		// resource has nested schemas, we only care about the first
 		// top-level Version: line.
 		vmatch := schemaVersionRE.FindStringSubmatch(s)
 		if vmatch == nil {
@@ -105,7 +105,7 @@ func TestResourcesWithSchemaVersionHaveUpgradeState(t *testing.T) {
 	}
 
 	if len(findings) == 0 {
-		t.Log("no resources with Version > 0 found — invariant has nothing to enforce yet")
+		t.Log("no resources with Version > 0 found, invariant has nothing to enforce yet")
 		return
 	}
 
@@ -113,14 +113,14 @@ func TestResourcesWithSchemaVersionHaveUpgradeState(t *testing.T) {
 	for _, f := range findings {
 		base := strings.TrimSuffix(filepath.Base(f.file), ".go")
 		if !f.hasIface {
-			t.Errorf("%s ships Version: %s but does not implement ResourceWithUpgradeState — "+
+			t.Errorf("%s ships Version: %s but does not implement ResourceWithUpgradeState, "+
 				"existing users' state will silently break on upgrade. Either revert the version "+
 				"bump or add the interface and a StateUpgrader.",
 				f.file, f.version)
 			failed = true
 		}
 		if !f.testExists {
-			t.Errorf("%s ships Version: %s but no %s_upgradestate_test.go exists — "+
+			t.Errorf("%s ships Version: %s but no %s_upgradestate_test.go exists, "+
 				"schema migrations MUST have a test that round-trips a prior-version state "+
 				"through the upgrader and asserts the result. Otherwise the migration is "+
 				"un-validated and the next refactor breaks it without warning.",
@@ -134,7 +134,7 @@ func TestResourcesWithSchemaVersionHaveUpgradeState(t *testing.T) {
 
 	if failed {
 		t.Log("if you intentionally bumped Version without an upgrader, that is a state-format " +
-			"breaking change that will lose data for existing users — almost never the right call. " +
+			"breaking change that will lose data for existing users, almost never the right call. " +
 			"revert the version bump and use a different field name, or add the full migration.")
 	}
 }

@@ -73,7 +73,7 @@ func TestPEMEquivalent_LeadingWhitespace(t *testing.T) {
 }
 
 func TestPEMEquivalent_RealDiffStays(t *testing.T) {
-	// Two different (fake) PEM payloads — modifier must NOT suppress.
+	// Two different (fake) PEM payloads, modifier must NOT suppress.
 	stateDifferent := strings.Replace(samplePEM, "MIIBazCCAQ+", "DIFFERENT123", 1)
 	resp := runPEMEquivalent(samplePEM, stateDifferent)
 	if resp.PlanValue.ValueString() != stateDifferent {
@@ -91,7 +91,7 @@ func TestPEMEquivalent_NonPEMInputs(t *testing.T) {
 }
 
 func TestPEMEquivalent_PEMStateNonPEMPlan(t *testing.T) {
-	// User typo'd the PEM — fall through so real diff surfaces.
+	// User typo'd the PEM, fall through so real diff surfaces.
 	resp := runPEMEquivalent(samplePEM, "totally not a cert")
 	if resp.PlanValue.ValueString() != "totally not a cert" {
 		t.Errorf("non-PEM plan must not be normalized against PEM state")
@@ -100,13 +100,13 @@ func TestPEMEquivalent_PEMStateNonPEMPlan(t *testing.T) {
 
 // TestPEMEquivalent_PEMPlanNonPEMState exercises the `stateCanon, ok :=
 // canonicalizePEM(state); if !ok { return }` branch which is NOT hit
-// by the sibling test above — that one fails at the PLAN canonicalization
+// by the sibling test above, that one fails at the PLAN canonicalization
 // step before stateCanon is evaluated. This case passes plan canonicalization
 // and then fails state canonicalization, closing the last 6.7% gap on
 // PlanModifyString.
 func TestPEMEquivalent_PEMPlanNonPEMState(t *testing.T) {
 	// State is garbage (maybe an import from a half-migrated state file);
-	// plan is a valid cert. No canonicalization possible — fall through
+	// plan is a valid cert. No canonicalization possible, fall through
 	// so the real diff surfaces normally.
 	resp := runPEMEquivalent("garbage-state-not-pem", samplePEM)
 	if resp.PlanValue.ValueString() != samplePEM {

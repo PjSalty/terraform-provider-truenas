@@ -1,4 +1,4 @@
-# Test TrueNAS SCALE 25.04.2.6 (Fangtooth) — multi-version compat
+# Test TrueNAS SCALE 25.04.2.6 (Fangtooth), multi-version compat
 # Copy this template to .envrc.local-25-04 and fill in credentials
 # after walking the manual installer for the 25.04 test instance.
 #

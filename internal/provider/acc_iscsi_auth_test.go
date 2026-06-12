@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
-// TestAccISCSIAuthResource_basic — the secret is sensitive and excluded
+// TestAccISCSIAuthResource_basic, the secret is sensitive and excluded
 // from ImportStateVerify because TrueNAS does not return it on read.
 func TestAccISCSIAuthResource_basic(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {

@@ -10,7 +10,7 @@ import (
 
 // stateWritingMethodRE matches the opening line of Create / Read / Update
 // method signatures. These are the methods that MUST end by writing state
-// back via resp.State.Set(ctx, &model) (or an equivalent) — without it,
+// back via resp.State.Set(ctx, &model) (or an equivalent), without it,
 // the state file does not reflect the real API response and the next
 // plan reports a phantom diff on every operation. Delete does NOT write
 // state (the Plugin Framework clears it automatically on Delete success),
@@ -21,12 +21,12 @@ var stateWritingMethodRE = regexp.MustCompile(`func \([a-z] \*\w+Resource\) (Cre
 // in every resource file writes state back via a resp.State.Set call
 // (or the rarer Diagnostics.Append(resp.State.Set(...)...) wrapper).
 // Missing state persistence on these paths is the failure mode that
-// turns "apply works" into "plan never shows clean" — the classic
+// turns "apply works" into "plan never shows clean", the classic
 // provider anti-pattern that the plancheck ExpectEmptyPlan ratchet
 // also defends against, at a different layer.
 //
 // Singleton resources that do not extract an ID but still call State.Set
-// with the model are fine — the check only requires the bytes
+// with the model are fine, the check only requires the bytes
 // `resp.State.Set(` or `.State.Set(ctx` to appear in the function body,
 // which every Plugin Framework idiom uses.
 func TestStatePersistence(t *testing.T) {
@@ -71,7 +71,7 @@ func TestStatePersistence(t *testing.T) {
 		for _, g := range gaps {
 			lines = append(lines, "  "+g.file+" "+g.method)
 		}
-		t.Fatalf("the following Create/Read/Update methods do not call resp.State.Set — "+
+		t.Fatalf("the following Create/Read/Update methods do not call resp.State.Set, "+
 			"the mutation will not be persisted to state, and the next plan will "+
 			"report a phantom diff forever:\n%s\n\n"+
 			"Fix by adding `resp.Diagnostics.Append(resp.State.Set(ctx, &model)...)` "+

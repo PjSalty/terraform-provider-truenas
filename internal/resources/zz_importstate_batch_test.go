@@ -11,7 +11,7 @@ import (
 // TestImportState_BadID_Batch drives ImportState on every resource that
 // implements ResourceWithImportState with a non-numeric ID. Resources
 // that validate ID format up-front will return an error (covered branch).
-// Resources that don't will just passthrough — we catch panics.
+// Resources that don't will just passthrough, we catch panics.
 func TestImportState_BadID_Batch(t *testing.T) {
 	ctx := context.Background()
 	for _, newFn := range []func() resource.Resource{
@@ -82,14 +82,14 @@ func TestImportState_BadID_Batch(t *testing.T) {
 			continue
 		}
 		sch := schemaOf(t, ctx, r)
-		// Success path (numeric) — exercise the happy branch.
+		// Success path (numeric), exercise the happy branch.
 		func() {
 			defer func() { _ = recover() }()
 			resp := &resource.ImportStateResponse{State: tfsdk.State{Schema: sch.Schema, Raw: rawFromValues(t, ctx, sch, nil)}}
 			imp.ImportState(ctx, resource.ImportStateRequest{ID: "1"}, resp)
 			_ = resp.Diagnostics
 		}()
-		// Error path (non-numeric) — exercise validators that parse ID.
+		// Error path (non-numeric), exercise validators that parse ID.
 		func() {
 			defer func() { _ = recover() }()
 			resp := &resource.ImportStateResponse{State: tfsdk.State{Schema: sch.Schema, Raw: rawFromValues(t, ctx, sch, nil)}}

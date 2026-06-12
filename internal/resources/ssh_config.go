@@ -61,7 +61,7 @@ func (r *SSHConfigResource) Metadata(_ context.Context, req resource.MetadataReq
 
 func (r *SSHConfigResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{Blocks: map[string]schema.Block{"timeouts": timeouts.Block(ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true})}, Description: "Manages the SSH service configuration on TrueNAS SCALE. " +
-		"This is a singleton resource — only one instance can exist.",
+		"This is a singleton resource, only one instance can exist.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "The configuration ID (always 1).",

@@ -383,7 +383,7 @@ func TestSystemUpdateResource_Update_RefreshFails(t *testing.T) {
 func TestSystemUpdateResource_Delete_NoOp(t *testing.T) {
 	ctx := context.Background()
 	r := &SystemUpdateResource{}
-	// Delete is a no-op — no client calls, no state mutation. Just prove
+	// Delete is a no-op, no client calls, no state mutation. Just prove
 	// it doesn't produce a diagnostic or panic.
 	resp := &resource.DeleteResponse{}
 	r.Delete(ctx, resource.DeleteRequest{}, resp)

@@ -15,7 +15,7 @@ import (
 )
 
 // boundaryCase pairs an input string with the expected validation
-// outcome. The categorisation (kind) is purely descriptive — used
+// outcome. The categorisation (kind) is purely descriptive, used
 // by the test failure message to flag which class of input slipped
 // the validator.
 type boundaryCase struct {
@@ -69,7 +69,7 @@ func runBoundaryTable(t *testing.T, name string, v validator.String, table []bou
 }
 
 // TestBrutal_IPOrCIDR_BoundaryTable runs the IPOrCIDR validator
-// against an aggressive boundary battery — covers IPv4 / IPv6 /
+// against an aggressive boundary battery, covers IPv4 / IPv6 /
 // CIDR / control-chars / unicode / SQL-injection / very-long /
 // whitespace-only / IPv4-mapped / link-local / loopback / multicast
 // / RFC1918 / RFC4193 / discard-range. The table is intentionally
@@ -127,7 +127,7 @@ func TestBrutal_IPOrCIDR_BoundaryTable(t *testing.T) {
 		{"cidr-no-prefix", "192.168.1.0/", true},
 		{"cidr-ipv6-129", "2001:db8::/129", true},
 
-		// Whitespace handling — validator trims and accepts inner
+		// Whitespace handling, validator trims and accepts inner
 		{"ws-leading", "  192.168.1.1", false},
 		{"ws-trailing", "192.168.1.1  ", false},
 		{"ws-both-sides", "  192.168.1.1  ", false},
@@ -227,7 +227,7 @@ func TestBrutal_HostOrIP_BoundaryTable(t *testing.T) {
 
 // TestBrutal_ZFSPath_BoundaryTable runs ZFS dataset path validation
 // through the input classes that have hurt other providers' ZFS
-// integration — spaces (zpool import refuses), backslash (Windows
+// integration, spaces (zpool import refuses), backslash (Windows
 // users), control chars (terminal exploits via shell embedding),
 // path-traversal attempts, very-long components, multi-byte unicode,
 // and the @ / : / . metadata characters that DO have semantic
@@ -250,7 +250,7 @@ func TestBrutal_ZFSPath_BoundaryTable(t *testing.T) {
 		// Empty handling
 		{"empty", "", true},          // empty string is invalid
 		{"single-slash", "/", true},  // leading + trailing empty
-		{"only-spaces", "   ", true}, // single component but with spaces — fails space check
+		{"only-spaces", "   ", true}, // single component but with spaces, fails space check
 
 		// Path malformation
 		{"leading-slash", "/tank/data", true},  // empty leading component
@@ -297,7 +297,7 @@ func TestBrutal_ZFSPath_BoundaryTable(t *testing.T) {
 		// Injection patterns
 		{"sql-injection", "tank/data'; DROP--", true},
 		{"shell-meta", "tank/`whoami`", true},
-		{"path-traversal-up", "tank/../etc", true}, // .. in components — . is allowed but ..gets through unless tested
+		{"path-traversal-up", "tank/../etc", true}, // .. in components, . is allowed but ..gets through unless tested
 		{"path-traversal-double-dot", "tank/../passwd", true},
 
 		// Length
@@ -331,7 +331,7 @@ func TestBrutal_CompressionAlgorithm_BoundaryTable(t *testing.T) {
 		{"ZLE", "ZLE", false},
 		{"LZJB", "LZJB", false},
 
-		// Case variants — validator normalises to upper
+		// Case variants, validator normalises to upper
 		{"lowercase-off", "off", false},
 		{"lowercase-lz4", "lz4", false},
 		{"mixed-case-Zstd", "Zstd", false},
@@ -369,7 +369,7 @@ func TestBrutal_CompressionAlgorithm_BoundaryTable(t *testing.T) {
 }
 
 // TestBrutal_NullUnknownAcceptance enumerates the
-// Null + Unknown handling for every custom validator — both should
+// Null + Unknown handling for every custom validator, both should
 // short-circuit (validators don't fire on absent values). A
 // regression that adds error diagnostics for null/unknown values
 // breaks plan-time correctness for every config that defers the

@@ -11,7 +11,7 @@ import (
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
-// TestAccCatalogResource_basic — singleton: TrueNAS only supports one
+// TestAccCatalogResource_basic, singleton: TrueNAS only supports one
 // catalog (TRUENAS) in SCALE 25.04+. Delete is a no-op (the catalog
 // can't be removed), so ImportState+destroy aren't meaningful and the
 // test only verifies Create+Read.

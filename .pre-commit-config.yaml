@@ -3,7 +3,7 @@
 # Install: pip install pre-commit && pre-commit install
 # Run manually: pre-commit run --all-files
 #
-# These hooks are a superset of the CI lint job — they catch the common
+# These hooks are a superset of the CI lint job, they catch the common
 # formatting + vuln issues before you push, so CI stays green.
 
 repos:

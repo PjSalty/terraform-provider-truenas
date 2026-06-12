@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #
-# scripts/acc-matrix.sh — run the acceptance suite against every
+# scripts/acc-matrix.sh, run the acceptance suite against every
 # TrueNAS test version we have credentials for and report a summary.
 # Used to validate the multi-version compat matrix that gates v2.0.0
 # final.
 #
 # Looks for these .envrc.local-<version> files (any subset works):
-#   .envrc.local           — primary target (currently 25.10.0)
-#   .envrc.local-25-04     — TrueNAS SCALE 25.04 (last REST-only)
-#   .envrc.local-26-beta   — TrueNAS 26.0.0-BETA.1 (REST removed)
+#   .envrc.local          , primary target (currently 25.10.0)
+#   .envrc.local-25-04    , TrueNAS SCALE 25.04 (last REST-only)
+#   .envrc.local-26-beta  , TrueNAS 26.0.0-BETA.1 (REST removed)
 #
 # Per-version reports go to logs/acc-matrix-<version>-<timestamp>.log.
 # Exit code is non-zero if any version reports acc failures.
@@ -26,7 +26,7 @@ VERSIONS=()
 [ -f .envrc.local-26-beta ] && VERSIONS+=("26-beta:.envrc.local-26-beta")
 
 if [ ${#VERSIONS[@]} -eq 0 ]; then
-  echo "No .envrc.local-* files found — populate at least one before running."
+  echo "No .envrc.local-* files found, populate at least one before running."
   echo "See .envrc.local-25-04.template and .envrc.local-26-beta.template"
   exit 1
 fi
@@ -52,7 +52,7 @@ for entry in "${VERSIONS[@]}"; do
   echo "===================================="
 
   # Run in a subshell so each version's env doesn't bleed into the next.
-  # ACC_ENV_FILE tells acc.sh's acc_load_env which env file to source —
+  # ACC_ENV_FILE tells acc.sh's acc_load_env which env file to source -
   # without it, acc.sh re-sources .envrc.local and silently re-targets
   # the primary test VM.
   if (

@@ -25,14 +25,14 @@ var readMethodRE = regexp.MustCompile(
 //	    return
 //	}
 //
-// The literal "RemoveResource" string is the load-bearing token —
+// The literal "RemoveResource" string is the load-bearing token -
 // without it, the resource will not be re-created after an out-of-
 // band delete and `terraform plan` will keep producing the same
 // "update in-place" diff every run.
 const removeResourceTokenS = "resp.State.RemoveResource(ctx)"
 
 // singletonsByDesign lists the resource files whose Read MUST NOT
-// remove from state on 404. These are singletons (one per host —
+// remove from state on 404. These are singletons (one per host -
 // /api/v2.0/ssh, /api/v2.0/system/general, etc.) where the endpoint
 // always returns a config record; a 404 here would indicate a
 // platform bug, not an out-of-band delete. They get a hard error
@@ -76,7 +76,7 @@ var singletonsByDesign = map[string]bool{
 // acceptance form requires a live test VM; this static form runs in
 // the unit-test layer and gates every PR.
 //
-// Singletons (one config record per host — ssh_config, smb_config,
+// Singletons (one config record per host, ssh_config, smb_config,
 // etc.) are listed in singletonsByDesign and skipped because their
 // API surface never legitimately returns 404 for an authenticated
 // caller. If you add a new singleton, add its filename to the
@@ -102,7 +102,7 @@ func TestResourcesRemoveFromStateOnNotFound(t *testing.T) {
 		}
 		text := string(src)
 
-		// No Read method in this file — skip. Some resource files
+		// No Read method in this file, skip. Some resource files
 		// split helpers across multiple .go files in the package;
 		// the Read method always lives in the primary file.
 		if !readMethodRE.MatchString(text) {

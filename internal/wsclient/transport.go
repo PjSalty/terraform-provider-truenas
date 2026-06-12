@@ -63,7 +63,7 @@ func (c *Client) dial(ctx context.Context, wsURL string) error {
 	// by dialTimeout). The lifetime context c.lifetime is canceled in
 	// Close(), which unblocks conn.Read with context.Canceled and lets
 	// the loop exit cleanly. lifetime is intentionally not derived from
-	// any caller ctx — it is owned by the Client and lasts for the
+	// any caller ctx, it is owned by the Client and lasts for the
 	// process lifetime of this client.
 	go c.recvLoop(c.lifetime, conn) //nolint:gosec,contextcheck // lifetime ctx is owned by Client, not inherited from caller's request ctx
 	return nil
@@ -80,7 +80,7 @@ func (c *Client) recvLoop(ctx context.Context, conn *websocket.Conn) {
 		// silently and we still need to propagate to pending callers.
 		_ = conn.Close(websocket.StatusInternalError, "recv loop exit")
 	}()
-	// ctx is c.lifetime — canceled in Close(). conn.Read returns when
+	// ctx is c.lifetime, canceled in Close(). conn.Read returns when
 	// either the conn drops on its own or ctx is canceled, and the
 	// post-Read isClosing check catches the deliberate-close case.
 	for {
@@ -108,7 +108,7 @@ func (c *Client) recvLoop(ctx context.Context, conn *websocket.Conn) {
 		var resp rpcResponse
 		if err := json.Unmarshal(data, &resp); err != nil {
 			// A malformed frame from the server is a bug. Log it and
-			// keep reading — abandoning the connection on a single bad
+			// keep reading, abandoning the connection on a single bad
 			// frame would tear down every other in-flight call.
 			//
 			// We cannot route this anywhere because we cannot extract
@@ -194,7 +194,7 @@ func wrapWriteErr(err error) error {
 
 // backoffDelay returns the delay before retry attempt n. Lifted from
 // client/client.go:233-255 so the wsclient retry envelope behaves
-// identically to the REST client's. Pure function — safe to cover via
+// identically to the REST client's. Pure function, safe to cover via
 // table-driven test.
 func backoffDelay(p RetryPolicy, attempt int) time.Duration {
 	base := p.BaseDelay

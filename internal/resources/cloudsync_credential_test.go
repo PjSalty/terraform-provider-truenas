@@ -10,7 +10,7 @@ import (
 // Plugin Framework Plan phase end-to-end for truenas_cloudsync_credential:
 // schema compilation, HCL → config parsing, validator pass, plan
 // computation. It runs under PlanOnly + ExpectNonEmptyPlan so the
-// test passes in any environment where the provider can be loaded —
+// test passes in any environment where the provider can be loaded -
 // no live TrueNAS, no cloud provider credentials needed.
 //
 // This is the same shallow-acceptance-test shape used by
@@ -40,7 +40,7 @@ func TestAccCloudSyncCredential_schemaValidation(t *testing.T) {
 func testAccCloudSyncCredentialConfigBasic() string {
 	// S3-shape credential is the canonical form; other provider types
 	// (B2, Azure, GCS) would substitute their own provider_attributes_json
-	// shape. The value is bogus on purpose — PlanOnly never writes.
+	// shape. The value is bogus on purpose, PlanOnly never writes.
 	return `
 provider "truenas" {}
 

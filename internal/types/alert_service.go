@@ -39,7 +39,7 @@ func (a *AlertService) GetType() string {
 // AlertServiceCreateRequest represents the request to create an alert
 // service. On SCALE 25.10+ `type` MUST be embedded inside attributes
 // (the discriminator field of the `oneOf` schema); top-level `type` is
-// rejected. Callers should not set the top-level Type field — it
+// rejected. Callers should not set the top-level Type field, it
 // exists only as a fallback for any pre-25.04 backends.
 type AlertServiceCreateRequest struct {
 	Name     string                 `json:"name"`

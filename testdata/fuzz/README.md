@@ -35,6 +35,6 @@ go test -run='^$' -fuzz='^FuzzNormalizeJSON$' -fuzztime=1h ./internal/resources/
 ## Property under test
 
 All targets assert a single property: **the function never panics on any
-input**. Output correctness is verified by regular unit tests — fuzz tests
+input**. Output correctness is verified by regular unit tests, fuzz tests
 exist only to find panics, out-of-bounds accesses, infinite loops, and
 stack exhaustion.

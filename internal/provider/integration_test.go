@@ -1,6 +1,6 @@
 package provider
 
-// Integration tests — full terraform-plugin-testing lifecycle against
+// Integration tests, full terraform-plugin-testing lifecycle against
 // a mocked TrueNAS REST server.
 //
 // These tests use `resource.UnitTest` (NOT `resource.Test`) so they run
@@ -93,7 +93,7 @@ func (m *mockTrueNAS) handler() http.Handler {
 		}
 
 		if match := datasetIDRe.FindStringSubmatch(path); match != nil {
-			// The path segment is URL-encoded — decode slashes.
+			// The path segment is URL-encoded, decode slashes.
 			id := strings.ReplaceAll(match[1], "%2F", "/")
 			id = strings.ReplaceAll(id, "%2f", "/")
 			switch r.Method {
@@ -367,7 +367,7 @@ resource "truenas_dataset" "integration" {
 }
 
 // TestIntegration_Dataset_DriftDetected simulates an out-of-band mutation
-// — someone SSHes to TrueNAS and runs `zfs destroy tank/drift-test` — and
+// , someone SSHes to TrueNAS and runs `zfs destroy tank/drift-test`, and
 // asserts that the provider detects the drift on the next plan. Without
 // this path working, silent infrastructure drift goes unnoticed between
 // Terraform runs, which is the single most dangerous failure mode for a
@@ -502,7 +502,7 @@ resource "truenas_share_nfs" "share" {
 					// Multi-resource idempotency gate: after apply + refresh,
 					// the plan MUST be empty across BOTH resources. Catches
 					// cross-resource Read inconsistencies that single-resource
-					// tests miss — e.g. the dataset's mount_point computation
+					// tests miss, e.g. the dataset's mount_point computation
 					// drifting between Create and Read, which would cause the
 					// dependent NFS share to always show a phantom update.
 					PostApplyPostRefresh: []plancheck.PlanCheck{
@@ -528,7 +528,7 @@ resource "truenas_share_nfs" "share" {
 // plugin-framework diagnostics → terraform-plugin-testing harness.
 //
 // If the test ever stops failing on create, something is silently
-// swallowing ErrReadOnly on the way up — that is the regression this
+// swallowing ErrReadOnly on the way up, that is the regression this
 // test is meant to catch.
 func TestIntegration_ReadOnly_RefusesCreate(t *testing.T) {
 	skipWSCutover(t)
@@ -558,31 +558,31 @@ resource "truenas_dataset" "readonly" {
 		},
 	})
 
-	// Invariant: the mock backend MUST NOT have stored the dataset —
+	// Invariant: the mock backend MUST NOT have stored the dataset -
 	// the safety rail fires before any HTTP work, so the Create POST
 	// never reaches the mock handler and the map stays empty.
 	mock.mu.Lock()
 	defer mock.mu.Unlock()
 	if _, exists := mock.datasets["tank/readonly-integration"]; exists {
-		t.Error("mock TrueNAS received a dataset create despite read-only mode — the safety rail leaked")
+		t.Error("mock TrueNAS received a dataset create despite read-only mode, the safety rail leaked")
 	}
 	if got := len(mock.datasets); got != 0 {
-		t.Errorf("mock TrueNAS has %d datasets, want 0 — read-only mode leaked %v", got, mock.datasets)
+		t.Errorf("mock TrueNAS has %d datasets, want 0, read-only mode leaked %v", got, mock.datasets)
 	}
 }
 
 // Destroy-protection has no integration-level test at this layer:
 // terraform-plugin-testing's resource.UnitTest always runs a final
 // `terraform destroy` pass as an in-band cleanup after the last step,
-// and the destroy-protection rail correctly refuses that DELETE — so
+// and the destroy-protection rail correctly refuses that DELETE, so
 // the harness reports the test as a "dangling resource" failure even
 // though the rail is working exactly as designed. Coverage is
 // provided instead by:
 //
-//   - internal/client/destroy_protection_test.go — 6 unit tests
+//   - internal/client/destroy_protection_test.go, 6 unit tests
 //     covering the client-layer gate, layered flags, nil receiver,
 //     error wrapping, and the allow-through paths (GET/POST/PUT).
-//   - internal/provider/provider_destroy_protection_test.go — 4
+//   - internal/provider/provider_destroy_protection_test.go, 4
 //     provider Configure tests (env var, HCL, HCL-overrides-env,
 //     safe-apply profile) that exercise the full Configure path.
 //
@@ -611,7 +611,7 @@ func TestIntegration_ReadOnly_AllowsRead(t *testing.T) {
 	factories := integrationProviderFactories(t, srv.URL)
 	t.Setenv("TRUENAS_READONLY", "1")
 
-	// No resource block — just a data source style smoke test via
+	// No resource block, just a data source style smoke test via
 	// the provider schema/Configure path. If the provider cannot
 	// configure itself at all in read-only mode, this test fails.
 	resource.UnitTest(t, resource.TestCase{

@@ -29,9 +29,9 @@ func newTestServerClient(t *testing.T, handler http.HandlerFunc) (*wsclient.Clie
 }
 
 // newWSConfigServerClient builds a wsclient.TestServer that serves the
-// canonical config-singleton method pair — "<svc>.config" returns the
+// canonical config-singleton method pair, "<svc>.config" returns the
 // supplied object, "<svc>.update" increments *updateCalls and returns
-// the same object — and a connected *wsclient.Client. This is the
+// the same object, and a connected *wsclient.Client. This is the
 // JSON-RPC equivalent of the REST-era GET/PUT httptest handler, used
 // to un-skip the config CRUD unit tests after the v2.0 WS cutover.
 func newWSConfigServerClient(ctx context.Context, t *testing.T, svc string, resp map[string]interface{}, updateCalls *int) *wsclient.Client {
@@ -56,7 +56,7 @@ func newWSConfigServerClient(ctx context.Context, t *testing.T, svc string, resp
 }
 
 // newWSTestClient pairs an arbitrary wsclient.TestHandler with a
-// connected client — for tests that need full per-method control
+// connected client, for tests that need full per-method control
 // (failure injection, stateful fixtures).
 func newWSTestClient(ctx context.Context, t *testing.T, h wsclient.TestHandler) *wsclient.Client {
 	t.Helper()
@@ -347,7 +347,7 @@ func primedStateWithID(t *testing.T, ctx context.Context, schemaRes resource.Sch
 }
 
 // primedPlan builds a tfsdk.Plan mirroring primedState. Singleton Update
-// handlers read the plan and call the API — a null-attribute plan lets the
+// handlers read the plan and call the API, a null-attribute plan lets the
 // Update path run through without requiring field-level data.
 func primedPlan(t *testing.T, ctx context.Context, schemaRes resource.SchemaResponse) tfsdk.Plan {
 	t.Helper()
@@ -360,7 +360,7 @@ func primedPlan(t *testing.T, ctx context.Context, schemaRes resource.SchemaResp
 	return tfsdk.Plan{Schema: schemaRes.Schema, Raw: tftypes.NewValue(objType, vals)}
 }
 
-// Singleton Update/Delete handlers — drive them with the same test server
+// Singleton Update/Delete handlers, drive them with the same test server
 // so we get update+delete coverage on top of the Read coverage above.
 
 func TestFTPConfigResource_UpdateDelete(t *testing.T) {
@@ -843,7 +843,7 @@ func TestNVMetGlobalResource_CRUD(t *testing.T) {
 // typed-call coverage now lives in internal/wsclient/*_test.go (which
 // uses internal/wsclient/testserver.go for the WS fixture). Rewriting
 // the resource-layer mocks to bind against wsclient's testserver is
-// tracked as v2.x polish — the acc suite already exercises the WS
+// tracked as v2.x polish, the acc suite already exercises the WS
 // path end-to-end against a live TrueNAS for every resource.
 func skipWSCutover(t *testing.T) {
 	t.Helper()

@@ -7,7 +7,7 @@ import (
 
 // FuzzRPCResponse_Unmarshal fuzzes the JSON-RPC envelope parser the
 // wsclient feeds with every wire frame. A panic here would crash the
-// provider on a malformed server response — which can come from a
+// provider on a malformed server response, which can come from a
 // proxy in the path, a partial Cilium drop, or a TrueNAS bug.
 //
 // The seed corpus seeds the engine with well-formed frames, frames
@@ -46,7 +46,7 @@ func FuzzRPCResponse_Unmarshal(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, data []byte) {
 		var r rpcResponse
 		_ = json.Unmarshal(data, &r)
-		// Re-marshal whatever survived parsing — round-trip must not panic
+		// Re-marshal whatever survived parsing, round-trip must not panic
 		// even if the resulting JSON is structurally different.
 		_, _ = json.Marshal(&r)
 	})

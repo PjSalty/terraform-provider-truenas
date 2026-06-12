@@ -11,7 +11,7 @@ import (
 // TestAccKeychainCredentialDataSource_basic creates an SSH_KEY_PAIR
 // keychain credential with a real generated key pair, then reads it
 // back via the datasource. The 'attributes' attribute is a
-// map(string) — not a JSON-encoded string — so the fixture passes
+// map(string), not a JSON-encoded string, so the fixture passes
 // literal key strings.
 func TestAccKeychainCredentialDataSource_basic(t *testing.T) {
 	dataSourceName := "data.truenas_keychain_credential.test"

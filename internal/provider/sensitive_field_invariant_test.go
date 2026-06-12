@@ -25,7 +25,7 @@ var sensitiveAttrBlockRE = regexp.MustCompile(`(?m)^\s*"(password|secret|peersec
 //
 // Today this map is empty. The structure is here for the moment a
 // future schema needs to legitimately ship a field with a sensitive-
-// looking name as plaintext — for example, a field called "passphrase"
+// looking name as plaintext, for example, a field called "passphrase"
 // that holds a public-passphrase fingerprint rather than the secret
 // itself. Add the entry with the honest reason at that point.
 var allowedNonSensitiveFields = map[string]string{}
@@ -94,7 +94,7 @@ func TestSensitiveFieldsAreMarkedSensitive(t *testing.T) {
 		for _, f := range leaks {
 			lines = append(lines, "  "+f.file+" :: "+f.attr)
 		}
-		t.Fatalf("%d sensitive-looking attribute(s) NOT marked Sensitive: true — "+
+		t.Fatalf("%d sensitive-looking attribute(s) NOT marked Sensitive: true, "+
 			"this leaks the value into terraform plan output, terraform show, and "+
 			"trace logs on every apply. add `Sensitive: true` to each attribute "+
 			"below. if a field LEGITIMATELY holds a non-secret value despite its "+
@@ -104,7 +104,7 @@ func TestSensitiveFieldsAreMarkedSensitive(t *testing.T) {
 	}
 
 	if totalMatched == 0 {
-		t.Fatal("invariant scanned no sensitive-named fields — regex broken or no " +
+		t.Fatal("invariant scanned no sensitive-named fields, regex broken or no " +
 			"sensitive fields exist in the tree. either way that needs investigation.")
 	}
 	t.Logf("OK: %d sensitive-named schema attributes all marked Sensitive: true", totalMatched)

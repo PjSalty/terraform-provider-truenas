@@ -104,7 +104,7 @@ func (r *VMResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp 
 				},
 			},
 			"name": schema.StringAttribute{
-				Description: "The name of the VM. Only alphanumeric characters are allowed — " +
+				Description: "The name of the VM. Only alphanumeric characters are allowed, " +
 					"no spaces, hyphens, underscores, or punctuation.",
 				Required: true,
 				Validators: []validator.String{
@@ -446,7 +446,7 @@ func buildVMUpdateRequest(plan *VMResourceModel) *truenas.VMUpdateRequest {
 	setInt64(plan.MinMemory, &req.MinMemory)
 	setStr(plan.Bootloader, &req.Bootloader)
 	// bootloader_ovmf and enable_secure_boot are create-time-only on SCALE
-	// 25.10 — the /vm/update endpoint rejects them with HTTP 422
+	// 25.10, the /vm/update endpoint rejects them with HTTP 422
 	// "Extra inputs are not permitted". They are exposed as Computed
 	// attributes for visibility but cannot be modified post-create.
 	setBool(plan.Autostart, &req.Autostart)
@@ -607,7 +607,7 @@ func (r *VMResource) Delete(ctx context.Context, req resource.DeleteRequest, res
 //
 //   - `cpu_mode = CUSTOM` requires `cpu_model` to be set.
 //   - `min_memory` must be strictly less than `memory` (it's a ballooning
-//     floor — equal or greater defeats the purpose and TrueNAS rejects it).
+//     floor, equal or greater defeats the purpose and TrueNAS rejects it).
 //   - `pin_vcpus = true` requires `cpuset` to be set (you can't pin to
 //     nothing).
 func (r *VMResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {

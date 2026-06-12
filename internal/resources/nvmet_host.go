@@ -309,7 +309,7 @@ func (r *NVMetHostResource) Delete(ctx context.Context, req resource.DeleteReque
 //   - If `dhchap_key` is set (host-side CHAP secret), `dhchap_hash` must also
 //     be set, because CHAP requires agreeing on a hash algorithm.
 //   - If `dhchap_ctrl_key` is set (controller-side CHAP secret, bidirectional
-//     auth), `dhchap_key` must also be set — bidirectional CHAP implies
+//     auth), `dhchap_key` must also be set, bidirectional CHAP implies
 //     unidirectional CHAP is already configured.
 func (r *NVMetHostResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_host")

@@ -130,13 +130,13 @@ func TestSmoke_DestroyProtection(t *testing.T) {
 	}
 	c.DestroyProtection = true
 
-	// pool.dataset.delete is destructive — must be blocked.
+	// pool.dataset.delete is destructive, must be blocked.
 	_, err = c.Call(ctx, "pool.dataset.delete", []interface{}{"tank/foo"}, CallOptions{})
 	if !errors.Is(err, ErrDestroyProtected) {
 		t.Fatalf("expected ErrDestroyProtected, got %v", err)
 	}
 
-	// pool.dataset.update is mutating but NOT destructive — must pass.
+	// pool.dataset.update is mutating but NOT destructive, must pass.
 	_, err = c.Call(ctx, "pool.dataset.update", []interface{}{"tank/foo", map[string]any{}}, CallOptions{})
 	if err != nil {
 		t.Fatalf("expected pool.dataset.update to pass with DestroyProtection=true, got %v", err)

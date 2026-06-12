@@ -364,7 +364,7 @@ func (r *CronJobResource) ImportState(ctx context.Context, req resource.ImportSt
 }
 
 // cronjobSchemaV0 returns the historical v0 schema for the cron job resource.
-// v0 and v1 are structurally identical — this entry seeds the schema-version migration
+// v0 and v1 are structurally identical, this entry seeds the schema-version migration
 // pattern so future breaking schema changes have an idiomatic place to land.
 // See terraform-plugin-framework ResourceWithUpgradeState for the contract.
 func cronjobSchemaV0(ctx context.Context) schema.Schema {
@@ -390,7 +390,7 @@ func cronjobSchemaV0(ctx context.Context) schema.Schema {
 }
 
 // UpgradeState provides schema-version upgraders. The 0 -> 1 migration is
-// intentionally a no-op — it exists to establish the pattern so future
+// intentionally a no-op, it exists to establish the pattern so future
 // schema changes can land a real migration without introducing new scaffolding.
 func (r *CronJobResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
 	v0 := cronjobSchemaV0(ctx)

@@ -20,7 +20,7 @@ type App struct {
 
 // AppCreateRequest represents the body for POST /app / app.create.
 //
-// Values is a free-form object — the resource serializes it from a
+// Values is a free-form object, the resource serializes it from a
 // user-supplied JSON string so arbitrary Helm/values-style configuration
 // can pass through without hard-coding a schema.
 type AppCreateRequest struct {

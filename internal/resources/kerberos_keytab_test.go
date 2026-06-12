@@ -32,7 +32,7 @@ import (
 //	    enctype              = 18           (AES256-CTS-HMAC-SHA1-96)
 //	    key                  = 32 bytes of zeros
 //
-// The key is all zeros — fine for a fixture; the test path never
+// The key is all zeros, fine for a fixture; the test path never
 // actually authenticates with this keytab.
 const validKeytabB64 = "BQIAAABGAAEAC0VYQU1QTEUuQ09NAAh0ZXN0dXNlcgAAAAEAAAAAAQASACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
 
@@ -52,7 +52,7 @@ func TestAccKerberosKeytab_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-keytab"),
 				),
 			},
-			// Import — file is sensitive and may round-trip with re-encoding,
+			// Import, file is sensitive and may round-trip with re-encoding,
 			// so exclude it from the import diff check.
 			{
 				ResourceName:            resourceName,

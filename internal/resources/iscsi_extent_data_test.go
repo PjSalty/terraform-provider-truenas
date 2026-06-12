@@ -9,7 +9,7 @@ import (
 )
 
 // TestAccISCSIExtentDataSource_basic creates a FILE-type iSCSI extent
-// (the simplest variety to materialise — it doesn't need a dedicated
+// (the simplest variety to materialise, it doesn't need a dedicated
 // zvol) and reads it back via the datasource. FILE-type was chosen
 // over DISK-type because we don't want to consume a test pool slot.
 func TestAccISCSIExtentDataSource_basic(t *testing.T) {

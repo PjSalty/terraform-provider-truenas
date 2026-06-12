@@ -58,7 +58,7 @@ func TestResourcesHaveTimeoutsBlock(t *testing.T) {
 		}
 	}
 	if len(missing) > 0 {
-		t.Fatalf("the following resources do not declare a timeouts block/attribute — "+
+		t.Fatalf("the following resources do not declare a timeouts block/attribute, "+
 			"operators have no way to override CRUD deadlines per-resource:\n%s\n\n"+
 			"Fix by adding a timeouts.Block(ctx, timeouts.Opts{Create: true, Read: true, "+
 			"Update: true, Delete: true}) entry to the resource's schema.Blocks map. "+

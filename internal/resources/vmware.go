@@ -56,7 +56,7 @@ func (r *VMwareResource) Metadata(_ context.Context, req resource.MetadataReques
 func (r *VMwareResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a VMware host registration on TrueNAS SCALE for snapshot-aware replication." + "\n\n" +
-			"**Stability: Alpha.** Not end-to-end verified — requires a real vCenter instance. Schema matches the TrueNAS REST API.",
+			"**Stability: Alpha.** Not end-to-end verified, requires a real vCenter instance. Schema matches the TrueNAS REST API.",
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{
 				Create: true,
@@ -278,7 +278,7 @@ func (r *VMwareResource) Delete(ctx context.Context, req resource.DeleteRequest,
 // ModifyPlan emits a plan-time Warning whenever the plan would destroy
 // this resource. Removing a VMware host integration breaks the
 // snapshot-quiescing path for any VM whose datastore is hosted on this
-// TrueNAS — backups silently drop to crash-consistent without warning.
+// TrueNAS, backups silently drop to crash-consistent without warning.
 func (r *VMwareResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_vmware")
 }

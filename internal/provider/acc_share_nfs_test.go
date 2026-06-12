@@ -118,7 +118,7 @@ resource "truenas_share_nfs" "test" {
 }
 
 // TestAccShareNFSResource_disappears deletes the NFS share out-of-band via
-// the client and verifies Terraform detects the drift — a non-empty plan
+// the client and verifies Terraform detects the drift, a non-empty plan
 // must follow.
 func TestAccShareNFSResource_disappears(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {

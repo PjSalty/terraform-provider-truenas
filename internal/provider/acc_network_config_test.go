@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
-// TestAccNetworkConfigResource_basic — singleton: network config has a
+// TestAccNetworkConfigResource_basic, singleton: network config has a
 // single instance and Delete is a no-op reset. The test only mutates
 // the HTTP proxy field because hostname/domain/gateway changes could
 // break the provider's own connection to the TrueNAS API mid-test.

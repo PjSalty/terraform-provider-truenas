@@ -197,7 +197,7 @@ func testAccCheckDatasetExists(resourceName string) resource.TestCheckFunc {
 // the API (bypassing Terraform), simulating an operator who clicks
 // "delete" in the TrueNAS UI between two terraform plans. The next
 // `terraform plan` MUST detect the missing resource and propose
-// re-creation — the framework's TestStep with ExpectNonEmptyPlan:true
+// re-creation, the framework's TestStep with ExpectNonEmptyPlan:true
 // asserts exactly that, and a passing test proves the resource's
 // Read handler calls resp.State.RemoveResource(ctx) on 404 (the
 // invariant checked statically by TestResourcesRemoveFromStateOnNotFound).
@@ -254,7 +254,7 @@ func TestAccDataset_disappears(t *testing.T) {
 			},
 			// Step 2: delete out of band, then immediately refresh.
 			// The framework runs Check after Apply; we delete inside
-			// Check and then assert the resulting plan is non-empty —
+			// Check and then assert the resulting plan is non-empty -
 			// which it will only be if the Read handler properly
 			// removed the resource from state on 404.
 			{
@@ -265,7 +265,7 @@ func TestAccDataset_disappears(t *testing.T) {
 				// A correct provider sees the missing dataset on the
 				// next refresh, removes it from state, and the planner
 				// proposes "create" again. ExpectNonEmptyPlan:true is
-				// load-bearing — if it's false here, the test will
+				// load-bearing, if it's false here, the test will
 				// claim PASS on a state file that's silently broken.
 				ExpectNonEmptyPlan: true,
 			},
