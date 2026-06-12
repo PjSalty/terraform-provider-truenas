@@ -24,7 +24,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
@@ -33,7 +34,7 @@ var (
 )
 
 type KMIPConfigResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 type KMIPConfigResourceModel struct {
@@ -167,11 +168,11 @@ func (r *KMIPConfigResource) Configure(_ context.Context, req resource.Configure
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -262,7 +263,7 @@ func (r *KMIPConfigResource) Delete(ctx context.Context, _ resource.DeleteReques
 	sslVersion := "PROTOCOL_TLSv1_2"
 	forceClear := true
 
-	_, err := r.client.UpdateKMIPConfig(ctx, &client.KMIPUpdateRequest{
+	_, err := r.client.UpdateKMIPConfig(ctx, &truenas.KMIPUpdateRequest{
 		Enabled:        &enabled,
 		ManageSEDDisks: &manageSED,
 		ManageZFSKeys:  &manageZFS,
@@ -285,7 +286,7 @@ func (r *KMIPConfigResource) ImportState(ctx context.Context, req resource.Impor
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("force_clear"), types.BoolValue(false))...)
 }
 
-func (r *KMIPConfigResource) buildUpdateRequest(plan *KMIPConfigResourceModel) *client.KMIPUpdateRequest {
+func (r *KMIPConfigResource) buildUpdateRequest(plan *KMIPConfigResourceModel) *truenas.KMIPUpdateRequest {
 	enabled := plan.Enabled.ValueBool()
 	manageSED := plan.ManageSEDDisks.ValueBool()
 	manageZFS := plan.ManageZFSKeys.ValueBool()
@@ -296,7 +297,7 @@ func (r *KMIPConfigResource) buildUpdateRequest(plan *KMIPConfigResourceModel) *
 	validate := plan.Validate.ValueBool()
 	forceClear := plan.ForceClear.ValueBool()
 
-	req := &client.KMIPUpdateRequest{
+	req := &truenas.KMIPUpdateRequest{
 		Enabled:        &enabled,
 		ManageSEDDisks: &manageSED,
 		ManageZFSKeys:  &manageZFS,
@@ -324,7 +325,7 @@ func (r *KMIPConfigResource) buildUpdateRequest(plan *KMIPConfigResourceModel) *
 	return req
 }
 
-func (r *KMIPConfigResource) mapResponseToModel(cfg *client.KMIPConfig, model *KMIPConfigResourceModel) {
+func (r *KMIPConfigResource) mapResponseToModel(cfg *truenas.KMIPConfig, model *KMIPConfigResourceModel) {
 	model.ID = types.StringValue("kmip")
 	model.Enabled = types.BoolValue(cfg.Enabled)
 	model.ManageSEDDisks = types.BoolValue(cfg.ManageSEDDisks)

@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -45,6 +47,37 @@ func jsonHandler(body map[string]interface{}) http.HandlerFunc {
 		}
 		_ = json.NewEncoder(w).Encode(body)
 	}
+}
+
+// wsJSONHandler is the JSON-RPC twin of jsonHandler: every method
+// returns the supplied body, deletes return true, and core.get_jobs
+// returns a single SUCCESS job whose result is the body (so CallJob
+// paths complete). Used by the batch CRUD tests post-WS-cutover.
+func wsJSONHandler(body map[string]interface{}) wsclient.TestHandler {
+	return func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		switch {
+		case method == "core.get_jobs":
+			return []interface{}{map[string]interface{}{
+				"id": 1, "state": "SUCCESS", "result": body, "error": "",
+			}}, nil
+		case strings.HasSuffix(method, ".delete"):
+			return true, nil
+		case strings.HasSuffix(method, ".create") && (strings.HasPrefix(method, "app.")):
+			return 1, nil // async create returns a job id
+		}
+		return body, nil
+	}
+}
+
+// newWSJSONServerClient pairs wsJSONHandler with a connected client.
+func newWSJSONServerClient(t *testing.T, body map[string]interface{}) *wsclient.Client {
+	t.Helper()
+	ts := wsclient.NewTestServer(t, wsJSONHandler(body))
+	c, err := ts.NewClient(context.Background())
+	if err != nil {
+		t.Fatalf("testserver NewClient: %v", err)
+	}
+	return c
 }
 
 // crudDrive runs Create/Read/Update/Delete against the given resource using
@@ -102,8 +135,7 @@ func TestAlertServiceResource_CRUD(t *testing.T) {
 		"level":    "WARNING",
 		"settings": map[string]interface{}{"email": "admin@example.com"},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &AlertServiceResource{client: c}
 	crudDrive(t, r, c, "3", map[string]tftypes.Value{
 		"name":          str("mail"),
@@ -121,8 +153,7 @@ func TestAlertClassesResource_CRUD(t *testing.T) {
 		"id":      1,
 		"classes": map[string]interface{}{},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &AlertClassesResource{client: c}
 	crudDrive(t, r, c, "alertclasses", map[string]tftypes.Value{
 		"classes": strMapNull(),
@@ -138,8 +169,7 @@ func TestAPIKeyResource_CRUD(t *testing.T) {
 		"username": "root",
 		"key":      "secret",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &APIKeyResource{client: c}
 	crudDrive(t, r, c, "5", map[string]tftypes.Value{
 		"name":     str("tfkey"),
@@ -156,8 +186,7 @@ func TestCatalogResource_CRUD(t *testing.T) {
 		"preferred_trains": []interface{}{"stable"},
 		"location":         "/mnt/tank/catalog",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CatalogResource{client: c}
 	crudDrive(t, r, c, "TRUENAS", map[string]tftypes.Value{
 		"label":            str("TRUENAS"),
@@ -188,8 +217,7 @@ func TestDNSNameserverResource_CRUD(t *testing.T) {
 		"hosts":                "",
 		"activity":             map[string]interface{}{},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &DNSNameserverResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"address":  str("1.1.1.1"),
@@ -208,8 +236,7 @@ func TestFilesystemACLTemplateResource_CRUD(t *testing.T) {
 		"acl":     []interface{}{},
 		"builtin": false,
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &FilesystemACLTemplateResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":    str("tmpl"),
@@ -230,8 +257,7 @@ func TestInitScriptResource_CRUD(t *testing.T) {
 		"timeout": 10,
 		"comment": "",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &InitScriptResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"type":    str("COMMAND"),
@@ -248,8 +274,7 @@ func TestKerberosKeytabResource_CRUD(t *testing.T) {
 		"name": "host",
 		"file": "BASE64FAKE",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &KerberosKeytabResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name": str("host"),
@@ -268,8 +293,7 @@ func TestKerberosRealmResource_CRUD(t *testing.T) {
 		"kpasswd_server": []interface{}{"kp.example.com"},
 		"primary_kdc":    "kdc.example.com",
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &KerberosRealmResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"realm":          str("EXAMPLE.COM"),
@@ -289,8 +313,7 @@ func TestKeychainCredentialResource_CRUD(t *testing.T) {
 		"type":       "SSH_KEY_PAIR",
 		"attributes": map[string]interface{}{"private_key": "PRIV", "public_key": "PUB"},
 	}
-	c, srv := newTestServerClient(t, jsonHandler(body))
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &KeychainCredentialResource{client: c}
 	attrsVal := tftypes.NewValue(
 		tftypes.Map{ElementType: tftypes.String},

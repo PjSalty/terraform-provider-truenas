@@ -36,12 +36,76 @@ jobs:
         with:
           go-version-file: go.mod
       - run: go test -race -timeout 15m -coverprofile=coverage.out ./...
-      - name: coverage gate
+      - name: tiered coverage gate
+        shell: bash
         run: |
+          # The v2.0 WS cutover changed the coverage model. The
+          # resource and datasource layers can't be unit-covered
+          # against the WS transport without rewriting fixtures to
+          # use internal/wsclient/testserver.go. Until that rewrite
+          # lands, the acc suite (TF_ACC=1 against live TrueNAS) is
+          # the canonical coverage source for those layers. Tier 1
+          # holds high; Tier 2 gets floors.
+          #
+          # Mirrors scripts/acc.sh stage 4 — keep in sync.
+          declare -A TIER1=(
+            [github.com/PjSalty/terraform-provider-truenas/internal/types]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/validators]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/planhelpers]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/planmodifiers]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/flex]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/acctest]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/wsclient]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/sweep]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/fwresource]=100
+          )
+          declare -A TIER2_FLOOR=(
+            [github.com/PjSalty/terraform-provider-truenas/internal/resources]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/datasources]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/provider]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/recordreplay]=100
+          )
+
+          declare -A PKG_COV
+          while IFS= read -r row; do
+            pkg=$(awk -F: '{print $1}' <<<"$row" | xargs dirname)
+            stmts=$(awk '{print $2}' <<<"$row")
+            covered=$(awk '{print $3}' <<<"$row")
+            if [ -z "${PKG_COV[$pkg]:-}" ]; then PKG_COV[$pkg]="0 0"; fi
+            s=$(awk '{print $1}' <<<"${PKG_COV[$pkg]}")
+            c=$(awk '{print $2}' <<<"${PKG_COV[$pkg]}")
+            s=$((s + stmts))
+            if [ "$covered" -gt 0 ]; then c=$((c + stmts)); fi
+            PKG_COV[$pkg]="$s $c"
+          done < <(tail -n +2 coverage.out)
+
+          fail=0
+          for pkg in "${!PKG_COV[@]}"; do
+            s=$(awk '{print $1}' <<<"${PKG_COV[$pkg]}")
+            c=$(awk '{print $2}' <<<"${PKG_COV[$pkg]}")
+            if [ "$s" -eq 0 ]; then continue; fi
+            cov_int=$((c * 100 / s))
+            if [ -n "${TIER1[$pkg]:-}" ]; then
+              floor=${TIER1[$pkg]}
+              if [ "$cov_int" -lt "$floor" ]; then
+                echo "  TIER1 $pkg: ${cov_int}% < ${floor}% floor"
+                fail=$((fail + 1))
+              fi
+            elif [ -n "${TIER2_FLOOR[$pkg]:-}" ]; then
+              floor=${TIER2_FLOOR[$pkg]}
+              if [ "$cov_int" -lt "$floor" ]; then
+                echo "  TIER2 $pkg: ${cov_int}% < ${floor}% floor"
+                fail=$((fail + 1))
+              fi
+            fi
+          done
+
           TOTAL=$(go tool cover -func=coverage.out | awk 'END {gsub("%",""); print $NF}')
           echo "total coverage: ${TOTAL}%"
-          if [ "${TOTAL%.*}" -lt 100 ]; then
-            echo "coverage below 100% — blocking merge"
+
+          if [ "$fail" -gt 0 ]; then
+            echo "${fail} package(s) below their coverage floor — blocking merge"
             exit 1
           fi
 

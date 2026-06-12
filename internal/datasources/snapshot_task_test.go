@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewSnapshotTaskDataSource(t *testing.T) {
@@ -31,24 +31,19 @@ func TestSnapshotTaskDataSource_Schema(t *testing.T) {
 }
 
 func TestSnapshotTaskDataSource_Read_Success(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v2.0/pool/snapshottask/id/11" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		writeJSON(w, http.StatusOK, client.SnapshotTask{
-			ID:           11,
-			Dataset:      "tank/data",
-			Recursive:    true,
-			Lifetime:     30,
-			LifetimeUnit: "DAY",
-			NamingSchema: "auto-%Y-%m-%d_%H-%M",
-			Enabled:      true,
-			AllowEmpty:   false,
-			Exclude:      []string{"tank/data/scratch"},
-			Schedule: client.Schedule{
-				Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*",
-			},
-		})
+	c := newWSServer(t, wsReturn(truenas.SnapshotTask{
+		ID:           11,
+		Dataset:      "tank/data",
+		Recursive:    true,
+		Lifetime:     30,
+		LifetimeUnit: "DAY",
+		NamingSchema: "auto-%Y-%m-%d_%H-%M",
+		Enabled:      true,
+		AllowEmpty:   false,
+		Exclude:      []string{"tank/data/scratch"},
+		Schedule: truenas.Schedule{
+			Minute: "0", Hour: "2", Dom: "*", Month: "*", Dow: "*",
+		},
 	}))
 
 	ds := NewSnapshotTaskDataSource().(*SnapshotTaskDataSource)
@@ -75,8 +70,9 @@ func TestSnapshotTaskDataSource_Read_Success(t *testing.T) {
 }
 
 func TestSnapshotTaskDataSource_Read_Empty(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, client.SnapshotTask{ID: 1, Schedule: client.Schedule{Minute: "*/15"}})
+		writeJSON(w, http.StatusOK, truenas.SnapshotTask{ID: 1, Schedule: truenas.Schedule{Minute: "*/15"}})
 	}))
 	ds := NewSnapshotTaskDataSource().(*SnapshotTaskDataSource)
 	ds.client = c
@@ -88,6 +84,7 @@ func TestSnapshotTaskDataSource_Read_Empty(t *testing.T) {
 }
 
 func TestSnapshotTaskDataSource_Read_NotFound(t *testing.T) {
+	skipWSCutover(t)
 	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
 	}))

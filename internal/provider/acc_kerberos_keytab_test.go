@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -49,6 +50,11 @@ resource "truenas_kerberos_keytab" "test" {
   file = %q
 }
 `, name, payload),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_kerberos_keytab.test", "name", name),
 					resource.TestCheckResourceAttrSet("truenas_kerberos_keytab.test", "id"),
@@ -90,7 +96,12 @@ resource "truenas_kerberos_keytab" "test" {
 			},
 			{
 				Config: cfg(name2),
-				Check:  resource.TestCheckResourceAttr("truenas_kerberos_keytab.test", "name", name2),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_kerberos_keytab.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_kerberos_keytab.test", "name", name2),
 			},
 		},
 	})

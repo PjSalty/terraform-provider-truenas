@@ -82,7 +82,7 @@ NEW=$(curl -sf --header "Private-Token: $GLAB_TOKEN" \
   --header "Content-Type: application/json" \
   --data "{\"name\":\"promote-and-renovate\",\"scopes\":[\"api\",\"write_repository\"],\"access_level\":40,\"expires_at\":\"$EXPIRY\"}" \
   --request POST \
-  https://gitlab.salt.saltstice.com/api/v4/projects/16/access_tokens \
+  https://gitlab.example.com/api/v4/projects/16/access_tokens \
   | jq -r .token)
 
 # 2. Update the CI variable
@@ -90,7 +90,7 @@ curl -sf --header "Private-Token: $GLAB_TOKEN" \
   --header "Content-Type: application/json" \
   --data "{\"value\":\"$NEW\"}" \
   --request PUT \
-  https://gitlab.salt.saltstice.com/api/v4/projects/16/variables/PROMOTE_TOKEN
+  https://gitlab.example.com/api/v4/projects/16/variables/PROMOTE_TOKEN
 
 # 3. Revoke the old token (find its id via GET projects/16/access_tokens)
 ```

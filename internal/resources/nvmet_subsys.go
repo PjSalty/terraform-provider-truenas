@@ -20,17 +20,20 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 var (
 	_ resource.Resource                = &NVMetSubsysResource{}
 	_ resource.ResourceWithImportState = &NVMetSubsysResource{}
+	_ resource.ResourceWithModifyPlan  = &NVMetSubsysResource{}
 )
 
 // NVMetSubsysResource manages an NVMe-oF subsystem (target).
 type NVMetSubsysResource struct {
-	client *client.Client
+	client *wsclient.Client
 }
 
 // NVMetSubsysResourceModel describes the resource data model.
@@ -136,11 +139,11 @@ func (r *NVMetSubsysResource) Configure(_ context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*wsclient.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *wsclient.Client, got: %T", req.ProviderData),
 		)
 		return
 	}
@@ -157,7 +160,7 @@ func (r *NVMetSubsysResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createReq := &client.NVMetSubsysCreateRequest{
+	createReq := &truenas.NVMetSubsysCreateRequest{
 		Name: plan.Name.ValueString(),
 	}
 	if !plan.Subnqn.IsNull() && !plan.Subnqn.IsUnknown() {
@@ -221,7 +224,7 @@ func (r *NVMetSubsysResource) Read(ctx context.Context, req resource.ReadRequest
 
 	subsys, err := r.client.GetNVMetSubsys(ctx, id)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -262,7 +265,7 @@ func (r *NVMetSubsysResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	updateReq := &client.NVMetSubsysUpdateRequest{}
+	updateReq := &truenas.NVMetSubsysUpdateRequest{}
 	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
 		v := plan.Name.ValueString()
 		updateReq.Name = &v
@@ -327,7 +330,7 @@ func (r *NVMetSubsysResource) Delete(ctx context.Context, req resource.DeleteReq
 	tflog.Debug(ctx, "Deleting nvmet_subsys", map[string]interface{}{"id": id})
 
 	if err := r.client.DeleteNVMetSubsys(ctx, id); err != nil {
-		if client.IsNotFound(err) {
+		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "NVMe-oF subsystem already deleted, removing from state", map[string]interface{}{"id": id})
 			return
 		}
@@ -340,6 +343,13 @@ func (r *NVMetSubsysResource) Delete(ctx context.Context, req resource.DeleteReq
 	tflog.Trace(ctx, "Delete NVMetSubsys success")
 }
 
+// ModifyPlan emits a plan-time Warning whenever the plan would destroy
+// this resource. Removing an NVMe-oF subsystem strips every namespace
+// attached to it; clients lose all backing storage on this subsystem.
+func (r *NVMetSubsysResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_nvmet_subsys")
+}
+
 func (r *NVMetSubsysResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	if _, err := strconv.Atoi(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("NVMe-oF subsystem ID must be numeric: %s", err))
@@ -348,7 +358,7 @@ func (r *NVMetSubsysResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func (r *NVMetSubsysResource) mapResponseToModel(subsys *client.NVMetSubsys, model *NVMetSubsysResourceModel) {
+func (r *NVMetSubsysResource) mapResponseToModel(subsys *truenas.NVMetSubsys, model *NVMetSubsysResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(subsys.ID))
 	model.Name = types.StringValue(subsys.Name)
 	if subsys.Subnqn != nil {

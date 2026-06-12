@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // --- NVMetHost ---
@@ -15,7 +15,7 @@ func TestNVMetHostResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &NVMetHostResource{}
 	cases := []struct {
 		name      string
-		host      *client.NVMetHost
+		host      *truenas.NVMetHost
 		wantID    string
 		wantNQN   string
 		wantDhKey bool
@@ -23,13 +23,13 @@ func TestNVMetHostResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name:    "minimal host",
-			host:    &client.NVMetHost{ID: 1, Hostnqn: "nqn.2014-08.org.nvmexpress:uuid:abc"},
+			host:    &truenas.NVMetHost{ID: 1, Hostnqn: "nqn.2014-08.org.nvmexpress:uuid:abc"},
 			wantID:  "1",
 			wantNQN: "nqn.2014-08.org.nvmexpress:uuid:abc",
 		},
 		{
 			name: "host with dhchap key",
-			host: &client.NVMetHost{
+			host: &truenas.NVMetHost{
 				ID:        2,
 				Hostnqn:   "nqn.2014-08.org.nvmexpress:uuid:def",
 				DhchapKey: strPtr("DHHC-1:00:secret-value-here"),
@@ -38,7 +38,7 @@ func TestNVMetHostResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "host with full dhchap config",
-			host: &client.NVMetHost{
+			host: &truenas.NVMetHost{
 				ID:            3,
 				Hostnqn:       "nqn.2014-08.org.nvmexpress:uuid:xyz",
 				DhchapKey:     strPtr("k"),
@@ -50,13 +50,13 @@ func TestNVMetHostResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name:    "host nil pointers stay null",
-			host:    &client.NVMetHost{ID: 4, Hostnqn: "nqn.test:null"},
+			host:    &truenas.NVMetHost{ID: 4, Hostnqn: "nqn.test:null"},
 			wantID:  "4",
 			wantNQN: "nqn.test:null",
 		},
 		{
 			name: "host zero id",
-			host: &client.NVMetHost{
+			host: &truenas.NVMetHost{
 				ID:      0,
 				Hostnqn: "nqn.zero",
 			},
@@ -116,7 +116,7 @@ func TestNVMetSubsysResource_MapResponseToModel_Cases(t *testing.T) {
 	oui := "00A098"
 	cases := []struct {
 		name      string
-		subsys    *client.NVMetSubsys
+		subsys    *truenas.NVMetSubsys
 		wantID    string
 		wantName  string
 		wantAAH   bool
@@ -126,14 +126,14 @@ func TestNVMetSubsysResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name:     "minimal subsys",
-			subsys:   &client.NVMetSubsys{ID: 1, Name: "target1", AllowAnyHost: true, Serial: "SN-1"},
+			subsys:   &truenas.NVMetSubsys{ID: 1, Name: "target1", AllowAnyHost: true, Serial: "SN-1"},
 			wantID:   "1",
 			wantName: "target1",
 			wantAAH:  true,
 		},
 		{
 			name: "subsys with subnqn",
-			subsys: &client.NVMetSubsys{
+			subsys: &truenas.NVMetSubsys{
 				ID:           2,
 				Name:         "tgt2",
 				Subnqn:       strPtr("nqn.2020-01.example:tgt2"),
@@ -144,7 +144,7 @@ func TestNVMetSubsysResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "subsys with all optional fields",
-			subsys: &client.NVMetSubsys{
+			subsys: &truenas.NVMetSubsys{
 				ID:           3,
 				Name:         "tgt3",
 				Subnqn:       strPtr("nqn.tgt3"),
@@ -159,7 +159,7 @@ func TestNVMetSubsysResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name:     "subsys nil pointers",
-			subsys:   &client.NVMetSubsys{ID: 4, Name: "tgt4", Serial: "SN-4"},
+			subsys:   &truenas.NVMetSubsys{ID: 4, Name: "tgt4", Serial: "SN-4"},
 			wantID:   "4",
 			wantName: "tgt4",
 		},

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccSNMPConfigResource_basic — singleton: SNMP service
@@ -27,6 +28,11 @@ resource "truenas_snmp_config" "test" {
   location  = "acctest-rack-1"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_snmp_config.test", "community", "public"),
 					resource.TestCheckResourceAttrSet("truenas_snmp_config.test", "id"),
@@ -68,6 +74,11 @@ resource "truenas_snmp_config" "test" {
   location  = "acctest-rack-2"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_snmp_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_snmp_config.test", "contact", "acctest updated"),
 					resource.TestCheckResourceAttr("truenas_snmp_config.test", "location", "acctest-rack-2"),

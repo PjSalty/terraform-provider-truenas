@@ -2,10 +2,8 @@ package resources
 
 import (
 	"context"
-	"encoding/json"
-	"io"
-	"net/http"
-	"strings"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -21,42 +19,35 @@ func systemUpdateHandler(t *testing.T, trains *struct {
 	Trains   map[string]map[string]string `json:"trains"`
 	Current  string                       `json:"current"`
 	Selected string                       `json:"selected"`
-}, autoDownload *bool, sysVersion string, checkStatus string, checkVersion string, fail map[string]bool) http.HandlerFunc {
+}, autoDownload *bool, sysVersion string, checkStatus string, checkVersion string, fail map[string]bool) wsclient.TestHandler {
 	t.Helper()
-	return func(w http.ResponseWriter, r *http.Request) {
-		if fail[r.URL.Path] {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = io.WriteString(w, `{"message":"forced failure"}`)
-			return
+	return func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		if fail[method] {
+			return nil, &wsclient.RPCError{
+				Code:    wsclient.CodeMethodCallError,
+				Message: "forced failure",
+			}
 		}
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case strings.HasSuffix(r.URL.Path, "/update/get_auto_download"):
-			_ = json.NewEncoder(w).Encode(*autoDownload)
-		case strings.HasSuffix(r.URL.Path, "/update/get_trains"):
-			_ = json.NewEncoder(w).Encode(trains)
-		case strings.HasSuffix(r.URL.Path, "/system/info"):
-			_ = json.NewEncoder(w).Encode(map[string]string{"version": sysVersion})
-		case strings.HasSuffix(r.URL.Path, "/update/check_available"):
+		switch method {
+		case "update.get_auto_download":
+			return *autoDownload, nil
+		case "update.get_trains":
+			return trains, nil
+		case "system.info":
+			return map[string]string{"version": sysVersion}, nil
+		case "update.check_available":
 			body := map[string]string{"status": checkStatus}
 			if checkVersion != "" {
 				body["version"] = checkVersion
 			}
-			_ = json.NewEncoder(w).Encode(body)
-		case strings.HasSuffix(r.URL.Path, "/update/set_auto_download"):
-			if r.Method != http.MethodPost {
-				t.Errorf("set_auto_download wrong method: %s", r.Method)
-			}
-			w.WriteHeader(http.StatusOK)
-		case strings.HasSuffix(r.URL.Path, "/update/set_train"):
-			if r.Method != http.MethodPost {
-				t.Errorf("set_train wrong method: %s", r.Method)
-			}
-			w.WriteHeader(http.StatusOK)
-		default:
-			t.Errorf("unexpected path: %s", r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
+			return body, nil
+		case "update.set_auto_download":
+			return nil, nil
+		case "update.set_train":
+			return nil, nil
 		}
+		t.Errorf("unexpected method: %s", method)
+		return nil, &wsclient.RPCError{Code: wsclient.CodeMethodNotFound, Message: method}
 	}
 }
 
@@ -133,8 +124,7 @@ func TestSystemUpdateResource_Schema(t *testing.T) {
 func TestSystemUpdateResource_Read_Success(t *testing.T) {
 	ctx := context.Background()
 	ad := false
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
 
 	r := &SystemUpdateResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -170,15 +160,14 @@ func TestSystemUpdateResource_Read_ErrorsEachBranch(t *testing.T) {
 		name string
 		fail map[string]bool
 	}{
-		{"get_auto_download fails", map[string]bool{"/api/v2.0/update/get_auto_download": true}},
-		{"get_trains fails", map[string]bool{"/api/v2.0/update/get_trains": true}},
-		{"system/info fails", map[string]bool{"/api/v2.0/system/info": true}},
-		{"check_available fails", map[string]bool{"/api/v2.0/update/check_available": true}},
+		{"get_auto_download fails", map[string]bool{"update.get_auto_download": true}},
+		{"get_trains fails", map[string]bool{"update.get_trains": true}},
+		{"system/info fails", map[string]bool{"system.info": true}},
+		{"check_available fails", map[string]bool{"update.check_available": true}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "AVAILABLE", "25.04.3.0", tc.fail))
-			defer srv.Close()
+			c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "AVAILABLE", "25.04.3.0", tc.fail))
 			r := &SystemUpdateResource{client: c}
 			sch := &resource.SchemaResponse{}
 			r.Schema(ctx, resource.SchemaRequest{}, sch)
@@ -197,8 +186,7 @@ func TestSystemUpdateResource_Create_Success_PinsNewTrain(t *testing.T) {
 	ad := false
 	trains := stdTrains()
 	trains.Selected = "TrueNAS-SCALE-Fangtooth"
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, trains, &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, trains, &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
 
 	r := &SystemUpdateResource{client: c}
 	req := primedPlanWithSystemUpdate(t, ctx, r, false, "TrueNAS-SCALE-Goldeye")
@@ -216,8 +204,7 @@ func TestSystemUpdateResource_Create_Success_PinsNewTrain(t *testing.T) {
 func TestSystemUpdateResource_Create_Success_TrainAlreadySelected(t *testing.T) {
 	ctx := context.Background()
 	ad := false
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
 
 	r := &SystemUpdateResource{client: c}
 	// Train matches trains.Selected → SetUpdateTrain should be skipped.
@@ -235,8 +222,7 @@ func TestSystemUpdateResource_Create_Success_TrainAlreadySelected(t *testing.T) 
 func TestSystemUpdateResource_Create_Success_NoTrain(t *testing.T) {
 	ctx := context.Background()
 	ad := false
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
 
 	r := &SystemUpdateResource{client: c}
 	// No train supplied in plan → applyConfig skips the train block entirely.
@@ -254,8 +240,7 @@ func TestSystemUpdateResource_Create_Success_NoTrain(t *testing.T) {
 func TestSystemUpdateResource_Create_InvalidTrain(t *testing.T) {
 	ctx := context.Background()
 	ad := false
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
 
 	r := &SystemUpdateResource{client: c}
 	req := primedPlanWithSystemUpdate(t, ctx, r, false, "TrueNAS-SCALE-Nonexistent")
@@ -272,8 +257,7 @@ func TestSystemUpdateResource_Create_InvalidTrain(t *testing.T) {
 func TestSystemUpdateResource_Create_GetTrainsFails(t *testing.T) {
 	ctx := context.Background()
 	ad := false
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"/api/v2.0/update/get_trains": true}))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"update.get_trains": true}))
 
 	r := &SystemUpdateResource{client: c}
 	req := primedPlanWithSystemUpdate(t, ctx, r, false, "TrueNAS-SCALE-Fangtooth")
@@ -290,8 +274,7 @@ func TestSystemUpdateResource_Create_GetTrainsFails(t *testing.T) {
 func TestSystemUpdateResource_Create_SetTrainFails(t *testing.T) {
 	ctx := context.Background()
 	ad := false
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"/api/v2.0/update/set_train": true}))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"update.set_train": true}))
 
 	r := &SystemUpdateResource{client: c}
 	// Requesting a train DIFFERENT from trains.Selected forces SetUpdateTrain.
@@ -309,8 +292,7 @@ func TestSystemUpdateResource_Create_SetTrainFails(t *testing.T) {
 func TestSystemUpdateResource_Create_SetAutoDownloadFails(t *testing.T) {
 	ctx := context.Background()
 	ad := false
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"/api/v2.0/update/set_auto_download": true}))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"update.set_auto_download": true}))
 
 	r := &SystemUpdateResource{client: c}
 	req := primedPlanWithSystemUpdate(t, ctx, r, true, "")
@@ -329,8 +311,7 @@ func TestSystemUpdateResource_Create_RefreshStateFails(t *testing.T) {
 	ad := false
 	// applyConfig succeeds, but the subsequent refreshState hits a failing
 	// get_auto_download. This exercises the "writes OK, reads fail" path.
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"/api/v2.0/update/get_auto_download": true}))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"update.get_auto_download": true}))
 
 	r := &SystemUpdateResource{client: c}
 	req := primedPlanWithSystemUpdate(t, ctx, r, false, "")
@@ -347,8 +328,7 @@ func TestSystemUpdateResource_Create_RefreshStateFails(t *testing.T) {
 func TestSystemUpdateResource_Update_Success(t *testing.T) {
 	ctx := context.Background()
 	ad := true
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
 
 	r := &SystemUpdateResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -366,8 +346,7 @@ func TestSystemUpdateResource_Update_Success(t *testing.T) {
 func TestSystemUpdateResource_Update_ApplyFails(t *testing.T) {
 	ctx := context.Background()
 	ad := true
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"/api/v2.0/update/set_auto_download": true}))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"update.set_auto_download": true}))
 
 	r := &SystemUpdateResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -385,8 +364,7 @@ func TestSystemUpdateResource_Update_ApplyFails(t *testing.T) {
 func TestSystemUpdateResource_Update_RefreshFails(t *testing.T) {
 	ctx := context.Background()
 	ad := true
-	c, srv := newTestServerClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"/api/v2.0/system/info": true}))
-	defer srv.Close()
+	c := newWSTestClient(t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"system.info": true}))
 
 	r := &SystemUpdateResource{client: c}
 	sch := &resource.SchemaResponse{}

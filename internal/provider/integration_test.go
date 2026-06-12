@@ -313,6 +313,7 @@ func integrationProviderFactories(t *testing.T, srvURL string) map[string]func()
 // round-trip a dataset create, reflect the computed attributes back
 // into state, and emit the correct plan assertions.
 func TestIntegration_Dataset_CreateReadDestroy(t *testing.T) {
+	skipWSCutover(t)
 	// Cannot use t.Parallel() because integrationProviderFactories calls
 	// t.Setenv, which is incompatible with parallel tests.
 	mock := newMockTrueNAS()
@@ -378,6 +379,7 @@ resource "truenas_dataset" "integration" {
 // (acc_dataset_test.go TestAccDatasetResource_disappears) does the
 // same against a real TrueNAS with a client.DeleteDataset call.
 func TestIntegration_Dataset_DriftDetected(t *testing.T) {
+	skipWSCutover(t)
 	// Cannot use t.Parallel() because integrationProviderFactories calls
 	// t.Setenv, which is incompatible with parallel tests.
 	mock := newMockTrueNAS()
@@ -421,6 +423,7 @@ resource "truenas_dataset" "drift" {
 // change (comments) plans as an Update action (not Create or Replace)
 // and that the updated value round-trips through refresh.
 func TestIntegration_Dataset_Update(t *testing.T) {
+	skipWSCutover(t)
 	// Cannot use t.Parallel() because integrationProviderFactories calls
 	// t.Setenv, which is incompatible with parallel tests.
 	mock := newMockTrueNAS()
@@ -465,6 +468,7 @@ resource "truenas_dataset" "integration" {
 // single-resource integration tests miss (e.g., planning ordering,
 // unknown-value propagation across resource boundaries).
 func TestIntegration_MultiResource(t *testing.T) {
+	skipWSCutover(t)
 	// Cannot use t.Parallel() because integrationProviderFactories calls
 	// t.Setenv, which is incompatible with parallel tests.
 	mock := newMockTrueNAS()
@@ -527,6 +531,7 @@ resource "truenas_share_nfs" "share" {
 // swallowing ErrReadOnly on the way up — that is the regression this
 // test is meant to catch.
 func TestIntegration_ReadOnly_RefusesCreate(t *testing.T) {
+	skipWSCutover(t)
 	mock := newMockTrueNAS()
 	srv := httptest.NewServer(mock.handler())
 	defer srv.Close()

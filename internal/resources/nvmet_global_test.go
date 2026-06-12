@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // testAccCheckNVMetAvailable skips the test if the target TrueNAS doesn't
@@ -23,7 +23,7 @@ func testAccCheckNVMetAvailable(t *testing.T) {
 	if url == "" || key == "" {
 		t.Skip("TRUENAS_URL/TRUENAS_API_KEY not set; skipping nvmet test")
 	}
-	c, err := client.New(url, key)
+	c, err := wsclient.NewWithOptions(url, key, true)
 	if err != nil {
 		t.Skipf("cannot create truenas client: %s", err)
 	}

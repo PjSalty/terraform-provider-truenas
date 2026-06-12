@@ -2,12 +2,12 @@ package datasources
 
 import (
 	"context"
-	"net/http"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestNewDatasetsDataSource(t *testing.T) {
@@ -27,8 +27,8 @@ func TestDatasetsDataSource_Schema(t *testing.T) {
 	}
 }
 
-func datasetsFixture() []client.DatasetResponse {
-	return []client.DatasetResponse{
+func datasetsFixture() []truenas.DatasetResponse {
+	return []truenas.DatasetResponse{
 		{ID: "tank", Name: "tank", Pool: "tank", Type: "FILESYSTEM", MountPoint: "/mnt/tank"},
 		{ID: "tank/data", Name: "data", Pool: "tank", Type: "FILESYSTEM", MountPoint: "/mnt/tank/data"},
 		{ID: "tank/data/sub", Name: "sub", Pool: "tank", Type: "FILESYSTEM", MountPoint: "/mnt/tank/data/sub"},
@@ -37,9 +37,7 @@ func datasetsFixture() []client.DatasetResponse {
 }
 
 func TestDatasetsDataSource_Read_All(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, datasetsFixture())
-	}))
+	c := newWSServer(t, wsReturn(datasetsFixture()))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c
@@ -58,9 +56,7 @@ func TestDatasetsDataSource_Read_All(t *testing.T) {
 }
 
 func TestDatasetsDataSource_Read_PoolFilter(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, datasetsFixture())
-	}))
+	c := newWSServer(t, wsReturn(datasetsFixture()))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c
@@ -79,9 +75,7 @@ func TestDatasetsDataSource_Read_PoolFilter(t *testing.T) {
 }
 
 func TestDatasetsDataSource_Read_ParentFilter(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, datasetsFixture())
-	}))
+	c := newWSServer(t, wsReturn(datasetsFixture()))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c
@@ -102,9 +96,7 @@ func TestDatasetsDataSource_Read_ParentFilter(t *testing.T) {
 }
 
 func TestDatasetsDataSource_Read_ServerError(t *testing.T) {
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewDatasetsDataSource().(*DatasetsDataSource)
 	ds.client = c

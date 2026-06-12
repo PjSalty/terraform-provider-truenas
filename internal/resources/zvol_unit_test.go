@@ -6,14 +6,14 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/client"
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 func TestZvolResource_MapResponseToModel_Cases(t *testing.T) {
 	r := &ZvolResource{}
 	cases := []struct {
 		name        string
-		ds          *client.DatasetResponse
+		ds          *truenas.DatasetResponse
 		wantID      string
 		wantPool    string
 		wantDSName  string
@@ -22,7 +22,7 @@ func TestZvolResource_MapResponseToModel_Cases(t *testing.T) {
 	}{
 		{
 			name: "basic zvol no properties",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:   "tank/myvol",
 				Type: "VOLUME",
 			},
@@ -32,7 +32,7 @@ func TestZvolResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "zvol with compression and comment",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:          "tank/vol1",
 				Type:        "VOLUME",
 				Compression: pv("ZSTD"),
@@ -46,7 +46,7 @@ func TestZvolResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "zvol with nested path",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:   "pool2/sub/vol",
 				Type: "VOLUME",
 			},
@@ -56,7 +56,7 @@ func TestZvolResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "zvol with nil comments defaults to empty",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:   "p/v",
 				Type: "VOLUME",
 			},
@@ -67,11 +67,11 @@ func TestZvolResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "zvol with volsize and volblocksize",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:           "tank/bigvol",
 				Type:         "VOLUME",
-				Volsize:      &client.PropertyRawVal{Rawvalue: "10737418240"},
-				Volblocksize: &client.PropertyValue{Value: "16K"},
+				Volsize:      &truenas.PropertyRawVal{Rawvalue: "10737418240"},
+				Volblocksize: &truenas.PropertyValue{Value: "16K"},
 				Compression:  pv("LZ4"),
 			},
 			wantID:     "tank/bigvol",
@@ -81,11 +81,11 @@ func TestZvolResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "zvol small block",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:           "fast/v1",
 				Type:         "VOLUME",
-				Volsize:      &client.PropertyRawVal{Rawvalue: "1048576"},
-				Volblocksize: &client.PropertyValue{Value: "4K"},
+				Volsize:      &truenas.PropertyRawVal{Rawvalue: "1048576"},
+				Volblocksize: &truenas.PropertyValue{Value: "4K"},
 			},
 			wantID:     "fast/v1",
 			wantPool:   "fast",
@@ -93,11 +93,11 @@ func TestZvolResource_MapResponseToModel_Cases(t *testing.T) {
 		},
 		{
 			name: "zvol with full property set",
-			ds: &client.DatasetResponse{
+			ds: &truenas.DatasetResponse{
 				ID:           "tank/prop",
 				Type:         "VOLUME",
-				Volsize:      &client.PropertyRawVal{Rawvalue: "134217728"},
-				Volblocksize: &client.PropertyValue{Value: "128K"},
+				Volsize:      &truenas.PropertyRawVal{Rawvalue: "134217728"},
+				Volblocksize: &truenas.PropertyValue{Value: "128K"},
 				Compression:  pv("ZSTD"),
 				Sync:         pv("DISABLED"),
 				Comments:     pv("test zvol"),

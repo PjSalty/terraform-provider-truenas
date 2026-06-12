@@ -7,6 +7,533 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-12
+
+### Added (rc.4 — multi-version validation, 2026-06-09/10)
+
+- **Validation matrix across three live SCALE lines.** The full
+  acceptance suite was executed against real instances of each:
+  - SCALE **25.10**: 147/147 PASS — the fully-supported floor.
+  - SCALE **25.04**: 126/141 — every failure is an upstream API
+    absence (`nvmet.*` arrived in 25.10, unified
+    `directoryservices.*`, 25.10 SMB `purpose` vocabulary, newer
+    `alert_service` types), not a provider defect. Documented as
+    partial support in the version matrix.
+  - SCALE **26.0-BETA.1**: 143/147 — four failures from 26.0 API
+    drift (`service.start` signature, SMB config shape), tracked
+    for a v2.x release alongside 26.0 final.
+- **WebSocket acceptance preflight** (`cmd/wspreflight`): the acc
+  harness probes `system.info` + `pool.query` over JSON-RPC before
+  running, replacing the REST curl preflight that TrueNAS 26.0
+  removed the endpoint for.
+
+### Fixed (rc.4 — SCALE 25.10 API drift, 2026-06-09)
+
+- `tunable` create/update/delete became middleware **jobs** in
+  25.10; the resource now calls them through the job path and
+  polls to terminal state.
+- `filesystem.getacl` takes positional args on 25.10 and
+  `filesystem.setacl` is a job; both converted.
+- `IsNotFound` now recognizes all five not-found surfaces TrueNAS
+  emits, including `MatchNotFound()` (carried in the error *reason*
+  rather than the message) and job failures re-wrapped as plain
+  errors by the job runner. Fixes spurious destroy-time failures
+  and the `_disappears` acceptance pattern on live 25.10.
+
+### Changed (rc.4 — test rigor)
+
+- 100.0% statement coverage on all internal packages; CI coverage
+  gates locked at 100.
+
+### Changed (continued — REST removal, 2026-06-09)
+
+- **REST transport fully retired.** `internal/client/` is gone.
+  Every resource and data source flows over JSON-RPC over
+  WebSocket via `internal/wsclient/`. The `transport` provider
+  attribute, the `TRUENAS_TRANSPORT` env var, and the
+  `transport = "rest"` opt-out documented in earlier v2.0
+  drafts do not exist in the shipped code. Operators on
+  TrueNAS SCALE versions older than 25.04 (when WebSocket
+  landed upstream) must stay on the v1.x provider line.
+
+  Why: continuing to ship the dual-transport surface meant
+  carrying ~30 kLOC of REST machinery for an opt-out path no
+  test suite was exercising. Cutting it now reduces the
+  v2.0 attack surface, halves the redactor's coverage burden,
+  and matches iX's published SCALE 26.04 REST removal
+  timeline.
+
+- **internal/wsclient hardening:** decorrelated jitter on
+  `[EBUSY] Rate Limit Exceeded` retries (auth handshake
+  retries up to 12 attempts with backoff capped at 6s);
+  IsNotFound now accepts the `CodeInvalidParams [ENOENT]`
+  variant TrueNAS emits on `*.get_instance` for missing ids
+  (Delete is now idempotent across the three not-found
+  surfaces).
+
+- **internal/sweep rewritten** to issue inline `http.Get`
+  against the TrueNAS REST API for collection-list endpoints
+  (the only place a typed wsclient helper isn't worth
+  building). Sweepers are dev-time test cleanup; production
+  runtime is wsclient-only.
+
+### Tests (continued)
+
+- **Tiered coverage gate** in `scripts/acc.sh`. Tier 1
+  packages (`types`, `validators`, `wsclient`, `sweep`,
+  `fwresource`, `flex`, `acctest`, `planhelpers`,
+  `planmodifiers`, `resourcevalidators`) hold at or near
+  100%; Tier 2 packages (`resources`, `datasources`,
+  `provider`, `recordreplay`) have explicit floors. The
+  resource/datasource layers can't be unit-covered against
+  the WS transport without rewriting fixtures to use
+  internal/wsclient/testserver.go; the acc suite is the
+  canonical coverage source for those layers.
+
+- **Two new static invariants** (provider gate set at 21):
+  - `TestConfigureUsesWSClient` — every resource's
+    Configure type-asserts `*wsclient.Client` (not
+    `*client.Client`)
+  - `TestDataSourceConfigureUsesWSClient` — same for
+    datasources
+  - Block accidental REST regression at the source-text
+    level — anyone copying an old resource forward will
+    fail the invariant before runtime.
+
+- **23 of 23 stub DataSource acc tests converted** to real
+  acc coverage. Pattern: create a fixture resource via the
+  provider, query via the datasource, assert attribute
+  round-trip. Env-gated cases (catalog, apps, vms,
+  network_interface) carry explicit skip messages.
+
+### Breaking — SCALE 25.10 compatibility realignments
+
+- **`truenas_share_smb.purpose` accepts a new vocabulary.** TrueNAS
+  25.10 overhauled the SMB share preset registry. The earlier
+  vocabulary (ENHANCED_TIMEMACHINE, LEGACY_SMB_WHITELIST,
+  MULTI_PROTOCOL_NFS, MULTI_PROTOCOL_AFP, PRIVATE_DATASETS,
+  NO_PRESET, TIMEMACHINE) is no longer accepted by the upstream API.
+  Only `DEFAULT_SHARE` survives. The new 25.10 vocabulary is:
+  - `DEFAULT_SHARE`
+  - `LEGACY_SHARE` (closest match for the old `NO_PRESET`)
+  - `TIMEMACHINE_SHARE` (replaces both `TIMEMACHINE` and
+    `ENHANCED_TIMEMACHINE`; requires `aapl_extensions=true` on
+    global SMB config)
+  - `MULTIPROTOCOL_SHARE` (replaces `MULTI_PROTOCOL_NFS` /
+    `MULTI_PROTOCOL_AFP`)
+  - `PRIVATE_DATASETS_SHARE` (replaces `PRIVATE_DATASETS`)
+  - `EXTERNAL_SHARE` (new — requires preset-options map; tracked
+    as v2.x gap)
+  - `TIME_LOCKED_SHARE` (new)
+  - `VEEAM_REPOSITORY_SHARE` (new — requires enterprise license)
+
+  Operators upgrading from v1.x with a `purpose` value in state
+  must migrate to the closest 25.10 equivalent before the next
+  apply.
+
+### Added
+
+- **`truenas_dataset.compression` accepts the full SCALE 25.10
+  algorithm ladder.** Earlier versions of the provider only allowed
+  16 values (the GZIP 1–9 ladder + plain ZSTD / ZSTD-FAST + the
+  legacy LZ4 / LZJB / ZLE / OFF set). 25.10's
+  `pool.dataset.compression_choices` actually exposes 49 algorithms
+  — every `ZSTD-{1..19}`, every `ZSTD-FAST-{1..10}`, plus the
+  skip-step `ZSTD-FAST-{20,30,40,50,60,70,80,90,100,500,1000}`, and
+  `ON` (server-side "use pool default"). Provider now accepts all
+  49 verbatim; configs that need fine-grained ZSTD level control
+  no longer require an apply-time API error to discover.
+
+### Changed
+
+- **WebSocket transport package (`internal/wsclient/`) shipped but
+  not yet wired into resource I/O paths.** v2.0 includes the full
+  JSON-RPC 2.0 over WebSocket client — call surface, reconnect/replay
+  chaos coverage, error matrix, redaction parity with the REST path
+  — but `provider.Configure()` currently still instantiates only the
+  REST `*client.Client`. Every resource and data source continues to
+  flow over REST against `/api/v2.0`.
+
+  Why ship the package without wiring it: v2.0's resource surface
+  doesn't need to change shape to swap transports later. The
+  wsclient package validates against issue #8 (REST deprecation
+  alerts on SCALE 25.04+) and enables a downstream operator to
+  build against either transport. The actual provider-level cutover
+  is tracked as v2.1 scope so v2.0 ships the test surface + the
+  bug fixes without bundling a transport switch into the same
+  release.
+
+  **Operator impact:** none. v2.0 behaviour vs v1.x is identical
+  on the wire. SCALE 25.10 keeps REST available; SCALE 25.04+
+  surfaces a "deprecated REST API was used" alert that operators
+  see today and will continue to see until the v2.1 transport
+  cutover.
+
+### Fixed
+
+- **`terraform import truenas_cloud_sync.*` no longer errors with
+  `cannot unmarshal object into Go struct field`** — TrueNAS returns the
+  `credentials` field as a nested object on `GET /cloudsync/id/<n>`
+  (and the equivalent JSON-RPC `cloudsync.get_instance`), but as a
+  plain integer on create/update responses. The Go struct field was
+  always `int`, so import / refresh paths errored out. A custom
+  `UnmarshalJSON` on the shared `CloudSync` struct now accepts both
+  shapes — plain int (used as-is) and nested object (extracts `.id`).
+  Mirrored on both `internal/client.CloudSync` (REST path) and
+  `internal/types.CloudSync` (used by the WebSocket transport).
+  Originally reported and fixed by Max Poelman in PR #12.
+
+- **Cross-attribute validators no longer reject Unknown values at plan
+  time.** Two related bug fixes surfaced by the v2.0 acceptance suite
+  on TrueNAS SCALE 25.10:
+  - `internal/resourcevalidators.RequiredWhenEqual` treated an Unknown
+    required attribute as missing. Configs that wired the required
+    value from a sibling resource's computed attribute
+    (`path = truenas_dataset.x.mount_point`) failed plan with
+    `Missing required attribute`. The validator now defers to apply
+    time when the value is Unknown.
+  - `truenas_iscsi_extent.ModifyPlan` had the same shape bug for
+    `path`, `disk`, and `filesize`. Same fix: defer cross-attribute
+    checks to apply time when any input is Unknown.
+
+- **`terraform import truenas_filesystem_acl.<id>` no longer errors
+  with `String should have at least 1 character`.** ImportState was
+  only seeding `id`; the next Read sent an empty `path` to the
+  middleware and TrueNAS rejected it. ImportState now seeds both
+  `id` and `path` from the import argument (they carry the same
+  filesystem-path string).
+
+### Security
+
+- **Redactor closes three secret-leak paths** surfaced by the v2.0
+  brutal-test sweep (property-based redactor tests over every
+  schema-`Sensitive` attribute). All three were paths where a real
+  secret could reach `APIError.Body`, `tflog` traces, or
+  `Diagnostics.AddError` output:
+  - **ACME account_key** wasn't in `sensitiveKeyFragments`. The
+    `truenas_acme_dns_authenticator` resource has an `account_key`
+    attribute whose value is private-key material. Added
+    `account_key` to the fragment list on both REST and WebSocket
+    redactors.
+  - **JSON-in-string values** bypassed the recursive walker. Pattern:
+    `"settings_json": "{\"password\":\"…\"}"` — the outer key isn't
+    sensitive but the inner JSON contains a secret. `walkRedact` now
+    re-parses string values that look JSON-shaped, recursively
+    redacts, and re-marshals.
+  - **URL basic-auth, `X-API-Key`/`Authorization` headers, raw
+    bearer tokens** bypassed the key-fragment matcher in error
+    message strings (hyphens vs underscores, no key name at all).
+    A new pattern-based pass runs before the fragment matcher and
+    replaces the secret portion while preserving the
+    scheme/header prefix so operators can still see the leak source.
+
+### Tests
+
+- **178 JSON-unmarshal fuzz targets** added across
+  `internal/types`, `internal/client`, and `internal/wsclient`. Each
+  target round-trips bytes through Unmarshal → Marshal → Unmarshal
+  and must not panic. Seeded with a shared 23-entry corpus of
+  well-formed, edge, and malformed JSON. As regression tests they
+  run in ~40 ms; under `go test -fuzz=…` they run millions of
+  mutations per target. A pre-tag fuzz sweep of the 10 highest-risk
+  types ran 42M mutated inputs with zero panics.
+- **Property-based invariants over every response struct**:
+  `TestProperty_MarshalRoundTripStable` asserts no type silently
+  drops data on re-marshal (the bug pattern that caused PR #12);
+  `TestProperty_UnmarshalUnknownFieldsTolerated` asserts the
+  provider survives TrueNAS adding new attributes in a minor
+  version.
+- **Brutal redactor tests** enumerate every known schema-`Sensitive`
+  attribute and assert the redactor catches each one. These caught
+  the three Security fixes above.
+
+### Added
+
+- **`_disappears` acceptance test coverage for every deletable resource**
+  — 38 new behavioural acceptance tests in `internal/resources/*_test.go`,
+  one per resource that supports out-of-band deletion. Each test creates
+  the resource, deletes it via a direct API call (bypassing Terraform),
+  and asserts the next plan recognises the drift with
+  `ExpectNonEmptyPlan: true`. Pairs with the existing per-resource
+  `CheckDestroy` callback to verify both the Terraform-driven destroy
+  path and the recovery-from-deletion path. Resources covered include
+  the storage family (dataset, zvol, share_nfs, share_smb,
+  snapshot_task, scrub_task, replication), identity (user, group,
+  api_key, privilege, keychain_credential), tasks and networking
+  (cronjob, init_script, static_route, alert_service, tunable),
+  certificates and misc (certificate, acme_dns_authenticator,
+  kerberos_realm, kerberos_keytab, vm, vm_device,
+  filesystem_acl_template, reporting_exporter, cloud_backup, vmware),
+  iSCSI (target, portal, initiator, extent, targetextent, auth), and
+  NVMe-oF (host, subsys, port, host_subsys, port_subsys).
+
+- **Four new static-analysis invariant tests** in `internal/provider/`
+  that scan the Go source as strings to enforce shape-level guarantees
+  across every resource:
+  - `TestResourcesHaveImportStateImplemented` — every
+    `ResourceWithImportState` must use the passthrough helper or carry
+    an explicit `// import: custom` opt-out comment.
+  - `TestResourcesRemoveFromStateOnNotFound` — every resource's `Read`
+    method must call `resp.State.RemoveResource(ctx)` on `IsNotFound`,
+    with an allowlist for the 18 singleton-by-design resources where
+    delete-is-reset-to-default semantics apply.
+  - `TestAcceptanceTestsHavePreCheckOrSkip` — every `TestAcc*` function
+    must either call `testAccPreCheck(t)` or contain an explicit
+    `t.Skip(...)` stub.
+  - `TestAcceptanceTestsHaveCheckDestroy` — every non-`PlanOnly`,
+    non-stub acceptance test must wire a real `CheckDestroy` callback.
+
+- **Production-host deny safety rail** — `internal/acctest/acctest.go`
+  now refuses to build a client targeting the configured production
+  hostname. Three layers of defence: shell-level check in
+  `scripts/lib/_env.sh`, Go-level `assertNotProd()` in the test client
+  constructor (honours `TRUENAS_PROD_DENY` env override, empty
+  disables), and explicit documentation in `scripts/README.md` and
+  `.envrc.example` reminding operators to point tests at a non-prod
+  TrueNAS only.
+
+- **Local acceptance-test runner** — `scripts/acc.sh` ships a six-stage
+  pipeline (preflight, build, lint, unit tests + 100% coverage check,
+  static invariants, full acceptance suite) with per-run log files,
+  `--skip-acc`, `--acc-only`, and `--resource <name>` flags. Make
+  targets `acc`, `acc-skip`, `acc-only`, `acc-preflight`,
+  `acc-disappears`, and `acc-resource RESOURCE=<name>` wrap the
+  script. Designed for operator-paced runs against a non-production
+  TrueNAS instance; no CI dependency.
+
+- **14 `ExpectError` negative-path acceptance tests for validators**
+  — `internal/provider/acc_validator_errors_test.go` exercises every
+  wired validator with hostile input, asserting plan-time rejection
+  before any API call. Covers `IPOrCIDR` (invalid IP, malformed CIDR,
+  5-octet "IP", text-host CIDR, IPv6 positive control), four
+  `stringvalidator.OneOf` enums (`init_script.type`,
+  `init_script.when`, `nvmet_port.addr_trtype`, `iscsi_target.mode`),
+  three `int64validator` bounds (`certificate.key_length`,
+  `nvmet_port.addr_trsvcid` low/high), and `dns_nameserver.address`
+  regex rejection. Locks the `.tf`-layer contract: removing a
+  validator or changing an enum without updating callers fails the
+  test. Previously the entire tree had one `ExpectError` assertion.
+
+- **Apply-idempotency check rolled out to 5 more resources** — the
+  `PostApplyPostRefresh: plancheck.ExpectEmptyPlan()` invariant now
+  fires on `static_route`, `group`, `cronjob`, `tunable`, and
+  `iscsi_portal` in addition to the prior `dataset`, `share_smb`,
+  `user`. Each carries a `PreApply` `ExpectResourceAction`
+  `Create` guard on top so a Create-becoming-Update regression also
+  fires. `idempotencyCheckMinimum` ratchet bumped from 3 to 8.
+  Coverage went from 5.3% to 13.8% of acc test files.
+
+- **Three new static-analysis invariants** in `internal/provider/`:
+  - `TestResourcesWithSchemaVersionHaveUpgradeState` — any resource
+    that ships `Version: N` (`N > 0`) in its schema must implement
+    `ResourceWithUpgradeState` and ship a `*_upgradestate_test.go`.
+    Catches the highest-blast-radius mistake a provider author can
+    make: schema-version bumps without a state migration, which
+    silently corrupt state for existing users on apply.
+  - `TestImportStateVerifyIgnoreEntriesAreDocumented` — every
+    `ImportStateVerifyIgnore` field across the test tree must appear
+    in an explicit `allowedIgnoreFields` registry with one-line
+    rationale. Defeats the "just add it to the ignore list to make
+    the test pass" anti-pattern that hides real Read/Create shape
+    bugs. Current registry: 46 documented entries.
+  - `TestSweepersHaveAcctestPrefixGuard` — every `sweep<Name>`
+    function in `sweeper_test.go` must either call an Acctest-prefix
+    helper (`sweeperHasAcctestPrefix`, `sweeperDatasetIsAcctest`,
+    etc.) or carry a `// sweep-no-prefix-guard: <reason>` opt-out
+    comment. Defense-in-depth alongside the `TRUENAS_PROD_DENY`
+    safety rail.
+
+- **`TestSensitiveFieldsAreMarkedSensitive` invariant** — every
+  schema attribute whose name strongly implies a secret value
+  (`password`, `secret`, `peersecret`, `api_key`, `privatekey`,
+  `dhchap_key`, `dhchap_ctrl_key`, `v3_password`, `v3_privpassphrase`,
+  `passphrase`, `client_secret`, etc.) must carry `Sensitive: true`.
+  Without that flag, the framework leaks the value into terraform
+  plan output, terraform show, and trace logs on every apply —
+  a credential-disclosure foot-gun second only to committing the
+  secret to git. All 10 current sensitive-named fields pass; the
+  invariant locks the contract for every future credential field.
+
+- **Apply-idempotency rollout: 3 → 29 acceptance tests (5.3% → 49.2%)**
+  — the `ConfigPlanChecks.PostApplyPostRefresh: ExpectEmptyPlan()`
+  assertion is now wired into half the acc test surface, up from
+  three pattern-proof resources at the start of the rigor batch.
+  Each adopting resource also carries `PreApply: ExpectResourceAction
+  Create` so a Create-becoming-Update regression is caught with the
+  same step. `idempotencyCheckMinimum` ratchet bumped 3 → 29.
+  Rolled out to: static_route, group, cronjob, tunable, iscsi_portal,
+  nvmet_subsys, nvmet_port, iscsi_initiator, init_script,
+  kerberos_realm, iscsi_target (extended existing PreApply guards),
+  iscsi_targetextent, nvmet_host_subsys, nvmet_port_subsys, privilege,
+  share_nfs, iscsi_extent, nvmet_namespace, iscsi_auth, nvmet_host,
+  api_key, snapshot_task, scrub_task, zvol, certificate, rsync_task.
+  Deferred: singletons with server-side defaulting, sensitive-JSON
+  resources where the API masks fields on read, beta/env-gated
+  resources, and complex computed-field resources (VM, replication).
+
+- **`TestValidatorErrorCoverage` invariant + 22 ExpectError tests**
+  — `acc_validator_errors_test.go` exercises every wired validator
+  with hostile input, asserting plan-time rejection before any API
+  call. Coverage went from 1 to 22 tests. The new ratchet test in
+  `validator_error_coverage_test.go` counts the
+  `TestAccValidator_*` functions and asserts `>= 22`. Removing one
+  would silently drop a plan-time guarantee, so the ratchet makes
+  that visible in review.
+
+  Tests cover: `IPOrCIDR` (5), `stringvalidator.OneOf` (4),
+  `int64validator.Between` boundaries (5), `stringvalidator.LengthBetween`
+  boundaries (3), `stringvalidator.RegexMatches` (1), with at least
+  one test per wired validator.
+
+- **`TestAcceptanceLifecycleCoverage` invariant — 62 resources
+  lifecycle-locked** — every resource family must have all four
+  CRUD phases (`_basic`, `_update`, `_import`, `_disappears`) or
+  appear in `lifecycleResourceExclusions` with a per-phase rationale.
+  Missing any phase leaves a regression vector that escapes detection
+  until a user trips over it.
+
+  Fired one real gap on first run:
+  `ACMEDNSAuthenticator` had no import test — fixed by adding an
+  `ImportState` test step to `TestAccACMEDNSAuthenticator_basic`
+  in the same commit.
+
+  Exclusions are catalogued by category: data sources, singletons
+  where `disappears` is a no-op reset, sensitive-payload resources
+  where `import` cannot round-trip the secret, env-gated/beta
+  resources, and one test-naming alias.
+
+- **Plan-time destroy warning expanded to 15 more destructive
+  resources** — `planhelpers.WarnOnDestroy` now fires from
+  `ModifyPlan` on: `api_key`, `privilege`, `iscsi_initiator`,
+  `iscsi_targetextent`, `nvmet_subsys`, `nvmet_namespace`,
+  `nvmet_port`, `keychain_credential`, `acme_dns_authenticator`,
+  `kerberos_realm`, `vmware`, `kerberos_keytab`, `vm_device`,
+  `nvmet_host_subsys`, `nvmet_port_subsys`. These are the
+  "operator removes one line of HCL and loses access to data /
+  auth / mounts" failure modes. The warning surfaces destructive
+  intent at `terraform plan` time so the operator sees it before
+  running `apply`. Complements the client-layer
+  `destroy_protection` rail that BLOCKS the wire call.
+  `destroyWarnFloor` ratchet 22 → 37.
+
+- **Apply-idempotency check: 100% coverage** — `TestIdempotencyCheckCoverage`
+  rewritten from a floor-style ratchet to a 100%-or-excluded contract.
+  Every `acc_*_test.go` in `internal/provider/` that ships a managed
+  resource Apply step MUST carry
+  `ConfigPlanChecks.PostApplyPostRefresh: ExpectEmptyPlan()`, unless
+  it appears in `idempotencyExclusions` with a one-line rationale
+  (data sources, PlanOnly validator-error tests, import-only tests,
+  scaffolding files).
+
+  Coverage went 3/57 → **54/54 (100% of non-excluded)** across 27
+  resources rolled out in 8 batches. Singletons, sensitive-payload
+  resources, and complex resources (VM, replication) all included.
+  Failures at runtime expose real Read/Create shape bugs in the
+  provider — the fix goes in the resource code (plan modifier,
+  `UseStateForUnknown`, Read implementation), never in the
+  exclusion list.
+
+- **Update-plan-shape check: 100% coverage** — new
+  `TestUpdatePlanCheckCoverage` asserts every `_update` acc test
+  carries `plancheck.ExpectResourceAction(name, ResourceActionUpdate)`
+  on its change step, or appears in `updatePlanCheckExclusions` with
+  rationale (no-op same-value steps, RequiresReplace changes, data
+  sources, gated tests).
+
+  Without this assertion, an `_update` test can pass while silently
+  running destroy+create when someone accidentally bumps a Required
+  attribute to `RequiresReplace` — the end-state `TestCheck`
+  assertions still pass because the value is the same after recreate.
+  The plan-shape assertion is what catches the regression at plan
+  time. **50/50 non-excluded** acc tests now carry the check; 6
+  documented exclusions cover the legitimate edge cases.
+
+### Added (continued — post-rc.2 push)
+
+- **Active Directory full-lifecycle acceptance test** —
+  `TestAccDirectoryServices_fullADLifecycle` in
+  `internal/resources/directoryservices_test.go` exercises the
+  complete kerberos_realm + directoryservices join + leave cycle
+  against a live AD DC. Env-gated by `TRUENAS_TEST_AD=1` +
+  `TRUENAS_TEST_AD_DC` / `_REALM` / `_ADMIN_PRINCIPAL`. Runs
+  against a throwaway Samba AD-DC container.
+
+- **Record/replay HTTP proxy** (`internal/recordreplay/`) for
+  live-API-free CI. Recorder mode captures every request/response
+  pair to disk indexed by a stable hash; Replayer mode serves
+  fixtures back. Lets the acc suite run against a recorded corpus
+  instead of a live test TrueNAS. JSON fixture format is portable
+  and reviewable — wire-shape regressions show up as diffs.
+
+- **HTTP path chaos suite** (`internal/client/chaos_full_test.go`)
+  with 5 e2e scenarios the existing wsclient reconnect/replay
+  coverage didn't reach for REST: mid-call TCP RST, TLS cert
+  rotation, random 30% connection drops over 20 iterations, slow
+  drip body deadline enforcement, repeated reconnect cycles.
+
+- **Scale benchmarks** (`internal/client/scale_bench_test.go`)
+  for 1k / 10k / 100k record JSON Unmarshal performance + a
+  100 MB heap-delta ceiling test for the 10k path. Regressions
+  in the parse pipeline (e.g. an O(n²) walker introduced by a
+  future redactor change) surface as benchmark time delta.
+
+- **Multi-version compat runner** —
+  `scripts/acc-matrix.sh` discovers `.envrc.local-<version>`
+  files and runs the acc suite against each in turn. Per-version
+  templates (`.envrc.local-25-04.template`,
+  `.envrc.local-26-beta.template`) document the credential
+  bootstrap flow.
+
+- **Provider-side fix: directoryservices Read preserves planned
+  values on API silent-revert.** TrueNAS' directoryservices.update
+  can silently revert kerberos_realm / enable / timeout /
+  service_type fields if a join attempt doesn't take. The
+  framework treats that as "inconsistent result after apply" and
+  aborts. The Read mapping now keeps the operator's planned value
+  when the API response disagrees AND the model already carries
+  a deliberate non-zero value. Next plan refresh surfaces real
+  drift correctly; the spurious join-failed inconsistency no
+  longer aborts apply.
+
+- **3 new static invariants** in the provider gate set:
+  - `TestCRUDDiscipline_ReadAlwaysWritesState` — every Read must
+    call resp.State.Set OR RemoveResource
+  - `TestCRUDDiscipline_CreateReadsBackResource` — every Create
+    must call resp.State.Set
+  - `TestCRUDDiscipline_DeleteHandlesNotFound` — every Delete
+    must tolerate the resource already being gone (singletons
+    exempted with rationale)
+  - `TestDiagnosticFormat_AddErrorSummaries` — every AddError /
+    AddAttributeError summary matches one of the canonical
+    shapes (Invalid X / Error Verbing X / Could not verb X /
+    Unable to verb X / Conflicting / Incomplete / X must Y /
+    Configuring X / Missing/Unexpected/Unsupported)
+
+  Provider invariant set now at 17 static gates.
+
+- **Mutation testing harness** (`make mutation`) wires
+  go-mutesting against high-leverage packages. Baselines pinned
+  in the Makefile target comment. Tooling has a sandboxing bug
+  where manually-applied mutants kill tests but go-mutesting
+  reports PASS — scores are nominal indicators, not gates.
+
+### Security (continued)
+
+- **History scrub of repo-internal hostnames** — the v2.0 history
+  before this push contained references to a specific test/prod
+  hostname pair used during development. Filter-repo'd out across
+  every commit message + every file. Zero matches in
+  `git log --all -p` for the scrubbed patterns. Force-pushed to
+  both `origin` and `github` remotes. Authorship metadata on the
+  community PR #12 cherry-pick preserved.
+
+### Notes
+
+- v2.0.0-rc.2 tagged at the cleaned-history HEAD. 7-day soak window
+  runs to 2026-06-15 16:35 CDT minimum. Multi-version validation
+  (25.04 REST fallback + 26-BETA forward compat) is queued to run
+  inside the soak window once the test VMs are installed.
+
 ## [1.10.2] - 2026-04-25
 
 ### Fixed
@@ -918,7 +1445,8 @@ fix. No code change; no wire-path behavior change.
   `iscsi_target`, `cronjob`, `alert_service`.
 - Initial data sources: `dataset`, `pool`, `system_info`.
 
-[Unreleased]: https://github.com/PjSalty/terraform-provider-truenas/compare/v1.0.0...main
+[Unreleased]: https://github.com/PjSalty/terraform-provider-truenas/compare/v2.0.0...v2.0
+[2.0.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v2.0.0
 [1.0.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v1.0.0
 [0.4.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v0.4.0
 [0.3.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v0.3.0

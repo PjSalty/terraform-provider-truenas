@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -42,6 +43,14 @@ func TestAccNVMetNamespaceResource_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: nvmetNamespaceConfig(subsysName, devicePath, true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_nvmet_namespace.test", plancheck.ResourceActionCreate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_nvmet_namespace.test", "device_type", "FILE"),
 					resource.TestCheckResourceAttr("truenas_nvmet_namespace.test", "device_path", devicePath),
@@ -73,7 +82,12 @@ func TestAccNVMetNamespaceResource_update(t *testing.T) {
 			},
 			{
 				Config: nvmetNamespaceConfig(subsysName, devicePath, false),
-				Check:  resource.TestCheckResourceAttr("truenas_nvmet_namespace.test", "enabled", "false"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_nvmet_namespace.test", plancheck.ResourceActionUpdate),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_nvmet_namespace.test", "enabled", "false"),
 			},
 		},
 	})

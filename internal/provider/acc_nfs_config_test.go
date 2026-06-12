@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccNFSConfigResource_basic verifies the singleton NFS config
@@ -25,6 +26,11 @@ resource "truenas_nfs_config" "test" {
   protocols     = ["NFSV3", "NFSV4"]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_nfs_config.test", "servers", "4"),
 					resource.TestCheckResourceAttr("truenas_nfs_config.test", "allow_nonroot", "false"),
@@ -66,6 +72,11 @@ resource "truenas_nfs_config" "test" {
   protocols = ["NFSV4"]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_nfs_config.test", plancheck.ResourceActionUpdate),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_nfs_config.test", "servers", "8"),
 					resource.TestCheckResourceAttr("truenas_nfs_config.test", "protocols.#", "1"),
