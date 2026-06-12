@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-06-12
+
+### Changed
+
+- Documentation and comment punctuation pass across the tree; no
+  functional changes. Registry-rendered docs now match the repo
+  style guide.
+- Test-infrastructure lint debt cleared (contextcheck, gosec
+  permissions, staticcheck escapes); no provider runtime changes.
+
 ## [2.0.0] - 2026-06-12
 
 ### Added (rc.4, multi-version validation, 2026-06-09/10)
@@ -1445,7 +1455,8 @@ fix. No code change; no wire-path behavior change.
   `iscsi_target`, `cronjob`, `alert_service`.
 - Initial data sources: `dataset`, `pool`, `system_info`.
 
-[Unreleased]: https://github.com/PjSalty/terraform-provider-truenas/compare/v2.0.0...v2.0
+[Unreleased]: https://github.com/PjSalty/terraform-provider-truenas/compare/v2.0.1...main
+[2.0.1]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v2.0.1
 [2.0.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v2.0.0
 [1.0.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v1.0.0
 [0.4.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v0.4.0
