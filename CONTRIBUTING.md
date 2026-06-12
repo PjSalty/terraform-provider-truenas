@@ -57,7 +57,7 @@ terraform-provider-truenas/
 ├── main_test.go
 ├── internal/
 │   ├── acctest/                   # Shared acceptance test helpers
-│   ├── client/                    # TrueNAS REST client (per-domain files)
+│   ├── wsclient/                  # TrueNAS JSON-RPC WebSocket client
 │   ├── datasources/               # Terraform data sources
 │   ├── flex/                      # Framework<->Go type conversion helpers
 │   ├── fwresource/                # Framework resource base helpers (Configure etc.)

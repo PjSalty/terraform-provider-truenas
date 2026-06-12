@@ -2,13 +2,19 @@
 
 ## Supported Versions
 
-Only the latest minor release line receives security updates. Older releases
-should upgrade to the current line before reporting issues against them.
+The current major line receives full security support. The previous line
+receives security fixes only, for users pinned to TrueNAS SCALE versions
+the current line does not fully support (24.04 and 25.04).
 
 | Version | Supported |
 |---------|-----------|
-| 1.x     | ✅        |
-| < 1.0   | ❌        |
+| 2.x     | ✅ full support |
+| 1.10.x  | ⚠️ security fixes only (SCALE 24.04 / 25.04 users) |
+| < 1.10  | ❌        |
+
+1.10.x security fixes are cut from the latest v1.10.x tag as needed.
+Once TrueNAS SCALE 25.04 leaves upstream support, the 1.x line is
+retired with it.
 
 ## Reporting a Vulnerability
 
