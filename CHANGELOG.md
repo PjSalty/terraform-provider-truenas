@@ -9,17 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0] - 2026-06-12
 
-### Added (rc.4 — multi-version validation, 2026-06-09/10)
+### Added (rc.4, multi-version validation, 2026-06-09/10)
 
 - **Validation matrix across three live SCALE lines.** The full
   acceptance suite was executed against real instances of each:
-  - SCALE **25.10**: 147/147 PASS — the fully-supported floor.
-  - SCALE **25.04**: 126/141 — every failure is an upstream API
+  - SCALE **25.10**: 147/147 PASS, the fully-supported floor.
+  - SCALE **25.04**: 126/141, every failure is an upstream API
     absence (`nvmet.*` arrived in 25.10, unified
     `directoryservices.*`, 25.10 SMB `purpose` vocabulary, newer
     `alert_service` types), not a provider defect. Documented as
     partial support in the version matrix.
-  - SCALE **26.0-BETA.1**: 143/147 — four failures from 26.0 API
+  - SCALE **26.0-BETA.1**: 143/147, four failures from 26.0 API
     drift (`service.start` signature, SMB config shape), tracked
     for a v2.x release alongside 26.0 final.
 - **WebSocket acceptance preflight** (`cmd/wspreflight`): the acc
@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   running, replacing the REST curl preflight that TrueNAS 26.0
   removed the endpoint for.
 
-### Fixed (rc.4 — SCALE 25.10 API drift, 2026-06-09)
+### Fixed (rc.4, SCALE 25.10 API drift, 2026-06-09)
 
 - `tunable` create/update/delete became middleware **jobs** in
   25.10; the resource now calls them through the job path and
@@ -40,12 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   errors by the job runner. Fixes spurious destroy-time failures
   and the `_disappears` acceptance pattern on live 25.10.
 
-### Changed (rc.4 — test rigor)
+### Changed (rc.4, test rigor)
 
 - 100.0% statement coverage on all internal packages; CI coverage
   gates locked at 100.
 
-### Changed (continued — REST removal, 2026-06-09)
+### Changed (continued, REST removal, 2026-06-09)
 
 - **REST transport fully retired.** `internal/client/` is gone.
   Every resource and data source flows over JSON-RPC over
@@ -91,13 +91,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   canonical coverage source for those layers.
 
 - **Two new static invariants** (provider gate set at 21):
-  - `TestConfigureUsesWSClient` — every resource's
+  - `TestConfigureUsesWSClient`, every resource's
     Configure type-asserts `*wsclient.Client` (not
     `*client.Client`)
-  - `TestDataSourceConfigureUsesWSClient` — same for
+  - `TestDataSourceConfigureUsesWSClient`, same for
     datasources
   - Block accidental REST regression at the source-text
-    level — anyone copying an old resource forward will
+    level, anyone copying an old resource forward will
     fail the invariant before runtime.
 
 - **23 of 23 stub DataSource acc tests converted** to real
@@ -106,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   round-trip. Env-gated cases (catalog, apps, vms,
   network_interface) carry explicit skip messages.
 
-### Breaking — SCALE 25.10 compatibility realignments
+### Breaking, SCALE 25.10 compatibility realignments
 
 - **`truenas_share_smb.purpose` accepts a new vocabulary.** TrueNAS
   25.10 overhauled the SMB share preset registry. The earlier
@@ -122,10 +122,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `MULTIPROTOCOL_SHARE` (replaces `MULTI_PROTOCOL_NFS` /
     `MULTI_PROTOCOL_AFP`)
   - `PRIVATE_DATASETS_SHARE` (replaces `PRIVATE_DATASETS`)
-  - `EXTERNAL_SHARE` (new — requires preset-options map; tracked
+  - `EXTERNAL_SHARE` (new, requires preset-options map; tracked
     as v2.x gap)
   - `TIME_LOCKED_SHARE` (new)
-  - `VEEAM_REPOSITORY_SHARE` (new — requires enterprise license)
+  - `VEEAM_REPOSITORY_SHARE` (new, requires enterprise license)
 
   Operators upgrading from v1.x with a `purpose` value in state
   must migrate to the closest 25.10 equivalent before the next
@@ -138,7 +138,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   16 values (the GZIP 1–9 ladder + plain ZSTD / ZSTD-FAST + the
   legacy LZ4 / LZJB / ZLE / OFF set). 25.10's
   `pool.dataset.compression_choices` actually exposes 49 algorithms
-  — every `ZSTD-{1..19}`, every `ZSTD-FAST-{1..10}`, plus the
+ , every `ZSTD-{1..19}`, every `ZSTD-FAST-{1..10}`, plus the
   skip-step `ZSTD-FAST-{20,30,40,50,60,70,80,90,100,500,1000}`, and
   `ON` (server-side "use pool default"). Provider now accepts all
   49 verbatim; configs that need fine-grained ZSTD level control
@@ -148,9 +148,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **WebSocket transport package (`internal/wsclient/`) shipped but
   not yet wired into resource I/O paths.** v2.0 includes the full
-  JSON-RPC 2.0 over WebSocket client — call surface, reconnect/replay
+  JSON-RPC 2.0 over WebSocket client, call surface, reconnect/replay
   chaos coverage, error matrix, redaction parity with the REST path
-  — but `provider.Configure()` currently still instantiates only the
+ , but `provider.Configure()` currently still instantiates only the
   REST `*client.Client`. Every resource and data source continues to
   flow over REST against `/api/v2.0`.
 
@@ -172,13 +172,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **`terraform import truenas_cloud_sync.*` no longer errors with
-  `cannot unmarshal object into Go struct field`** — TrueNAS returns the
+  `cannot unmarshal object into Go struct field`**, TrueNAS returns the
   `credentials` field as a nested object on `GET /cloudsync/id/<n>`
   (and the equivalent JSON-RPC `cloudsync.get_instance`), but as a
   plain integer on create/update responses. The Go struct field was
   always `int`, so import / refresh paths errored out. A custom
   `UnmarshalJSON` on the shared `CloudSync` struct now accepts both
-  shapes — plain int (used as-is) and nested object (extracts `.id`).
+  shapes, plain int (used as-is) and nested object (extracts `.id`).
   Mirrored on both `internal/client.CloudSync` (REST path) and
   `internal/types.CloudSync` (used by the WebSocket transport).
   Originally reported and fixed by Max Poelman in PR #12.
@@ -216,7 +216,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `account_key` to the fragment list on both REST and WebSocket
     redactors.
   - **JSON-in-string values** bypassed the recursive walker. Pattern:
-    `"settings_json": "{\"password\":\"…\"}"` — the outer key isn't
+    `"settings_json": "{\"password\":\"…\"}"`, the outer key isn't
     sensitive but the inner JSON contains a secret. `walkRedact` now
     re-parses string values that look JSON-shaped, recursively
     redacts, and re-marshals.
@@ -250,7 +250,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`_disappears` acceptance test coverage for every deletable resource**
-  — 38 new behavioural acceptance tests in `internal/resources/*_test.go`,
+ , 38 new behavioural acceptance tests in `internal/resources/*_test.go`,
   one per resource that supports out-of-band deletion. Each test creates
   the resource, deletes it via a direct API call (bypassing Terraform),
   and asserts the next plan recognises the drift with
@@ -270,20 +270,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Four new static-analysis invariant tests** in `internal/provider/`
   that scan the Go source as strings to enforce shape-level guarantees
   across every resource:
-  - `TestResourcesHaveImportStateImplemented` — every
+  - `TestResourcesHaveImportStateImplemented`, every
     `ResourceWithImportState` must use the passthrough helper or carry
     an explicit `// import: custom` opt-out comment.
-  - `TestResourcesRemoveFromStateOnNotFound` — every resource's `Read`
+  - `TestResourcesRemoveFromStateOnNotFound`, every resource's `Read`
     method must call `resp.State.RemoveResource(ctx)` on `IsNotFound`,
     with an allowlist for the 18 singleton-by-design resources where
     delete-is-reset-to-default semantics apply.
-  - `TestAcceptanceTestsHavePreCheckOrSkip` — every `TestAcc*` function
+  - `TestAcceptanceTestsHavePreCheckOrSkip`, every `TestAcc*` function
     must either call `testAccPreCheck(t)` or contain an explicit
     `t.Skip(...)` stub.
-  - `TestAcceptanceTestsHaveCheckDestroy` — every non-`PlanOnly`,
+  - `TestAcceptanceTestsHaveCheckDestroy`, every non-`PlanOnly`,
     non-stub acceptance test must wire a real `CheckDestroy` callback.
 
-- **Production-host deny safety rail** — `internal/acctest/acctest.go`
+- **Production-host deny safety rail**, `internal/acctest/acctest.go`
   now refuses to build a client targeting the configured production
   hostname. Three layers of defence: shell-level check in
   `scripts/lib/_env.sh`, Go-level `assertNotProd()` in the test client
@@ -292,7 +292,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.envrc.example` reminding operators to point tests at a non-prod
   TrueNAS only.
 
-- **Local acceptance-test runner** — `scripts/acc.sh` ships a six-stage
+- **Local acceptance-test runner**, `scripts/acc.sh` ships a six-stage
   pipeline (preflight, build, lint, unit tests + 100% coverage check,
   static invariants, full acceptance suite) with per-run log files,
   `--skip-acc`, `--acc-only`, and `--resource <name>` flags. Make
@@ -302,7 +302,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   TrueNAS instance; no CI dependency.
 
 - **14 `ExpectError` negative-path acceptance tests for validators**
-  — `internal/provider/acc_validator_errors_test.go` exercises every
+ , `internal/provider/acc_validator_errors_test.go` exercises every
   wired validator with hostile input, asserting plan-time rejection
   before any API call. Covers `IPOrCIDR` (invalid IP, malformed CIDR,
   5-octet "IP", text-host CIDR, IPv6 positive control), four
@@ -314,7 +314,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   validator or changing an enum without updating callers fails the
   test. Previously the entire tree had one `ExpectError` assertion.
 
-- **Apply-idempotency check rolled out to 5 more resources** — the
+- **Apply-idempotency check rolled out to 5 more resources**, the
   `PostApplyPostRefresh: plancheck.ExpectEmptyPlan()` invariant now
   fires on `static_route`, `group`, `cronjob`, `tunable`, and
   `iscsi_portal` in addition to the prior `dataset`, `share_smb`,
@@ -324,38 +324,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Coverage went from 5.3% to 13.8% of acc test files.
 
 - **Three new static-analysis invariants** in `internal/provider/`:
-  - `TestResourcesWithSchemaVersionHaveUpgradeState` — any resource
+  - `TestResourcesWithSchemaVersionHaveUpgradeState`, any resource
     that ships `Version: N` (`N > 0`) in its schema must implement
     `ResourceWithUpgradeState` and ship a `*_upgradestate_test.go`.
     Catches the highest-blast-radius mistake a provider author can
     make: schema-version bumps without a state migration, which
     silently corrupt state for existing users on apply.
-  - `TestImportStateVerifyIgnoreEntriesAreDocumented` — every
+  - `TestImportStateVerifyIgnoreEntriesAreDocumented`, every
     `ImportStateVerifyIgnore` field across the test tree must appear
     in an explicit `allowedIgnoreFields` registry with one-line
     rationale. Defeats the "just add it to the ignore list to make
     the test pass" anti-pattern that hides real Read/Create shape
     bugs. Current registry: 46 documented entries.
-  - `TestSweepersHaveAcctestPrefixGuard` — every `sweep<Name>`
+  - `TestSweepersHaveAcctestPrefixGuard`, every `sweep<Name>`
     function in `sweeper_test.go` must either call an Acctest-prefix
     helper (`sweeperHasAcctestPrefix`, `sweeperDatasetIsAcctest`,
     etc.) or carry a `// sweep-no-prefix-guard: <reason>` opt-out
     comment. Defense-in-depth alongside the `TRUENAS_PROD_DENY`
     safety rail.
 
-- **`TestSensitiveFieldsAreMarkedSensitive` invariant** — every
+- **`TestSensitiveFieldsAreMarkedSensitive` invariant**, every
   schema attribute whose name strongly implies a secret value
   (`password`, `secret`, `peersecret`, `api_key`, `privatekey`,
   `dhchap_key`, `dhchap_ctrl_key`, `v3_password`, `v3_privpassphrase`,
   `passphrase`, `client_secret`, etc.) must carry `Sensitive: true`.
   Without that flag, the framework leaks the value into terraform
-  plan output, terraform show, and trace logs on every apply —
+  plan output, terraform show, and trace logs on every apply -
   a credential-disclosure foot-gun second only to committing the
   secret to git. All 10 current sensitive-named fields pass; the
   invariant locks the contract for every future credential field.
 
 - **Apply-idempotency rollout: 3 → 29 acceptance tests (5.3% → 49.2%)**
-  — the `ConfigPlanChecks.PostApplyPostRefresh: ExpectEmptyPlan()`
+ , the `ConfigPlanChecks.PostApplyPostRefresh: ExpectEmptyPlan()`
   assertion is now wired into half the acc test surface, up from
   three pattern-proof resources at the start of the rigor batch.
   Each adopting resource also carries `PreApply: ExpectResourceAction
@@ -372,7 +372,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resources, and complex computed-field resources (VM, replication).
 
 - **`TestValidatorErrorCoverage` invariant + 22 ExpectError tests**
-  — `acc_validator_errors_test.go` exercises every wired validator
+ , `acc_validator_errors_test.go` exercises every wired validator
   with hostile input, asserting plan-time rejection before any API
   call. Coverage went from 1 to 22 tests. The new ratchet test in
   `validator_error_coverage_test.go` counts the
@@ -385,15 +385,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   boundaries (3), `stringvalidator.RegexMatches` (1), with at least
   one test per wired validator.
 
-- **`TestAcceptanceLifecycleCoverage` invariant — 62 resources
-  lifecycle-locked** — every resource family must have all four
+- **`TestAcceptanceLifecycleCoverage` invariant, 62 resources
+  lifecycle-locked**, every resource family must have all four
   CRUD phases (`_basic`, `_update`, `_import`, `_disappears`) or
   appear in `lifecycleResourceExclusions` with a per-phase rationale.
   Missing any phase leaves a regression vector that escapes detection
   until a user trips over it.
 
   Fired one real gap on first run:
-  `ACMEDNSAuthenticator` had no import test — fixed by adding an
+  `ACMEDNSAuthenticator` had no import test, fixed by adding an
   `ImportState` test step to `TestAccACMEDNSAuthenticator_basic`
   in the same commit.
 
@@ -403,7 +403,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resources, and one test-naming alias.
 
 - **Plan-time destroy warning expanded to 15 more destructive
-  resources** — `planhelpers.WarnOnDestroy` now fires from
+  resources**, `planhelpers.WarnOnDestroy` now fires from
   `ModifyPlan` on: `api_key`, `privilege`, `iscsi_initiator`,
   `iscsi_targetextent`, `nvmet_subsys`, `nvmet_namespace`,
   `nvmet_port`, `keychain_credential`, `acme_dns_authenticator`,
@@ -416,7 +416,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `destroy_protection` rail that BLOCKS the wire call.
   `destroyWarnFloor` ratchet 22 → 37.
 
-- **Apply-idempotency check: 100% coverage** — `TestIdempotencyCheckCoverage`
+- **Apply-idempotency check: 100% coverage**, `TestIdempotencyCheckCoverage`
   rewritten from a floor-style ratchet to a 100%-or-excluded contract.
   Every `acc_*_test.go` in `internal/provider/` that ships a managed
   resource Apply step MUST carry
@@ -429,11 +429,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resources rolled out in 8 batches. Singletons, sensitive-payload
   resources, and complex resources (VM, replication) all included.
   Failures at runtime expose real Read/Create shape bugs in the
-  provider — the fix goes in the resource code (plan modifier,
+  provider, the fix goes in the resource code (plan modifier,
   `UseStateForUnknown`, Read implementation), never in the
   exclusion list.
 
-- **Update-plan-shape check: 100% coverage** — new
+- **Update-plan-shape check: 100% coverage**, new
   `TestUpdatePlanCheckCoverage` asserts every `_update` acc test
   carries `plancheck.ExpectResourceAction(name, ResourceActionUpdate)`
   on its change step, or appears in `updatePlanCheckExclusions` with
@@ -442,15 +442,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Without this assertion, an `_update` test can pass while silently
   running destroy+create when someone accidentally bumps a Required
-  attribute to `RequiresReplace` — the end-state `TestCheck`
+  attribute to `RequiresReplace`, the end-state `TestCheck`
   assertions still pass because the value is the same after recreate.
   The plan-shape assertion is what catches the regression at plan
   time. **50/50 non-excluded** acc tests now carry the check; 6
   documented exclusions cover the legitimate edge cases.
 
-### Added (continued — post-rc.2 push)
+### Added (continued, post-rc.2 push)
 
-- **Active Directory full-lifecycle acceptance test** —
+- **Active Directory full-lifecycle acceptance test** -
   `TestAccDirectoryServices_fullADLifecycle` in
   `internal/resources/directoryservices_test.go` exercises the
   complete kerberos_realm + directoryservices join + leave cycle
@@ -463,7 +463,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pair to disk indexed by a stable hash; Replayer mode serves
   fixtures back. Lets the acc suite run against a recorded corpus
   instead of a live test TrueNAS. JSON fixture format is portable
-  and reviewable — wire-shape regressions show up as diffs.
+  and reviewable, wire-shape regressions show up as diffs.
 
 - **HTTP path chaos suite** (`internal/client/chaos_full_test.go`)
   with 5 e2e scenarios the existing wsclient reconnect/replay
@@ -477,7 +477,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in the parse pipeline (e.g. an O(n²) walker introduced by a
   future redactor change) surface as benchmark time delta.
 
-- **Multi-version compat runner** —
+- **Multi-version compat runner** -
   `scripts/acc-matrix.sh` discovers `.envrc.local-<version>`
   files and runs the acc suite against each in turn. Per-version
   templates (`.envrc.local-25-04.template`,
@@ -496,14 +496,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer aborts apply.
 
 - **3 new static invariants** in the provider gate set:
-  - `TestCRUDDiscipline_ReadAlwaysWritesState` — every Read must
+  - `TestCRUDDiscipline_ReadAlwaysWritesState`, every Read must
     call resp.State.Set OR RemoveResource
-  - `TestCRUDDiscipline_CreateReadsBackResource` — every Create
+  - `TestCRUDDiscipline_CreateReadsBackResource`, every Create
     must call resp.State.Set
-  - `TestCRUDDiscipline_DeleteHandlesNotFound` — every Delete
+  - `TestCRUDDiscipline_DeleteHandlesNotFound`, every Delete
     must tolerate the resource already being gone (singletons
     exempted with rationale)
-  - `TestDiagnosticFormat_AddErrorSummaries` — every AddError /
+  - `TestDiagnosticFormat_AddErrorSummaries`, every AddError /
     AddAttributeError summary matches one of the canonical
     shapes (Invalid X / Error Verbing X / Could not verb X /
     Unable to verb X / Conflicting / Incomplete / X must Y /
@@ -515,11 +515,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   go-mutesting against high-leverage packages. Baselines pinned
   in the Makefile target comment. Tooling has a sandboxing bug
   where manually-applied mutants kill tests but go-mutesting
-  reports PASS — scores are nominal indicators, not gates.
+  reports PASS, scores are nominal indicators, not gates.
 
 ### Security (continued)
 
-- **History scrub of repo-internal hostnames** — the v2.0 history
+- **History scrub of repo-internal hostnames**, the v2.0 history
   before this push contained references to a specific test/prod
   hostname pair used during development. Filter-repo'd out across
   every commit message + every file. Zero matches in
@@ -538,7 +538,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Release artifact layout for Terraform Registry** — the v1.10.1 release
+- **Release artifact layout for Terraform Registry**, the v1.10.1 release
   was rejected by the Registry publish API with `missing files in request
   body` for the per-platform SBOM JSON files. Two issues were resolved:
   - Per-platform SPDX SBOMs were listed in `SHA256SUMS` but the Registry
@@ -557,12 +557,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **FreeBSD release binaries** — goreleaser now builds `freebsd_amd64`
+- **FreeBSD release binaries**, goreleaser now builds `freebsd_amd64`
   and `freebsd_arm64` archives, matching the platform set published by
   `cloudflare/terraform-provider-cloudflare`. Total binary count rises
   from 5 to 7 per release.
 
-- **Signed-release verification documentation** — `SECURITY.md` now
+- **Signed-release verification documentation**, `SECURITY.md` now
   describes the manual `gpg --verify` flow for the GPG-signed
   `SHA256SUMS` file shipped with every release. The signing public key
   is committed at `docs/gpg-public-key.asc` (fingerprint
@@ -571,17 +571,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **License: MIT → MPL-2.0** — the README has long advertised MPL-2.0
+- **License: MIT → MPL-2.0**, the README has long advertised MPL-2.0
   via the license badge, but the `LICENSE` file shipped MIT text. The
   file is now the canonical Mozilla Public License v2.0, matching the
   badge and aligning with the license used by HashiCorp-maintained
   Terraform providers.
 
-- **Documentation polish** — README installation example now pins
+- **Documentation polish**, README installation example now pins
   `version = "~> 1.10"` (was the stale `"~> 0.4"`); contributor docs
   use GitHub-flavoured terminology (pull request) consistently.
 
-- **Test fixtures use RFC 5737 documentation IPs** — addresses in
+- **Test fixtures use RFC 5737 documentation IPs**, addresses in
   `internal/client/*_test.go`, `internal/resources/*_test.go`,
   `internal/provider/acc_*_test.go`, and `internal/validators/*_test.go`
   now use `192.0.2.x` / `198.51.100.x` (the RFC-reserved
@@ -602,22 +602,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`truenas_system_update` resource** — new singleton resource for
+- **`truenas_system_update` resource**, new singleton resource for
   controlling TrueNAS SCALE update behaviour from Terraform. Manages:
-  - `auto_download` (bool, default `false`) — the primary "pin" lever.
+  - `auto_download` (bool, default `false`), the primary "pin" lever.
     When disabled, TrueNAS never stages an update without a conscious
     action. Backed by `/update/set_auto_download`.
-  - `train` (string, optional) — the active release train (for example
+  - `train` (string, optional), the active release train (for example
     `TrueNAS-SCALE-Fangtooth`). Validated against the live
     `/update/get_trains` list at apply time. When omitted, the provider
     reads and preserves whatever the system has configured.
   - `current_version`, `available_status`, `available_version` (all
-    computed) — read-only observability into the live update state,
+    computed), read-only observability into the live update state,
     surfaced on every Read so the drift guard can detect out-of-band
     UI changes.
 
   The resource deliberately does **not** execute updates. `terraform
-  apply` will never reboot production — update execution remains a
+  apply` will never reboot production, update execution remains a
   manual action via the UI, API, or a dedicated Ansible playbook.
   `Delete` is a no-op that only removes the resource from state,
   leaving the last-applied config in effect on the system.
@@ -643,9 +643,9 @@ landing-page rewrite in the conventional provider-docs style, tone
 cleanup across docs and code comments, and a goreleaser v2 deprecation
 fix. No code change; no wire-path behavior change.
 
-### Phase M — tone and style cleanup
+### Phase M, tone and style cleanup
 
-- **`docs/index.md`** — rewritten to match the conventional provider
+- **`docs/index.md`**, rewritten to match the conventional provider
   index style used by hashicorp/tls, digitalocean, cloudflare, and
   integrations/github: simple frontmatter, neutral one-line purpose,
   Example Usage with a minimal HCL block, Authentication section
@@ -654,47 +654,47 @@ fix. No code change; no wire-path behavior change.
   variable emergency brake, hand-authored Schema. No stats, no
   feature lists, no marketing language.
 
-- **`README.md`** — opening shortened from a comma-heavy promotional
+- **`README.md`**, opening shortened from a comma-heavy promotional
   paragraph to a single neutral sentence that states WHAT the
   provider is without selling it.
 
-- **Code comments + CHANGELOG** — promotional comparison framing
+- **Code comments + CHANGELOG**, promotional comparison framing
   removed across the codebase. Comments now describe each invariant
   on its own merits ("battle-hardened" for tested guarantees,
   "standard" for established patterns, "destructive resources" for
   the relevant resource class).
 
-- **`.goreleaser.yml`** — `archives.format: zip` → `archives.formats:
+- **`.goreleaser.yml`**, `archives.format: zip` → `archives.formats:
   [zip]` to resolve the goreleaser v2 deprecation warning surfaced
   by tag pipeline 7628. Output is identical; future goreleaser
   releases will eventually remove the scalar form.
 
-### Phase L — prod-smoke example workspace
+### Phase L, prod-smoke example workspace
 
-- **`examples/prod-smoke/`** — a committed, version-controlled copy
+- **`examples/prod-smoke/`**, a committed, version-controlled copy
   of the phased-rollout smoke test workspace that operators run
   against their production TrueNAS to verify the provider can read
   state without any ability to mutate anything. Contains:
 
-  - `versions.tf` — provider pin matching the `~/.terraformrc`
+  - `versions.tf`, provider pin matching the `~/.terraformrc`
     dev_override (source `PjSalty/truenas`, binary staged at
     `/tmp/terraform-provider-truenas`).
-  - `variables.tf` — `truenas_url`, `truenas_api_key` (sensitive),
+  - `variables.tf`, `truenas_url`, `truenas_api_key` (sensitive),
     `smoke_dataset_pool`, `smoke_dataset_name`. Validation blocks
     on the URL (HTTPS required) and the API key (length sanity).
-  - `provider.tf` — **Phase 1 rail armed**: `read_only = true`
+  - `provider.tf`, **Phase 1 rail armed**: `read_only = true`
     AND `destroy_protection = true` both set. Phase 1 is a refresh-
     only drift check: the provider can see prod but physically
     cannot mutate it. Comments walk the operator through Phase 2
     (`read_only=false`, destroy rail still armed) and Phase 3
     (brief destroy window with re-arm).
-  - `main.tf` — imports ONE existing dataset into state with an
+  - `main.tf`, imports ONE existing dataset into state with an
     `import { to = ... id = ... }` block and a matching
     `resource "truenas_dataset" "smoke"` stanza that the provider
     populates from the server during import-read. Zero changes
     expected on `terraform plan`; any drift surfaces exactly what
     the provider's Read path doesn't round-trip cleanly.
-  - `RUN.md` — step-by-step runbook including the SOPS decrypt
+  - `RUN.md`, step-by-step runbook including the SOPS decrypt
     command, the env var export sequence, the expected output,
     the Phase 2 / Phase 3 transitions, and the emergency brake
     (`TRUENAS_READ_ONLY=1 TRUENAS_DESTROY_PROTECTION=1` env vars
@@ -702,10 +702,10 @@ fix. No code change; no wire-path behavior change.
 
   `terraform validate` against this workspace passes cleanly with
   the v1.8.0 binary staged at `/tmp/terraform-provider-truenas`.
-  The workspace is NOT imported into any CI job — it's a manual
+  The workspace is NOT imported into any CI job, it's a manual
   operator tool.
 
-### Phase K — 100% unit-test coverage (CI gate satisfied)
+### Phase K, 100% unit-test coverage (CI gate satisfied)
 
 - **Every package at 100.0% statement coverage.** The CI pipeline's
   per-package 100% coverage gate now passes
@@ -715,29 +715,29 @@ fix. No code change; no wire-path behavior change.
 
 - **Functions covered**:
 
-  - `internal/client/client.go` — `newRequestID` refactored into a
+  - `internal/client/client.go`, `newRequestID` refactored into a
     testable `newRequestIDFrom(io.Reader)` plus a thin wrapper;
     `APIError.Error`, `Delete`, `DeleteWithBody`,
     `DefaultRetryPolicy` get targeted unit tests.
-  - `internal/client/redact.go` — `redactJSONBody` dead-branch
+  - `internal/client/redact.go`, `redactJSONBody` dead-branch
     (re-marshal failure on Go values that came from `json.Unmarshal`)
-    removed — walkRedact only emits marshalable types; `redactMessage`
+    removed, walkRedact only emits marshalable types; `redactMessage`
     gains empty-string + fragment-at-start test coverage.
-  - `internal/client/job_helper.go` — `waitIfJobResponse` gains the
+  - `internal/client/job_helper.go`, `waitIfJobResponse` gains the
     non-int sync-response test (object / string / array bodies).
-  - `internal/client/client.go doOnce` — transport-error branch
+  - `internal/client/client.go doOnce`, transport-error branch
     now exercised via 127.0.0.1:1 refused-connection test.
-  - `internal/planhelpers/destroy_warning.go` — `WarnOnDestroy`
+  - `internal/planhelpers/destroy_warning.go`, `WarnOnDestroy`
     gains the empty-ID fallback branch test.
-  - `internal/planmodifiers/pem_equivalent.go` — `PlanModifyString`
+  - `internal/planmodifiers/pem_equivalent.go`, `PlanModifyString`
     gains the "PEM plan + non-PEM state" branch test (the inverse
     of the pre-existing "non-PEM plan + PEM state" case).
-  - `internal/resourcevalidators/required_when_equal.go` —
+  - `internal/resourcevalidators/required_when_equal.go` -
     `ValidateResource` gains three branch tests:
     unknown-discriminator, GetAttribute-error on discriminator,
     GetAttribute-error on a required attribute (with `continue`
     loop semantics).
-  - `internal/resources/*.go` — 15 `ModifyPlan` hooks + 3
+  - `internal/resources/*.go`, 15 `ModifyPlan` hooks + 3
     `ConfigValidators` methods covered via a single table-driven
     test file (`phaseF_modifyplan_coverage_test.go`) that uses the
     pre-existing `callModifyPlanDelete` / `schemaOf` helpers. Each
@@ -752,16 +752,16 @@ fix. No code change; no wire-path behavior change.
   branch in `redactJSONBody`. Both are internal to the client
   package and invisible at the wire level.
 
-### Phase J — acceptance test coverage ratchet
+### Phase J, acceptance test coverage ratchet
 
-- **`internal/provider/acceptance_coverage_test.go`** —
+- **`internal/provider/acceptance_coverage_test.go`** -
   `TestAcceptanceTestCoverage` (floor = 62). Walks
   `internal/resources/*.go`, identifies every resource file, and
   verifies its sibling `*_test.go` exists AND contains at least
   one `func TestAcc*` declaration. Fails on missing files, empty
   test files, or count below the floor.
 
-- **`internal/resources/cloudsync_credential_test.go`** —
+- **`internal/resources/cloudsync_credential_test.go`** -
   the final missing acceptance test, closing 61→62 coverage.
   Shallow `PlanOnly + ExpectNonEmptyPlan` test mirroring the
   existing `TestAccCloudSync_schemaValidation` pattern: exercises
@@ -772,12 +772,12 @@ fix. No code change; no wire-path behavior change.
 - **`make prod-ready`** gate extended to 23 invariants
   (Phase B+C+D+E+F+G+H+I+J).
 
-### Phase I — docs & examples coverage ratchet
+### Phase I, docs & examples coverage ratchet
 
-- **`internal/provider/docs_coverage_test.go`** — new static-analysis
+- **`internal/provider/docs_coverage_test.go`**, new static-analysis
   test file with two ratchets:
 
-  - **`TestDocsCoverage`** — three-way cross-check between:
+  - **`TestDocsCoverage`**, three-way cross-check between:
     1. Every resource type declared via `ProviderTypeName + "_..."`
        in `internal/resources/*.go`
     2. Every `docs/resources/*.md` registry doc
@@ -786,19 +786,19 @@ fix. No code change; no wire-path behavior change.
     Fails if any resource lacks a doc or example, if any doc/example
     is orphaned (resource removed/renamed), or if the total falls
     below the `docsCoverageFloor = 62` SLO. No network, no
-    tfplugindocs, no terraform — pure file-layout check.
+    tfplugindocs, no terraform, pure file-layout check.
 
-  - **`TestDocsNoPlaceholders`** — greps every committed doc and
+  - **`TestDocsNoPlaceholders`**, greps every committed doc and
     example for TODO/FIXME/XXX/PLACEHOLDER/your-value-here markers.
     Fails if any scaffolding leaks into a tagged release.
 
-- **Legacy example dirs removed** — `examples/resources/dataset/`,
+- **Legacy example dirs removed**, `examples/resources/dataset/`,
   `examples/resources/iscsi/`, `examples/resources/share_nfs/` were
   stale non-prefixed duplicates from the pre-registry naming era.
   Replaced by the current `examples/resources/truenas_<type>/`
   canonical layout that tfplugindocs expects.
 
-- **`templates/guides/`** — added to protect the 7 hand-authored
+- **`templates/guides/`**, added to protect the 7 hand-authored
   prose guides (architecture, backup-strategy, getting-started,
   importing-existing, kubernetes-storage, phased-rollout,
   upgrade-to-v1) from destructive regeneration. `tfplugindocs
@@ -806,13 +806,13 @@ fix. No code change; no wire-path behavior change.
   copying the guides into `templates/guides/` makes them the source
   of truth for regeneration runs.
 
-- **`make docs`** — semantics changed from `generate` (destructive)
+- **`make docs`**, semantics changed from `generate` (destructive)
   to `validate` (read-only). The hand-authored docs carry custom
   `subcategory:` frontmatter and prose descriptions that
   `tfplugindocs generate` strips; defaulting to validate prevents
   accidental loss during a routine doc lint.
 
-- **`make docs-regen`** — new target, explicitly dangerous, for
+- **`make docs-regen`**, new target, explicitly dangerous, for
   bulk-bootstrap or schema-wide rename scenarios where a full
   regeneration is intentional. Must be followed by a careful
   diff review.
@@ -820,7 +820,7 @@ fix. No code change; no wire-path behavior change.
 - **`make prod-ready`** gate extended to 22 invariants
   (Phase B+C+D+E+F+G+H+I).
 
-### Phase H — strict static analysis (golangci-lint, 18 linters)
+### Phase H, strict static analysis (golangci-lint, 18 linters)
 
 - **`.golangci.yml`** extended from 10 to 18 enabled linters. Added
   correctness and security linters: `bodyclose`, `contextcheck`,
@@ -841,7 +841,7 @@ fix. No code change; no wire-path behavior change.
     before return. `doRequest`'s retry loop is simplified: it
     classifies via `errors.As(err, &apiErr)` instead of
     `resp == nil`. Callers receive bytes, never a still-open
-    response — bodyclose safety is guaranteed at the caller
+    response, bodyclose safety is guaranteed at the caller
     boundary regardless of retry logic.
 
   - **`nilerr` × 5**: the recurring "TrueNAS API returns either a
@@ -893,9 +893,9 @@ fix. No code change; no wire-path behavior change.
   Full gate still <30s wall-clock including the lint run
   (previously <3s without lint; golangci-lint dominates).
 
-### Phase G — secret redaction in error diagnostics
+### Phase G, secret redaction in error diagnostics
 
-- **`internal/client/redact.go`** — every non-2xx response body is
+- **`internal/client/redact.go`**, every non-2xx response body is
   now passed through `redactJSONBody` before it lands on
   `APIError.Body`. Sensitive field values are recursively replaced
   with `[REDACTED]` based on a case-insensitive substring match of
@@ -905,7 +905,7 @@ fix. No code change; no wire-path behavior change.
   names, and more. Non-JSON error bodies are truncated at 512 bytes with a
   `[non-JSON error body, truncated]` prefix.
 
-- **`redactMessage`** — the parsed `message` field is scanned for
+- **`redactMessage`**, the parsed `message` field is scanned for
   any sensitive-key fragment substring; if found, the message is
   truncated before that fragment and a `[REDACTED]` marker appended.
   TrueNAS middlewared occasionally echoes back offending request
@@ -917,31 +917,31 @@ fix. No code change; no wire-path behavior change.
   ends up in Terraform's plain-text stderr AND in state-file error
   annotations. Without redaction, a 422 carrying a `dhchap_key`
   or `password` echo would leak material into operator shells and
-  shared state backends. The fix is applied once at the source —
+  shared state backends. The fix is applied once at the source -
   zero resource-side code changes required.
 
 - **Invariant tests (9 total)**:
-  - `TestIsSensitiveKey` — 21-case substring matcher unit test
+  - `TestIsSensitiveKey`, 21-case substring matcher unit test
   - `TestRedactJSONBody_{FlatObject,NestedObject,Array,NonJSON,NonJSONTruncated,Empty}`
-  - `TestRedactMessage` — passthrough + truncation cases
-  - `TestAPIErrorBodyNeverLeaksSecrets` — end-to-end APIError round-trip
-  - `TestDoOnceRedactsAPIErrorBody` — httptest wiring test that stands up a
+  - `TestRedactMessage`, passthrough + truncation cases
+  - `TestAPIErrorBodyNeverLeaksSecrets`, end-to-end APIError round-trip
+  - `TestDoOnceRedactsAPIErrorBody`, httptest wiring test that stands up a
     real server returning a sensitive JSON body and asserts both
     `err.Error()` and `APIError.Body` are scrubbed
-  - `TestDoOnceRedactsMessageField` — httptest wiring test for the
+  - `TestDoOnceRedactsMessageField`, httptest wiring test for the
     parsed-message branch
 
 - **`make prod-ready`** gate extended to 20 invariants (Phase B+C+D+E+F+G).
 
-### Phase F — plan-time destroy warnings
+### Phase F, plan-time destroy warnings
 
-- **`internal/planhelpers.WarnOnDestroy`** — reusable
+- **`internal/planhelpers.WarnOnDestroy`**, reusable
   resource.ModifyPlan helper that emits a Warning diagnostic at
   plan time whenever a resource is about to be destroyed. The
   warning names the resource type and ID, explains the impact,
   and points at the `destroy_protection` flag for the blocking
   rail. Non-blocking (the safety rail is
-  `client.DestroyProtection` — this is the "see before the cliff"
+  `client.DestroyProtection`, this is the "see before the cliff"
   rail that complements the "brake at the cliff" rail). Matches
   a standard pattern for destructive resources.
 
@@ -955,7 +955,7 @@ fix. No code change; no wire-path behavior change.
   got `WarnOnDestroy` prepended ahead of their early-return on
   null plan.
 
-- **`TestDestroyWarningCoverage`** — a SLO-style ratchet that
+- **`TestDestroyWarningCoverage`**, a SLO-style ratchet that
   fails if the count of resources carrying WarnOnDestroy drops
   below 22. Same mechanism as `TestIdempotencyCheckCoverage` and
   `TestConfigValidatorsCoverage`.
@@ -969,7 +969,7 @@ fix. No code change; no wire-path behavior change.
 - **`make prod-ready`** gate extended to 19 invariants (Phase B+C+D+E+F).
   Still <3s wall-clock, no live infra.
 
-### Phase E — config-time cross-attribute validators
+### Phase E, config-time cross-attribute validators
 
 - **`internal/resourcevalidators` package** with the
   `RequiredWhenEqual` helper: when a discriminator attribute
@@ -981,27 +981,27 @@ fix. No code change; no wire-path behavior change.
 
 - **ConfigValidators wired onto three resources** with enum
   discriminators:
-  - `truenas_certificate` — `create_type=CERTIFICATE_CREATE_IMPORTED`
+  - `truenas_certificate`, `create_type=CERTIFICATE_CREATE_IMPORTED`
     requires `certificate` + `privatekey`.
-  - `truenas_iscsi_extent` — `type=DISK` requires `disk`,
+  - `truenas_iscsi_extent`, `type=DISK` requires `disk`,
     `type=FILE` requires `path`.
-  - `truenas_network_interface` — `type=LINK_AGGREGATION` requires
+  - `truenas_network_interface`, `type=LINK_AGGREGATION` requires
     `lag_protocol`, `type=VLAN` requires `vlan_parent_interface`.
 
 - **`TestConfigValidatorsCoverage`** ratchet (floor: 3, bump on
   every new validator).
 
-### Phase D — destroy-protection safety rail ("safe apply" profile)
+### Phase D, destroy-protection safety rail ("safe apply" profile)
 
 - **`client.DestroyProtection` + `ErrDestroyProtected`**: a second
   client-layer safety rail that blocks ONLY `DELETE` requests while
   allowing `GET`/`POST`/`PUT` through. Layers beneath `ReadOnly`:
   when both flags are set, `ReadOnly` dominates (strictly broader).
   When only `DestroyProtection` is set, the provider is in "safe
-  apply" mode — creates and updates flow, destroys are refused at
+  apply" mode, creates and updates flow, destroys are refused at
   the wire. Matches the per-resource `deletion_protection` pattern
   found in major Terraform providers, except enforced for
-  every resource in the provider at once — zero per-resource
+  every resource in the provider at once, zero per-resource
   coverage gap.
 
 - **Provider schema `destroy_protection` + env `TRUENAS_DESTROY_PROTECTION`**
@@ -1029,11 +1029,11 @@ fix. No code change; no wire-path behavior change.
   - `examples/provider/provider.tf` has a second commented block
     showing the safe-apply profile alongside the read-only profile.
 
-### Added — Phase B battle-hardening for prod rollout
+### Added, Phase B battle-hardening for prod rollout
 
 - **Read-only safety rail** (`client.Client.ReadOnly` field + `ErrReadOnly`).
   When enabled, every mutating request (POST/PUT/DELETE) fails before any
-  network call is made — the target TrueNAS never sees the attempt, not
+  network call is made, the target TrueNAS never sees the attempt, not
   even in access logs. Configurable via `read_only = true` in the provider
   block OR the `TRUENAS_READONLY={1,true}` environment variable. HCL takes
   precedence. Intended use: `terraform plan` against production with the
@@ -1046,24 +1046,24 @@ fix. No code change; no wire-path behavior change.
 - **plancheck.ExpectEmptyPlan** on dataset/user/share_smb `_basic`
   acceptance tests. Catches the "terraform plan is never clean" family
   of provider bugs where Read returns values the state doesn't hold.
-- **Sweeper coverage invariant** (`TestSweeperCoverage`) — every
+- **Sweeper coverage invariant** (`TestSweeperCoverage`), every
   resource MUST either be registered with a sweeper or be in the
   `resourceSweeperExclusions` map with a rationale. Closes the silent
   38/62 gap; 24 legitimately excluded (singletons, dangerous, pending)
   with per-entry justification.
 - **Apply-idempotency coverage ratchet** (`TestIdempotencyCheckCoverage`)
-  — a SLO-style gate that fails if the number of acc tests with
+ , a SLO-style gate that fails if the number of acc tests with
   `PostApplyPostRefresh: ExpectEmptyPlan` drops below the floor.
   Current floor: 3; bump per-rollout.
-- **Delete-NotFound invariant** (`TestDeleteHandlesNotFound`) — every
+- **Delete-NotFound invariant** (`TestDeleteHandlesNotFound`), every
   non-singleton resource's Delete MUST call `client.IsNotFound` so a
   delete-while-already-gone race surfaces as a graceful state removal,
   not a fatal Terraform error. 15 singleton exclusions documented.
-- **CRUD logging invariant** (`TestCRUDLogging`) — every resource's
+- **CRUD logging invariant** (`TestCRUDLogging`), every resource's
   Create/Read/Update/Delete MUST emit at least one tflog call inside
   its body. Drive-by refactors can no longer silence the operator.
   Currently 248/248 CRUD methods pass.
-- **Typed-CRUD readonly test** — exercises the safety rail through
+- **Typed-CRUD readonly test**, exercises the safety rail through
   `CreateDataset` / `UpdateDataset` / `DeleteDataset` / `GetDataset`
   to prove no typed wrapper swallows `ErrReadOnly` on the way up.
 
@@ -1080,12 +1080,12 @@ fix. No code change; no wire-path behavior change.
   (`NVMetHost_update` missing `dhchap_hash`; `Certificate_update`
   PEM-normalization drift).
 
-### Phase C — plan-modifier hygiene gaps closed
+### Phase C, plan-modifier hygiene gaps closed
 
 - **PEM semantic-equality plan modifier** (`internal/planmodifiers.PEMEquivalent`).
   Decodes every PEM block in plan and state values, re-encodes them
   through `encoding/pem`, and treats the two values as equal when
-  their canonical forms match — even when the server has re-wrapped
+  their canonical forms match, even when the server has re-wrapped
   base64 lines, swapped CRLF for LF, or stripped trailing whitespace.
   Wired into `truenas_certificate.certificate` and `privatekey` so
   an in-place rename no longer tries to destroy+create on cosmetic
@@ -1095,7 +1095,7 @@ fix. No code change; no wire-path behavior change.
   Before this release, omitting any such attribute from HCL on a
   subsequent apply caused the Plugin Framework to mark the plan
   value as Unknown ("known after apply"), which showed up as a
-  phantom diff on every plan — and for the 6 attributes that ALSO
+  phantom diff on every plan, and for the 6 attributes that ALSO
   had `RequiresReplace()`, it falsely forced destroy+create cycles.
   One of those six (`truenas_certificate.key_type`) was the actual
   root cause of the v1.0 `TestAccCertificateResource_update`
@@ -1109,12 +1109,12 @@ fix. No code change; no wire-path behavior change.
 
 - **Two new static invariants** in `internal/provider/` block
   regressions on the above:
-  - `TestRequiresReplaceRespectsUseStateForUnknown` — every
+  - `TestRequiresReplaceRespectsUseStateForUnknown`, every
     Optional+Computed+RequiresReplace attribute MUST carry
     `UseStateForUnknown()` BEFORE `RequiresReplace()` in its
     plan-modifier slice, or the test fails with a file:attribute
     punch list.
-  - `TestOptionalComputedHasUseStateForUnknown` — every
+  - `TestOptionalComputedHasUseStateForUnknown`, every
     Optional+Computed attribute without a `Default:` MUST carry
     `UseStateForUnknown()` or be in the small exclusion map
     (with a rationale). Catches the broader phantom-diff family.
@@ -1145,7 +1145,7 @@ fix. No code change; no wire-path behavior change.
 
 ## [1.0.0] - 2026-04-13
 
-### Added — comprehensive coverage release
+### Added, comprehensive coverage release
 
 - **12 packages × 100.0% literal statement coverage**, race-clean:
   `main`, `cmd/skaff`, `internal/acctest`, `internal/client`,
@@ -1157,7 +1157,7 @@ fix. No code change; no wire-path behavior change.
 - **8 benchmarks** covering hot paths (doRequest, backoffDelay,
   4× mapResponseToModel, 2× validators).
 - **Integration tests** via `resource.UnitTest` with a `mockTrueNAS`
-  httptest backend — run under plain `go test`, no TF_ACC required.
+  httptest backend, run under plain `go test`, no TF_ACC required.
 - **PlanCheck assertions** in 5 representative acceptance tests
   (Create/Update actions, known values, Update-not-Replace guards).
 - **tflog.Trace instrumentation**: 985 entry/exit calls across all
@@ -1205,7 +1205,7 @@ fix. No code change; no wire-path behavior change.
 
 ---
 
-## Prior entries — rolled into 1.0.0
+## Prior entries, rolled into 1.0.0
 
 - **MILESTONE: Full acceptance test suite 100% green against
   TrueNAS SCALE 25.10.0.** Final run: 151 passing + 5 intentional skips
@@ -1218,7 +1218,7 @@ fix. No code change; no wire-path behavior change.
   7 Alpha/Beta resources are gated on infrastructure the acceptance test
   environment lacks (real DNS provider for ACME, real KDC for directory
   services, external cloud credentials, Fibre Channel for vmware).
-- **Live TF_ACC run against TrueNAS SCALE 25.10.0 test VM** (test VM —
+- **Live TF_ACC run against TrueNAS SCALE 25.10.0 test VM** (test VM -
   separate from production). First cold run: 133/152 pass (87.5%). Surfaced
   and fixed several real provider bugs:
   - `truenas_dataset.comments` and `truenas_zvol.comments` now use
@@ -1234,13 +1234,13 @@ fix. No code change; no wire-path behavior change.
     so the field is always Known after Update (Terraform was rejecting plans
     with "Provider returned invalid result object after apply").
   - `truenas_vm.bootloader_ovmf` and `enable_secure_boot` are no longer
-    sent in `vm.update` requests — SCALE 25.10 rejects them with HTTP 422
+    sent in `vm.update` requests, SCALE 25.10 rejects them with HTTP 422
     "Extra inputs are not permitted". They remain Computed-readable but are
     create-time-only.
 - **Unit tests expanded to 1799 passing** (up from 1079): datasource package
   gains a full httptest-based harness (`testutil_test.go`) that builds a real
   `*client.Client`, configures it with a mocked server, and invokes
-  `datasource.Read` through a `tfsdk.Config` wire — exercising the full
+  `datasource.Read` through a `tfsdk.Config` wire, exercising the full
   config-decode → client-call → state-set path. Every data source gets a schema
   test plus success/404/500/invalid-JSON/empty-list/lookup-by-name coverage.
   Resource package gains batch `Schema`/`Metadata`/`Configure`/`ImportState`
@@ -1254,7 +1254,7 @@ fix. No code change; no wire-path behavior change.
   release. Also verifies every registered resource has both a doc page
   (`docs/resources/<name>.md`) and an example directory, guarding against
   resource additions that forget to update docs.
-- **goreleaser snapshot build verified offline** — `goreleaser release
+- **goreleaser snapshot build verified offline**, `goreleaser release
   --snapshot --clean --skip=publish --skip=sign` produces signed archives for
   linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64,
   windows/arm64 in 32s. All 6 binaries ~7MB trimpath/stripped. SHA256SUMS file
@@ -1299,7 +1299,7 @@ fix. No code change; no wire-path behavior change.
   pattern calls the TrueNAS API directly via a test-only `testAccClient()`
   helper to out-of-band delete the resource, then asserts
   `ExpectNonEmptyPlan: true` so the provider is verified to detect and
-  recover from external drift — the standard Terraform import-and-refresh
+  recover from external drift, the standard Terraform import-and-refresh
   pattern. All acceptance tests still gated on `TF_ACC=1` and run against
   the test VM only.
 - **Test suite expanded from 221 → 1079 passing unit tests** (all automated via
@@ -1346,7 +1346,7 @@ fix. No code change; no wire-path behavior change.
 ### Fixed
 
 - **SCALE 25.10 compatibility**: `iscsi_portal` no longer sends `port`
-  in listen entries on create/update — the TrueNAS 25.10 API rejects it
+  in listen entries on create/update, the TrueNAS 25.10 API rejects it
   as "Extra inputs are not permitted". The field is now Computed-only
   and marked deprecated.
 - `iscsi_extent`: `path` and `disk` are now `Computed: true` so DISK-type

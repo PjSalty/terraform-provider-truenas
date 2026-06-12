@@ -2,12 +2,12 @@
 page_title: "truenas_catalog Resource - terraform-provider-truenas"
 subcategory: "Applications"
 description: |-
-  Manages the TrueNAS SCALE application catalog. This is a singleton resource in SCALE 25.04+ — only `preferred_trains` is user-tunable. Optionally triggers a catalog sync on create.
+  Manages the TrueNAS SCALE application catalog. This is a singleton resource in SCALE 25.04+, only `preferred_trains` is user-tunable. Optionally triggers a catalog sync on create.
 ---
 
 # truenas_catalog (Resource)
 
-Manages the TrueNAS SCALE application catalog. This is a singleton resource in SCALE 25.04+ — only `preferred_trains` is user-tunable. Optionally triggers a catalog sync on create.
+Manages the TrueNAS SCALE application catalog. This is a singleton resource in SCALE 25.04+, only `preferred_trains` is user-tunable. Optionally triggers a catalog sync on create.
 
 Managed attributes map directly to the TrueNAS SCALE API. Changes are applied
 via the JSON-RPC endpoint on the target system; mutations that cannot be

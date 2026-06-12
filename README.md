@@ -107,7 +107,7 @@ For phased production rollout, set `read_only = true` (HCL) or
 `TRUENAS_READONLY=1` (env). When enabled, every mutating JSON-RPC call
 (`*.create`, `*.update`, `*.delete`, plus named mutators like
 `pool.export`) fails with `ErrReadOnly` **before any wire call is
-made** — the target TrueNAS instance never even sees the attempt,
+made**, the target TrueNAS instance never even sees the attempt,
 not even in its middlewared audit log.
 
 ```hcl
@@ -136,7 +136,7 @@ the provider's usual precedence rules.
 For the first production apply, layer `destroy_protection = true`
 (HCL) or `TRUENAS_DESTROY_PROTECTION=1` (env) on top. This is a
 second safety rail that blocks ONLY `DELETE` requests at the client
-layer — `GET`, `POST`, and `PUT` flow through normally. Create and
+layer, `GET`, `POST`, and `PUT` flow through normally. Create and
 update work; destroy is physically refused:
 
 ```hcl
@@ -349,15 +349,15 @@ example under `examples/data-sources/<name>/data-source.tf`.
 
 v2.0 is validated against live instances of each line:
 
-- **SCALE 25.10** — fully supported; the complete acceptance suite
+- **SCALE 25.10**, fully supported; the complete acceptance suite
   passes (147/147).
-- **SCALE 25.04** — works for the common surface (126/141), but
+- **SCALE 25.04**, works for the common surface (126/141), but
   several resources model APIs that don't exist there: `nvmet_*`
   (NVMe-oF arrived in 25.10), the unified `truenas_directory_services`
   resource, the 25.10 SMB share `purpose` vocabulary, and some
   `alert_service` types. If you need those resources on 25.04, stay on
   `1.10.x` until you upgrade SCALE.
-- **SCALE 26.0-BETA** — 143/147; the four failures are 26.0 API drift
+- **SCALE 26.0-BETA**, 143/147; the four failures are 26.0 API drift
   (`service.start` signature, SMB config shape) tracked for a v2.x
   release alongside 26.0 final. Note 26.0 removes the REST API
   entirely, so the v1.x line cannot work there at all.
@@ -421,7 +421,7 @@ coding standards, and testing expectations. In short:
 2. Create a feature branch.
 3. Add validators, docs, examples, and round-trip tests for any new
    resource.
-4. Run `go test ./...`, `go vet ./...`, and `gofmt -l .` — all must be
+4. Run `go test ./...`, `go vet ./...`, and `gofmt -l .`, all must be
    clean.
 5. Open a pull request.
 

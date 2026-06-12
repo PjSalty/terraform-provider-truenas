@@ -2,12 +2,12 @@
 page_title: "truenas_nvmet_global Resource - terraform-provider-truenas"
 subcategory: "NVMe-oF"
 description: |-
-  Manages the NVMe-oF global configuration on TrueNAS SCALE. This is a singleton resource — only one instance can exist. Delete does not reset the remote configuration; it only removes the resource from Terraform state.
+  Manages the NVMe-oF global configuration on TrueNAS SCALE. This is a singleton resource, only one instance can exist. Delete does not reset the remote configuration; it only removes the resource from Terraform state.
 ---
 
 # truenas_nvmet_global (Resource)
 
-Manages the NVMe-oF global configuration on TrueNAS SCALE. This is a singleton resource — only one instance can exist. Delete does not reset the remote configuration; it only removes the resource from Terraform state.
+Manages the NVMe-oF global configuration on TrueNAS SCALE. This is a singleton resource, only one instance can exist. Delete does not reset the remote configuration; it only removes the resource from Terraform state.
 
 Managed attributes map directly to the TrueNAS SCALE API. Changes are applied
 via the JSON-RPC endpoint on the target system; mutations that cannot be
