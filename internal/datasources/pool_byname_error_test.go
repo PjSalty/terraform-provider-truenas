@@ -19,7 +19,7 @@ func TestPoolDataSource_Read_ByName_ListError(t *testing.T) {
 	ds := NewPoolDataSource().(*PoolDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("tank")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("tank")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error diagnostic when ListPools fails")

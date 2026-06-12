@@ -46,8 +46,8 @@ var brutalStringInputsDS = []string{
 	"测试",
 	"🚀",
 	"é",
-	"​",
-	"‮",
+	"\u200b",
+	"\u202e",
 	"' OR 1=1--",
 	"; DROP TABLE users; --",
 	"`whoami`",
@@ -119,7 +119,7 @@ func datasourceTypeName(ds datasource.DataSource) string {
 // surface for the same attribute.
 func TestBrutalSchema_DataSourceValidators(t *testing.T) {
 	for _, ctor := range datasourceConstructors() {
-		ctor := ctor
+
 		ds := ctor()
 		tn := datasourceTypeName(ds)
 		t.Run(tn, func(t *testing.T) {
@@ -130,7 +130,6 @@ func TestBrutalSchema_DataSourceValidators(t *testing.T) {
 				t.Fatalf("Schema returned error: %v", resp.Diagnostics)
 			}
 			for name, attr := range resp.Schema.Attributes {
-				name, attr := name, attr
 				t.Run(name, func(t *testing.T) {
 					exerciseDSValidatorsOnAttribute(t, resp.Schema, name, attr)
 				})
@@ -149,7 +148,6 @@ func exerciseDSValidatorsOnAttribute(t *testing.T, sch schema.Schema, name strin
 		}
 		for _, val := range brutalStringInputsDS {
 			for vi, v := range a.Validators {
-				vi, v, val := vi, v, val
 				t.Run(dsSafeName(val), func(t *testing.T) {
 					defer dsRecoverAsFailure(t, name, vi, val)
 					req := validator.StringRequest{
@@ -169,7 +167,6 @@ func exerciseDSValidatorsOnAttribute(t *testing.T, sch schema.Schema, name strin
 		}
 		for _, val := range brutalInt64InputsDS {
 			for vi, v := range a.Validators {
-				vi, v, val := vi, v, val
 				t.Run(dsInt64Name(val), func(t *testing.T) {
 					defer dsRecoverAsFailure(t, name, vi, val)
 					req := validator.Int64Request{

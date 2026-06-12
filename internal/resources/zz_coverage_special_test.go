@@ -19,12 +19,12 @@ import (
 
 // --- Service: name-keyed virtual resource over service.* ---
 
-func serviceFixtureClient(t *testing.T, enabled bool, state string) *wsclient.Client {
+func serviceFixtureClient(ctx context.Context, t *testing.T, enabled bool, state string) *wsclient.Client {
 	t.Helper()
 	svc := map[string]interface{}{
 		"id": 4, "service": "ssh", "enable": enabled, "state": state,
 	}
-	return newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
 		case "service.query":
 			return []interface{}{svc}, nil
@@ -41,7 +41,7 @@ func serviceFixtureClient(t *testing.T, enabled bool, state string) *wsclient.Cl
 
 func TestServiceResource_Create_EnabledHappyPath(t *testing.T) {
 	ctx := context.Background()
-	c := serviceFixtureClient(t, true, "RUNNING")
+	c := serviceFixtureClient(ctx, t, true, "RUNNING")
 	r := &ServiceResource{client: c}
 	sch := schemaOf(t, ctx, r)
 
@@ -58,7 +58,7 @@ func TestServiceResource_Create_EnabledHappyPath(t *testing.T) {
 
 func TestServiceResource_Create_DisabledHappyPath(t *testing.T) {
 	ctx := context.Background()
-	c := serviceFixtureClient(t, false, "STOPPED")
+	c := serviceFixtureClient(ctx, t, false, "STOPPED")
 	r := &ServiceResource{client: c}
 	sch := schemaOf(t, ctx, r)
 
@@ -75,7 +75,7 @@ func TestServiceResource_Create_DisabledHappyPath(t *testing.T) {
 
 func TestServiceResource_ReadUpdateDelete_HappyPath(t *testing.T) {
 	ctx := context.Background()
-	c := serviceFixtureClient(t, true, "RUNNING")
+	c := serviceFixtureClient(ctx, t, true, "RUNNING")
 	r := &ServiceResource{client: c}
 	sch := schemaOf(t, ctx, r)
 
@@ -107,13 +107,13 @@ func TestServiceResource_ReadUpdateDelete_HappyPath(t *testing.T) {
 
 // --- Tunable: job-backed create/update/delete ---
 
-func tunableFixtureClient(t *testing.T) *wsclient.Client {
+func tunableFixtureClient(ctx context.Context, t *testing.T) *wsclient.Client {
 	t.Helper()
 	tun := map[string]interface{}{
 		"id": 9, "type": "SYSCTL", "var": "vm.swappiness", "value": "10",
 		"comment": "", "enabled": true,
 	}
-	return newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
 		case "tunable.create", "tunable.update", "tunable.delete":
 			return int64(33), nil // job id
@@ -132,7 +132,7 @@ func tunableFixtureClient(t *testing.T) *wsclient.Client {
 
 func TestTunableResource_CRUD_HappyPath(t *testing.T) {
 	ctx := context.Background()
-	c := tunableFixtureClient(t)
+	c := tunableFixtureClient(ctx, t)
 	r := &TunableResource{client: c}
 	sch := schemaOf(t, ctx, r)
 
@@ -174,13 +174,13 @@ func TestTunableResource_CRUD_HappyPath(t *testing.T) {
 
 // --- SystemDataset: singleton with job-backed update ---
 
-func systemdatasetFixtureClient(t *testing.T) *wsclient.Client {
+func systemdatasetFixtureClient(ctx context.Context, t *testing.T) *wsclient.Client {
 	t.Helper()
 	cfg := map[string]interface{}{
 		"id": 1, "pool": "test", "uuid": "abc-123",
 		"basename": "test/.system", "syslog": true,
 	}
-	return newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
 		case "systemdataset.config":
 			return cfg, nil
@@ -197,7 +197,7 @@ func systemdatasetFixtureClient(t *testing.T) *wsclient.Client {
 
 func TestSystemDatasetResource_CRUD_HappyPath(t *testing.T) {
 	ctx := context.Background()
-	c := systemdatasetFixtureClient(t)
+	c := systemdatasetFixtureClient(ctx, t)
 	r := &SystemDatasetResource{client: c}
 	sch := schemaOf(t, ctx, r)
 
@@ -228,7 +228,7 @@ func TestSystemDatasetResource_CRUD_HappyPath(t *testing.T) {
 
 // --- FilesystemACL: path-keyed virtual resource over filesystem.* ---
 
-func filesystemACLFixtureClient(t *testing.T) *wsclient.Client {
+func filesystemACLFixtureClient(ctx context.Context, t *testing.T) *wsclient.Client {
 	t.Helper()
 	acl := map[string]interface{}{
 		"path": "/mnt/test/data", "trivial": false, "acltype": "POSIX1E",
@@ -240,7 +240,7 @@ func filesystemACLFixtureClient(t *testing.T) *wsclient.Client {
 			},
 		},
 	}
-	return newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
 		case "filesystem.getacl":
 			return acl, nil
@@ -257,7 +257,7 @@ func filesystemACLFixtureClient(t *testing.T) *wsclient.Client {
 
 func TestFilesystemACLResource_CRUD_HappyPath(t *testing.T) {
 	ctx := context.Background()
-	c := filesystemACLFixtureClient(t)
+	c := filesystemACLFixtureClient(ctx, t)
 	r := &FilesystemACLResource{client: c}
 	sch := schemaOf(t, ctx, r)
 
@@ -294,13 +294,13 @@ func TestFilesystemACLResource_CRUD_HappyPath(t *testing.T) {
 
 // --- App: job-backed create/delete with string ids ---
 
-func appFixtureClient(t *testing.T) *wsclient.Client {
+func appFixtureClient(ctx context.Context, t *testing.T) *wsclient.Client {
 	t.Helper()
 	app := map[string]interface{}{
 		"id": "nextcloud", "name": "nextcloud", "state": "RUNNING",
 		"version": "1.0.0", "custom_app": false,
 	}
-	return newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
 		case "app.create", "app.update", "app.delete", "app.start", "app.stop":
 			return int64(66), nil
@@ -319,7 +319,7 @@ func appFixtureClient(t *testing.T) *wsclient.Client {
 
 func TestAppResource_CRUD_HappyPath(t *testing.T) {
 	ctx := context.Background()
-	c := appFixtureClient(t)
+	c := appFixtureClient(ctx, t)
 	r := &AppResource{client: c}
 	sch := schemaOf(t, ctx, r)
 
@@ -354,7 +354,7 @@ func TestAppResource_CRUD_HappyPath(t *testing.T) {
 
 // --- Pool: job-backed everything ---
 
-func poolFixtureClient(t *testing.T) *wsclient.Client {
+func poolFixtureClient(ctx context.Context, t *testing.T) *wsclient.Client {
 	t.Helper()
 	pool := map[string]interface{}{
 		"id": 5, "name": "test", "status": "ONLINE", "healthy": true,
@@ -362,7 +362,7 @@ func poolFixtureClient(t *testing.T) *wsclient.Client {
 			"data": []interface{}{},
 		},
 	}
-	return newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch {
 		case method == "pool.create" || method == "pool.update" || method == "pool.export":
 			return int64(77), nil
@@ -383,7 +383,7 @@ func poolFixtureClient(t *testing.T) *wsclient.Client {
 
 func TestPoolResource_CRUD_HappyPath(t *testing.T) {
 	ctx := context.Background()
-	c := poolFixtureClient(t)
+	c := poolFixtureClient(ctx, t)
 	r := &PoolResource{client: c}
 	sch := schemaOf(t, ctx, r)
 
@@ -412,7 +412,7 @@ func TestPoolResource_CRUD_HappyPath(t *testing.T) {
 
 // --- Certificate: optional-field branches in Create/Read/Update ---
 
-func certificateFixtureClient(t *testing.T) *wsclient.Client {
+func certificateFixtureClient(ctx context.Context, t *testing.T) *wsclient.Client {
 	t.Helper()
 	cert := map[string]interface{}{
 		"id": 9, "name": "tf-full", "type": 8,
@@ -426,7 +426,7 @@ func certificateFixtureClient(t *testing.T) *wsclient.Client {
 		"fingerprint": "AA:BB", "expired": false,
 		"from": "2026-01-01", "until": "2027-01-01",
 	}
-	return newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
 		case "certificate.create", "certificate.update", "certificate.delete":
 			return int64(88), nil
@@ -445,7 +445,7 @@ func certificateFixtureClient(t *testing.T) *wsclient.Client {
 
 func TestCertificateResource_CRUD_AllFields(t *testing.T) {
 	ctx := context.Background()
-	c := certificateFixtureClient(t)
+	c := certificateFixtureClient(ctx, t)
 	r := &CertificateResource{client: c}
 	sch := schemaOf(t, ctx, r)
 
@@ -502,7 +502,7 @@ func TestCertificateResource_CRUD_AllFields(t *testing.T) {
 
 func TestServiceResource_Read_NotFoundRemoves(t *testing.T) {
 	ctx := context.Background()
-	c := newWSNotFoundClient(t)
+	c := newWSNotFoundClient(ctx, t)
 	r := &ServiceResource{client: c}
 	sch := schemaOf(t, ctx, r)
 	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("4")})
@@ -517,7 +517,7 @@ func TestServiceResource_Read_NotFoundRemoves(t *testing.T) {
 // start/get fails. Covers the partial-failure branches of Create.
 func TestServiceResource_Create_StartFails(t *testing.T) {
 	ctx := context.Background()
-	c := newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	c := newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		svc := map[string]interface{}{"id": 4, "service": "ssh", "enable": true, "state": "STOPPED"}
 		switch method {
 		case "service.query":
@@ -544,7 +544,7 @@ func TestServiceResource_Create_StartFails(t *testing.T) {
 // service Create with reread failing after successful start.
 func TestServiceResource_Create_RereadFails(t *testing.T) {
 	ctx := context.Background()
-	c := newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	c := newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		svc := map[string]interface{}{"id": 4, "service": "ssh", "enable": true, "state": "RUNNING"}
 		switch method {
 		case "service.query":
@@ -572,7 +572,7 @@ func TestServiceResource_Create_RereadFails(t *testing.T) {
 func TestServiceResource_Update_DisableStops(t *testing.T) {
 	ctx := context.Background()
 	var stopped bool
-	c := newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	c := newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		svc := map[string]interface{}{"id": 4, "service": "ssh", "enable": false, "state": "STOPPED"}
 		switch method {
 		case "service.query":
@@ -608,7 +608,7 @@ func TestServiceResource_Update_DisableStops(t *testing.T) {
 // FilesystemACL: not-found on Read removes from state.
 func TestFilesystemACLResource_Read_NotFound(t *testing.T) {
 	ctx := context.Background()
-	c := newWSNotFoundClient(t)
+	c := newWSNotFoundClient(ctx, t)
 	r := &FilesystemACLResource{client: c}
 	sch := schemaOf(t, ctx, r)
 	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
@@ -624,7 +624,7 @@ func TestFilesystemACLResource_Read_NotFound(t *testing.T) {
 // Pool: not-found Read removal + export-fail Delete diagnostic.
 func TestPoolResource_Read_NotFound(t *testing.T) {
 	ctx := context.Background()
-	c := newWSNotFoundClient(t)
+	c := newWSNotFoundClient(ctx, t)
 	r := &PoolResource{client: c}
 	sch := schemaOf(t, ctx, r)
 	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
@@ -645,7 +645,7 @@ func TestPoolResource_Read_NotFound(t *testing.T) {
 // App: not-found Read removal + delete not-found tolerance.
 func TestAppResource_ReadDelete_NotFound(t *testing.T) {
 	ctx := context.Background()
-	c := newWSNotFoundClient(t)
+	c := newWSNotFoundClient(ctx, t)
 	r := &AppResource{client: c}
 	sch := schemaOf(t, ctx, r)
 	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
@@ -666,7 +666,7 @@ func TestAppResource_ReadDelete_NotFound(t *testing.T) {
 // NetworkInterface: not-found Read removal + delete behavior.
 func TestNetworkInterfaceResource_ReadDelete_NotFound(t *testing.T) {
 	ctx := context.Background()
-	c := newWSNotFoundClient(t)
+	c := newWSNotFoundClient(ctx, t)
 	r := &NetworkInterfaceResource{client: c}
 	sch := schemaOf(t, ctx, r)
 	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
@@ -688,13 +688,13 @@ func TestNetworkInterfaceResource_ReadDelete_NotFound(t *testing.T) {
 
 // wsFailMethodClient fails ONLY the listed methods; everything else
 // succeeds via the supplied fixture object.
-func wsFailMethodClient(t *testing.T, obj map[string]interface{}, failMethods ...string) *wsclient.Client {
+func wsFailMethodClient(ctx context.Context, t *testing.T, obj map[string]interface{}, failMethods ...string) *wsclient.Client {
 	t.Helper()
 	failSet := map[string]bool{}
 	for _, m := range failMethods {
 		failSet[m] = true
 	}
-	return newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		if failSet[method] {
 			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "forced failure: " + method}
 		}
@@ -719,7 +719,7 @@ func TestServiceResource_ErrorBranches(t *testing.T) {
 	svc := map[string]interface{}{"id": 4, "service": "ssh", "enable": true, "state": "RUNNING"}
 
 	t.Run("Create update-fails", func(t *testing.T) {
-		c := wsFailMethodClient(t, svc, "service.update")
+		c := wsFailMethodClient(ctx, t, svc, "service.update")
 		r := &ServiceResource{client: c}
 		sch := schemaOf(t, ctx, r)
 		plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{"service": str("ssh"), "enable": flag(true)})
@@ -731,7 +731,7 @@ func TestServiceResource_ErrorBranches(t *testing.T) {
 	})
 
 	t.Run("Read generic-error", func(t *testing.T) {
-		c := wsFailMethodClient(t, svc, "service.get_instance")
+		c := wsFailMethodClient(ctx, t, svc, "service.get_instance")
 		r := &ServiceResource{client: c}
 		sch := schemaOf(t, ctx, r)
 		st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("4")})
@@ -743,7 +743,7 @@ func TestServiceResource_ErrorBranches(t *testing.T) {
 	})
 
 	t.Run("Update update-fails", func(t *testing.T) {
-		c := wsFailMethodClient(t, svc, "service.update")
+		c := wsFailMethodClient(ctx, t, svc, "service.update")
 		r := &ServiceResource{client: c}
 		sch := schemaOf(t, ctx, r)
 		st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("4"), "service": str("ssh"), "enable": flag(true)})
@@ -757,7 +757,7 @@ func TestServiceResource_ErrorBranches(t *testing.T) {
 	})
 
 	t.Run("Update start-fails", func(t *testing.T) {
-		c := wsFailMethodClient(t, svc, "service.start")
+		c := wsFailMethodClient(ctx, t, svc, "service.start")
 		r := &ServiceResource{client: c}
 		sch := schemaOf(t, ctx, r)
 		st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("4"), "service": str("ssh"), "enable": flag(true)})
@@ -771,7 +771,7 @@ func TestServiceResource_ErrorBranches(t *testing.T) {
 	})
 
 	t.Run("Update reread-fails", func(t *testing.T) {
-		c := wsFailMethodClient(t, svc, "service.get_instance")
+		c := wsFailMethodClient(ctx, t, svc, "service.get_instance")
 		r := &ServiceResource{client: c}
 		sch := schemaOf(t, ctx, r)
 		st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("4"), "service": str("ssh"), "enable": flag(true)})
@@ -785,7 +785,7 @@ func TestServiceResource_ErrorBranches(t *testing.T) {
 	})
 
 	t.Run("Delete disable-fails", func(t *testing.T) {
-		c := wsFailMethodClient(t, svc, "service.update")
+		c := wsFailMethodClient(ctx, t, svc, "service.update")
 		r := &ServiceResource{client: c}
 		sch := schemaOf(t, ctx, r)
 		st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("4"), "service": str("ssh"), "enable": flag(true)})
@@ -799,7 +799,7 @@ func TestServiceResource_ErrorBranches(t *testing.T) {
 	t.Run("ImportState by-name resolves", func(t *testing.T) {
 		// Non-numeric import IDs resolve via GetServiceByName; with the
 		// fixture service present this is the success path.
-		c := wsFailMethodClient(t, svc)
+		c := wsFailMethodClient(ctx, t, svc)
 		r := &ServiceResource{client: c}
 		iResp := &resource.ImportStateResponse{State: primedStateV2(t, ctx, schemaOf(t, ctx, r))}
 		r.ImportState(ctx, resource.ImportStateRequest{ID: "ssh"}, iResp)
@@ -809,7 +809,7 @@ func TestServiceResource_ErrorBranches(t *testing.T) {
 	})
 
 	t.Run("ImportState lookup-fails", func(t *testing.T) {
-		c := wsFailMethodClient(t, svc, "service.query")
+		c := wsFailMethodClient(ctx, t, svc, "service.query")
 		r := &ServiceResource{client: c}
 		iResp := &resource.ImportStateResponse{State: primedStateV2(t, ctx, schemaOf(t, ctx, r))}
 		r.ImportState(ctx, resource.ImportStateRequest{ID: "nope"}, iResp)
@@ -827,7 +827,7 @@ func TestFilesystemACLResource_ErrorBranches(t *testing.T) {
 	}
 
 	t.Run("Create setacl-fails", func(t *testing.T) {
-		c := wsFailMethodClient(t, acl, "filesystem.setacl")
+		c := wsFailMethodClient(ctx, t, acl, "filesystem.setacl")
 		r := &FilesystemACLResource{client: c}
 		sch := schemaOf(t, ctx, r)
 		plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{"path": str("/mnt/test/data")})
@@ -839,7 +839,7 @@ func TestFilesystemACLResource_ErrorBranches(t *testing.T) {
 	})
 
 	t.Run("Update setacl-fails", func(t *testing.T) {
-		c := wsFailMethodClient(t, acl, "filesystem.setacl")
+		c := wsFailMethodClient(ctx, t, acl, "filesystem.setacl")
 		r := &FilesystemACLResource{client: c}
 		sch := schemaOf(t, ctx, r)
 		st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("/mnt/test/data"), "path": str("/mnt/test/data")})
@@ -853,7 +853,7 @@ func TestFilesystemACLResource_ErrorBranches(t *testing.T) {
 	})
 
 	t.Run("Delete setacl-fails", func(t *testing.T) {
-		c := wsFailMethodClient(t, acl, "filesystem.setacl")
+		c := wsFailMethodClient(ctx, t, acl, "filesystem.setacl")
 		r := &FilesystemACLResource{client: c}
 		sch := schemaOf(t, ctx, r)
 		st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("/mnt/test/data"), "path": str("/mnt/test/data")})
@@ -874,7 +874,7 @@ func TestDirectoryServicesResource_Delete_ADLeave(t *testing.T) {
 		"configuration": map[string]interface{}{},
 	}
 	var leaveCalled bool
-	c := newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	c := newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
 		case "directoryservices.config":
 			return cfg, nil
@@ -906,7 +906,7 @@ func TestDirectoryServicesResource_Delete_ADLeave(t *testing.T) {
 func TestCatalogResource_Create_SyncFails(t *testing.T) {
 	ctx := context.Background()
 	cat := map[string]interface{}{"id": "TRUENAS", "label": "TRUENAS", "preferred_trains": []string{"stable"}}
-	c := wsFailMethodClient(t, cat, "catalog.sync")
+	c := wsFailMethodClient(ctx, t, cat, "catalog.sync")
 	r := &CatalogResource{client: c}
 	sch := schemaOf(t, ctx, r)
 	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
@@ -929,7 +929,7 @@ func TestAppResource_MapResponse_Branches(t *testing.T) {
 		"metadata":         map[string]interface{}{"train": "stable"},
 		"active_workloads": map[string]interface{}{"container_details": []interface{}{}},
 	}
-	c := newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	c := newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		return app, nil
 	})
 	r := &AppResource{client: c}
@@ -948,7 +948,7 @@ func TestAppResource_Read_PinnedVersion(t *testing.T) {
 	app := map[string]interface{}{
 		"id": "x", "name": "x", "state": "RUNNING", "version": "2.1.3",
 	}
-	c := newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	c := newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		return app, nil
 	})
 	r := &AppResource{client: c}
@@ -966,7 +966,7 @@ func TestAppResource_Read_PinnedVersion(t *testing.T) {
 func TestCatalogResource_Create_SyncOnCreateNull(t *testing.T) {
 	ctx := context.Background()
 	cat := map[string]interface{}{"id": "TRUENAS", "label": "TRUENAS", "preferred_trains": []string{"stable"}}
-	c := newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	c := newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		return cat, nil // catalog.update + catalog.config both return the object
 	})
 	r := &CatalogResource{client: c}
@@ -989,7 +989,7 @@ func TestDirectoryServicesResource_Delete_LeaveFails(t *testing.T) {
 		"id": 1, "service_type": svcType, "enable": true,
 		"enable_dns_updates": false, "timeout": 60,
 	}
-	c := newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+	c := newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
 		case "directoryservices.config":
 			return cfg, nil
@@ -1023,7 +1023,7 @@ func TestFilesystemACLResource_ReadbackFails(t *testing.T) {
 	ctx := context.Background()
 	makeClient := func(failGetAfterSet bool) *wsclient.Client {
 		var setDone bool
-		return newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 			switch method {
 			case "filesystem.setacl":
 				setDone = true
@@ -1076,7 +1076,7 @@ func TestFilesystemACLResource_ReadbackFails(t *testing.T) {
 	t.Run("Delete getacl-fails", func(t *testing.T) {
 		// Delete reads the current ACL to build the reset request; a
 		// failure there must surface (or be tolerated — assert no panic).
-		c := newWSTestClient(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		c := newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "everything fails"}
 		})
 		r := &FilesystemACLResource{client: c}
@@ -1092,7 +1092,7 @@ func TestFilesystemACLResource_ReadbackFails(t *testing.T) {
 
 func TestFilesystemACLResource_Delete_PathGone(t *testing.T) {
 	ctx := context.Background()
-	c := newWSNotFoundClient(t)
+	c := newWSNotFoundClient(ctx, t)
 	r := &FilesystemACLResource{client: c}
 	sch := schemaOf(t, ctx, r)
 	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{

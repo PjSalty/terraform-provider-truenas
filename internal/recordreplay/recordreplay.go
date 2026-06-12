@@ -128,7 +128,7 @@ type Recorder struct {
 // NewRecorder spins up a recording proxy. The returned Server has
 // a URL the provider's `truenas_url` should point at.
 func NewRecorder(upstreamURL, fixtureDir string) (*Recorder, error) {
-	if err := os.MkdirAll(fixtureDir, 0o755); err != nil {
+	if err := os.MkdirAll(fixtureDir, 0o750); err != nil {
 		return nil, fmt.Errorf("creating fixture dir: %w", err)
 	}
 	r := &Recorder{Upstream: upstreamURL, Dir: fixtureDir}
@@ -168,7 +168,7 @@ func (r *Recorder) serve(w http.ResponseWriter, req *http.Request) {
 
 	// NewRequestWithContext cannot fail here: req.Method comes from a
 	// parsed inbound request (always a valid token) and upstream.String()
-	// re-serialises a URL that url.Parse already accepted.
+	// re-serializes a URL that url.Parse already accepted.
 	upReq, _ := http.NewRequestWithContext(req.Context(), req.Method, upstream.String(), bytes.NewReader(body))
 	// Forward headers EXCEPT Host (which httputil would do too).
 	for k, vs := range req.Header {
@@ -182,7 +182,7 @@ func (r *Recorder) serve(w http.ResponseWriter, req *http.Request) {
 	// Use the default client with InsecureSkipVerify for the test
 	// TrueNAS which ships with a self-signed cert. Real CI tooling
 	// would use a configured TLS bundle.
-	resp, err := insecureHTTPClient.Do(upReq)
+	resp, err := insecureHTTPClient.Do(upReq) //nolint:gosec // G704: proxying to the operator-configured upstream is this recorder's purpose
 	if err != nil {
 		http.Error(w, "recordreplay: upstream call failed: "+err.Error(), http.StatusBadGateway)
 		return
@@ -229,7 +229,7 @@ func (r *Recorder) write(method, path string, query url.Values, body []byte, fx 
 	// Fixture is a flat struct of strings, ints, and []byte — MarshalIndent
 	// cannot fail on it.
 	out, _ := json.MarshalIndent(fx, "", "  ")
-	_ = os.WriteFile(filepath.Join(r.Dir, h+".json"), out, 0o644)
+	_ = os.WriteFile(filepath.Join(r.Dir, h+".json"), out, 0o600)
 	r.captured++
 }
 
@@ -273,7 +273,9 @@ func (rp *Replayer) serve(w http.ResponseWriter, req *http.Request) {
 	rp.mu.Lock()
 	defer rp.mu.Unlock()
 
-	data, err := os.ReadFile(filepath.Join(rp.Dir, h+".json"))
+	// Fixture path is hash-derived inside the configured fixture dir;
+	// this is dev-time test tooling, not a user-facing input path.
+	data, err := os.ReadFile(filepath.Join(rp.Dir, h+".json")) //nolint:gosec // G304: hash-named file under the fixture dir
 	if err != nil {
 		// Miss — record + 404 so the caller sees the gap.
 		rp.misses = append(rp.misses, fmt.Sprintf("%s %s (hash %s)", req.Method, req.URL.Path, h))

@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -18,7 +19,7 @@ func TestNewNetworkInterfaceDataSource(t *testing.T) {
 
 func TestNetworkInterfaceDataSource_Schema(t *testing.T) {
 	ds := NewNetworkInterfaceDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "name", "type", "description", "ipv4_dhcp", "ipv6_auto",
@@ -33,7 +34,7 @@ func TestNetworkInterfaceDataSource_Schema(t *testing.T) {
 
 func TestNetworkInterfaceDataSource_Read_Physical(t *testing.T) {
 	mtu := 9000
-	c := newWSServer(t, wsReturn(truenas.NetworkInterface{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.NetworkInterface{
 		ID:          "eth0",
 		Name:        "eth0",
 		Type:        "PHYSICAL",
@@ -50,7 +51,7 @@ func TestNetworkInterfaceDataSource_Read_Physical(t *testing.T) {
 	ds := NewNetworkInterfaceDataSource().(*NetworkInterfaceDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": strVal("eth0")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": strVal("eth0")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -72,7 +73,7 @@ func TestNetworkInterfaceDataSource_Read_Physical(t *testing.T) {
 func TestNetworkInterfaceDataSource_Read_VLAN(t *testing.T) {
 	tag := 100
 	pcp := 3
-	c := newWSServer(t, wsReturn(truenas.NetworkInterface{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.NetworkInterface{
 		ID:                  "vlan100",
 		Name:                "vlan100",
 		Type:                "VLAN",
@@ -84,7 +85,7 @@ func TestNetworkInterfaceDataSource_Read_VLAN(t *testing.T) {
 	ds := NewNetworkInterfaceDataSource().(*NetworkInterfaceDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": strVal("vlan100")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": strVal("vlan100")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -101,7 +102,7 @@ func TestNetworkInterfaceDataSource_Read_VLAN(t *testing.T) {
 }
 
 func TestNetworkInterfaceDataSource_Read_Bridge(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.NetworkInterface{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.NetworkInterface{
 		ID:            "br0",
 		Name:          "br0",
 		Type:          "BRIDGE",
@@ -111,7 +112,7 @@ func TestNetworkInterfaceDataSource_Read_Bridge(t *testing.T) {
 	ds := NewNetworkInterfaceDataSource().(*NetworkInterfaceDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": strVal("br0")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": strVal("br0")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -127,12 +128,12 @@ func TestNetworkInterfaceDataSource_Read_Bridge(t *testing.T) {
 }
 
 func TestNetworkInterfaceDataSource_Read_NotFound(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewNetworkInterfaceDataSource().(*NetworkInterfaceDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": strVal("missing")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": strVal("missing")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

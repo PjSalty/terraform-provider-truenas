@@ -18,7 +18,7 @@ func TestNewISCSIInitiatorDataSource(t *testing.T) {
 
 func TestISCSIInitiatorDataSource_Schema(t *testing.T) {
 	ds := NewISCSIInitiatorDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	for _, want := range []string{"id", "initiators", "comment"} {
 		if _, ok := resp.Schema.GetAttributes()[want]; !ok {
 			t.Errorf("missing attribute: %s", want)
@@ -27,7 +27,7 @@ func TestISCSIInitiatorDataSource_Schema(t *testing.T) {
 }
 
 func TestISCSIInitiatorDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.ISCSIInitiator{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.ISCSIInitiator{
 		ID:         2,
 		Initiators: []string{"iqn.2024-01.com.example:host1"},
 		Comment:    "k8s nodes",
@@ -35,7 +35,7 @@ func TestISCSIInitiatorDataSource_Read_Success(t *testing.T) {
 
 	ds := NewISCSIInitiatorDataSource().(*ISCSIInitiatorDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(2)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(2)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -57,7 +57,7 @@ func TestISCSIInitiatorDataSource_Read_Empty(t *testing.T) {
 	}))
 	ds := NewISCSIInitiatorDataSource().(*ISCSIInitiatorDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(1)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(1)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -71,7 +71,7 @@ func TestISCSIInitiatorDataSource_Read_NotFound(t *testing.T) {
 	}))
 	ds := NewISCSIInitiatorDataSource().(*ISCSIInitiatorDataSource)
 	ds.client = c
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

@@ -105,7 +105,7 @@ func redactJSONBody(body []byte) []byte {
 // walkRedact recursively replaces the value of any map entry whose key
 // matches isSensitiveKey. Lists and nested maps are walked; string
 // values that themselves parse as JSON are recursively redacted then
-// re-marshalled (catches TrueNAS' settings_json / attributes_json
+// re-marshaled (catches TrueNAS' settings_json / attributes_json
 // pattern where a secret can be buried inside a JSON-string attribute).
 // Scalars and non-JSON strings pass through unchanged when the
 // surrounding key is not sensitive.

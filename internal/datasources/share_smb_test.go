@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -18,7 +19,7 @@ func TestNewShareSMBDataSource(t *testing.T) {
 
 func TestShareSMBDataSource_Schema(t *testing.T) {
 	ds := NewShareSMBDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "path", "name", "comment", "browsable", "read_only",
@@ -31,7 +32,7 @@ func TestShareSMBDataSource_Schema(t *testing.T) {
 }
 
 func TestShareSMBDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.SMBShare{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.SMBShare{
 		ID:        7,
 		Path:      "/mnt/tank/smb",
 		Name:      "public",
@@ -46,7 +47,7 @@ func TestShareSMBDataSource_Read_Success(t *testing.T) {
 	ds := NewShareSMBDataSource().(*ShareSMBDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(7)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(7)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -72,12 +73,12 @@ func TestShareSMBDataSource_Read_Success(t *testing.T) {
 }
 
 func TestShareSMBDataSource_Read_ReadOnly(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.SMBShare{ID: 8, Name: "ro", ReadOnly: true, Enabled: false}))
+	c := newWSServer(t.Context(), t, wsReturn(truenas.SMBShare{ID: 8, Name: "ro", ReadOnly: true, Enabled: false}))
 
 	ds := NewShareSMBDataSource().(*ShareSMBDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(8)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(8)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -90,12 +91,12 @@ func TestShareSMBDataSource_Read_ReadOnly(t *testing.T) {
 }
 
 func TestShareSMBDataSource_Read_NotFound(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewShareSMBDataSource().(*ShareSMBDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
