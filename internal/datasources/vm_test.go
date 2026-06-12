@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -18,7 +19,7 @@ func TestNewVMDataSource(t *testing.T) {
 
 func TestVMDataSource_Schema(t *testing.T) {
 	ds := NewVMDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "name", "description", "vcpus", "cores", "threads",
@@ -36,7 +37,7 @@ func TestVMDataSource_Read_Success(t *testing.T) {
 	uuid := "abc-123"
 	cpuModel := "host"
 	minMem := int64(1073741824)
-	c := newWSServer(t, wsReturn(truenas.VM{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.VM{
 		ID:               12,
 		Name:             "vm1",
 		Description:      "test vm",
@@ -60,7 +61,7 @@ func TestVMDataSource_Read_Success(t *testing.T) {
 	ds := NewVMDataSource().(*VMDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(12)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(12)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -89,12 +90,12 @@ func TestVMDataSource_Read_Success(t *testing.T) {
 }
 
 func TestVMDataSource_Read_NoStatus(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.VM{ID: 1, Name: "vm", Memory: 1024}))
+	c := newWSServer(t.Context(), t, wsReturn(truenas.VM{ID: 1, Name: "vm", Memory: 1024}))
 
 	ds := NewVMDataSource().(*VMDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(1)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(1)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -113,12 +114,12 @@ func TestVMDataSource_Read_NoStatus(t *testing.T) {
 }
 
 func TestVMDataSource_Read_NotFound(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] not found"))
 
 	ds := NewVMDataSource().(*VMDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

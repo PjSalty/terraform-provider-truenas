@@ -18,7 +18,7 @@ func TestNewISCSITargetDataSource(t *testing.T) {
 
 func TestISCSITargetDataSource_Schema(t *testing.T) {
 	ds := NewISCSITargetDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	for _, want := range []string{"id", "name", "alias", "mode", "groups"} {
 		if _, ok := resp.Schema.GetAttributes()[want]; !ok {
 			t.Errorf("missing attribute: %s", want)
@@ -27,7 +27,7 @@ func TestISCSITargetDataSource_Schema(t *testing.T) {
 }
 
 func TestISCSITargetDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.ISCSITarget{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.ISCSITarget{
 		ID:    7,
 		Name:  "iqn-test",
 		Alias: "prod",
@@ -40,7 +40,7 @@ func TestISCSITargetDataSource_Read_Success(t *testing.T) {
 	ds := NewISCSITargetDataSource().(*ISCSITargetDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(7)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(7)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -71,7 +71,7 @@ func TestISCSITargetDataSource_Read_EmptyGroups(t *testing.T) {
 	ds := NewISCSITargetDataSource().(*ISCSITargetDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(1)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(1)})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -87,7 +87,7 @@ func TestISCSITargetDataSource_Read_NotFound(t *testing.T) {
 	ds := NewISCSITargetDataSource().(*ISCSITargetDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": int64Val(99)})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

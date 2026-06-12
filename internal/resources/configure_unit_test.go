@@ -9,10 +9,6 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
-// clientNew is a thin wrapper so the test file doesn't need to import
-// client under a name that would collide with the parameter-typed usage.
-var clientNew = wsclient.NewWithOptions
-
 // TestResourceConfigure_Batch calls Configure on every resource with:
 //   - nil ProviderData (should be a no-op success path)
 //   - wrong-type ProviderData (should produce an error diagnostic)

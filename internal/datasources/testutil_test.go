@@ -35,10 +35,10 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 }
 
 // getDataSourceSchema fetches the Schema from a datasource.
-func getDataSourceSchema(t *testing.T, ds datasource.DataSource) datasource.SchemaResponse {
+func getDataSourceSchema(ctx context.Context, t *testing.T, ds datasource.DataSource) datasource.SchemaResponse {
 	t.Helper()
 	resp := datasource.SchemaResponse{}
-	ds.Schema(context.Background(), datasource.SchemaRequest{}, &resp)
+	ds.Schema(ctx, datasource.SchemaRequest{}, &resp)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Schema: %v", resp.Diagnostics)
 	}
@@ -48,10 +48,10 @@ func getDataSourceSchema(t *testing.T, ds datasource.DataSource) datasource.Sche
 // buildConfig constructs a tfsdk.Config from the datasource's schema using
 // the provided attribute values (only the set fields; unset attributes become
 // null). This lets us drive a real Read() call without the plugin protocol.
-func buildConfig(t *testing.T, ds datasource.DataSource, values map[string]tftypes.Value) tfsdk.Config {
+func buildConfig(ctx context.Context, t *testing.T, ds datasource.DataSource, values map[string]tftypes.Value) tfsdk.Config {
 	t.Helper()
-	schemaResp := getDataSourceSchema(t, ds)
-	objType := schemaResp.Schema.Type().TerraformType(context.Background()).(tftypes.Object)
+	schemaResp := getDataSourceSchema(ctx, t, ds)
+	objType := schemaResp.Schema.Type().TerraformType(ctx).(tftypes.Object)
 
 	// Fill in any missing attributes with null values of the correct type.
 	full := map[string]tftypes.Value{}
@@ -99,10 +99,10 @@ func skipWSCutover(t *testing.T) {
 // newWSServer returns a *wsclient.Client connected to an in-process
 // wsclient.TestServer running the given JSON-RPC method handler. The
 // WS twin of newTestServer for the post-cutover unit tests.
-func newWSServer(t *testing.T, h wsclient.TestHandler) *wsclient.Client {
+func newWSServer(ctx context.Context, t *testing.T, h wsclient.TestHandler) *wsclient.Client {
 	t.Helper()
 	ts := wsclient.NewTestServer(t, h)
-	c, err := ts.NewClient(context.Background())
+	c, err := ts.NewClient(ctx)
 	if err != nil {
 		t.Fatalf("testserver NewClient: %v", err)
 	}

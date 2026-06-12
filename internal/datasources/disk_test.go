@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -12,7 +13,7 @@ import (
 
 func TestDiskDataSource_Schema(t *testing.T) {
 	ds := NewDiskDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"name", "serial", "size", "type", "pool", "model",
@@ -26,7 +27,7 @@ func TestDiskDataSource_Schema(t *testing.T) {
 
 func TestDiskDataSource_Read_Success(t *testing.T) {
 	pool := "tank"
-	c := newWSServer(t, wsReturn([]truenas.Disk{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Disk{
 		{
 			Name:        "sda",
 			Serial:      "S1",
@@ -45,7 +46,7 @@ func TestDiskDataSource_Read_Success(t *testing.T) {
 	ds := NewDiskDataSource().(*DiskDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("sda")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("sda")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -71,14 +72,14 @@ func TestDiskDataSource_Read_Success(t *testing.T) {
 }
 
 func TestDiskDataSource_Read_NilPool(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Disk{
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Disk{
 		{Name: "sdc", Serial: "S3", Size: 100, Type: "SSD", Pool: nil},
 	}))
 
 	ds := NewDiskDataSource().(*DiskDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("sdc")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("sdc")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -91,12 +92,12 @@ func TestDiskDataSource_Read_NilPool(t *testing.T) {
 }
 
 func TestDiskDataSource_Read_NotFound(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.Disk{{Name: "sda"}}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.Disk{{Name: "sda"}}))
 
 	ds := NewDiskDataSource().(*DiskDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("sdz")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("sdz")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error for missing disk")
@@ -104,12 +105,12 @@ func TestDiskDataSource_Read_NotFound(t *testing.T) {
 }
 
 func TestDiskDataSource_Read_ListError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewDiskDataSource().(*DiskDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"name": strVal("sda")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"name": strVal("sda")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")

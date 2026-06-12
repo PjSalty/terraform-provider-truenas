@@ -2,8 +2,9 @@ package datasources
 
 import (
 	"context"
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 	"testing"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -18,7 +19,7 @@ func TestNewAppDataSource(t *testing.T) {
 
 func TestAppDataSource_Schema(t *testing.T) {
 	ds := NewAppDataSource()
-	resp := getDataSourceSchema(t, ds)
+	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
 	for _, want := range []string{
 		"id", "name", "state", "upgrade_available", "latest_version",
@@ -31,7 +32,7 @@ func TestAppDataSource_Schema(t *testing.T) {
 }
 
 func TestAppDataSource_Read_Success(t *testing.T) {
-	c := newWSServer(t, wsReturn(truenas.App{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.App{
 		ID:               "jellyfin",
 		Name:             "jellyfin",
 		State:            "RUNNING",
@@ -46,7 +47,7 @@ func TestAppDataSource_Read_Success(t *testing.T) {
 	ds := NewAppDataSource().(*AppDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": strVal("jellyfin")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": strVal("jellyfin")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -69,12 +70,12 @@ func TestAppDataSource_Read_Success(t *testing.T) {
 }
 
 func TestAppDataSource_Read_ServerError(t *testing.T) {
-	c := newWSServer(t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "simulated server error"))
 
 	ds := NewAppDataSource().(*AppDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": strVal("any")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": strVal("any")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected error")
@@ -85,14 +86,14 @@ func TestAppDataSource_Read_ListResponse(t *testing.T) {
 	// REST-era GetApp had a single-element-list fallback; the WS
 	// app.get_instance contract returns a bare object. Keep the test
 	// name for history but assert the object path.
-	c := newWSServer(t, wsReturn(truenas.App{
+	c := newWSServer(t.Context(), t, wsReturn(truenas.App{
 		ID: "nextcloud", Name: "nextcloud", State: "STOPPED",
 	}))
 
 	ds := NewAppDataSource().(*AppDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": strVal("nextcloud")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": strVal("nextcloud")})
 	resp := callRead(context.Background(), ds, cfg)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", resp.Diagnostics)
@@ -105,12 +106,12 @@ func TestAppDataSource_Read_ListResponse(t *testing.T) {
 }
 
 func TestAppDataSource_Read_EmptyList(t *testing.T) {
-	c := newWSServer(t, wsReturn([]truenas.App{}))
+	c := newWSServer(t.Context(), t, wsReturn([]truenas.App{}))
 
 	ds := NewAppDataSource().(*AppDataSource)
 	ds.client = c
 
-	cfg := buildConfig(t, ds, map[string]tftypes.Value{"id": strVal("missing")})
+	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": strVal("missing")})
 	resp := callRead(context.Background(), ds, cfg)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected 404 error")
