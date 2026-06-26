@@ -63,6 +63,7 @@ func TestNotFound_ReadRemovesAndDeleteSucceeds(t *testing.T) {
 		{"cloud_sync", func(c *wsclient.Client) resource.Resource { return &CloudSyncResource{client: c} }, "6"},
 		{"cronjob", func(c *wsclient.Client) resource.Resource { return &CronJobResource{client: c} }, "8"},
 		{"dataset", func(c *wsclient.Client) resource.Resource { return &DatasetResource{client: c} }, "tank/gone"},
+		{"directory", func(c *wsclient.Client) resource.Resource { return &DirectoryResource{client: c} }, "/mnt/tank/gone"},
 		// dns_nameserver intentionally absent: it's a virtual slice of the
 		// network-config singleton. The singleton always exists, so a
 		// not-found from network.configuration.config is a real error the
