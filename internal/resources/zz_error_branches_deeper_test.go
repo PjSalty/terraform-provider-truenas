@@ -177,6 +177,7 @@ func TestErrorBranches_BadPlan_AllResources(t *testing.T) {
 		&CloudSyncCredentialResource{client: c},
 		&CronJobResource{client: c},
 		&DatasetResource{client: c},
+		&DirectoryResource{client: c},
 		&DirectoryServicesResource{client: c},
 		&DNSNameserverResource{client: c},
 		&FilesystemACLResource{client: c},

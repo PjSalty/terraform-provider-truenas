@@ -111,6 +111,7 @@ func resourceConstructors() []func() resource.Resource {
 		NewCloudSyncResource,
 		NewCronJobResource,
 		NewDatasetResource,
+		NewDirectoryResource,
 		NewDirectoryServicesResource,
 		NewDNSNameserverResource,
 		NewFilesystemACLResource,

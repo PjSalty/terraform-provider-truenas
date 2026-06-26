@@ -32,6 +32,7 @@ import (
 var resourceSweeperExclusions = map[string]string{
 	"alertclasses":      "singleton: Delete resets alertclasses to {}, no list endpoint, no fixtures to sweep",
 	"catalog":           "singleton: Delete resets preferred_trains, catalog itself cannot be destroyed",
+	"directory":         "dangerous: TrueNAS exposes no filesystem delete API; directories cannot be swept (Delete is state-only)",
 	"directoryservices": "singleton: Delete resets directory services config to defaults",
 	"ftp_config":        "singleton: Delete resets FTP config to defaults",
 	"kmip_config":       "singleton: Delete resets KMIP config to defaults",
