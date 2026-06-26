@@ -113,6 +113,7 @@ func TestResourceImportState_BatchPassthrough(t *testing.T) {
 		{"directoryservices", NewDirectoryServicesResource, "1"},
 		{"dns_nameserver", NewDNSNameserverResource, "1"},
 		{"filesystem_acl", NewFilesystemACLResource, "/mnt/tank/data"},
+		{"directory", NewDirectoryResource, "/mnt/tank/data"},
 		{"ftp_config", NewFTPConfigResource, "1"},
 		{"kmip_config", NewKMIPConfigResource, "1"},
 		{"mail_config", NewMailConfigResource, "1"},
