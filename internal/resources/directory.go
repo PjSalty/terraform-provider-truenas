@@ -385,7 +385,7 @@ func (r *DirectoryResource) mapStatToModel(stat *truenas.FilesystemStat, model *
 	// keep the user's mode spelling (e.g. "0755" vs "755") when it matches
 	// the on-disk perm bits, so equivalent octal forms don't churn the plan;
 	// only overwrite on real drift or when mode is unset (import).
-	statMode := int(stat.Mode) & 0o7777
+	statMode := stat.Mode & 0o7777
 	if cur, err := strconv.ParseInt(model.Mode.ValueString(), 8, 32); err != nil || int(cur) != statMode {
 		model.Mode = types.StringValue(fmt.Sprintf("%03o", statMode))
 	}
