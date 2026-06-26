@@ -26,7 +26,7 @@ import (
 // plan modifiers regress. They do NOT catch Create/Update/Delete
 // wire-level bugs, but that's the trade-off we accept for resources
 // that need special fixture setup to run a real apply.
-const acceptanceCoverageFloor = 63
+const acceptanceCoverageFloor = 64
 
 // TestAcceptanceTestCoverage walks internal/resources/*.go, identifies
 // every file that declares a resource (via ProviderTypeName + "_..."),

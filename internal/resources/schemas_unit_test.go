@@ -56,6 +56,7 @@ func TestResourceSchemas_Batch(t *testing.T) {
 		{name: "app", newFn: NewAppResource, typeName: "_app", required: []string{"id", "app_name"}},
 		{name: "catalog", newFn: NewCatalogResource, typeName: "_catalog", required: []string{"id", "label"}},
 		{name: "cloudsync_credential", newFn: NewCloudSyncCredentialResource, typeName: "_cloudsync_credential", required: []string{"id", "name", "provider_type"}},
+		{name: "directory", newFn: NewDirectoryResource, typeName: "_directory", required: []string{"id", "path"}},
 		{name: "directoryservices", newFn: NewDirectoryServicesResource, typeName: "_directoryservices", required: []string{"id"}},
 		{name: "filesystem_acl", newFn: NewFilesystemACLResource, typeName: "_filesystem_acl", required: []string{"id", "path"}},
 		{name: "filesystem_acl_template", newFn: NewFilesystemACLTemplateResource, typeName: "_filesystem_acl_template", required: []string{"id", "name"}},

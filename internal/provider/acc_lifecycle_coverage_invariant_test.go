@@ -94,6 +94,7 @@ var lifecycleResourceExclusions = map[string]map[string]string{
 	"CloudSyncCredential": {"import": "env-gated on TRUENAS_TEST_CLOUDSYNC"},
 	"VMware":              {"update": "env-gated on TRUENAS_TEST_VMWARE", "import": "env-gated"},
 	"NetworkInterface":    {"disappears": "real-NIC: deleting a configured NIC could disconnect the test VM"},
+	"Directory":           {"disappears": "TrueNAS exposes no directory-removal API; Delete is state-only and the directory persists on disk, so there is no out-of-band-delete drift to recover from"},
 
 	// Resources that use a custom-named basic step rather than
 	// _basic, OR that lack a separate _update because they have

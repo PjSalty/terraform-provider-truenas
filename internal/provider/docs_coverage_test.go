@@ -19,7 +19,7 @@ import (
 // the floor is cheap (commit the new floor alongside a new resource's
 // docs + example); lowering it requires a documented reason in the PR
 // comment.
-const docsCoverageFloor = 63
+const docsCoverageFloor = 64
 
 // TestDocsCoverage verifies that every resource the provider declares
 // also has a registry-format doc, a resource.tf example, and an

@@ -332,6 +332,8 @@ func (p *TrueNASProvider) Resources(_ context.Context) []func() resource.Resourc
 		resources.NewAlertClassesResource,
 		resources.NewFilesystemACLTemplateResource,
 		resources.NewCloudSyncCredentialResource,
+		// truenas_directory (issue #14)
+		resources.NewDirectoryResource,
 	}
 }
 
