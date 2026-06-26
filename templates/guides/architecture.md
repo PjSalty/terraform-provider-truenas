@@ -193,4 +193,4 @@ See [`.goreleaser.yml`](../.goreleaser.yml) for the full config.
 - [Getting Started](getting-started.md)
 - [Importing Existing Resources](importing-existing.md)
 - [Backup Strategy](backup-strategy.md)
-- [Kubernetes Storage via democratic-csi](kubernetes-storage.md)
+- [Kubernetes Storage](kubernetes-storage.md)
