@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-06-27
+
+### Added
+
+- `truenas_directory` resource: manage a directory on a TrueNAS SCALE
+  filesystem via `filesystem.mkdir` / `filesystem.stat` / `filesystem.setperm`.
+  Path-keyed (the id is the path), with `mode`, `create_parents` (mkdir -p
+  semantics), and `uid`/`gid`. Delete is state-only: TrueNAS exposes no
+  directory-removal API, so destroy drops the directory from Terraform state
+  and leaves it on disk (#14).
+
+### Changed
+
+- Kubernetes storage guide now recommends truenas-csi over the legacy
+  REST-only democratic-csi driver, which stops working on TrueNAS 26.
+
+### Fixed
+
+- Dropped a redundant int conversion flagged by the unconvert linter.
+
 ## [2.0.1] - 2026-06-12
 
 ### Changed
