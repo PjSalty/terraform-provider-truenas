@@ -203,7 +203,7 @@ func (r *DirectoryResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	r.mapStatToModel(stat, &plan)
+	r.applyStatPreservingPlan(stat, &plan)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -233,6 +233,9 @@ func (r *DirectoryResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
+	// Read is stat-authoritative on purpose: drift detection is its job.
+	// A stale stat during refresh (TrueNAS caching, see issue #21) can
+	// cause a transient diff that self-heals on the next refresh.
 	r.mapStatToModel(stat, &state)
 
 	diags = resp.State.Set(ctx, state)
@@ -269,7 +272,7 @@ func (r *DirectoryResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	r.mapStatToModel(stat, &plan)
+	r.applyStatPreservingPlan(stat, &plan)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -303,10 +306,14 @@ func (r *DirectoryResource) Delete(ctx context.Context, req resource.DeleteReque
 
 // ImportState seeds both id and path from the import ID (the absolute
 // path). Without seeding path, the next Read would stat an empty path.
-// Mirrors the filesystem_acl import pattern.
+// Mirrors the filesystem_acl import pattern. create_parents is a
+// config-only attribute (mkdir -p behavior, meaningless post-creation),
+// so seed its default false; leaving it null fails ImportStateVerify
+// against the post-apply state.
 func (r *DirectoryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), req.ID)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("create_parents"), false)...)
 }
 
 // mkdirParents stats each ancestor of dirPath and mkdirs the ones that
@@ -373,6 +380,23 @@ func (r *DirectoryResource) applyPerm(ctx context.Context, plan *DirectoryResour
 		setReq.GID = &v
 	}
 	return r.client.SetFilesystemPerm(ctx, setReq)
+}
+
+// applyStatPreservingPlan sets post-apply state after the mutation calls
+// succeeded (mkdir and, when run, the setperm job reported SUCCESS). The
+// read-back stat only fills values the plan did not know: an immediate
+// stat can return stale data (TrueNAS caching, issue #21) and applied
+// values must win. mode is always plan-known (Optional+Computed, default
+// "755") so it is never overwritten; planned uid/gid win when non-null,
+// with stat as the fallback for null or unknown. id stays the path.
+func (r *DirectoryResource) applyStatPreservingPlan(stat *truenas.FilesystemStat, plan *DirectoryResourceModel) {
+	plan.ID = plan.Path
+	if plan.UID.IsNull() || plan.UID.IsUnknown() {
+		plan.UID = types.Int64Value(int64(stat.UID))
+	}
+	if plan.GID.IsNull() || plan.GID.IsUnknown() {
+		plan.GID = types.Int64Value(int64(stat.GID))
+	}
 }
 
 // mapStatToModel reconciles state from a stat result. id is keyed to
