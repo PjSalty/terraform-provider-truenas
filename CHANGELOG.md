@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-07-01
+
+### Fixed
+
+- `truenas_directory`: mode now validates as permission bits (000-777,
+  leading zero allowed) instead of accepting 4-digit modes the TrueNAS API
+  always rejects at apply; special bits read back from disk are ignored
+  rather than reported as drift. The middleware `UnixPerm` type behind
+  mkdir and setperm cannot set setuid/setgid/sticky bits. Reported with a
+  precise diagnosis by @chuwy, fixes #17.
+
 ## [2.2.0] - 2026-07-01
 
 ### Added
