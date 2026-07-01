@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -51,7 +53,7 @@ type UserResourceModel struct {
 	Password     types.String   `tfsdk:"password"`
 	Group        types.Int64    `tfsdk:"group"`
 	GroupCreate  types.Bool     `tfsdk:"group_create"`
-	Groups       types.List     `tfsdk:"groups"`
+	Groups       types.Set      `tfsdk:"groups"`
 	Home         types.String   `tfsdk:"home"`
 	Shell        types.String   `tfsdk:"shell"`
 	Locked       types.Bool     `tfsdk:"locked"`
@@ -145,12 +147,12 @@ func (r *UserResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 				Computed:    true,
 				Default:     booldefault.StaticBool(true),
 			},
-			"groups": schema.ListAttribute{
+			"groups": schema.SetAttribute{
 				Description: "List of auxiliary group IDs.",
 				Optional:    true,
 				Computed:    true,
 				ElementType: types.Int64Type,
-				Default:     listdefault.StaticValue(types.ListValueMust(types.Int64Type, []attr.Value{})),
+				Default:     setdefault.StaticValue(types.SetValueMust(types.Int64Type, []attr.Value{})),
 			},
 			"home": schema.StringAttribute{
 				Description: "Home directory path. Must begin with /mnt or be /var/empty.",
@@ -264,6 +266,7 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 		for i, g := range groups {
 			intGroups[i] = int(g)
 		}
+		sort.Ints(intGroups)
 		createReq.Groups = intGroups
 	}
 
@@ -387,6 +390,7 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		for i, g := range groups {
 			intGroups[i] = int(g)
 		}
+		sort.Ints(intGroups)
 		updateReq.Groups = intGroups
 	}
 
@@ -486,12 +490,15 @@ func (r *UserResource) mapResponseToModel(_ context.Context, user *truenas.User,
 		model.SSHPubKey = types.StringValue("")
 	}
 
-	// groups is a list of int64
-	groupValues := make([]attr.Value, len(user.Groups))
-	for i, g := range user.Groups {
+	// groups — sort consistently with ModifyPlan
+	ids := make([]int, len(user.Groups))
+	copy(ids, user.Groups)
+	sort.Ints(ids)
+	groupValues := make([]attr.Value, len(ids))
+	for i, g := range ids {
 		groupValues[i] = types.Int64Value(int64(g))
 	}
-	model.Groups = types.ListValueMust(types.Int64Type, groupValues)
+	model.Groups = types.SetValueMust(types.Int64Type, groupValues)
 
 	// sudo_commands
 	cmdValues := make([]attr.Value, len(user.SudoCommands))
@@ -500,3 +507,4 @@ func (r *UserResource) mapResponseToModel(_ context.Context, user *truenas.User,
 	}
 	model.SudoCommands = types.ListValueMust(types.StringType, cmdValues)
 }
+
