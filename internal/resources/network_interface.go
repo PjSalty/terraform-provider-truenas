@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
@@ -33,16 +34,20 @@ var (
 	_ resource.ResourceWithConfigValidators = &NetworkInterfaceResource{}
 )
 
-// NetworkInterfaceResource manages a TrueNAS network interface (BRIDGE,
-// LINK_AGGREGATION, or VLAN). The underlying /interface API uses a
-// staged commit-and-checkin workflow: changes go to a pending state,
-// must be committed (with a rollback timer), then acknowledged via
-// checkin. The client layer handles this transparently so the resource
-// presents a simple CRUD interface to Terraform.
+// NetworkInterfaceResource manages a TrueNAS network interface. The
+// underlying /interface API uses a staged commit-and-checkin workflow:
+// changes go to a pending state, must be committed (with a rollback
+// timer), then acknowledged via checkin. The client layer handles this
+// transparently so the resource presents a simple CRUD interface to
+// Terraform.
 //
-// Physical interfaces (type PHYSICAL) cannot be created via /interface -
-// they are discovered automatically from the host. This resource only
-// supports creating virtual interface types.
+// Virtual types (BRIDGE, LINK_AGGREGATION, VLAN) support full CRUD.
+//
+// Physical interfaces (type PHYSICAL) are discovered automatically by
+// the host and cannot be created or deleted via /interface. For PHYSICAL,
+// Create applies plan settings (aliases, DHCP, IPv6 auto, description, MTU)
+// via UpdateInterface, and Delete removes from state without modifying the
+// hardware interface.
 type NetworkInterfaceResource struct {
 	client *wsclient.Client
 }
@@ -63,6 +68,7 @@ type NetworkInterfaceResourceModel struct {
 	VlanParentInterface types.String   `tfsdk:"vlan_parent_interface"`
 	VlanTag             types.Int64    `tfsdk:"vlan_tag"`
 	VlanPCP             types.Int64    `tfsdk:"vlan_pcp"`
+	Rollback            types.Bool     `tfsdk:"rollback"`
 	Timeouts            timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -87,7 +93,10 @@ func (r *NetworkInterfaceResource) Metadata(_ context.Context, req resource.Meta
 
 func (r *NetworkInterfaceResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a virtual network interface (BRIDGE, LINK_AGGREGATION, or VLAN) on TrueNAS SCALE. " +
+		Description: "Manages a network interface on TrueNAS SCALE. Virtual types (BRIDGE, LINK_AGGREGATION, VLAN) " +
+			"support full create/update/delete. For type=PHYSICAL, create adopts the existing NIC and configures it " +
+			"via interface.update (hardware NICs cannot be created), and destroy removes the resource from state but " +
+			"leaves the live configuration in place because the hardware cannot be deleted. " +
 			"Changes go through a staged commit+checkin workflow which this resource handles automatically." + "\n\n" +
 			"**Stability: Beta.** Import-only verified against TrueNAS SCALE 25.10. Create/update/delete cycles were not live-tested because modifying the active management interface on the test VM risks cutting API access. The schema uses the TrueNAS staged commit/checkin workflow which is handled automatically.",
 		Blocks: map[string]schema.Block{
@@ -120,8 +129,9 @@ func (r *NetworkInterfaceResource) Schema(ctx context.Context, _ resource.Schema
 				},
 			},
 			"type": schema.StringAttribute{
-				Description: "The interface type: BRIDGE, LINK_AGGREGATION, or VLAN.",
-				Required:    true,
+				Description: "The interface type: PHYSICAL, BRIDGE, LINK_AGGREGATION, or VLAN. " +
+					"PHYSICAL adopts an existing hardware NIC (identified by name) instead of creating one.",
+				Required: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -261,6 +271,17 @@ func (r *NetworkInterfaceResource) Schema(ctx context.Context, _ resource.Schema
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
+			"rollback": schema.BoolAttribute{
+				Description: "Commit changes with a rollback safety window (defaults to true). " +
+					"TrueNAS reverts the change automatically unless it is checked in within 60 seconds; " +
+					"the provider sends the checkin immediately after a successful commit. " +
+					"When false, changes are applied immediately without a rollback timer. " +
+					"Disabling rollback is faster but riskier: a bad change that breaks networking " +
+					"may make the interface permanently unreachable via the management network.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(true),
+			},
 		},
 	}
 }
@@ -276,13 +297,16 @@ func (r *NetworkInterfaceResource) Schema(ctx context.Context, _ resource.Schema
 //   - type = "VLAN"             → vlan_parent_interface and vlan_tag required
 //
 // PHYSICAL interfaces are returned by the API for hardware NICs and
-// are never created via Terraform, so we skip them here.
+// are never created via Terraform; name must be explicitly set to
+// identify the existing NIC to read into state.
 func (r *NetworkInterfaceResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
 		resourcevalidators.RequiredWhenEqual("type", "LINK_AGGREGATION",
 			[]string{"lag_protocol"}),
 		resourcevalidators.RequiredWhenEqual("type", "VLAN",
 			[]string{"vlan_parent_interface"}),
+		resourcevalidators.RequiredWhenEqual("type", "PHYSICAL",
+			[]string{"name"}),
 	}
 }
 
@@ -308,6 +332,37 @@ func (r *NetworkInterfaceResource) Create(ctx context.Context, req resource.Crea
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	rollback := plan.Rollback.ValueBool()
+
+	if plan.Type.ValueString() == "PHYSICAL" {
+		tflog.Debug(ctx, "Applying plan settings to PHYSICAL interface",
+			map[string]interface{}{"name": plan.Name.ValueString()})
+
+		updateReq := buildInterfaceUpdateRequest(ctx, &plan, &resp.Diagnostics)
+
+		iface, err := r.client.UpdateInterface(ctx, plan.Name.ValueString(), updateReq, rollback)
+		if err != nil {
+			if wsclient.IsNotFound(err) {
+				resp.Diagnostics.AddError(
+					"Could not find PHYSICAL Interface",
+					fmt.Sprintf("Physical interface %q does not exist on the TrueNAS host.", plan.Name.ValueString()),
+				)
+				return
+			}
+			resp.Diagnostics.AddError(
+				"Error Updating PHYSICAL Interface",
+				fmt.Sprintf("Could not update interface %q: %s", plan.Name.ValueString(), err),
+			)
+			return
+		}
+
+		r.mapResponseToModel(ctx, iface, &plan)
+		diags = resp.State.Set(ctx, plan)
+		resp.Diagnostics.Append(diags...)
+		tflog.Trace(ctx, "Create NetworkInterface (PHYSICAL) success")
 		return
 	}
 
@@ -362,7 +417,7 @@ func (r *NetworkInterfaceResource) Create(ctx context.Context, req resource.Crea
 
 	tflog.Debug(ctx, "Creating interface", map[string]interface{}{"type": createReq.Type, "name": createReq.Name})
 
-	iface, err := r.client.CreateInterface(ctx, createReq)
+	iface, err := r.client.CreateInterface(ctx, createReq, rollback)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Creating Interface",
@@ -422,56 +477,11 @@ func (r *NetworkInterfaceResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	updateReq := &truenas.NetworkInterfaceUpdateRequest{}
-	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
-		v := plan.Description.ValueString()
-		updateReq.Description = &v
-	}
-	if !plan.IPv4DHCP.IsNull() && !plan.IPv4DHCP.IsUnknown() {
-		v := plan.IPv4DHCP.ValueBool()
-		updateReq.IPv4DHCP = &v
-	}
-	if !plan.IPv6Auto.IsNull() && !plan.IPv6Auto.IsUnknown() {
-		v := plan.IPv6Auto.ValueBool()
-		updateReq.IPv6Auto = &v
-	}
-	if !plan.MTU.IsNull() && !plan.MTU.IsUnknown() {
-		v := int(plan.MTU.ValueInt64())
-		updateReq.MTU = &v
-	}
-	if aliases, ok := aliasesFromList(ctx, plan.Aliases, &resp.Diagnostics); ok {
-		updateReq.Aliases = aliases
-	}
-	if !plan.BridgeMembers.IsNull() && !plan.BridgeMembers.IsUnknown() {
-		var members []string
-		d := plan.BridgeMembers.ElementsAs(ctx, &members, false)
-		resp.Diagnostics.Append(d...)
-		updateReq.BridgeMembers = members
-	}
-	if !plan.LagProtocol.IsNull() && !plan.LagProtocol.IsUnknown() {
-		v := plan.LagProtocol.ValueString()
-		updateReq.LagProtocol = &v
-	}
-	if !plan.LagPorts.IsNull() && !plan.LagPorts.IsUnknown() {
-		var ports []string
-		d := plan.LagPorts.ElementsAs(ctx, &ports, false)
-		resp.Diagnostics.Append(d...)
-		updateReq.LagPorts = ports
-	}
-	if !plan.VlanParentInterface.IsNull() && !plan.VlanParentInterface.IsUnknown() {
-		v := plan.VlanParentInterface.ValueString()
-		updateReq.VlanParentInterface = &v
-	}
-	if !plan.VlanTag.IsNull() && !plan.VlanTag.IsUnknown() {
-		v := int(plan.VlanTag.ValueInt64())
-		updateReq.VlanTag = &v
-	}
-	if !plan.VlanPCP.IsNull() && !plan.VlanPCP.IsUnknown() {
-		v := int(plan.VlanPCP.ValueInt64())
-		updateReq.VlanPCP = &v
-	}
+	rollback := plan.Rollback.ValueBool()
 
-	iface, err := r.client.UpdateInterface(ctx, state.ID.ValueString(), updateReq)
+	updateReq := buildInterfaceUpdateRequest(ctx, &plan, &resp.Diagnostics)
+
+	iface, err := r.client.UpdateInterface(ctx, state.ID.ValueString(), updateReq, rollback)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating Interface",
@@ -496,8 +506,17 @@ func (r *NetworkInterfaceResource) Delete(ctx context.Context, req resource.Dele
 		return
 	}
 
+	rollback := state.Rollback.ValueBool()
+
+	if state.Type.ValueString() == "PHYSICAL" {
+		tflog.Debug(ctx, "Removing PHYSICAL interface from state without modifying",
+			map[string]interface{}{"id": state.ID.ValueString()})
+		tflog.Trace(ctx, "Delete NetworkInterface (PHYSICAL) success")
+		return
+	}
+
 	tflog.Debug(ctx, "Deleting interface", map[string]interface{}{"id": state.ID.ValueString()})
-	if err := r.client.DeleteInterface(ctx, state.ID.ValueString()); err != nil {
+	if err := r.client.DeleteInterface(ctx, state.ID.ValueString(), rollback); err != nil {
 		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Network interface already deleted, removing from state", map[string]interface{}{"id": state.ID.ValueString()})
 			return
@@ -518,7 +537,69 @@ func (r *NetworkInterfaceResource) ImportState(ctx context.Context, req resource
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+// buildInterfaceUpdateRequest maps plan attributes onto the interface.update
+// payload. For type=PHYSICAL only fields that apply to a hardware NIC are set
+// (description, dhcp, ipv6 auto, mtu, aliases); the virtual-only fields (lag,
+// vlan, bridge) stay nil so omitempty drops them from the request, TrueNAS
+// rejects them on a physical interface.
+func buildInterfaceUpdateRequest(ctx context.Context, plan *NetworkInterfaceResourceModel, diags *diag.Diagnostics) *truenas.NetworkInterfaceUpdateRequest {
+	updateReq := &truenas.NetworkInterfaceUpdateRequest{}
+	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
+		v := plan.Description.ValueString()
+		updateReq.Description = &v
+	}
+	if !plan.IPv4DHCP.IsNull() && !plan.IPv4DHCP.IsUnknown() {
+		v := plan.IPv4DHCP.ValueBool()
+		updateReq.IPv4DHCP = &v
+	}
+	if !plan.IPv6Auto.IsNull() && !plan.IPv6Auto.IsUnknown() {
+		v := plan.IPv6Auto.ValueBool()
+		updateReq.IPv6Auto = &v
+	}
+	if !plan.MTU.IsNull() && !plan.MTU.IsUnknown() {
+		v := int(plan.MTU.ValueInt64())
+		updateReq.MTU = &v
+	}
+	if aliases, ok := aliasesFromList(ctx, plan.Aliases, diags); ok {
+		updateReq.Aliases = aliases
+	}
+	if plan.Type.ValueString() == "PHYSICAL" {
+		return updateReq
+	}
+	if !plan.BridgeMembers.IsNull() && !plan.BridgeMembers.IsUnknown() {
+		var members []string
+		d := plan.BridgeMembers.ElementsAs(ctx, &members, false)
+		diags.Append(d...)
+		updateReq.BridgeMembers = members
+	}
+	if !plan.LagProtocol.IsNull() && !plan.LagProtocol.IsUnknown() {
+		v := plan.LagProtocol.ValueString()
+		updateReq.LagProtocol = &v
+	}
+	if !plan.LagPorts.IsNull() && !plan.LagPorts.IsUnknown() {
+		var ports []string
+		d := plan.LagPorts.ElementsAs(ctx, &ports, false)
+		diags.Append(d...)
+		updateReq.LagPorts = ports
+	}
+	if !plan.VlanParentInterface.IsNull() && !plan.VlanParentInterface.IsUnknown() {
+		v := plan.VlanParentInterface.ValueString()
+		updateReq.VlanParentInterface = &v
+	}
+	if !plan.VlanTag.IsNull() && !plan.VlanTag.IsUnknown() {
+		v := int(plan.VlanTag.ValueInt64())
+		updateReq.VlanTag = &v
+	}
+	if !plan.VlanPCP.IsNull() && !plan.VlanPCP.IsUnknown() {
+		v := int(plan.VlanPCP.ValueInt64())
+		updateReq.VlanPCP = &v
+	}
+	return updateReq
+}
+
 func (r *NetworkInterfaceResource) mapResponseToModel(ctx context.Context, iface *truenas.NetworkInterface, model *NetworkInterfaceResourceModel) {
+	// rollback is provider-side behavior, not part of the API response;
+	// the schema default keeps it populated, so the model value is left alone.
 	model.ID = types.StringValue(iface.ID)
 	model.Name = types.StringValue(iface.Name)
 	model.Type = types.StringValue(iface.Type)

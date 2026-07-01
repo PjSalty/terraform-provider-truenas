@@ -1,7 +1,7 @@
 resource "truenas_network_interface" "example" {
   type      = "PHYSICAL"
   name      = "eno1"
-  dhcp      = false
+  ipv4_dhcp = false
   ipv6_auto = false
 
   aliases = [
