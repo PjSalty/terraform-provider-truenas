@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-07-01
+
+### Added
+
+- `truenas_network_interface`: PHYSICAL interface support. Create adopts and
+  configures the existing NIC via `interface.update`, destroy is state-only
+  removal (hardware cannot be deleted), import by name. Based on GitHub PR #23
+  by @chuwy, fixes #15.
+
+### Fixed
+
+- `truenas_user`: groups is now an unordered set, so server-side ordering
+  differences no longer cause drift or "inconsistent result after apply"
+  errors. Based on GitHub PR #20 by @chuwy, fixes #19.
+- `truenas_directory`: applied values win over a stale post-apply stat. A
+  `filesystem.stat` right after setperm can return stale uid/gid/mode
+  (TrueNAS caching); state now keeps the planned mode and uid/gid, using stat
+  only for values the plan did not set. Based on GitHub PR #22 by @chuwy,
+  fixes #21.
+- `truenas_directory`: import now seeds `create_parents=false`, so
+  `ImportStateVerify` no longer fails on a null create_parents (the attribute
+  is config-only mkdir -p behavior).
+- `truenas_network_interface`: rollback attribute now has a real schema
+  default of true, and the commit checkin window stays at the 60 second
+  middleware default; a 5 second window raced the client retry backoff and
+  could auto-revert legitimate changes.
+
 ## [2.1.0] - 2026-06-27
 
 ### Added
