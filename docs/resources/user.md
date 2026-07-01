@@ -47,7 +47,7 @@ The following arguments are supported:
 * `email` - (Optional) Email address of the user. Default: ``.
 * `group` - (Optional) The primary group ID. If not specified and group_create is true, a group matching the username will be created.
 * `group_create` - (Optional) Whether to create a new primary group for the user. Default: `true`.
-* `groups` - (Optional) List of auxiliary group IDs.
+* `groups` - (Optional) Auxiliary group IDs. This is an unordered set; the order of IDs is not significant.
 * `home` - (Optional) Home directory path. Must begin with /mnt or be /var/empty. Default: `/var/empty`.
 * `shell` - (Optional) Login shell (e.g., /usr/sbin/nologin, /bin/bash). Default: `/usr/sbin/nologin`.
 * `locked` - (Optional) Whether the user account is locked. Default: `false`.
