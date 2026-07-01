@@ -1,3 +1,0 @@
-kind: Fixed
-body: '`truenas_user`: groups is now an unordered set, so server-side ordering differences no longer cause drift or "inconsistent result after apply" errors (fixes #19)'
-time: 2026-07-01T12:00:00.000000000-05:00
