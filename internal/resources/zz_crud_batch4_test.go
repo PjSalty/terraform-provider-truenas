@@ -366,7 +366,37 @@ func TestNetworkInterfaceResource_CRUD(t *testing.T) {
 	})
 }
 
-// --- KMIPConfig (singleton) ---
+// TestNetworkInterfaceResource_CRUD_Physical verifies that for type=PHYSICAL,
+// Create reads the existing interface (GetInterface) instead of creating
+// it, and Delete resets settings back to defaults (UpdateInterface) instead
+// of deleting it.
+func TestNetworkInterfaceResource_CRUD_Physical(t *testing.T) {
+	body := map[string]interface{}{
+		"id":                       "eth0",
+		"name":                     "eth0",
+		"type":                     "PHYSICAL",
+		"description":              "mgmt",
+		"ipv4_dhcp":                false,
+		"ipv6_auto":                false,
+		"mtu":                      1500,
+		"state":                    map[string]interface{}{"name": "eth0"},
+		"aliases":                  []interface{}{},
+		"failover_aliases":         []interface{}{},
+		"failover_virtual_aliases": []interface{}{},
+		"bridge_members":           []interface{}{},
+		"lag_protocol":             "",
+		"lag_ports":                []interface{}{},
+		"vlan_parent_interface":    "",
+		"vlan_tag":                 nil,
+		"vlan_pcp":                 nil,
+	}
+	c := newWSJSONServerClient(t, body)
+	r := &NetworkInterfaceResource{client: c}
+	crudDrive(t, r, c, "eth0", map[string]tftypes.Value{
+		"name": str("eth0"),
+		"type": str("PHYSICAL"),
+	})
+}
 
 func TestKMIPConfigResource_CRUD(t *testing.T) {
 	body := map[string]interface{}{
