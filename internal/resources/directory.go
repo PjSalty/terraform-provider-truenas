@@ -203,7 +203,17 @@ func (r *DirectoryResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	// setperm completed SUCCESS; trust our applied uid/gid over
+	// potentially stale stat data (TrueNAS caching).
+	uid := plan.UID
+	gid := plan.GID
 	r.mapStatToModel(stat, &plan)
+	if !uid.IsNull() && !uid.IsUnknown() {
+		plan.UID = uid
+	}
+	if !gid.IsNull() && !gid.IsUnknown() {
+		plan.GID = gid
+	}
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -269,7 +279,17 @@ func (r *DirectoryResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
+	// setperm completed SUCCESS; trust our applied uid/gid over
+	// potentially stale stat data (TrueNAS caching).
+	uid := plan.UID
+	gid := plan.GID
 	r.mapStatToModel(stat, &plan)
+	if !uid.IsNull() && !uid.IsUnknown() {
+		plan.UID = uid
+	}
+	if !gid.IsNull() && !gid.IsUnknown() {
+		plan.GID = gid
+	}
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
