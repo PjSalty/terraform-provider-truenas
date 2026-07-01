@@ -17,14 +17,24 @@ import (
 // workflow (commit + checkin) so callers see a synchronous API.
 
 // commitAndCheckin applies any pending interface changes and acknowledges them.
-func (c *Client) commitAndCheckin(ctx context.Context) error {
+// When rollback is true the commit arms the middleware-default 60-second
+// rollback timer and sends a checkin afterward. The window must stay longer
+// than the client's own idempotent-retry backoff (roughly 7.5s), otherwise a
+// retried checkin can land after the middleware already reverted the change.
+// When rollback is false the commit is applied immediately with no rollback
+// window, faster but riskier because a bad change cannot be recovered
+// automatically.
+func (c *Client) commitAndCheckin(ctx context.Context, rollback bool) error {
 	commitReq := &types.InterfaceCommitRequest{
-		Rollback:       true,
+		Rollback:       rollback,
 		CheckinTimeout: 60,
 	}
 	if _, err := c.Call(ctx, "interface.commit",
 		[]interface{}{commitReq}, CallOptions{}); err != nil {
 		return fmt.Errorf("committing interface changes: %w", err)
+	}
+	if !rollback {
+		return nil
 	}
 	if _, err := c.Call(ctx, "interface.checkin", nil,
 		CallOptions{Read: true, Idempotent: true}); err != nil {
@@ -69,7 +79,7 @@ func (c *Client) ListInterfaces(ctx context.Context) ([]types.NetworkInterface, 
 
 // CreateInterface creates a virtual interface (BRIDGE, LINK_AGGREGATION, VLAN)
 // and applies the change via commit + checkin.
-func (c *Client) CreateInterface(ctx context.Context, req *types.NetworkInterfaceCreateRequest) (*types.NetworkInterface, error) {
+func (c *Client) CreateInterface(ctx context.Context, req *types.NetworkInterfaceCreateRequest, rollback bool) (*types.NetworkInterface, error) {
 	tflog.Trace(ctx, "CreateInterface (ws) start")
 
 	result, err := c.Call(ctx, "interface.create",
@@ -83,7 +93,7 @@ func (c *Client) CreateInterface(ctx context.Context, req *types.NetworkInterfac
 		return nil, fmt.Errorf("parsing interface create response: %w", err)
 	}
 
-	if err := c.commitAndCheckin(ctx); err != nil {
+	if err := c.commitAndCheckin(ctx, rollback); err != nil {
 		return nil, err
 	}
 
@@ -93,7 +103,7 @@ func (c *Client) CreateInterface(ctx context.Context, req *types.NetworkInterfac
 
 // UpdateInterface updates an existing interface by ID (name) and applies
 // the change via commit + checkin.
-func (c *Client) UpdateInterface(ctx context.Context, id string, req *types.NetworkInterfaceUpdateRequest) (*types.NetworkInterface, error) {
+func (c *Client) UpdateInterface(ctx context.Context, id string, req *types.NetworkInterfaceUpdateRequest, rollback bool) (*types.NetworkInterface, error) {
 	tflog.Trace(ctx, "UpdateInterface (ws) start")
 
 	result, err := c.Call(ctx, "interface.update",
@@ -107,7 +117,7 @@ func (c *Client) UpdateInterface(ctx context.Context, id string, req *types.Netw
 		return nil, fmt.Errorf("parsing interface update response: %w", err)
 	}
 
-	if err := c.commitAndCheckin(ctx); err != nil {
+	if err := c.commitAndCheckin(ctx, rollback); err != nil {
 		return nil, err
 	}
 
@@ -117,7 +127,7 @@ func (c *Client) UpdateInterface(ctx context.Context, id string, req *types.Netw
 
 // DeleteInterface deletes an interface by ID (name) and applies the change
 // via commit + checkin.
-func (c *Client) DeleteInterface(ctx context.Context, id string) error {
+func (c *Client) DeleteInterface(ctx context.Context, id string, rollback bool) error {
 	tflog.Trace(ctx, "DeleteInterface (ws) start")
 
 	if _, err := c.Call(ctx, "interface.delete",
@@ -125,7 +135,7 @@ func (c *Client) DeleteInterface(ctx context.Context, id string) error {
 		return fmt.Errorf("deleting interface %q: %w", id, err)
 	}
 
-	if err := c.commitAndCheckin(ctx); err != nil {
+	if err := c.commitAndCheckin(ctx, rollback); err != nil {
 		return err
 	}
 
