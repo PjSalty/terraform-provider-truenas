@@ -339,16 +339,15 @@ func TestNetworkConfigResource_CRUD(t *testing.T) {
 // --- NetworkInterface ---
 
 func TestNetworkInterfaceResource_CRUD(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
-		"id":                       "eth0",
-		"name":                     "eth0",
-		"type":                     "PHYSICAL",
+		"id":                       "br0",
+		"name":                     "br0",
+		"type":                     "BRIDGE",
 		"description":              "",
 		"ipv4_dhcp":                false,
 		"ipv6_auto":                false,
 		"mtu":                      1500,
-		"state":                    map[string]interface{}{"name": "eth0"},
+		"state":                    map[string]interface{}{"name": "br0"},
 		"aliases":                  []interface{}{},
 		"failover_aliases":         []interface{}{},
 		"failover_virtual_aliases": []interface{}{},
@@ -359,23 +358,11 @@ func TestNetworkInterfaceResource_CRUD(t *testing.T) {
 		"vlan_tag":                 nil,
 		"vlan_pcp":                 nil,
 	}
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if strings.Contains(req.URL.Path, "commit") || strings.Contains(req.URL.Path, "checkin") {
-			_, _ = w.Write([]byte("null"))
-			return
-		}
-		if req.Method == http.MethodDelete {
-			_, _ = w.Write([]byte("true"))
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &NetworkInterfaceResource{client: c}
-	crudDrive(t, r, c, "eth0", map[string]tftypes.Value{
-		"name": str("eth0"),
-		"type": str("PHYSICAL"),
+	crudDrive(t, r, c, "br0", map[string]tftypes.Value{
+		"name": str("br0"),
+		"type": str("BRIDGE"),
 	})
 }
 

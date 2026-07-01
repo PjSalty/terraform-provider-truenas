@@ -63,6 +63,7 @@ type NetworkInterfaceResourceModel struct {
 	VlanParentInterface types.String   `tfsdk:"vlan_parent_interface"`
 	VlanTag             types.Int64    `tfsdk:"vlan_tag"`
 	VlanPCP             types.Int64    `tfsdk:"vlan_pcp"`
+	Rollback            types.Bool     `tfsdk:"rollback"`
 	Timeouts            timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -261,6 +262,17 @@ func (r *NetworkInterfaceResource) Schema(ctx context.Context, _ resource.Schema
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
+			"rollback": schema.BoolAttribute{
+				Description: "Enable commit-with-rollback (default true). " +
+					"When false, changes are applied immediately without a rollback timer. " +
+					"Disabling rollback is faster but riskier: a bad change that breaks networking " +
+					"may make the interface permanently unreachable via the management network.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
 		},
 	}
 }
@@ -310,6 +322,8 @@ func (r *NetworkInterfaceResource) Create(ctx context.Context, req resource.Crea
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	rollback := plan.Rollback.IsNull() || plan.Rollback.IsUnknown() || plan.Rollback.ValueBool()
 
 	createReq := &truenas.NetworkInterfaceCreateRequest{
 		Type: plan.Type.ValueString(),
@@ -362,7 +376,7 @@ func (r *NetworkInterfaceResource) Create(ctx context.Context, req resource.Crea
 
 	tflog.Debug(ctx, "Creating interface", map[string]interface{}{"type": createReq.Type, "name": createReq.Name})
 
-	iface, err := r.client.CreateInterface(ctx, createReq)
+	iface, err := r.client.CreateInterface(ctx, createReq, rollback)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Creating Interface",
@@ -422,6 +436,8 @@ func (r *NetworkInterfaceResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
+	rollback := plan.Rollback.IsNull() || plan.Rollback.IsUnknown() || plan.Rollback.ValueBool()
+
 	updateReq := &truenas.NetworkInterfaceUpdateRequest{}
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		v := plan.Description.ValueString()
@@ -471,7 +487,7 @@ func (r *NetworkInterfaceResource) Update(ctx context.Context, req resource.Upda
 		updateReq.VlanPCP = &v
 	}
 
-	iface, err := r.client.UpdateInterface(ctx, state.ID.ValueString(), updateReq)
+	iface, err := r.client.UpdateInterface(ctx, state.ID.ValueString(), updateReq, rollback)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating Interface",
@@ -496,8 +512,10 @@ func (r *NetworkInterfaceResource) Delete(ctx context.Context, req resource.Dele
 		return
 	}
 
+	rollback := state.Rollback.IsNull() || state.Rollback.IsUnknown() || state.Rollback.ValueBool()
+
 	tflog.Debug(ctx, "Deleting interface", map[string]interface{}{"id": state.ID.ValueString()})
-	if err := r.client.DeleteInterface(ctx, state.ID.ValueString()); err != nil {
+	if err := r.client.DeleteInterface(ctx, state.ID.ValueString(), rollback); err != nil {
 		if wsclient.IsNotFound(err) {
 			tflog.Warn(ctx, "Network interface already deleted, removing from state", map[string]interface{}{"id": state.ID.ValueString()})
 			return
@@ -519,6 +537,12 @@ func (r *NetworkInterfaceResource) ImportState(ctx context.Context, req resource
 }
 
 func (r *NetworkInterfaceResource) mapResponseToModel(ctx context.Context, iface *truenas.NetworkInterface, model *NetworkInterfaceResourceModel) {
+	// Preserve attributes not returned by the API.
+	rollback := model.Rollback
+	if rollback.IsNull() || rollback.IsUnknown() {
+		rollback = types.BoolValue(true)
+	}
+
 	model.ID = types.StringValue(iface.ID)
 	model.Name = types.StringValue(iface.Name)
 	model.Type = types.StringValue(iface.Type)
@@ -565,6 +589,8 @@ func (r *NetworkInterfaceResource) mapResponseToModel(ctx context.Context, iface
 	} else {
 		model.VlanPCP = types.Int64Null()
 	}
+
+	model.Rollback = rollback
 }
 
 // aliasesFromList converts a Terraform list of alias objects into the client

@@ -121,7 +121,7 @@ func TestCreateInterface(t *testing.T) {
 	ts := NewTestServer(t, commitHandler(t, "interface.create",
 		map[string]interface{}{"id": "br0", "type": "BRIDGE"}))
 	c, _ := ts.NewClient(ctx)
-	r, err := c.CreateInterface(ctx, &types.NetworkInterfaceCreateRequest{Type: "BRIDGE"})
+	r, err := c.CreateInterface(ctx, &types.NetworkInterfaceCreateRequest{Type: "BRIDGE"}, true)
 	if err != nil {
 		t.Fatalf("CreateInterface: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestCreateInterface_createError(t *testing.T) {
 		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
-	_, err := c.CreateInterface(ctx, &types.NetworkInterfaceCreateRequest{})
+	_, err := c.CreateInterface(ctx, &types.NetworkInterfaceCreateRequest{}, true)
 	if err == nil || !strings.Contains(err.Error(), "creating interface") {
 		t.Errorf("expected wrapped err, got %v", err)
 	}
@@ -156,7 +156,7 @@ func TestCreateInterface_decodeError(t *testing.T) {
 		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
-	_, err := c.CreateInterface(ctx, &types.NetworkInterfaceCreateRequest{})
+	_, err := c.CreateInterface(ctx, &types.NetworkInterfaceCreateRequest{}, true)
 	if err == nil || !strings.Contains(err.Error(), "parsing") {
 		t.Errorf("expected parse err, got %v", err)
 	}
@@ -175,7 +175,7 @@ func TestCreateInterface_commitError(t *testing.T) {
 		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
-	_, err := c.CreateInterface(ctx, &types.NetworkInterfaceCreateRequest{})
+	_, err := c.CreateInterface(ctx, &types.NetworkInterfaceCreateRequest{}, true)
 	if err == nil || !strings.Contains(err.Error(), "committing") {
 		t.Errorf("expected commit err, got %v", err)
 	}
@@ -196,7 +196,7 @@ func TestCreateInterface_checkinError(t *testing.T) {
 		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
-	_, err := c.CreateInterface(ctx, &types.NetworkInterfaceCreateRequest{})
+	_, err := c.CreateInterface(ctx, &types.NetworkInterfaceCreateRequest{}, true)
 	if err == nil || !strings.Contains(err.Error(), "checking in") {
 		t.Errorf("expected checkin err, got %v", err)
 	}
@@ -209,7 +209,7 @@ func TestUpdateInterface(t *testing.T) {
 		map[string]interface{}{"id": "br0", "description": "u"}))
 	c, _ := ts.NewClient(ctx)
 	d := "u"
-	r, err := c.UpdateInterface(ctx, "br0", &types.NetworkInterfaceUpdateRequest{Description: &d})
+	r, err := c.UpdateInterface(ctx, "br0", &types.NetworkInterfaceUpdateRequest{Description: &d}, true)
 	if err != nil {
 		t.Fatalf("UpdateInterface: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestUpdateInterface_serverError(t *testing.T) {
 		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
-	_, err := c.UpdateInterface(ctx, "br0", &types.NetworkInterfaceUpdateRequest{})
+	_, err := c.UpdateInterface(ctx, "br0", &types.NetworkInterfaceUpdateRequest{}, true)
 	if err == nil || !strings.Contains(err.Error(), "updating interface") {
 		t.Errorf("expected wrapped err, got %v", err)
 	}
@@ -244,7 +244,7 @@ func TestUpdateInterface_decodeError(t *testing.T) {
 		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
-	_, err := c.UpdateInterface(ctx, "br0", &types.NetworkInterfaceUpdateRequest{})
+	_, err := c.UpdateInterface(ctx, "br0", &types.NetworkInterfaceUpdateRequest{}, true)
 	if err == nil || !strings.Contains(err.Error(), "parsing") {
 		t.Errorf("expected parse err, got %v", err)
 	}
@@ -263,7 +263,7 @@ func TestUpdateInterface_commitError(t *testing.T) {
 		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
-	_, err := c.UpdateInterface(ctx, "br0", &types.NetworkInterfaceUpdateRequest{})
+	_, err := c.UpdateInterface(ctx, "br0", &types.NetworkInterfaceUpdateRequest{}, true)
 	if err == nil || !strings.Contains(err.Error(), "committing") {
 		t.Errorf("expected commit err, got %v", err)
 	}
@@ -284,7 +284,7 @@ func TestDeleteInterface(t *testing.T) {
 		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
-	if err := c.DeleteInterface(ctx, "br0"); err != nil {
+	if err := c.DeleteInterface(ctx, "br0", true); err != nil {
 		t.Fatalf("DeleteInterface: %v", err)
 	}
 	if !sawDelete {
@@ -302,9 +302,37 @@ func TestDeleteInterface_serverError(t *testing.T) {
 		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
-	err := c.DeleteInterface(ctx, "br0")
+	err := c.DeleteInterface(ctx, "br0", true)
 	if err == nil || !strings.Contains(err.Error(), "deleting interface") {
 		t.Errorf("expected wrapped err, got %v", err)
+	}
+}
+
+func TestCreateInterface_noRollback(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var sawCheckin bool
+	ts := NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *RPCError) {
+		switch method {
+		case "interface.create":
+			return map[string]interface{}{"id": "br0"}, nil
+		case "interface.commit":
+			return nil, nil
+		case "interface.get_instance":
+			return map[string]interface{}{"id": "br0", "type": "BRIDGE"}, nil
+		case "interface.checkin":
+			sawCheckin = true
+			return nil, &RPCError{Code: CodeInternalError, Message: "should-not-be-called"}
+		}
+		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
+	})
+	c, _ := ts.NewClient(ctx)
+	_, err := c.CreateInterface(ctx, &types.NetworkInterfaceCreateRequest{Type: "BRIDGE"}, false)
+	if err != nil {
+		t.Fatalf("CreateInterface with rollback=false: %v", err)
+	}
+	if sawCheckin {
+		t.Error("interface.checkin should not be called when rollback=false")
 	}
 }
 
@@ -321,7 +349,7 @@ func TestDeleteInterface_commitError(t *testing.T) {
 		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
-	err := c.DeleteInterface(ctx, "br0")
+	err := c.DeleteInterface(ctx, "br0", true)
 	if err == nil || !strings.Contains(err.Error(), "committing") {
 		t.Errorf("expected commit err, got %v", err)
 	}
