@@ -23,8 +23,8 @@ func TestAccDirectory_basic(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "mode", "755"),
-					resource.TestCheckResourceAttr(resourceName, "uid", "0"),
-					resource.TestCheckResourceAttr(resourceName, "gid", "0"),
+					resource.TestCheckResourceAttr(resourceName, "uid", "3000"),
+					resource.TestCheckResourceAttr(resourceName, "gid", "3000"),
 				),
 			},
 			// Import
@@ -77,6 +77,8 @@ func testAccCheckDirectoryDestroy(_ string) resource.TestCheckFunc {
 	}
 }
 
+// uid/gid are set so the live suite exercises the setperm path, not just
+// mkdir (the stale-stat bug in issue #21 only shows up after setperm).
 func testAccDirectoryConfigBasic(pool, datasetName, mode string) string {
 	return fmt.Sprintf(`
 provider "truenas" {}
@@ -89,6 +91,8 @@ resource "truenas_dataset" "dir_parent" {
 resource "truenas_directory" "test" {
   path = "${truenas_dataset.dir_parent.mount_point}/sub"
   mode = %q
+  uid  = 3000
+  gid  = 3000
 }
 `, pool, datasetName, mode)
 }
