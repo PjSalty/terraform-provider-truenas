@@ -18,6 +18,11 @@ replacement.
 is removed from Terraform state but left on disk; remove it manually if the
 data is no longer needed.
 
+-> **Note** `mode`, `uid`, and `gid` in state reflect the values the provider
+applied. TrueNAS can serve a stale `filesystem.stat` right after `setperm`, so
+the post-apply read only fills values the plan did not set. The regular
+refresh read stays stat-authoritative for drift detection.
+
 ## Example Usage
 
 ### Basic
@@ -71,3 +76,7 @@ The `truenas_directory` resource can be imported using its absolute path:
 #!/usr/bin/env bash
 terraform import truenas_directory.example /mnt/tank/media/downloaded/music
 ```
+
+Imports default `create_parents` to `false`. The attribute only controls
+mkdir -p behavior at create time, so it has no effect on an existing
+directory; set it in config if a future replacement should create parents.
