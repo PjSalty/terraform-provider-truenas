@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'truenas_directory: mode now validates as permission bits (000-777, leading zero allowed) instead of accepting 4-digit modes the TrueNAS API always rejects at apply; special bits read back from disk are ignored rather than reported as drift. The middleware UnixPerm type behind mkdir and setperm cannot set setuid/setgid/sticky bits (fixes #17)'
+time: 2026-07-01T18:00:59.100118093-05:00

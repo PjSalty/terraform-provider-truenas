@@ -47,7 +47,7 @@ resource "truenas_directory" "downloaded_music" {
 The following arguments are supported:
 
 * `path` - (Required) The absolute filesystem path of the directory (e.g., /mnt/tank/media). Must be under `/mnt/`. Changing this forces a new resource.
-* `mode` - (Optional) The octal permission mode for the directory (e.g., 755). Default: `755`.
+* `mode` - (Optional) The octal permission mode for the directory, permission bits only (e.g., 755 or 0755). Default: `755`. The TrueNAS filesystem API rejects modes above 777, so setuid/setgid/sticky bits cannot be set through this resource.
 * `create_parents` - (Optional) When `true`, create any missing parent directories before the leaf (like `mkdir -p`). Default: `false`.
 * `uid` - (Optional) The owner UID. Applied via `setperm` when set or changed.
 * `gid` - (Optional) The owner GID. Applied via `setperm` when set or changed.

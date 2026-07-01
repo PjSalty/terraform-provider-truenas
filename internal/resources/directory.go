@@ -86,14 +86,18 @@ func (r *DirectoryResource) Schema(ctx context.Context, _ resource.SchemaRequest
 				},
 			},
 			"mode": schema.StringAttribute{
-				Description: "The octal permission mode for the directory (e.g., 755).",
+				Description: "The octal permission mode for the directory (e.g., 755). Permission bits only: the TrueNAS filesystem API rejects modes above 777, so setuid/setgid/sticky bits cannot be set through it.",
 				Optional:    true,
 				Computed:    true,
 				Default:     stringdefault.StaticString("755"),
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^[0-7]{3,4}$`),
-						"mode must be 3 or 4 octal digits (e.g., 755 or 0755)",
+						// permission bits only, optional leading zero:
+						// filesystem.mkdir and filesystem.setperm share the
+						// middleware UnixPerm type, which parses octal and
+						// rejects any value above 777 (issue #17).
+						regexp.MustCompile(`^0?[0-7]{3}$`),
+						"mode must be permission bits between 000 and 777 (leading zero allowed); the TrueNAS API cannot set setuid/setgid/sticky bits",
 					),
 				},
 			},
@@ -406,10 +410,14 @@ func (r *DirectoryResource) applyStatPreservingPlan(stat *truenas.FilesystemStat
 // uid/gid come straight from the stat.
 func (r *DirectoryResource) mapStatToModel(stat *truenas.FilesystemStat, model *DirectoryResourceModel) {
 	model.ID = model.Path
-	// keep the user's mode spelling (e.g. "0755" vs "755") when it matches
-	// the on-disk perm bits, so equivalent octal forms don't churn the plan;
-	// only overwrite on real drift or when mode is unset (import).
-	statMode := stat.Mode & 0o7777
+	// keep the user's mode spelling when it matches the on-disk perm
+	// bits, so equivalent octal forms don't churn the plan; only
+	// overwrite on real drift or when mode is unset (import). masked to
+	// the low 9 bits: special bits (setuid/setgid/sticky) cannot be
+	// managed through the TrueNAS API (issue #17), so out-of-band
+	// special bits are ignored rather than reported as drift the
+	// schema could never accept.
+	statMode := stat.Mode & 0o777
 	if cur, err := strconv.ParseInt(model.Mode.ValueString(), 8, 32); err != nil || int(cur) != statMode {
 		model.Mode = types.StringValue(fmt.Sprintf("%03o", statMode))
 	}
