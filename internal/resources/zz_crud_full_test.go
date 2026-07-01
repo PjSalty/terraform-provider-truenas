@@ -31,6 +31,15 @@ func numList(vals ...int64) tftypes.Value {
 	return tftypes.NewValue(tftypes.List{ElementType: tftypes.Number}, items)
 }
 
+// numSet returns a set[number] tftypes value.
+func numSet(vals ...int64) tftypes.Value {
+	items := make([]tftypes.Value, len(vals))
+	for i, v := range vals {
+		items[i] = tftypes.NewValue(tftypes.Number, v)
+	}
+	return tftypes.NewValue(tftypes.Set{ElementType: tftypes.Number}, items)
+}
+
 // --- NFS share full values ---
 
 func TestNFSShareResource_CRUD_Full(t *testing.T) {
@@ -155,7 +164,7 @@ func TestUserResource_CRUD_Full(t *testing.T) {
 		"password":          str("hunter2"),
 		"locked":            flag(false),
 		"smb":               flag(true),
-		"groups":            numList(101),
+		"groups":            numSet(101),
 		"sudo_commands":     strList("/bin/ls"),
 		"sshpubkey":         str("ssh-rsa AAA..."),
 		"password_disabled": flag(false),
