@@ -22,7 +22,9 @@ var validatorErrorTestRE = regexp.MustCompile(`(?m)^func (TestAccValidator_\w+)\
 // test exercising the failure path, then bump this number to match.
 // Removing one of these tests would silently drop a negative-path
 // guarantee, never do it without also removing the validator itself.
-const validatorErrorTestMinimum = 22
+// 24: YAMLDocument on app.custom_compose landed with garbage and
+// empty-string rejection tests (issue #24).
+const validatorErrorTestMinimum = 24
 
 // TestValidatorErrorCoverage counts the TestAccValidator_* functions
 // in acc_validator_errors_test.go and asserts the count is at least

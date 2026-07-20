@@ -17,7 +17,10 @@ import (
 //
 // Bump this number every time a new resource file adds a
 // ConfigValidators() method. Never lower it without documented reason.
-const configValidatorsFloor = 3
+//
+// 4: app.go gained ConfigValidators for the catalog_app /
+// custom_compose ExactlyOneOf plus Conflicting rules (issue #24).
+const configValidatorsFloor = 4
 
 // TestConfigValidatorsCoverage counts the number of resource files
 // that declare a `func (r *XxxResource) ConfigValidators(` method and
