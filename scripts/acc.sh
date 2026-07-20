@@ -107,6 +107,7 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
   # loss the unit suite must catch.
   declare -A TIER1=(
     [github.com/PjSalty/terraform-provider-truenas/internal/types]=100
+    [github.com/PjSalty/terraform-provider-truenas/internal/customtypes]=100
     [github.com/PjSalty/terraform-provider-truenas/internal/validators]=100
     [github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators]=100
     [github.com/PjSalty/terraform-provider-truenas/internal/planhelpers]=100

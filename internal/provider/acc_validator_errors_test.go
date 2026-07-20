@@ -592,3 +592,52 @@ resource "truenas_ups_config" "bad_port" {
 		},
 	})
 }
+
+// TestAccValidator_ComposeYAML_rejectsGarbage covers the
+// app.custom_compose YAMLDocument validator's parse branch: a string
+// that is not valid YAML fails at plan time, before any API call.
+func TestAccValidator_ComposeYAML_rejectsGarbage(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "truenas_app" "bad_yaml" {
+  app_name       = "bad-yaml"
+  custom_compose = "not: [valid"
+}
+`,
+				ExpectError: regexp.MustCompile(`(?i)invalid yaml document`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
+
+// TestAccValidator_ComposeYAML_rejectsEmpty covers the empty-string
+// branch: an empty compose document is rejected at plan time.
+func TestAccValidator_ComposeYAML_rejectsEmpty(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "truenas_app" "empty_yaml" {
+  app_name       = "empty-yaml"
+  custom_compose = ""
+}
+`,
+				ExpectError: regexp.MustCompile(`(?i)invalid yaml document`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
