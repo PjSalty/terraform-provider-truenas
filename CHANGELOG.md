@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-07-19
+
+### Added
+
+- `truenas_app`: custom Docker Compose apps via the new `custom_compose`
+  attribute (requested in #24). Exactly one of `catalog_app` (now optional)
+  or `custom_compose` is set; compose content edits apply in place, and
+  converting between catalog and custom forces replacement. Comparison is
+  semantic: formatting, comments, key order, and YAML 1.1 bool spellings
+  never plan as diffs, while structural drift against the server's stored
+  compose surfaces on refresh. Custom apps destroy with
+  `force_remove_custom_app` so a broken compose cannot wedge a destroy.
+
+### Fixed
+
+- Acceptance test debt on `truenas_app`: the catalog test installed minio,
+  which left the TrueNAS catalog in 2026, and import verification raced the
+  volatile `state` attribute. Swapped to syncthing and ignored `state` on
+  import with a documented rationale.
+
 ## [2.2.1] - 2026-07-01
 
 ### Fixed

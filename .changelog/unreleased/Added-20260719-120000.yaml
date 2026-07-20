@@ -1,3 +1,0 @@
-kind: Added
-body: 'truenas_app: custom Docker Compose apps via the new custom_compose attribute. Exactly one of catalog_app (now optional) or custom_compose is set; compose content edits apply in place, converting between catalog and custom forces replacement. Comparison is semantic, formatting, comments, key order, and YAML 1.1 bool spellings never plan as diffs, while structural drift against the server''s stored compose surfaces on refresh. Custom apps destroy with force_remove_custom_app so a broken compose cannot wedge a destroy (closes #24)'
-time: 2026-07-19T12:00:00.000000000-05:00
