@@ -715,3 +715,29 @@ func TestAppConfigValidators(t *testing.T) {
 		})
 	}
 }
+
+// the marshal-error branch of applyComposeDrift, and Read's guard behind
+// it, cannot fire through JSON-shaped configs from the real client; the
+// renderComposeCanonical seam makes the defensive path testable.
+func TestAppReadComposeRenderError(t *testing.T) {
+	orig := renderComposeCanonical
+	renderComposeCanonical = func(map[string]interface{}) (string, error) {
+		return "", fmt.Errorf("injected render failure")
+	}
+	t.Cleanup(func() { renderComposeCanonical = orig })
+
+	c, _ := newAppComposeTestClient(t, appComposeBody(true), appComposeCfgOne())
+	r := &AppResource{client: c}
+	ctx := context.Background()
+	sch := schemaOf(t, ctx, r)
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id":             str("sleeper"),
+		"app_name":       str("sleeper"),
+		"custom_compose": str(testComposeOne),
+	})
+	resp := &resource.ReadResponse{State: st}
+	r.Read(ctx, resource.ReadRequest{State: st}, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("Read should surface the compose render failure as a diagnostic")
+	}
+}
