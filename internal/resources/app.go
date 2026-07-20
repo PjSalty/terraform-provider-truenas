@@ -538,7 +538,7 @@ func (r *AppResource) applyComposeDrift(model *AppResourceModel, cfg map[string]
 		// user could never configure
 		return
 	}
-	dump, err := canonicalComposeYAML(cfg)
+	dump, err := renderComposeCanonical(cfg)
 	if err != nil {
 		diags.AddError(
 			"Error Reading App",
@@ -554,6 +554,11 @@ func (r *AppResource) applyComposeDrift(model *AppResourceModel, cfg map[string]
 	}
 	model.CustomCompose = customtypes.NewNormalizedYAMLValue(dump)
 }
+
+// renderComposeCanonical is a seam over canonicalComposeYAML so the
+// marshal-error branch, unreachable through JSON-shaped configs from the
+// real client, stays testable.
+var renderComposeCanonical = canonicalComposeYAML
 
 // canonicalComposeYAML renders the server's parsed compose document
 // as deterministic YAML (yaml.v3 sorts map keys). The recover guard
