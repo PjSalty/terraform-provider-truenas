@@ -30,6 +30,10 @@ type AppCreateRequest struct {
 	Version    string                 `json:"version,omitempty"`
 	Values     map[string]interface{} `json:"values,omitempty"`
 	CustomApp  bool                   `json:"custom_app,omitempty"`
+	// CustomComposeConfigString carries the raw Docker Compose YAML
+	// for custom_app installs. The middleware parses and stores the
+	// resulting document, the original string is never returned.
+	CustomComposeConfigString string `json:"custom_compose_config_string,omitempty"`
 }
 
 // AppUpdateRequest represents the body for PUT /app/id/{id_} /
@@ -40,6 +44,9 @@ type AppCreateRequest struct {
 // endpoint and are modeled as RequiresReplace in the resource schema.
 type AppUpdateRequest struct {
 	Values map[string]interface{} `json:"values,omitempty"`
+	// CustomComposeConfigString updates a custom app's compose
+	// document in place, app.update accepts it like app.create does.
+	CustomComposeConfigString string `json:"custom_compose_config_string,omitempty"`
 }
 
 // AppDeleteRequest represents the body for DELETE /app/id/{id_} /
@@ -47,4 +54,8 @@ type AppUpdateRequest struct {
 type AppDeleteRequest struct {
 	RemoveImages    bool `json:"remove_images"`
 	RemoveIxVolumes bool `json:"remove_ix_volumes"`
+	// ForceRemoveCustomApp lets app.delete succeed for custom apps
+	// whose compose file is broken or missing, plain deletes fail
+	// there. Only sent for custom apps.
+	ForceRemoveCustomApp bool `json:"force_remove_custom_app,omitempty"`
 }

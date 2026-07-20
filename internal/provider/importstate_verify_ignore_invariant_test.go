@@ -92,6 +92,8 @@ var allowedIgnoreFields = map[string]string{
 	"app_test.go::train":             "create-time selector: replaced by the resolved chart ID on read",
 	"app_test.go::remove_images":     "destroy-time flag: not persisted",
 	"app_test.go::remove_ix_volumes": "destroy-time flag: not persisted",
+	"app_test.go::custom_compose":    "config-authoritative, middleware stores parsed compose, no string round-trip",
+	"app_test.go::state":             "volatile runtime attribute: DEPLOYING to RUNNING transition races the import step",
 
 	// Storage edge cases.
 	"dataset_test.go::parent_dataset": "convenience attribute used to scope ZFS path resolution; not stored",

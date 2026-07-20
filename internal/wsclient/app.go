@@ -64,6 +64,29 @@ func (c *Client) GetApp(ctx context.Context, id string) (*types.App, error) {
 	return &app, nil
 }
 
+// GetAppConfig retrieves an app's normalized config document via
+// app.config. For custom apps this is the parsed Docker Compose dict
+// the middleware stored; app.query may Secret-redact those fields, so
+// semantic drift detection reads them here.
+func (c *Client) GetAppConfig(ctx context.Context, id string) (map[string]interface{}, error) {
+	tflog.Trace(ctx, "GetAppConfig (ws) start")
+
+	result, err := c.Call(ctx, "app.config",
+		[]interface{}{id},
+		CallOptions{Read: true, Idempotent: true})
+	if err != nil {
+		return nil, fmt.Errorf("getting app config %q: %w", id, err)
+	}
+
+	var cfg map[string]interface{}
+	if err := json.Unmarshal(result, &cfg); err != nil {
+		return nil, fmt.Errorf("parsing app config response: %w", err)
+	}
+
+	tflog.Trace(ctx, "GetAppConfig (ws) success")
+	return cfg, nil
+}
+
 // CreateApp installs a new app. The underlying app.create RPC is a
 // job (image pull + helm install). After CallJob returns, this method
 // fetches the placed app via app.get_instance, the job's result
