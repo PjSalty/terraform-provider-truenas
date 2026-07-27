@@ -1,0 +1,3 @@
+kind: Security
+body: bumped google.golang.org/grpc to v1.82.1 for GO-2026-6061 (HTTP/2 transport server and xDS RBAC). govulncheck reports the vulnerable code as reachable from providerserver.Serve, the gRPC server the provider runs for Terraform, so this is a real patch rather than a routine dependency bump
+time: 2026-07-27T18:29:10.129749515-05:00
