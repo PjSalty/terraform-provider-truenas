@@ -16,7 +16,7 @@ import (
 func TestProvider_Configure_RequestTimeoutEnvVar(t *testing.T) {
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey, username string, insecure bool) (*wsclient.Client, error) {
 		// Mirror the relevant initialization wsclient.New does so the
 		// Configure path sees the same defaults a real dial would set.
 		c := &wsclient.Client{}
@@ -50,7 +50,7 @@ func TestProvider_Configure_RequestTimeoutEnvVar(t *testing.T) {
 func TestProvider_Configure_RequestTimeoutHCL(t *testing.T) {
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey, username string, insecure bool) (*wsclient.Client, error) {
 		// Mirror the relevant initialization wsclient.New does so the
 		// Configure path sees the same defaults a real dial would set.
 		c := &wsclient.Client{}
@@ -85,7 +85,7 @@ func TestProvider_Configure_RequestTimeoutHCL(t *testing.T) {
 func TestProvider_Configure_RequestTimeoutHCLOverridesEnv(t *testing.T) {
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey, username string, insecure bool) (*wsclient.Client, error) {
 		// Mirror the relevant initialization wsclient.New does so the
 		// Configure path sees the same defaults a real dial would set.
 		c := &wsclient.Client{}
@@ -122,7 +122,7 @@ func TestProvider_Configure_RequestTimeoutHCLOverridesEnv(t *testing.T) {
 func TestProvider_Configure_RequestTimeoutInvalidDuration(t *testing.T) {
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey, username string, insecure bool) (*wsclient.Client, error) {
 		return &wsclient.Client{}, nil
 	}
 	t.Setenv("TRUENAS_URL", "https://example.com")
@@ -150,7 +150,7 @@ func TestProvider_Configure_RequestTimeoutInvalidDuration(t *testing.T) {
 func TestProvider_Configure_RequestTimeoutDefault(t *testing.T) {
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(ctx context.Context, baseURL, apiKey string, insecure bool) (*wsclient.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey, username string, insecure bool) (*wsclient.Client, error) {
 		// Mirror the relevant initialization wsclient.New does so the
 		// Configure path sees the same defaults a real dial would set.
 		c := &wsclient.Client{}

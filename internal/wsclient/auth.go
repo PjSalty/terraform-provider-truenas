@@ -54,11 +54,26 @@ func (c *Client) authenticate(ctx context.Context) error {
 		maxAttempts = 12
 		maxDelay    = 6 * time.Second
 	)
+	// mechanism selection: a configured username means auth.login_ex
+	// with API_KEY_PLAIN (the handshake that survives TrueNAS 27);
+	// without one only the legacy key-only call is possible, since
+	// login_ex has no mechanism that omits the username.
+	method := "auth.login_with_api_key"
+	params := []interface{}{c.apiKey}
+	if c.username != "" {
+		method = "auth.login_ex"
+		params = []interface{}{map[string]interface{}{
+			"mechanism": "API_KEY_PLAIN",
+			"username":  c.username,
+			"api_key":   c.apiKey,
+		}}
+	}
+
 	delay := 200 * time.Millisecond
 	var result json.RawMessage
 	var err error
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		result, err = c.Call(ctx, "auth.login_with_api_key", []interface{}{c.apiKey}, CallOptions{
+		result, err = c.Call(ctx, method, params, CallOptions{
 			Read:             true, // bypass read-only suffix classifier; auth must succeed even with ReadOnly=true
 			disableReconnect: true, // reconnectIfNeeded calls authenticate; re-entering reconnect would deadlock on reconnectMu
 		})
@@ -85,6 +100,9 @@ func (c *Client) authenticate(ctx context.Context) error {
 	}
 	if err != nil {
 		return err
+	}
+	if c.username != "" {
+		return parseLoginExResult(result)
 	}
 	var ok bool
 	if err := json.Unmarshal(result, &ok); err != nil {
@@ -125,4 +143,33 @@ func isAuthRateLimited(err error) bool {
 	}
 	low := strings.ToLower(reason + " " + rpcErr.Message)
 	return strings.Contains(low, "rate limit")
+}
+
+// parseLoginExResult maps an auth.login_ex response object onto the
+// authenticate() error contract. SUCCESS is the only non-error shape;
+// every other response_type gets an actionable message rather than a
+// raw dump of the server object.
+func parseLoginExResult(result json.RawMessage) error {
+	var resp struct {
+		ResponseType string   `json:"response_type"`
+		URLs         []string `json:"urls"`
+	}
+	if err := json.Unmarshal(result, &resp); err != nil {
+		return fmt.Errorf("auth.login_ex: unexpected result shape: %s", redactJSONBody(result))
+	}
+	switch resp.ResponseType {
+	case "SUCCESS":
+		return nil
+	case "AUTH_ERR":
+		return errors.New("auth.login_ex: authentication failed (wrong username for this API key, or invalid key)")
+	case "EXPIRED":
+		return errors.New("auth.login_ex: the API key or account credential has expired")
+	case "OTP_REQUIRED":
+		return errors.New("auth.login_ex: the account requires a one-time password; provider authentication does not support OTP-protected accounts, use an API key on an account without 2FA")
+	case "REDIRECT":
+		return fmt.Errorf("auth.login_ex: server redirected authentication (wrong node of an HA pair?): %s",
+			redactMessage(strings.Join(resp.URLs, ", ")))
+	default:
+		return fmt.Errorf("auth.login_ex: unexpected response_type %q", resp.ResponseType)
+	}
 }

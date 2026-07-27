@@ -45,10 +45,20 @@ resource "truenas_dataset" "example" {
 
 The provider authenticates with a TrueNAS SCALE API key, generated
 through the TrueNAS web UI under **Credentials → Local Users → root →
-API Keys**. The key is passed to the `auth.login_with_api_key`
-JSON-RPC method during the WebSocket handshake; once the handshake
-succeeds the connection is authenticated for the lifetime of the
-client.
+API Keys**. During the WebSocket handshake the key is passed to
+`auth.login_ex` with the `API_KEY_PLAIN` mechanism when `username` is
+set, or to the legacy `auth.login_with_api_key` when it is not. Once
+the handshake succeeds the connection is authenticated for the
+lifetime of the client.
+
+~> **TrueNAS 27 removes the legacy call.** `auth.login_with_api_key`
+is deprecated in TrueNAS 26 and removed in 27, and its replacement
+requires the account username alongside the key. Set `username` (or
+`TRUENAS_USERNAME`) to the account the API key belongs to before
+upgrading to TrueNAS 27; on 25.04 and later both paths work. On
+default installs the admin account is `truenas_admin` (older systems
+may use `root`); `auth.me` over the API confirms which account a key
+belongs to.
 
 Credentials can be provided in three ways, listed in order of precedence:
 
