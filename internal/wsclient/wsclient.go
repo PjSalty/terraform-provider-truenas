@@ -107,6 +107,10 @@ type Client struct {
 	// dial path translates to ws(s):// before connecting.
 	baseURL string
 	apiKey  string
+	// username selects the auth mechanism: non-empty means
+	// auth.login_ex API_KEY_PLAIN, empty means the legacy
+	// auth.login_with_api_key (removed in TrueNAS 27).
+	username string
 
 	// conn is the active nhooyr WebSocket. Replaced on reconnect.
 	// Access only with connMu held.
@@ -197,6 +201,15 @@ func NewWithOptions(baseURL, apiKey string, insecureSkipVerify bool) (*Client, e
 // Returns the connected, authenticated client on success or an error
 // describing the failure (network, TLS, auth, version).
 func New(ctx context.Context, baseURL, apiKey string, insecureSkipVerify bool) (*Client, error) {
+	return NewWithUsername(ctx, baseURL, apiKey, "", insecureSkipVerify)
+}
+
+// NewWithUsername is New plus an account username. When username is
+// non-empty the auth handshake uses auth.login_ex with the
+// API_KEY_PLAIN mechanism (the call that survives TrueNAS 27); when
+// empty it falls back to the legacy auth.login_with_api_key, which
+// TrueNAS deprecates in 26 and removes in 27.
+func NewWithUsername(ctx context.Context, baseURL, apiKey, username string, insecureSkipVerify bool) (*Client, error) {
 	if baseURL == "" {
 		return nil, fmt.Errorf("truenas base URL is required")
 	}
@@ -217,6 +230,7 @@ func New(ctx context.Context, baseURL, apiKey string, insecureSkipVerify bool) (
 		closed:             make(chan struct{}),
 		lifetime:           lifetime,
 		lifetimeCancel:     cancel,
+		username:           username,
 		dialTimeout:        DefaultDialTimeout,
 		requestTimeout:     DefaultRequestTimeout,
 		RetryPolicy:        DefaultRetryPolicy(),

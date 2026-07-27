@@ -1,0 +1,3 @@
+kind: Changed
+body: 'provider auth: new optional username argument (TRUENAS_USERNAME env) switches the WebSocket handshake to auth.login_ex with API_KEY_PLAIN, the mechanism that remains in TrueNAS 27; without it the provider keeps using the legacy auth.login_with_api_key, which is deprecated in 26 and removed in 27. Set username before upgrading to 27 (closes #25)'
+time: 2026-07-26T20:51:22.703344345-05:00

@@ -28,7 +28,7 @@ var _ provider.Provider = &TrueNASProvider{}
 // SCALE 26 (which removes REST entirely from the upstream API). The
 // constructor takes a ctx for the dial+auth handshake; the lifetime
 // of the resulting *wsclient.Client is independent of that ctx.
-var newClientFn = wsclient.New
+var newClientFn = wsclient.NewWithUsername
 
 // TrueNASProvider implements the TrueNAS SCALE Terraform provider.
 type TrueNASProvider struct {
@@ -39,6 +39,7 @@ type TrueNASProvider struct {
 type TrueNASProviderModel struct {
 	URL                types.String `tfsdk:"url"`
 	APIKey             types.String `tfsdk:"api_key"`
+	Username           types.String `tfsdk:"username"`
 	InsecureSkipVerify types.Bool   `tfsdk:"insecure_skip_verify"`
 	ReadOnly           types.Bool   `tfsdk:"read_only"`
 	DestroyProtection  types.Bool   `tfsdk:"destroy_protection"`
@@ -73,6 +74,15 @@ func (p *TrueNASProvider) Schema(_ context.Context, _ provider.SchemaRequest, re
 					"Can also be set via the TRUENAS_API_KEY environment variable.",
 				Optional:  true,
 				Sensitive: true,
+			},
+			"username": schema.StringAttribute{
+				Description: "The account username the API key belongs to. When set, the " +
+					"provider authenticates with auth.login_ex (API_KEY_PLAIN), the " +
+					"handshake that remains in TrueNAS 27; when unset it falls back to " +
+					"the legacy auth.login_with_api_key, which TrueNAS removes in 27. " +
+					"Set it before upgrading to TrueNAS 27. Can also be set via the " +
+					"TRUENAS_USERNAME environment variable.",
+				Optional: true,
 			},
 			"insecure_skip_verify": schema.BoolAttribute{
 				Description: "Skip TLS certificate verification. Only use this for self-signed " +
@@ -159,6 +169,25 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 		)
 	}
 
+	// Resolve username from config or environment; empty selects the
+	// legacy key-only handshake (removed in TrueNAS 27). An unknown
+	// value must not fall through as empty: that would discard
+	// TRUENAS_USERNAME and silently pick the deprecated mechanism
+	// against the operator's stated intent.
+	username := os.Getenv("TRUENAS_USERNAME")
+	switch {
+	case config.Username.IsUnknown():
+		resp.Diagnostics.AddAttributeError(
+			path.Root("username"),
+			"Unknown TrueNAS Username",
+			"The provider cannot choose an authentication mechanism while username is unknown. "+
+				"Set it to a known value, or drop the attribute and use the TRUENAS_USERNAME "+
+				"environment variable.",
+		)
+	case !config.Username.IsNull():
+		username = config.Username.ValueString()
+	}
+
 	// Resolve insecure_skip_verify from config or environment
 	insecureSkipVerify := false
 	if v := os.Getenv("TRUENAS_INSECURE_SKIP_VERIFY"); v == "true" || v == "1" {
@@ -175,7 +204,7 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 	// Create the API client. v2.0 ships the JSON-RPC over WebSocket
 	// transport only, the dial+auth handshake runs under the Configure
 	// ctx so a Terraform-side timeout cancels it cleanly.
-	c, err := newClientFn(ctx, url, apiKey, insecureSkipVerify)
+	c, err := newClientFn(ctx, url, apiKey, username, insecureSkipVerify)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Create TrueNAS API Client",

@@ -45,8 +45,9 @@ type TestServer struct {
 // through h. Calls t.Cleanup to shut down the server when the test
 // finishes.
 //
-// The server intercepts auth.login_with_api_key automatically and
-// returns true; tests that need to exercise auth failure can pass the
+// The server intercepts auth.login_with_api_key (returns true) and
+// auth.login_ex (returns a SUCCESS response object) automatically;
+// tests that need to exercise auth failure can pass the
 // SkipAuth option (see NewTestServerWithOptions) and provide their own
 // handler.
 func NewTestServer(tb testing.TB, h TestHandler) *TestServer {
@@ -56,9 +57,9 @@ func NewTestServer(tb testing.TB, h TestHandler) *TestServer {
 
 // TestServerOptions configures NewTestServerWithOptions.
 type TestServerOptions struct {
-	// SkipAuth, when true, suppresses the built-in auth.login_with_api_key
-	// short-circuit. The user-supplied handler must field the auth call
-	// itself.
+	// SkipAuth, when true, suppresses the built-in short-circuits for
+	// both auth.login_with_api_key and auth.login_ex. The user-supplied
+	// handler must field the auth call itself.
 	SkipAuth bool
 }
 
@@ -135,6 +136,10 @@ func (ts *TestServer) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		)
 		if !ts.skipAuth && req.Method == "auth.login_with_api_key" {
 			result = true
+		} else if !ts.skipAuth && req.Method == "auth.login_ex" {
+			// mirror the real middleware: login_ex answers with a
+			// response object, not a boolean
+			result = map[string]interface{}{"response_type": "SUCCESS"}
 		} else {
 			ts.mu.Lock()
 			h := ts.handler
