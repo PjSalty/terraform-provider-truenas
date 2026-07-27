@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-07-27
+
+### Security
+
+- Bumped `google.golang.org/grpc` to v1.82.1 for GO-2026-6061 (HTTP/2
+  transport server and xDS RBAC). `govulncheck` reports the vulnerable
+  code as reachable from `providerserver.Serve`, the gRPC server the
+  provider runs for Terraform, so this is a real patch rather than a
+  routine dependency bump.
+
 ## [2.4.0] - 2026-07-26
 
 ### Changed
