@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-07-26
+
+### Changed
+
+- Provider auth: a new optional `username` argument (or `TRUENAS_USERNAME`)
+  switches the WebSocket handshake to `auth.login_ex` with the
+  `API_KEY_PLAIN` mechanism, which is the call that remains in TrueNAS 27.
+  Without it the provider keeps using `auth.login_with_api_key`, which
+  TrueNAS deprecates in 26 and removes in 27, so set `username` before
+  upgrading to 27. Every `login_ex` response type maps to an actionable
+  error, and an unknown `username` fails loudly rather than silently
+  selecting the deprecated mechanism (closes #25).
+
+### Security
+
+- Bumped `golang.org/x/text` to v0.39.0 for GO-2026-5970.
+
 ## [2.3.0] - 2026-07-19
 
 ### Added
