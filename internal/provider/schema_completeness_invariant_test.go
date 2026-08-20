@@ -25,6 +25,15 @@ var attributeBlockWithTypeRE = regexp.MustCompile(`(?m)^\s*"([a-z][a-z0-9_]*)":\
 //
 // Key format: "<resources|datasources>/<file>::<attribute>"
 var allowedAttributesWithoutDescription = map[string]string{
+	// systemUpdateSchemaV0 is a FROZEN historical schema consumed by
+	// UpgradeState. It must keep the exact shape old state was written
+	// with, so its attributes carry no descriptions by design.
+	"resources/system_update.go::auto_download":     "frozen v0 schema for UpgradeState, renamed to autocheck in v1",
+	"resources/system_update.go::train":             "frozen v0 schema for UpgradeState, trains replaced by profiles in 26.0",
+	"resources/system_update.go::available_status":  "frozen v0 schema for UpgradeState, replaced by status in v1",
+	"resources/system_update.go::id":                "frozen v0 schema for UpgradeState",
+	"resources/system_update.go::current_version":   "frozen v0 schema for UpgradeState",
+	"resources/system_update.go::available_version": "frozen v0 schema for UpgradeState",
 	// id attributes, boilerplate "Identifier" description would
 	// add value to registry docs; add when touching each file.
 	"resources/alertclasses.go::id":            "polish-backlog: id attr lacks Description",

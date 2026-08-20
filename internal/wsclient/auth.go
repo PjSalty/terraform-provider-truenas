@@ -8,6 +8,8 @@ import (
 	"math/rand/v2"
 	"strings"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // authJitterDelay returns a uniformly-jittered backoff in the range
@@ -60,6 +62,25 @@ func (c *Client) authenticate(ctx context.Context) error {
 	// login_ex has no mechanism that omits the username.
 	method := "auth.login_with_api_key"
 	params := []interface{}{c.apiKey}
+	if c.username == "" {
+		// auth.login_with_api_key carries removed_in='v27'. When a method
+		// reaches its removed_in version middleware sets private = True, so
+		// it disappears from /api/current and every v27+ endpoint at once.
+		//
+		// There is no username-free handshake on 27: AuthApiKeyPlain requires
+		// a username on every version, and api_key.convert_raw_key yields the
+		// key id but not the username, so it cannot be derived.
+		//
+		// The v27 case is detected from the CALL RESULT, not from a version
+		// probe up front. system.info needs an authenticated session, and
+		// calling it from in here re-enters the connect path, so a pre-auth
+		// probe both cannot work and deadlocks.
+		tflog.Warn(ctx, "authenticating with the legacy key-only handshake; "+
+			"auth.login_with_api_key is removed in TrueNAS 27 and this will stop working then",
+			map[string]interface{}{
+				"fix": "set the provider `username` argument (or TRUENAS_USERNAME) to the user that owns this API key",
+			})
+	}
 	if c.username != "" {
 		method = "auth.login_ex"
 		params = []interface{}{map[string]interface{}{
@@ -99,6 +120,9 @@ func (c *Client) authenticate(ctx context.Context) error {
 		}
 	}
 	if err != nil {
+		if c.username == "" {
+			return explainLegacyAuthRemoval(err)
+		}
 		return err
 	}
 	if c.username != "" {
@@ -164,6 +188,14 @@ func parseLoginExResult(result json.RawMessage) error {
 		return errors.New("auth.login_ex: authentication failed (wrong username for this API key, or invalid key)")
 	case "EXPIRED":
 		return errors.New("auth.login_ex: the API key or account credential has expired")
+	case "DENIED":
+		// New in TrueNAS 26.0. The credential is valid but is not allowed
+		// to use the API, which is a different fix from a wrong key: the
+		// account needs API access, not new credentials. Before this case
+		// existed it fell through to "unexpected response_type", which
+		// pointed nowhere useful.
+		return errors.New("auth.login_ex: the credential is valid but lacks API access; " +
+			"grant the account API access in TrueNAS, or use an API key on an account that has it")
 	case "OTP_REQUIRED":
 		return errors.New("auth.login_ex: the account requires a one-time password; provider authentication does not support OTP-protected accounts, use an API key on an account without 2FA")
 	case "REDIRECT":
@@ -172,4 +204,24 @@ func parseLoginExResult(result json.RawMessage) error {
 	default:
 		return fmt.Errorf("auth.login_ex: unexpected response_type %q", resp.ResponseType)
 	}
+}
+
+// explainLegacyAuthRemoval turns a bare method-not-found on the legacy
+// handshake into something the operator can act on.
+//
+// On TrueNAS 27 auth.login_with_api_key is private, so the server answers
+// -32601 and the raw error names only the method. That points nowhere near the
+// real fix, which is to configure a username so the provider can use
+// auth.login_ex instead.
+//
+// Detected from the response rather than from a version probe: system.info
+// needs an authenticated session, so there is nothing to probe with before the
+// handshake completes.
+func explainLegacyAuthRemoval(err error) error {
+	if !isMethodUnknown(err) {
+		return err
+	}
+	return fmt.Errorf("auth.login_with_api_key does not exist on this TrueNAS. It was removed in 27.0. "+
+		"Set the provider `username` argument (or TRUENAS_USERNAME) to the user that owns the API key "+
+		"so the provider can use auth.login_ex; there is no username-free handshake on 27 (%w)", err)
 }

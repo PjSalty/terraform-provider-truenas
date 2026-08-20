@@ -135,7 +135,9 @@ func TestOptionalComputedHasUseStateForUnknown(t *testing.T) {
 	// for state migration. Most attributes should NOT be in here, the
 	// default behavior is to preserve state when config is null.
 	exclusions := map[string]string{
-		"cronjob.go:description": "appears in cronjobSchemaV0, the frozen v0 schema used by UpgradeState, historical shape must not be modified or state migration breaks",
+		"cronjob.go:description":         "appears in cronjobSchemaV0, the frozen v0 schema used by UpgradeState, historical shape must not be modified or state migration breaks",
+		"system_update.go:auto_download": "appears only in systemUpdateSchemaV0, the frozen v0 schema used by UpgradeState; renamed to autocheck in v1 and the historical shape must not be modified",
+		"system_update.go:train":         "appears only in systemUpdateSchemaV0, the frozen v0 schema used by UpgradeState; trains were replaced by profiles in TrueNAS 26.0 and the historical shape must not be modified",
 	}
 
 	matches, err := filepath.Glob("../resources/*.go")
