@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
@@ -53,6 +54,7 @@ type UserResourceModel struct {
 	Email            types.String   `tfsdk:"email"`
 	Password         types.String   `tfsdk:"password"`
 	PasswordDisabled types.Bool     `tfsdk:"password_disabled"`
+	Webshare         types.Bool     `tfsdk:"webshare"`
 	Group            types.Int64    `tfsdk:"group"`
 	GroupCreate      types.Bool     `tfsdk:"group_create"`
 	Groups           types.Set      `tfsdk:"groups"`
@@ -136,6 +138,26 @@ func (r *UserResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 				Sensitive: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
+				},
+			},
+			// New in TrueNAS 26.0. Setting it makes middleware add the
+			// account to the builtin truenas_webshare group.
+			//
+			// Modeling it is not optional: middleware's handle_webshare
+			// runs on every user.update and, when the payload omits
+			// webshare, inherits the PRE-update value and forces group
+			// membership to match. An unmodeled field therefore silently
+			// re-added the group after every apply, so Terraform saw a
+			// group set it did not ask for and failed with "Provider
+			// produced inconsistent result after apply" on every run,
+			// unrepairable through configuration.
+			"webshare": schema.BoolAttribute{
+				Description: "Allow this account to access WebShare shares. Requires TrueNAS 26.0 or newer. " +
+					"Setting it adds the user to the builtin `truenas_webshare` group.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"password_disabled": schema.BoolAttribute{
@@ -253,6 +275,13 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 		Locked:           plan.Locked.ValueBool(),
 		SMB:              plan.SMB.ValueBool(),
 		PasswordDisabled: &passwordDisabled,
+	}
+	// Only sent when the server has the field. The 26.0 models are
+	// extra="forbid", and so are the 25.10 ones, so sending webshare to a
+	// 25.10 box is a hard ValidationError rather than an ignored key.
+	if err := setUserWebshare(ctx, r.client, plan.Webshare, func(b *bool) { createReq.Webshare = b }); err != nil {
+		resp.Diagnostics.AddAttributeError(path.Root("webshare"), "Invalid Webshare", err.Error())
+		return
 	}
 	// The key is omitted entirely when no password was given. Sending ""
 	// would be rejected by the NonEmptyString model, and sending it
@@ -392,6 +421,12 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	// claiming password_disabled would leave the old password working.
 	updatePasswordDisabled := plan.PasswordDisabled.ValueBool()
 	updateReq.PasswordDisabled = &updatePasswordDisabled
+	// Always sent on 26+, never omitted. Omitting it is exactly what let
+	// handle_webshare re-add the group from the stale pre-update value.
+	if err := setUserWebshare(ctx, r.client, plan.Webshare, func(b *bool) { updateReq.Webshare = b }); err != nil {
+		resp.Diagnostics.AddAttributeError(path.Root("webshare"), "Invalid Webshare", err.Error())
+		return
+	}
 	switch {
 	case updatePasswordDisabled:
 		updateReq.ClearPassword()
@@ -587,6 +622,10 @@ func (r *UserResource) mapResponseToModel(_ context.Context, user *truenas.User,
 	model.Shell = types.StringValue(user.Shell)
 	model.Locked = types.BoolValue(user.Locked)
 	model.PasswordDisabled = types.BoolValue(user.PasswordDisabled)
+	// A server without the field reports false rather than null, so the
+	// attribute stays known and does not produce an unknown-value plan on
+	// TrueNAS 25.10.
+	model.Webshare = types.BoolValue(user.Webshare != nil && *user.Webshare)
 	model.SMB = types.BoolValue(user.SMB)
 	model.Group = types.Int64Value(int64(user.Group.ID))
 
@@ -612,4 +651,32 @@ func (r *UserResource) mapResponseToModel(_ context.Context, user *truenas.User,
 		cmdValues[i] = types.StringValue(c)
 	}
 	model.SudoCommands = types.ListValueMust(types.StringType, cmdValues)
+}
+
+// setUserWebshare applies the webshare attribute to a create or update
+// request, but only against a server that has the field.
+//
+// webshare arrived in TrueNAS 26.0. Both the 25.10 and 26.0 models are
+// ConfigDict(extra="forbid"), so sending the key to 25.10 is a hard
+// ValidationError, not an ignored field. Leaving it unset on 26+ is equally
+// wrong: handle_webshare then inherits the pre-update value and re-adds the
+// group, which is the bug this attribute exists to fix. So it is always sent
+// on 26+, and never sent below that.
+//
+// A user who explicitly asks for webshare on an older server gets a clear
+// refusal rather than a pydantic error from middleware.
+func setUserWebshare(ctx context.Context, c *wsclient.Client, planned types.Bool, apply func(*bool)) error {
+	v, err := c.ServerVersion(ctx)
+	if err != nil {
+		return err
+	}
+	if v.AtLeast(26, 0) {
+		b := planned.ValueBool()
+		apply(&b)
+		return nil
+	}
+	if !planned.IsNull() && !planned.IsUnknown() && planned.ValueBool() {
+		return fmt.Errorf("webshare requires TrueNAS 26.0 or newer; this server reports %s", v)
+	}
+	return nil
 }

@@ -3,6 +3,8 @@ package resources
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -17,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
@@ -27,8 +30,9 @@ import (
 const systemUpdateSingletonID = "system_update"
 
 var (
-	_ resource.Resource                = &SystemUpdateResource{}
-	_ resource.ResourceWithImportState = &SystemUpdateResource{}
+	_ resource.Resource                 = &SystemUpdateResource{}
+	_ resource.ResourceWithImportState  = &SystemUpdateResource{}
+	_ resource.ResourceWithUpgradeState = &SystemUpdateResource{}
 )
 
 // SystemUpdateResource manages the TrueNAS SCALE system update configuration -
@@ -42,10 +46,10 @@ type SystemUpdateResource struct {
 // SystemUpdateResourceModel describes the resource data model.
 type SystemUpdateResourceModel struct {
 	ID               types.String   `tfsdk:"id"`
-	AutoDownload     types.Bool     `tfsdk:"auto_download"`
-	Train            types.String   `tfsdk:"train"`
+	Autocheck        types.Bool     `tfsdk:"autocheck"`
+	Profile          types.String   `tfsdk:"profile"`
 	CurrentVersion   types.String   `tfsdk:"current_version"`
-	AvailableStatus  types.String   `tfsdk:"available_status"`
+	Status           types.String   `tfsdk:"status"`
 	AvailableVersion types.String   `tfsdk:"available_version"`
 	Timeouts         timeouts.Value `tfsdk:"timeouts"`
 }
@@ -61,6 +65,7 @@ func (r *SystemUpdateResource) Metadata(_ context.Context, req resource.Metadata
 
 func (r *SystemUpdateResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version: 1,
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true}),
 		},
@@ -83,15 +88,10 @@ func (r *SystemUpdateResource) Schema(ctx context.Context, _ resource.SchemaRequ
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"auto_download": schema.BoolAttribute{
-				Description: "Whether TrueNAS should automatically download available updates into " +
-					"the local update cache. Defaults to false, the conservative pinning value. " +
-					"With auto_download disabled, updates never land on the system without an " +
-					"explicit operator action.",
-				MarkdownDescription: "Whether TrueNAS should automatically download available updates " +
-					"into the local update cache. Defaults to `false`, the conservative pinning value. " +
-					"With `auto_download` disabled, updates never land on the system without an " +
-					"explicit operator action.",
+			"autocheck": schema.BoolAttribute{
+				Description: "Whether TrueNAS automatically checks for and downloads updates nightly. " +
+					"Defaults to false, the conservative value: with it disabled, updates never land " +
+					"on the system without an explicit operator action.",
 				Optional: true,
 				Computed: true,
 				Default:  booldefault.StaticBool(false),
@@ -99,17 +99,12 @@ func (r *SystemUpdateResource) Schema(ctx context.Context, _ resource.SchemaRequ
 					boolplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"train": schema.StringAttribute{
-				Description: "The active release train (e.g., TrueNAS-SCALE-Fangtooth). When set, " +
-					"Terraform reconciles the selected train on every apply. When omitted, " +
-					"Terraform preserves whatever the system has configured and reports it as a " +
-					"computed attribute. Validated against the list returned by the TrueNAS API at " +
-					"apply time.",
-				MarkdownDescription: "The active release train (e.g., `TrueNAS-SCALE-Fangtooth`). " +
-					"When set, Terraform reconciles the selected train on every apply. When omitted, " +
-					"Terraform preserves whatever the system has configured and reports it as a " +
-					"computed attribute. Validated against the list returned by the TrueNAS API at " +
-					"apply time.",
+			"profile": schema.StringAttribute{
+				Description: "The update profile this system tracks (for example GENERAL or " +
+					"MISSION_CRITICAL). Validated against update.profile_choices at apply time, " +
+					"honoring the `available` flag, so an unselectable profile is rejected with the " +
+					"valid choices listed rather than failing server-side. When omitted, whatever the " +
+					"system already has is preserved and reported.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -119,6 +114,13 @@ func (r *SystemUpdateResource) Schema(ctx context.Context, _ resource.SchemaRequ
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
+			"status": schema.StringAttribute{
+				Description: "Update subsystem status code reported by TrueNAS: NORMAL or ERROR.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"current_version": schema.StringAttribute{
 				Description: "The version of TrueNAS SCALE currently running on the system. " +
 					"Refreshed from /system/info on every Read. Changes when a SCALE update has " +
@@ -126,15 +128,6 @@ func (r *SystemUpdateResource) Schema(ctx context.Context, _ resource.SchemaRequ
 				MarkdownDescription: "The version of TrueNAS SCALE currently running on the system. " +
 					"Refreshed from `/system/info` on every Read. Changes when a SCALE update has " +
 					"been applied and the system has rebooted.",
-				Computed: true,
-			},
-			"available_status": schema.StringAttribute{
-				Description: "The pending-update status reported by the TrueNAS update server. " +
-					"One of AVAILABLE, UNAVAILABLE, REBOOT_REQUIRED, HA_UNAVAILABLE. " +
-					"UNAVAILABLE is the normal steady-state value.",
-				MarkdownDescription: "The pending-update status reported by the TrueNAS update server. " +
-					"One of `AVAILABLE`, `UNAVAILABLE`, `REBOOT_REQUIRED`, `HA_UNAVAILABLE`. " +
-					"`UNAVAILABLE` is the normal steady-state value.",
 				Computed: true,
 			},
 			"available_version": schema.StringAttribute{
@@ -163,67 +156,95 @@ func (r *SystemUpdateResource) Configure(_ context.Context, req resource.Configu
 	r.client = c
 }
 
-// applyConfig is the shared write path for both Create and Update. It posts
-// the user-supplied auto_download and (optionally) train, validating the
-// train against the live get_trains list first. Both writes are best-effort
-// ordered: train first, then auto_download, so a failure on auto_download
-// does not leave a mismatched train in state.
+// applyConfig is the shared write path for Create and Update.
+//
+// One update.update call carries both fields. The previous implementation
+// made two separate writes to methods that do not exist; see the note at the
+// top of internal/wsclient/system_update.go.
+//
+// profile is validated against update.profile_choices first, honoring the
+// `available` flag, because middleware refuses a profile that is not
+// available and the resulting server-side error names neither the valid
+// choices nor which attribute was wrong.
 func (r *SystemUpdateResource) applyConfig(ctx context.Context, plan *SystemUpdateResourceModel) error {
-	if !plan.Train.IsNull() && !plan.Train.IsUnknown() {
-		trains, err := r.client.GetUpdateTrains(ctx)
+	req := &truenas.UpdateConfigUpdateRequest{}
+
+	autocheck := plan.Autocheck.ValueBool()
+	req.Autocheck = &autocheck
+
+	if !plan.Profile.IsNull() && !plan.Profile.IsUnknown() && plan.Profile.ValueString() != "" {
+		want := plan.Profile.ValueString()
+		choices, err := r.client.GetUpdateProfileChoices(ctx)
 		if err != nil {
-			return fmt.Errorf("fetching update trains for validation: %w", err)
+			return fmt.Errorf("fetching update profiles for validation: %w", err)
 		}
-		want := plan.Train.ValueString()
-		if _, ok := trains.Trains[want]; !ok {
-			available := make([]string, 0, len(trains.Trains))
-			for name := range trains.Trains {
-				available = append(available, name)
-			}
-			return fmt.Errorf("train %q not found in available trains: %v", want, available)
+		choice, ok := choices[want]
+		if !ok {
+			return fmt.Errorf("update profile %q does not exist; available profiles: %s",
+				want, availableProfileNames(choices))
 		}
-		if trains.Selected != want {
-			if err := r.client.SetUpdateTrain(ctx, want); err != nil {
-				return fmt.Errorf("setting train: %w", err)
-			}
+		if !choice.Available {
+			return fmt.Errorf("update profile %q exists but is not available on this system; "+
+				"available profiles: %s", want, availableProfileNames(choices))
 		}
+		req.Profile = &want
 	}
 
-	if err := r.client.SetUpdateAutoDownload(ctx, plan.AutoDownload.ValueBool()); err != nil {
-		return fmt.Errorf("setting auto_download: %w", err)
+	if _, err := r.client.SetUpdateConfig(ctx, req); err != nil {
+		return fmt.Errorf("applying update config: %w", err)
 	}
-
 	return nil
 }
 
-// refreshState populates every field on the model from live TrueNAS state.
-// Called by Read, Create, and Update so all three have a single source of
-// truth for what the post-write model should look like.
+// availableProfileNames lists only the selectable profiles, sorted, for a
+// diagnostic. Listing unavailable ones would send the operator to a value
+// middleware will reject.
+func availableProfileNames(choices map[string]truenas.UpdateProfileChoice) string {
+	names := make([]string, 0, len(choices))
+	for name, c := range choices {
+		if c.Available {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	if len(names) == 0 {
+		return "(none reported as available)"
+	}
+	return strings.Join(names, ", ")
+}
+
+// refreshState populates the model from live TrueNAS state.
 func (r *SystemUpdateResource) refreshState(ctx context.Context, model *SystemUpdateResourceModel) error {
-	autoDownload, err := r.client.GetUpdateAutoDownload(ctx)
+	cfg, err := r.client.GetUpdateConfig(ctx)
 	if err != nil {
-		return fmt.Errorf("reading auto_download: %w", err)
+		return fmt.Errorf("reading update config: %w", err)
 	}
-	model.AutoDownload = types.BoolValue(autoDownload)
+	model.Autocheck = types.BoolValue(cfg.Autocheck)
+	// profile is nullable on the wire. Empty string rather than null keeps
+	// the attribute known, so a system with no profile selected does not
+	// produce an unknown-value plan on every run.
+	if cfg.Profile != nil {
+		model.Profile = types.StringValue(*cfg.Profile)
+	} else {
+		model.Profile = types.StringValue("")
+	}
 
-	trains, err := r.client.GetUpdateTrains(ctx)
+	// update.status replaced update.check_available. Its status and error
+	// members are nullable, so nothing here dereferences without checking:
+	// a nil status means "no information", not "no update available".
+	st, err := r.client.GetUpdateStatus(ctx)
 	if err != nil {
-		return fmt.Errorf("reading update trains: %w", err)
+		return fmt.Errorf("reading update status: %w", err)
 	}
-	model.Train = types.StringValue(trains.Selected)
-
-	info, err := r.client.GetSystemInfo(ctx)
-	if err != nil {
-		return fmt.Errorf("reading system info: %w", err)
+	model.Status = types.StringValue(st.Code)
+	model.CurrentVersion = types.StringValue("")
+	model.AvailableVersion = types.StringValue("")
+	if st.Status != nil {
+		model.CurrentVersion = types.StringValue(st.Status.CurrentVersion.Version)
+		if st.Status.NewVersion != nil {
+			model.AvailableVersion = types.StringValue(st.Status.NewVersion.Version)
+		}
 	}
-	model.CurrentVersion = types.StringValue(info.Version)
-
-	check, err := r.client.CheckUpdateAvailable(ctx)
-	if err != nil {
-		return fmt.Errorf("checking update availability: %w", err)
-	}
-	model.AvailableStatus = types.StringValue(check.Status)
-	model.AvailableVersion = types.StringValue(check.Version)
 
 	model.ID = types.StringValue(systemUpdateSingletonID)
 	return nil
@@ -322,4 +343,75 @@ func (r *SystemUpdateResource) ImportState(ctx context.Context, req resource.Imp
 		return
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// systemUpdateSchemaV0 is the historical schema, back when this resource
+// modeled auto_download and train against methods that do not exist.
+func systemUpdateSchemaV0(ctx context.Context) schema.Schema {
+	return schema.Schema{
+		Version: 0,
+		Blocks:  map[string]schema.Block{"timeouts": timeouts.Block(ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true})},
+		Attributes: map[string]schema.Attribute{
+			"id":                schema.StringAttribute{Computed: true},
+			"auto_download":     schema.BoolAttribute{Optional: true, Computed: true},
+			"train":             schema.StringAttribute{Optional: true, Computed: true},
+			"current_version":   schema.StringAttribute{Computed: true},
+			"available_status":  schema.StringAttribute{Computed: true},
+			"available_version": schema.StringAttribute{Computed: true},
+		},
+	}
+}
+
+// systemUpdateModelV0 is the v0 state shape.
+type systemUpdateModelV0 struct {
+	ID               types.String   `tfsdk:"id"`
+	AutoDownload     types.Bool     `tfsdk:"auto_download"`
+	Train            types.String   `tfsdk:"train"`
+	CurrentVersion   types.String   `tfsdk:"current_version"`
+	AvailableStatus  types.String   `tfsdk:"available_status"`
+	AvailableVersion types.String   `tfsdk:"available_version"`
+	Timeouts         timeouts.Value `tfsdk:"timeouts"`
+}
+
+// UpgradeState migrates v0 state onto the rewritten schema.
+//
+// auto_download maps cleanly onto autocheck: same meaning, renamed by
+// upstream when the update service became a config service.
+//
+// train has NO successor. TrueNAS 26.0 replaced release trains with update
+// profiles, and a stored train name is not a valid profile. It is therefore
+// dropped rather than copied, leaving profile empty so the next refresh
+// adopts whatever the system actually has. Copying it across would produce a
+// plan that tries to set a profile middleware will reject.
+//
+// The old state cannot be trusted for the computed fields either, since the
+// methods that produced them never existed, so they are left empty for the
+// refresh to fill.
+func (r *SystemUpdateResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	v0 := systemUpdateSchemaV0(ctx)
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &v0,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var prior systemUpdateModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				upgraded := SystemUpdateResourceModel{
+					ID:               types.StringValue(systemUpdateSingletonID),
+					Autocheck:        prior.AutoDownload,
+					Profile:          types.StringValue(""),
+					Status:           types.StringValue(""),
+					CurrentVersion:   types.StringValue(""),
+					AvailableVersion: types.StringValue(""),
+					Timeouts:         prior.Timeouts,
+				}
+				if upgraded.Autocheck.IsNull() || upgraded.Autocheck.IsUnknown() {
+					upgraded.Autocheck = types.BoolValue(false)
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, upgraded)...)
+			},
+		},
+	}
 }

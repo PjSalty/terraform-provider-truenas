@@ -223,6 +223,10 @@ func userUpdateRecorder(ctx context.Context, t *testing.T, entity map[string]int
 	t.Helper()
 	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
+		case "system.info":
+			// The webshare attribute is version-gated, so the client asks
+			// what this server is before writing it.
+			return map[string]interface{}{"version": "26.0.0-BETA.2"}, nil
 		case "user.update":
 			if len(params) > 1 {
 				if m, ok := params[1].(map[string]interface{}); ok {
@@ -342,6 +346,8 @@ func userCreateRecorder(ctx context.Context, t *testing.T, entity map[string]int
 	t.Helper()
 	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch method {
+		case "system.info":
+			return map[string]interface{}{"version": "26.0.0-BETA.2"}, nil
 		case "user.create":
 			if len(params) > 0 {
 				if m, ok := params[0].(map[string]interface{}); ok {
@@ -404,5 +410,251 @@ func TestUserResource_Create_passwordlessOmitsTheKey(t *testing.T) {
 	}
 	if got["password_disabled"] != true {
 		t.Errorf("password_disabled = %v, want true", got["password_disabled"])
+	}
+}
+
+// --- webshare (TrueNAS 26.0) ---
+
+// userVersionRecorder answers system.info with the given release and records
+// the user.update body.
+func userVersionRecorder(ctx context.Context, t *testing.T, version string, entity map[string]interface{}, got *map[string]interface{}) *wsclient.Client {
+	t.Helper()
+	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		switch method {
+		case "system.info":
+			return map[string]interface{}{"version": version}, nil
+		case "user.update":
+			if len(params) > 1 {
+				if m, ok := params[1].(map[string]interface{}); ok {
+					*got = m
+				}
+			}
+			return entity, nil
+		case "user.get_instance":
+			return entity, nil
+		case "user.query":
+			return []interface{}{entity}, nil
+		}
+		return nil, &wsclient.RPCError{Code: wsclient.CodeMethodNotFound, Message: method}
+	})
+}
+
+func webshareUserEntity(webshare interface{}) map[string]interface{} {
+	e := map[string]interface{}{
+		"id": 1, "uid": 1000, "username": "svc", "full_name": "svc",
+		"email": nil, "home": "/var/empty", "shell": "/usr/sbin/nologin",
+		"locked": false, "smb": false, "password_disabled": false,
+		"group":  map[string]interface{}{"id": 100, "bsdgrp_gid": 100},
+		"groups": []int{}, "sudo_commands": []string{}, "sshpubkey": nil,
+	}
+	if webshare != nil {
+		e["webshare"] = webshare
+	}
+	return e
+}
+
+// On 26+ webshare must ALWAYS be sent. Omitting it is what let middleware's
+// handle_webshare inherit the stale pre-update value and re-add the group,
+// producing "inconsistent result after apply" on every run.
+func TestUserResource_Update_alwaysSendsWebshareOn26(t *testing.T) {
+	ctx := context.Background()
+	var got map[string]interface{}
+	c := userVersionRecorder(ctx, t, "26.0.0-BETA.2", webshareUserEntity(false), &got)
+	r := &UserResource{client: c}
+	sch := schemaOf(t, ctx, r)
+
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("old"),
+	})
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("new"),
+		"webshare": tftypes.NewValue(tftypes.Bool, false),
+	})
+	uResp := &resource.UpdateResponse{State: st}
+	r.Update(ctx, resource.UpdateRequest{State: st, Plan: plan}, uResp)
+	if uResp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", uResp.Diagnostics)
+	}
+	v, present := got["webshare"]
+	if !present {
+		t.Fatalf("webshare omitted on a 26.0 server; the group would be re-added: %v", got)
+	}
+	if v != false {
+		t.Errorf("webshare = %v, want false", v)
+	}
+}
+
+// On 25.10 the field does not exist and the models forbid extra keys, so
+// sending it would be a hard ValidationError.
+func TestUserResource_Update_neverSendsWebsharePre26(t *testing.T) {
+	ctx := context.Background()
+	var got map[string]interface{}
+	c := userVersionRecorder(ctx, t, "25.10.4", webshareUserEntity(nil), &got)
+	r := &UserResource{client: c}
+	sch := schemaOf(t, ctx, r)
+
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("old"),
+	})
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("new"),
+	})
+	uResp := &resource.UpdateResponse{State: st}
+	r.Update(ctx, resource.UpdateRequest{State: st, Plan: plan}, uResp)
+	if uResp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", uResp.Diagnostics)
+	}
+	if _, present := got["webshare"]; present {
+		t.Errorf("webshare sent to a 25.10 server, which rejects unknown keys: %v", got)
+	}
+}
+
+// Asking for webshare on a server that cannot do it is a clear refusal, not a
+// silently ignored attribute.
+func TestUserResource_Update_webshareTrueOnOldServerIsAnError(t *testing.T) {
+	ctx := context.Background()
+	var got map[string]interface{}
+	c := userVersionRecorder(ctx, t, "25.10.4", webshareUserEntity(nil), &got)
+	r := &UserResource{client: c}
+	sch := schemaOf(t, ctx, r)
+
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("svc"),
+	})
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("svc"),
+		"webshare": tftypes.NewValue(tftypes.Bool, true),
+	})
+	uResp := &resource.UpdateResponse{State: st}
+	r.Update(ctx, resource.UpdateRequest{State: st, Plan: plan}, uResp)
+	if !uResp.Diagnostics.HasError() {
+		t.Fatal("webshare = true was accepted against a 25.10 server")
+	}
+}
+
+// A server without the field must read back as false, not unknown, or every
+// plan on 25.10 shows a phantom diff.
+func TestUserResource_Read_webshareAbsentReadsFalse(t *testing.T) {
+	ctx := context.Background()
+	var got map[string]interface{}
+	c := userVersionRecorder(ctx, t, "25.10.4", webshareUserEntity(nil), &got)
+	r := &UserResource{client: c}
+	sch := schemaOf(t, ctx, r)
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("svc"),
+	})
+	rResp := &resource.ReadResponse{State: st}
+	r.Read(ctx, resource.ReadRequest{State: st}, rResp)
+	if rResp.Diagnostics.HasError() {
+		t.Fatalf("Read: %v", rResp.Diagnostics)
+	}
+	var m UserResourceModel
+	rResp.State.Get(ctx, &m)
+	if m.Webshare.IsNull() || m.Webshare.IsUnknown() {
+		t.Error("webshare read back as null/unknown; every plan would show a phantom diff")
+	}
+	if m.Webshare.ValueBool() {
+		t.Error("webshare read back true from a server that has no such field")
+	}
+}
+
+func TestUserResource_Read_webshareTrueRoundTrips(t *testing.T) {
+	ctx := context.Background()
+	var got map[string]interface{}
+	c := userVersionRecorder(ctx, t, "26.0.0-BETA.2", webshareUserEntity(true), &got)
+	r := &UserResource{client: c}
+	sch := schemaOf(t, ctx, r)
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("svc"),
+	})
+	rResp := &resource.ReadResponse{State: st}
+	r.Read(ctx, resource.ReadRequest{State: st}, rResp)
+	if rResp.Diagnostics.HasError() {
+		t.Fatalf("Read: %v", rResp.Diagnostics)
+	}
+	var m UserResourceModel
+	rResp.State.Get(ctx, &m)
+	if !m.Webshare.ValueBool() {
+		t.Error("webshare = true was not read back from the wire")
+	}
+}
+
+// A version-probe failure must fail the operation, not fall through to a
+// guessed wire shape.
+func TestUserResource_webshareProbeFailureFailsCreateAndUpdate(t *testing.T) {
+	ctx := context.Background()
+	mk := func() *wsclient.Client {
+		return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+			if method == "system.info" {
+				return nil, &wsclient.RPCError{Code: wsclient.CodeInternalError, Message: "boom"}
+			}
+			return webshareUserEntity(false), nil
+		})
+	}
+
+	r := &UserResource{client: mk()}
+	sch := schemaOf(t, ctx, r)
+
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"username": str("svc"), "full_name": str("svc"), "password": str("hunter2"),
+	})
+	cResp := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
+	r.Create(ctx, resource.CreateRequest{Plan: plan}, cResp)
+	if !cResp.Diagnostics.HasError() {
+		t.Error("Create proceeded without knowing the server version")
+	}
+
+	r2 := &UserResource{client: mk()}
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("a"),
+	})
+	uplan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("b"),
+	})
+	uResp := &resource.UpdateResponse{State: st}
+	r2.Update(ctx, resource.UpdateRequest{State: st, Plan: uplan}, uResp)
+	if !uResp.Diagnostics.HasError() {
+		t.Error("Update proceeded without knowing the server version")
+	}
+}
+
+// The API call failing must surface as a diagnostic, distinct from the
+// version-probe failure above.
+func TestUserResource_createAndUpdateAPIErrorsSurface(t *testing.T) {
+	ctx := context.Background()
+	mk := func(failMethod string) *wsclient.Client {
+		return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+			switch method {
+			case "system.info":
+				return map[string]interface{}{"version": "26.0.0-BETA.2"}, nil
+			case failMethod:
+				return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "boom"}
+			}
+			return webshareUserEntity(false), nil
+		})
+	}
+
+	r := &UserResource{client: mk("user.create")}
+	sch := schemaOf(t, ctx, r)
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"username": str("svc"), "full_name": str("svc"), "password": str("hunter2"),
+	})
+	cResp := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
+	r.Create(ctx, resource.CreateRequest{Plan: plan}, cResp)
+	if !cResp.Diagnostics.HasError() {
+		t.Error("a failed user.create was reported as success")
+	}
+
+	r2 := &UserResource{client: mk("user.update")}
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("a"),
+	})
+	uplan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("1"), "username": str("svc"), "full_name": str("b"),
+	})
+	uResp := &resource.UpdateResponse{State: st}
+	r2.Update(ctx, resource.UpdateRequest{State: st, Plan: uplan}, uResp)
+	if !uResp.Diagnostics.HasError() {
+		t.Error("a failed user.update was reported as success")
 	}
 }

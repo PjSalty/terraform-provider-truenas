@@ -61,6 +61,10 @@ The following arguments are supported:
 * `password` - (Optional) The password for the user. Marked sensitive. Omit it
   and set `password_disabled = true` for an account that should have no
   password login. Exactly one of the two is required on create.
+* `webshare` - (Optional) Allow this account to access WebShare shares.
+  Requires TrueNAS 26.0 or newer; setting it on an older server is an error.
+  Setting it adds the user to the builtin `truenas_webshare` group. On TrueNAS
+  below 26.0 the field does not exist and always reads as `false`.
 * `password_disabled` - (Optional) Disable password authentication for this
   user. Default: `false`. Cannot be combined with `password`, and TrueNAS
   rejects it for SMB users because Samba needs a password to derive the NT
