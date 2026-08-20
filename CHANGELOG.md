@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `truenas_service` now drives services through `service.control` instead of
+  `service.start` / `service.stop`. Those two methods were removed from the
+  public API in TrueNAS 26.0: from 25.10.0 they carried
+  `removed_in="v26.04"`, and on 26.0 they are `@private`, which registers
+  them on no endpoint at all. Pinning an older API version does not bring
+  them back, so this was a hard break on 26.0 rather than a deprecation.
+
+  No configuration changes are required, and no supported TrueNAS version
+  loses support. `service.control` only exists from 25.10.0 onward, so on
+  25.04 and older the provider falls back to `service.start` /
+  `service.stop`, which is all those releases have. The fallback triggers
+  only on a method-not-found response; any other error surfaces as-is
+  rather than being retried against a second method.
+
+  | TrueNAS | `service.control` | `service.start` / `.stop` | provider uses |
+  | --- | --- | --- | --- |
+  | 25.04 and older | absent | present | legacy |
+  | 25.10.x | present | present (deprecated) | `service.control` |
+  | 26.0, 27.0 | present | `@private` | `service.control` |
+
+- `truenas_smb_config` gained `minimum_protocol` (`SMB1` / `SMB2` / `SMB3`).
+  TrueNAS 26.0 replaced the `enable_smb1` boolean with this tri-state field.
+  Both sides are strict (`extra="forbid"`), so the wrong key is a hard
+  validation error in either direction: `minimum_protocol` on 25.10 fails
+  exactly as hard as `enable_smb1` on 26.0. The provider now detects which
+  key the server speaks and sends that one, so `minimum_protocol` works on
+  every supported version.
+
+  `enable_smb1` is deprecated but still accepted and stays in sync with
+  `minimum_protocol` automatically; setting both is an error. The mapping
+  (`true` = `SMB1`, `false` = `SMB2`) is middleware's own, taken from its
+  26.0 data migration. `SMB3` has no legacy equivalent, so requesting it
+  against TrueNAS 25.10 or older is a clear error rather than a silent
+  downgrade to `SMB2`.
+
+- `truenas_user` gained `password_disabled`, and `password` is now Optional
+  rather than Required. TrueNAS models passwordless accounts with a real
+  `password_disabled` column, but the provider forced a password onto every
+  managed user, so a service account that only owns files (an NFS `mapall`
+  user, say) could not stay passwordless: any apply gave it a password.
+
+  Exactly one of `password` or `password_disabled = true` is required when
+  creating a user. The two cannot be combined, and `password_disabled`
+  cannot be set on an SMB user, both of which TrueNAS rejects server-side
+  and the provider now catches at plan time with an attribute path. Turning
+  `password_disabled` back off requires supplying a `password` in the same
+  change, otherwise the account would claim password login while its stored
+  hash is still `*`.
+
+  `password_disabled` is also exposed on the `truenas_user` data source.
+
+### Fixed
+
+- Importing a passwordless `truenas_user` no longer requires inventing a
+  password for it. `ImportState` used to seed `password` with an empty
+  string, which then failed the non-empty validator on the next plan, so
+  the first apply after an import set a password on an account that
+  deliberately had none.
+
+- `truenas_smb_config` no longer sends `enable_smb1` on every apply. The
+  attribute carried a static `false` default, which made its planned value
+  always known, so the update body included the key even for configs that
+  never mentioned it, and the reset path sent it unconditionally. On
+  TrueNAS 26.0 that key is rejected outright, so a resource nobody had
+  customised would fail both update and destroy. The default is gone and
+  the protocol key is only sent when a protocol is actually requested.
+
+- A service that failed to start or stop no longer reports a successful
+  apply. `service.control` (and `service.start` before it) defaults
+  `options.silent` to `true`, which answers a failed operation with a
+  *successful* job whose result is `false` rather than with an error. The
+  previous code discarded that bool, so a service that never came up still
+  produced a clean apply and Terraform recorded it as running. The provider
+  now sends `silent: false` so middleware raises the real diagnostic, and
+  additionally treats a `false` result as an error.
+
 ## [2.4.1] - 2026-07-27
 
 ### Security

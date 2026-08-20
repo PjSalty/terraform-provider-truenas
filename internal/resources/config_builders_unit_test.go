@@ -104,12 +104,13 @@ func TestSMBConfigResource_BuildUpdateRequest(t *testing.T) {
 	})
 	t.Run("null fields omitted", func(t *testing.T) {
 		plan := &SMBConfigResourceModel{
-			NetbiosName: types.StringNull(),
-			Workgroup:   types.StringNull(),
-			EnableSMB1:  types.BoolNull(),
+			NetbiosName:     types.StringNull(),
+			Workgroup:       types.StringNull(),
+			EnableSMB1:      types.BoolNull(),
+			MinimumProtocol: types.StringNull(),
 		}
 		req := r.buildUpdateRequest(plan)
-		if req.NetbiosName != nil || req.Workgroup != nil || req.EnableSMB1 != nil {
+		if req.NetbiosName != nil || req.Workgroup != nil || req.MinimumProtocol != nil {
 			t.Errorf("null fields should be skipped")
 		}
 	})
@@ -377,7 +378,7 @@ func TestSMBConfigResource_MapResponseToModel(t *testing.T) {
 	cases := []*truenas.SMBConfig{
 		{NetbiosName: "TRUENAS", Workgroup: "WORKGROUP"},
 		{NetbiosName: "FS01", Workgroup: "CORP", Description: "file server"},
-		{NetbiosName: "LEGACY", Workgroup: "OLD", EnableSMB1: true},
+		{NetbiosName: "LEGACY", Workgroup: "OLD", Protocol: truenas.SMBProtocolSMB1, SMB1Enabled: true},
 		{NetbiosName: "MAC", Workgroup: "WG", AAPLExtensions: true, UnixCharset: "UTF-8"},
 		{NetbiosName: "GUEST", Workgroup: "WG", Guest: "nobody", Filemask: "0775", Dirmask: "0775"},
 	}
@@ -391,8 +392,11 @@ func TestSMBConfigResource_MapResponseToModel(t *testing.T) {
 			if m.Workgroup.ValueString() != cfg.Workgroup {
 				t.Errorf("case %d: Workgroup mismatch", i)
 			}
-			if m.EnableSMB1.ValueBool() != cfg.EnableSMB1 {
+			if m.EnableSMB1.ValueBool() != cfg.SMB1Enabled {
 				t.Errorf("case %d: EnableSMB1 mismatch", i)
+			}
+			if m.MinimumProtocol.ValueString() != cfg.Protocol {
+				t.Errorf("case %d: MinimumProtocol mismatch", i)
 			}
 			if m.AAPLExtensions.ValueBool() != cfg.AAPLExtensions {
 				t.Errorf("case %d: AAPLExtensions mismatch", i)

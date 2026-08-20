@@ -33,9 +33,10 @@ import (
 )
 
 var (
-	_ resource.Resource                = &UserResource{}
-	_ resource.ResourceWithImportState = &UserResource{}
-	_ resource.ResourceWithModifyPlan  = &UserResource{}
+	_ resource.Resource                   = &UserResource{}
+	_ resource.ResourceWithImportState    = &UserResource{}
+	_ resource.ResourceWithModifyPlan     = &UserResource{}
+	_ resource.ResourceWithValidateConfig = &UserResource{}
 )
 
 // UserResource manages a TrueNAS local user.
@@ -45,22 +46,23 @@ type UserResource struct {
 
 // UserResourceModel describes the resource data model.
 type UserResourceModel struct {
-	ID           types.String   `tfsdk:"id"`
-	UID          types.Int64    `tfsdk:"uid"`
-	Username     types.String   `tfsdk:"username"`
-	FullName     types.String   `tfsdk:"full_name"`
-	Email        types.String   `tfsdk:"email"`
-	Password     types.String   `tfsdk:"password"`
-	Group        types.Int64    `tfsdk:"group"`
-	GroupCreate  types.Bool     `tfsdk:"group_create"`
-	Groups       types.Set      `tfsdk:"groups"`
-	Home         types.String   `tfsdk:"home"`
-	Shell        types.String   `tfsdk:"shell"`
-	Locked       types.Bool     `tfsdk:"locked"`
-	SMB          types.Bool     `tfsdk:"smb"`
-	SSHPubKey    types.String   `tfsdk:"sshpubkey"`
-	SudoCommands types.List     `tfsdk:"sudo_commands"`
-	Timeouts     timeouts.Value `tfsdk:"timeouts"`
+	ID               types.String   `tfsdk:"id"`
+	UID              types.Int64    `tfsdk:"uid"`
+	Username         types.String   `tfsdk:"username"`
+	FullName         types.String   `tfsdk:"full_name"`
+	Email            types.String   `tfsdk:"email"`
+	Password         types.String   `tfsdk:"password"`
+	PasswordDisabled types.Bool     `tfsdk:"password_disabled"`
+	Group            types.Int64    `tfsdk:"group"`
+	GroupCreate      types.Bool     `tfsdk:"group_create"`
+	Groups           types.Set      `tfsdk:"groups"`
+	Home             types.String   `tfsdk:"home"`
+	Shell            types.String   `tfsdk:"shell"`
+	Locked           types.Bool     `tfsdk:"locked"`
+	SMB              types.Bool     `tfsdk:"smb"`
+	SSHPubKey        types.String   `tfsdk:"sshpubkey"`
+	SudoCommands     types.List     `tfsdk:"sudo_commands"`
+	Timeouts         timeouts.Value `tfsdk:"timeouts"`
 }
 
 func NewUserResource() resource.Resource {
@@ -122,13 +124,26 @@ func (r *UserResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 					stringvalidator.LengthBetween(0, 253),
 				},
 			},
+			// Optional, not Required: a service account that only owns
+			// files (an NFS mapall user, for instance) is legitimately
+			// passwordless, and TrueNAS models that with
+			// password_disabled. LengthAtLeast still rejects an explicit
+			// "", because framework-validators short-circuits on null.
 			"password": schema.StringAttribute{
-				Description: "The password for the user.",
-				Required:    true,
-				Sensitive:   true,
+				Description: "The password for the user. Omit it and set `password_disabled = true` " +
+					"for an account that should have no password login.",
+				Optional:  true,
+				Sensitive: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
 				},
+			},
+			"password_disabled": schema.BoolAttribute{
+				Description: "Disable password authentication for this user. Cannot be combined with " +
+					"`password`, and TrueNAS rejects it for SMB users.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
 			},
 			"group": schema.Int64Attribute{
 				Description: "The primary group ID. If not specified and group_create is true, a group matching the username will be created.",
@@ -230,13 +245,21 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
+	passwordDisabled := plan.PasswordDisabled.ValueBool()
 	createReq := &truenas.UserCreateRequest{
-		Username:    plan.Username.ValueString(),
-		FullName:    plan.FullName.ValueString(),
-		Password:    plan.Password.ValueString(),
-		GroupCreate: plan.GroupCreate.ValueBool(),
-		Locked:      plan.Locked.ValueBool(),
-		SMB:         plan.SMB.ValueBool(),
+		Username:         plan.Username.ValueString(),
+		FullName:         plan.FullName.ValueString(),
+		GroupCreate:      plan.GroupCreate.ValueBool(),
+		Locked:           plan.Locked.ValueBool(),
+		SMB:              plan.SMB.ValueBool(),
+		PasswordDisabled: &passwordDisabled,
+	}
+	// The key is omitted entirely when no password was given. Sending ""
+	// would be rejected by the NonEmptyString model, and sending it
+	// alongside password_disabled is refused outright by middleware.
+	if !plan.Password.IsNull() && !plan.Password.IsUnknown() {
+		pw := plan.Password.ValueString()
+		createReq.Password = &pw
 	}
 
 	if !plan.Email.IsNull() && plan.Email.ValueString() != "" {
@@ -364,8 +387,16 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		SMB:      &smb,
 	}
 
-	if !plan.Password.IsNull() {
-		updateReq.Password = plan.Password.ValueString()
+	// Three states, and the difference matters: an omitted key leaves the
+	// stored hash alone, an explicit null wipes it. Omitting the key while
+	// claiming password_disabled would leave the old password working.
+	updatePasswordDisabled := plan.PasswordDisabled.ValueBool()
+	updateReq.PasswordDisabled = &updatePasswordDisabled
+	switch {
+	case updatePasswordDisabled:
+		updateReq.ClearPassword()
+	case !plan.Password.IsNull() && !plan.Password.IsUnknown():
+		updateReq.SetPassword(plan.Password.ValueString())
 	}
 	if !plan.Email.IsNull() && plan.Email.ValueString() != "" {
 		updateReq.Email = plan.Email.ValueString()
@@ -455,6 +486,77 @@ func (r *UserResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 // the blocking rail). See internal/planhelpers/destroy_warning.go.
 func (r *UserResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_user")
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	var plan UserResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+
+	planDisabled := plan.PasswordDisabled.ValueBool()
+	planPasswordSet := !plan.Password.IsNull() && !plan.Password.IsUnknown()
+
+	// Create: middleware answers this with "Password is required"
+	// (account.py). Catching it at plan time means the operator sees it
+	// before anything is created.
+	if req.State.Raw.IsNull() {
+		if !planPasswordSet && !planDisabled {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("password"),
+				"Invalid Password",
+				"Either set password, or set password_disabled = true for an account "+
+					"that should have no password login.",
+			)
+		}
+		return
+	}
+
+	// Update: re-enabling password auth without supplying one would send
+	// password_disabled=false with no password, leaving an account that
+	// claims password login but has unixhash '*'.
+	var state UserResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if state.PasswordDisabled.ValueBool() && !planDisabled && !planPasswordSet {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("password"),
+			"Invalid Password",
+			"This account currently has password_disabled = true. Turning it back off "+
+				"requires setting password at the same time.",
+		)
+	}
+}
+
+// ValidateConfig rejects, at plan time, the two combinations middleware
+// refuses server-side. Doing it here means the operator gets an attribute
+// path instead of an opaque validation error from the API.
+func (r *UserResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config UserResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+
+	if !config.PasswordDisabled.ValueBool() {
+		return
+	}
+
+	// account.py: 'Leave "Password" blank when "Disable password login" is checked.'
+	if !config.Password.IsNull() && !config.Password.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("password"),
+			"Invalid Password",
+			"password cannot be set when password_disabled = true.",
+		)
+	}
+
+	// account.py: 'Password authentication may not be disabled for SMB users.'
+	// Only an explicit smb = true conflicts; leaving it unset takes the
+	// schema default of false and is fine.
+	if !config.SMB.IsNull() && !config.SMB.IsUnknown() && config.SMB.ValueBool() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("password_disabled"),
+			"Invalid Password Disabled",
+			"password_disabled cannot be true for an SMB user; TrueNAS requires a password "+
+				"to compute the NT hash SMB authentication needs.",
+		)
+	}
 }
 
 func (r *UserResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -462,8 +564,11 @@ func (r *UserResource) ImportState(ctx context.Context, req resource.ImportState
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("User ID must be numeric: %s", err))
 		return
 	}
+	// No password seed. Writing "" here used to fail LengthAtLeast(1) on
+	// the next plan, so importing a passwordless account forced the
+	// operator to invent a password for it. Leaving it null lets the
+	// follow-up Read fill password_disabled from the wire instead.
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("password"), types.StringValue(""))...)
 }
 
 func (r *UserResource) mapResponseToModel(_ context.Context, user *truenas.User, model *UserResourceModel) {
@@ -481,6 +586,7 @@ func (r *UserResource) mapResponseToModel(_ context.Context, user *truenas.User,
 	model.Home = types.StringValue(user.Home)
 	model.Shell = types.StringValue(user.Shell)
 	model.Locked = types.BoolValue(user.Locked)
+	model.PasswordDisabled = types.BoolValue(user.PasswordDisabled)
 	model.SMB = types.BoolValue(user.SMB)
 	model.Group = types.Int64Value(int64(user.Group.ID))
 
