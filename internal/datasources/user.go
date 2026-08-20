@@ -20,17 +20,18 @@ type UserDataSource struct {
 
 // UserDataSourceModel describes the data source model.
 type UserDataSourceModel struct {
-	ID       types.Int64  `tfsdk:"id"`
-	Username types.String `tfsdk:"username"`
-	FullName types.String `tfsdk:"full_name"`
-	UID      types.Int64  `tfsdk:"uid"`
-	GID      types.Int64  `tfsdk:"gid"`
-	Home     types.String `tfsdk:"home"`
-	Shell    types.String `tfsdk:"shell"`
-	Locked   types.Bool   `tfsdk:"locked"`
-	SMB      types.Bool   `tfsdk:"smb"`
-	Email    types.String `tfsdk:"email"`
-	Builtin  types.Bool   `tfsdk:"builtin"`
+	ID               types.Int64  `tfsdk:"id"`
+	Username         types.String `tfsdk:"username"`
+	FullName         types.String `tfsdk:"full_name"`
+	UID              types.Int64  `tfsdk:"uid"`
+	GID              types.Int64  `tfsdk:"gid"`
+	Home             types.String `tfsdk:"home"`
+	Shell            types.String `tfsdk:"shell"`
+	Locked           types.Bool   `tfsdk:"locked"`
+	PasswordDisabled types.Bool   `tfsdk:"password_disabled"`
+	SMB              types.Bool   `tfsdk:"smb"`
+	Email            types.String `tfsdk:"email"`
+	Builtin          types.Bool   `tfsdk:"builtin"`
 }
 
 func NewUserDataSource() datasource.DataSource {
@@ -71,6 +72,10 @@ func (d *UserDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 			},
 			"shell": schema.StringAttribute{
 				Description: "The login shell.",
+				Computed:    true,
+			},
+			"password_disabled": schema.BoolAttribute{
+				Description: "Whether password authentication is disabled for this user.",
 				Computed:    true,
 			},
 			"locked": schema.BoolAttribute{
@@ -134,6 +139,7 @@ func (d *UserDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	config.Home = types.StringValue(user.Home)
 	config.Shell = types.StringValue(user.Shell)
 	config.Locked = types.BoolValue(user.Locked)
+	config.PasswordDisabled = types.BoolValue(user.PasswordDisabled)
 	config.SMB = types.BoolValue(user.SMB)
 	config.Builtin = types.BoolValue(user.Builtin)
 

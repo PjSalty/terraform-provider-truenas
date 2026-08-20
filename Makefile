@@ -161,6 +161,15 @@ lint:
 tidy:
 	$(GO) mod tidy
 
+## api-drift: Report JSON-RPC methods this provider calls that a newer
+##            TrueNAS API version removes. Read-only; clones the upstream
+##            API definitions to a temp dir. Needs network, no TrueNAS.
+##            This is the check that service.start/service.stop needed:
+##            they were removed in 26.0 and nothing noticed, because a
+##            removal is only visible against upstream's definitions.
+api-drift:
+	./scripts/api-drift.sh
+
 ## docs: Validate Terraform Registry documentation layout. Non-destructive.
 ## Prefer this over `docs-regen`; the hand-authored docs carry custom
 ## subcategory and prose that `tfplugindocs generate` strips.

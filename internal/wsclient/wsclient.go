@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
 
 // DefaultRequestTimeout is the per-call deadline used when a CallOptions
@@ -120,6 +122,13 @@ type Client struct {
 	// nextID is a monotonic counter for JSON-RPC request IDs. Atomic
 	// because Call() is concurrent.
 	nextID atomic.Uint64
+
+	// smbDialectCache remembers whether this server speaks enable_smb1
+	// (25.10 and older) or minimum_protocol (26.0 and newer), so an
+	// Update does not have to re-probe smb.config every time. Zero value
+	// is SMBDialectUnknown, which forces the probe.
+	smbDialectCache types.SMBDialect
+	smbDialectMu    sync.Mutex
 
 	// pending maps an outstanding request ID to the channel that the
 	// receive loop posts the response into. Access only with

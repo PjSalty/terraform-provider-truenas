@@ -20,6 +20,7 @@ func TestGetSMBConfig(t *testing.T) {
 			"id":          1,
 			"netbiosname": "truenas",
 			"workgroup":   "WORKGROUP",
+			"enable_smb1": false,
 		}, nil
 	})
 	c, _ := ts.NewClient(ctx)
@@ -62,10 +63,15 @@ func TestUpdateSMBConfig(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	ts := NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *RPCError) {
-		if method != "smb.update" {
-			return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
+		// smb.config answers the dialect probe; smb.update returns the
+		// full entry, and both now carry a protocol key.
+		switch method {
+		case "smb.config":
+			return map[string]interface{}{"id": 1, "netbiosname": "truenas", "enable_smb1": false}, nil
+		case "smb.update":
+			return map[string]interface{}{"id": 1, "netbiosname": "newname", "enable_smb1": false}, nil
 		}
-		return map[string]interface{}{"id": 1, "netbiosname": "newname"}, nil
+		return nil, &RPCError{Code: CodeMethodNotFound, Message: method}
 	})
 	c, _ := ts.NewClient(ctx)
 	name := "newname"

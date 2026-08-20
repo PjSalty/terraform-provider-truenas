@@ -118,6 +118,26 @@ func (e *RPCError) errnameAndReason() (errname, reason string) {
 	return d.ErrName, d.Reason
 }
 
+// isMethodUnknown reports whether err is specifically "middleware has
+// no such JSON-RPC method", and nothing else.
+//
+// IsNotFound below also returns true for a missing RESOURCE (ENOENT and
+// friends), which is the right call for a Read path but the wrong one
+// for deciding whether an API method exists on this TrueNAS version. A
+// version fallback keyed on IsNotFound would fire when a service simply
+// did not exist, silently retrying against a different method and
+// reporting whatever that returned.
+func isMethodUnknown(err error) bool {
+	if err == nil {
+		return false
+	}
+	var rpcErr *RPCError
+	if !errors.As(err, &rpcErr) {
+		return false
+	}
+	return rpcErr.Code == CodeMethodNotFound
+}
+
 // IsNotFound reports whether err signals "the resource does not exist
 // on the server", the WebSocket equivalent of HTTP 404. Resources
 // call this from their Read path to drop a missing instance from
