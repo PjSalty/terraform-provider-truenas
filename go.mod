@@ -2,7 +2,7 @@ module github.com/PjSalty/terraform-provider-truenas
 
 go 1.25.9
 
-toolchain go1.25.12
+toolchain go1.25.13
 
 require (
 	github.com/coder/websocket v1.8.14
