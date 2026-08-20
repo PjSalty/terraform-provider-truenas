@@ -38,6 +38,7 @@ output "root_uid" {
 - `home` (String) The home directory.
 - `id` (Number) The user ID.
 - `locked` (Boolean) Whether the user account is locked.
+- `webshare` (Boolean) Whether this account may access WebShare shares. Always `false` on TrueNAS below 26.0.
 - `password_disabled` (Boolean) Whether password authentication is disabled for this user.
 - `shell` (String) The login shell.
 - `smb` (Boolean) Whether the user has SMB access.

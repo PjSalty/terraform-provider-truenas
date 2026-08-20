@@ -29,6 +29,7 @@ type UserDataSourceModel struct {
 	Shell            types.String `tfsdk:"shell"`
 	Locked           types.Bool   `tfsdk:"locked"`
 	PasswordDisabled types.Bool   `tfsdk:"password_disabled"`
+	Webshare         types.Bool   `tfsdk:"webshare"`
 	SMB              types.Bool   `tfsdk:"smb"`
 	Email            types.String `tfsdk:"email"`
 	Builtin          types.Bool   `tfsdk:"builtin"`
@@ -72,6 +73,10 @@ func (d *UserDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 			},
 			"shell": schema.StringAttribute{
 				Description: "The login shell.",
+				Computed:    true,
+			},
+			"webshare": schema.BoolAttribute{
+				Description: "Whether this account may access WebShare shares. Always false on TrueNAS below 26.0, which has no such field.",
 				Computed:    true,
 			},
 			"password_disabled": schema.BoolAttribute{
@@ -140,6 +145,7 @@ func (d *UserDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	config.Shell = types.StringValue(user.Shell)
 	config.Locked = types.BoolValue(user.Locked)
 	config.PasswordDisabled = types.BoolValue(user.PasswordDisabled)
+	config.Webshare = types.BoolValue(user.Webshare != nil && *user.Webshare)
 	config.SMB = types.BoolValue(user.SMB)
 	config.Builtin = types.BoolValue(user.Builtin)
 

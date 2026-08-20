@@ -48,8 +48,8 @@ func TestProperty_MarshalRoundTripStable(t_ *testing.T) {
 		&t.RsyncTask{}, &t.SMBConfig{}, &t.SMBShare{}, &t.SSHConfig{},
 		&t.Schedule{}, &t.ScrubTask{}, &t.Service{}, &t.SnapshotTask{},
 		&t.SNMPConfig{}, &t.StaticRoute{}, &t.SystemDataset{},
-		&t.SystemInfo{}, &t.UpdateTrains{}, &t.UpdateTrainInfo{},
-		&t.UpdateCheckResult{}, &t.Tunable{}, &t.UPSConfig{},
+		&t.SystemInfo{}, &t.UpdateConfig{}, &t.UpdateStatus{},
+		&t.UpdateProfileChoice{}, &t.Tunable{}, &t.UPSConfig{},
 		&t.User{}, &t.VM{}, &t.VMDevice{}, &t.VMware{},
 	}
 

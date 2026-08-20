@@ -4,22 +4,26 @@ import "encoding/json"
 
 // User represents a local user in TrueNAS.
 type User struct {
-	ID               int       `json:"id"`
-	UID              int       `json:"uid"`
-	Username         string    `json:"username"`
-	FullName         string    `json:"full_name"`
-	Email            *string   `json:"email"`
-	Home             string    `json:"home"`
-	Shell            string    `json:"shell"`
-	Builtin          bool      `json:"builtin"`
-	Locked           bool      `json:"locked"`
-	SMB              bool      `json:"smb"`
-	SSHPubKey        *string   `json:"sshpubkey"`
-	PasswordDisabled bool      `json:"password_disabled"`
-	Group            UserGroup `json:"group"`
-	Groups           []int     `json:"groups"`
-	SudoCommands     []string  `json:"sudo_commands"`
-	SudoCommandsNP   []string  `json:"sudo_commands_nopasswd"`
+	ID               int     `json:"id"`
+	UID              int     `json:"uid"`
+	Username         string  `json:"username"`
+	FullName         string  `json:"full_name"`
+	Email            *string `json:"email"`
+	Home             string  `json:"home"`
+	Shell            string  `json:"shell"`
+	Builtin          bool    `json:"builtin"`
+	Locked           bool    `json:"locked"`
+	SMB              bool    `json:"smb"`
+	SSHPubKey        *string `json:"sshpubkey"`
+	PasswordDisabled bool    `json:"password_disabled"`
+	// Webshare is new in TrueNAS 26.0 and absent before it, so it is a
+	// pointer: nil distinguishes "this server has no such field" from
+	// "the server said false".
+	Webshare       *bool     `json:"webshare"`
+	Group          UserGroup `json:"group"`
+	Groups         []int     `json:"groups"`
+	SudoCommands   []string  `json:"sudo_commands"`
+	SudoCommandsNP []string  `json:"sudo_commands_nopasswd"`
 }
 
 // UserGroup represents the primary group of a user.
@@ -41,6 +45,7 @@ type UserCreateRequest struct {
 	// NonEmptyString model.
 	Password         *string  `json:"password,omitempty"`
 	PasswordDisabled *bool    `json:"password_disabled,omitempty"`
+	Webshare         *bool    `json:"webshare,omitempty"`
 	UID              int      `json:"uid,omitempty"`
 	Group            int      `json:"group,omitempty"`
 	GroupCreate      bool     `json:"group_create"`
@@ -73,6 +78,7 @@ type UserUpdateRequest struct {
 	// ClearPassword rather than assigning this directly.
 	Password         json.RawMessage `json:"password,omitempty"`
 	PasswordDisabled *bool           `json:"password_disabled,omitempty"`
+	Webshare         *bool           `json:"webshare,omitempty"`
 	Group            int             `json:"group,omitempty"`
 	Groups           []int           `json:"groups,omitempty"`
 	Home             string          `json:"home,omitempty"`

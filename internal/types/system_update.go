@@ -1,39 +1,65 @@
 package types
 
-import "encoding/json"
-
-// UpdateTrains is the response shape for "update.get_trains", the map of
-// available release trains plus the currently booted train and the train
-// selected for update tracking. The `selected` field is what the provider
-// reconciles against when the user sets `train` on truenas_system_update;
-// `current` is what the box is actually booted on and is surfaced as a
-// read-only computed attribute for drift visibility.
-type UpdateTrains struct {
-	Trains   map[string]UpdateTrainInfo `json:"trains"`
-	Current  string                     `json:"current"`
-	Selected string                     `json:"selected"`
-}
-
-// UpdateTrainInfo is the per-train metadata returned inside UpdateTrains.Trains.
-type UpdateTrainInfo struct {
-	Description string `json:"description"`
-}
-
-// UpdateCheckResult is the response from "update.check_available".
-// Status values documented in the TrueNAS API spec:
-//   - AVAILABLE: an update is available
-//   - UNAVAILABLE: no update available
-//   - REBOOT_REQUIRED: an update has already been applied, waiting for cycle
-//   - HA_UNAVAILABLE: HA is non-functional
+// UpdateConfig is the system update configuration, returned by update.config
+// and update.update.
 //
-// Changes is left as raw JSON because the exact shape is non-stable across
-// TrueNAS releases and the resource does not expose it to users, it is
-// only surfaced indirectly via the computed `available_version` field.
-type UpdateCheckResult struct {
-	Status  string          `json:"status"`
-	Version string          `json:"version,omitempty"`
-	Changes json.RawMessage `json:"changes,omitempty"`
-	Notes   string          `json:"notes,omitempty"`
+// This replaced the train/auto-download surface during the 25.10.0 migration
+// of the update service to a config service. Profile is nullable on the
+// "safe" entry model, so it is a pointer here; middleware only guarantees a
+// value once one has been selected.
+type UpdateConfig struct {
+	ID        int     `json:"id"`
+	Autocheck bool    `json:"autocheck"`
+	Profile   *string `json:"profile"`
+}
+
+// UpdateConfigUpdateRequest is the body for update.update. Both fields are
+// pointers so an unset attribute is omitted rather than sent as a zero value,
+// which would silently turn autocheck off.
+type UpdateConfigUpdateRequest struct {
+	Autocheck *bool   `json:"autocheck,omitempty"`
+	Profile   *string `json:"profile,omitempty"`
+}
+
+// UpdateProfileChoice is one entry of update.profile_choices.
+//
+// Available is the one that matters: middleware rejects selecting a profile
+// that is not available, so the provider checks it rather than letting the
+// apply fail server-side.
+type UpdateProfileChoice struct {
+	Name        string `json:"name"`
+	Footnote    string `json:"footnote"`
+	Description string `json:"description"`
+	Available   bool   `json:"available"`
+}
+
+// UpdateStatus is the response from update.status, which replaced
+// update.check_available.
+//
+// Status and Error are nullable on the wire, hence pointers: a nil Status is
+// "no information", not "no update available".
+type UpdateStatus struct {
+	Code   string              `json:"code"` // NORMAL | ERROR
+	Status *UpdateStatusDetail `json:"status"`
+	Error  *UpdateStatusError  `json:"error"`
+}
+
+// UpdateStatusDetail carries the running and candidate versions.
+type UpdateStatusDetail struct {
+	CurrentVersion UpdateVersionInfo  `json:"current_version"`
+	NewVersion     *UpdateVersionInfo `json:"new_version"`
+}
+
+// UpdateVersionInfo is a version plus the profile it belongs to.
+type UpdateVersionInfo struct {
+	Version string `json:"version"`
+	Profile string `json:"profile"`
+}
+
+// UpdateStatusError is the error detail when Code is ERROR.
+type UpdateStatusError struct {
+	Errname string `json:"errname"`
+	Reason  string `json:"reason"`
 }
 
 // SystemInfo is the shape returned by "system.info". A small subset is
