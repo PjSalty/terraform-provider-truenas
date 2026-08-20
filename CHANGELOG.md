@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Optional `api_version` provider argument (and `TRUENAS_API_VERSION`) pins the
+  WebSocket endpoint to a specific TrueNAS API version instead of
+  `/api/current`. Pinning makes middleware run its `from_previous` /
+  `to_previous` adapters, so fields renamed in a newer TrueNAS are translated
+  server-side rather than arriving in their new shape.
+
+  Deliberately opt-in, not the default. A pin cannot recover a method that went
+  `@private`, and middleware raises when a model is missing from an
+  intermediate version, so switching it on by default would trade known
+  behaviour for unknown on every existing deployment. Unset keeps the exact
+  endpoint every previous release dialled.
+
 ### Changed
 
 - **`truenas_system_update` was rewritten and its schema changed.** It called

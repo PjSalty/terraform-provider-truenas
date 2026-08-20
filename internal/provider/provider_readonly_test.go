@@ -16,7 +16,7 @@ import (
 func TestProvider_Configure_ReadOnlyEnvVar(t *testing.T) {
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(ctx context.Context, baseURL, apiKey, username string, insecure bool) (*wsclient.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey, username, apiVersion string, insecure bool) (*wsclient.Client, error) {
 		return &wsclient.Client{}, nil
 	}
 	cases := []struct {
@@ -68,7 +68,7 @@ func TestProvider_Configure_ReadOnlyEnvVar(t *testing.T) {
 func TestProvider_Configure_ReadOnlyHCLAttribute(t *testing.T) {
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(ctx context.Context, baseURL, apiKey, username string, insecure bool) (*wsclient.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey, username, apiVersion string, insecure bool) (*wsclient.Client, error) {
 		return &wsclient.Client{}, nil
 	}
 	t.Setenv("TRUENAS_URL", "https://hcl.example.com")
@@ -105,7 +105,7 @@ func TestProvider_Configure_ReadOnlyHCLAttribute(t *testing.T) {
 func TestProvider_Configure_ReadOnlyHCLOverridesEnv(t *testing.T) {
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(ctx context.Context, baseURL, apiKey, username string, insecure bool) (*wsclient.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey, username, apiVersion string, insecure bool) (*wsclient.Client, error) {
 		return &wsclient.Client{}, nil
 	}
 	t.Setenv("TRUENAS_URL", "https://hcl.example.com")

@@ -201,7 +201,7 @@ func TestWSURLFromBase(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.in, func(t *testing.T) {
-			got, err := wsURLFromBase(tt.in)
+			got, err := wsURLFromBase(tt.in, "")
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected error for %q", tt.in)
@@ -215,5 +215,59 @@ func TestWSURLFromBase(t *testing.T) {
 				t.Errorf("wsURLFromBase(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
+	}
+}
+
+// Pinning an API version is opt-in: an empty version keeps /api/current,
+// which is what every previous release dialed.
+func TestWSURLFromBase_apiVersionPinning(t *testing.T) {
+	cases := []struct {
+		name       string
+		base       string
+		apiVersion string
+		want       string
+		wantErr    bool
+	}{
+		{"empty keeps current", "https://tn.example.com", "", "wss://tn.example.com/api/current", false},
+		{"pinned with v prefix", "https://tn.example.com", "v25.10.5", "wss://tn.example.com/api/v25.10.5", false},
+		{"pinned without v prefix", "https://tn.example.com", "25.10.5", "wss://tn.example.com/api/v25.10.5", false},
+		{"two-component version", "https://tn.example.com", "26.0", "wss://tn.example.com/api/v26.0", false},
+		{"whitespace trimmed", "https://tn.example.com", "  v26.0  ", "wss://tn.example.com/api/v26.0", false},
+		{"stale v2.0 suffix still stripped", "https://tn.example.com/api/v2.0", "v26.0", "wss://tn.example.com/api/v26.0", false},
+		{"ws scheme honours the pin", "ws://tn.example.com", "v26.0", "ws://tn.example.com/api/v26.0", false},
+		// A typo must fail here rather than becoming a 404 mid-dial.
+		{"rejects garbage", "https://tn.example.com", "latest", "", true},
+		{"rejects path traversal", "https://tn.example.com", "../../etc", "", true},
+		{"rejects a bare word", "https://tn.example.com", "current", "", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := wsURLFromBase(tc.base, tc.apiVersion)
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("expected an error for api_version %q, got %q", tc.apiVersion, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// The pin must survive a reconnect, or a dropped connection silently moves
+// the client back to /api/current and the adapters stop running.
+func TestClient_apiVersionSurvivesReconnect(t *testing.T) {
+	c := &Client{baseURL: "https://tn.example.com", apiVersion: "v26.0"}
+	got, err := wsURLFromBase(c.baseURL, c.apiVersion)
+	if err != nil {
+		t.Fatalf("wsURLFromBase: %v", err)
+	}
+	if got != "wss://tn.example.com/api/v26.0" {
+		t.Errorf("reconnect would dial %q, losing the pin", got)
 	}
 }

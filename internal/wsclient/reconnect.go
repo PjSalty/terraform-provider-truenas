@@ -58,7 +58,7 @@ func (c *Client) reconnectIfNeeded(ctx context.Context) error {
 		"url": c.baseURL,
 	})
 
-	wsURL, err := wsURLFromBase(c.baseURL)
+	wsURL, err := wsURLFromBase(c.baseURL, c.apiVersion)
 	if err != nil {
 		return err
 	}

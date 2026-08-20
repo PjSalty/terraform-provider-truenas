@@ -20,6 +20,7 @@ type providerConfigValues struct {
 	url                tftypes.Value
 	apiKey             tftypes.Value
 	username           tftypes.Value
+	apiVersion         tftypes.Value
 	insecureSkipVerify tftypes.Value
 	readOnly           tftypes.Value
 	destroyProtection  tftypes.Value
@@ -53,10 +54,15 @@ func buildProviderConfig(t *testing.T, p provider.Provider, v providerConfigValu
 	if usernameVal.Type() == nil {
 		usernameVal = nullString()
 	}
+	apiVersionVal := v.apiVersion
+	if apiVersionVal.Type() == nil {
+		apiVersionVal = nullString()
+	}
 	raw := tftypes.NewValue(objType, map[string]tftypes.Value{
 		"url":                  v.url,
 		"api_key":              v.apiKey,
 		"username":             usernameVal,
+		"api_version":          apiVersionVal,
 		"insecure_skip_verify": v.insecureSkipVerify,
 		"read_only":            readOnlyVal,
 		"destroy_protection":   destroyProtectionVal,
@@ -90,7 +96,7 @@ func TestProvider_Schema(t *testing.T) {
 	if resp.Schema.Description == "" {
 		t.Error("Schema description should not be empty")
 	}
-	for _, name := range []string{"url", "api_key", "username", "insecure_skip_verify", "read_only", "destroy_protection", "request_timeout"} {
+	for _, name := range []string{"url", "api_key", "username", "api_version", "insecure_skip_verify", "read_only", "destroy_protection", "request_timeout"} {
 		if _, ok := resp.Schema.Attributes[name]; !ok {
 			t.Errorf("Schema missing attribute %q", name)
 		}
@@ -131,7 +137,7 @@ func TestProvider_Configure_FromConfig(t *testing.T) {
 	// We're testing the config-parsing path, not the dial.
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(ctx context.Context, baseURL, apiKey, username string, insecure bool) (*wsclient.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey, username, apiVersion string, insecure bool) (*wsclient.Client, error) {
 		return &wsclient.Client{}, nil
 	}
 	// Clear env so config values are authoritative.
@@ -165,7 +171,7 @@ func TestProvider_Configure_FromConfig(t *testing.T) {
 func TestProvider_Configure_FromEnv(t *testing.T) {
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(ctx context.Context, baseURL, apiKey, username string, insecure bool) (*wsclient.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey, username, apiVersion string, insecure bool) (*wsclient.Client, error) {
 		return &wsclient.Client{}, nil
 	}
 	t.Setenv("TRUENAS_URL", "https://env.example.com")
@@ -272,7 +278,7 @@ func TestProvider_Configure_ClientError(t *testing.T) {
 
 	original := newClientFn
 	t.Cleanup(func() { newClientFn = original })
-	newClientFn = func(ctx context.Context, baseURL, apiKey, username string, insecure bool) (*wsclient.Client, error) {
+	newClientFn = func(ctx context.Context, baseURL, apiKey, username, apiVersion string, insecure bool) (*wsclient.Client, error) {
 		return nil, fmt.Errorf("forced client failure")
 	}
 
