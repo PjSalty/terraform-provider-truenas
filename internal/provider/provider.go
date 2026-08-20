@@ -28,7 +28,7 @@ var _ provider.Provider = &TrueNASProvider{}
 // SCALE 26 (which removes REST entirely from the upstream API). The
 // constructor takes a ctx for the dial+auth handshake; the lifetime
 // of the resulting *wsclient.Client is independent of that ctx.
-var newClientFn = wsclient.NewWithUsername
+var newClientFn = wsclient.NewWithAPIVersion
 
 // TrueNASProvider implements the TrueNAS SCALE Terraform provider.
 type TrueNASProvider struct {
@@ -40,6 +40,7 @@ type TrueNASProviderModel struct {
 	URL                types.String `tfsdk:"url"`
 	APIKey             types.String `tfsdk:"api_key"`
 	Username           types.String `tfsdk:"username"`
+	APIVersion         types.String `tfsdk:"api_version"`
 	InsecureSkipVerify types.Bool   `tfsdk:"insecure_skip_verify"`
 	ReadOnly           types.Bool   `tfsdk:"read_only"`
 	DestroyProtection  types.Bool   `tfsdk:"destroy_protection"`
@@ -82,6 +83,16 @@ func (p *TrueNASProvider) Schema(_ context.Context, _ provider.SchemaRequest, re
 					"the legacy auth.login_with_api_key, which TrueNAS removes in 27. " +
 					"Set it before upgrading to TrueNAS 27. Can also be set via the " +
 					"TRUENAS_USERNAME environment variable.",
+				Optional: true,
+			},
+			"api_version": schema.StringAttribute{
+				Description: "Pin the TrueNAS API endpoint to a specific version, for example " +
+					"\"v25.10.5\", instead of the default /api/current. Pinning makes middleware " +
+					"run its compatibility adapters, so fields renamed in a newer TrueNAS are " +
+					"translated server-side rather than arriving in their new shape. It cannot " +
+					"recover a method that was removed outright. Leave unset unless you are " +
+					"working around a specific field-level incompatibility. Can also be set via " +
+					"the TRUENAS_API_VERSION environment variable.",
 				Optional: true,
 			},
 			"insecure_skip_verify": schema.BoolAttribute{
@@ -188,6 +199,25 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 		username = config.Username.ValueString()
 	}
 
+	// Resolve api_version from config or environment. Empty means
+	// /api/current, which is the default and what every previous release
+	// dialed. An unknown value is an error for the same reason as username:
+	// falling through as empty would discard TRUENAS_API_VERSION and quietly
+	// use a different endpoint than the operator asked for.
+	apiVersion := os.Getenv("TRUENAS_API_VERSION")
+	switch {
+	case config.APIVersion.IsUnknown():
+		resp.Diagnostics.AddAttributeError(
+			path.Root("api_version"),
+			"Unknown TrueNAS API Version",
+			"The provider cannot choose an API endpoint while api_version is unknown. "+
+				"Set it to a known value, or drop the attribute and use the TRUENAS_API_VERSION "+
+				"environment variable.",
+		)
+	case !config.APIVersion.IsNull():
+		apiVersion = config.APIVersion.ValueString()
+	}
+
 	// Resolve insecure_skip_verify from config or environment
 	insecureSkipVerify := false
 	if v := os.Getenv("TRUENAS_INSECURE_SKIP_VERIFY"); v == "true" || v == "1" {
@@ -204,7 +234,7 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 	// Create the API client. v2.0 ships the JSON-RPC over WebSocket
 	// transport only, the dial+auth handshake runs under the Configure
 	// ctx so a Terraform-side timeout cancels it cleanly.
-	c, err := newClientFn(ctx, url, apiKey, username, insecureSkipVerify)
+	c, err := newClientFn(ctx, url, apiKey, username, apiVersion, insecureSkipVerify)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Create TrueNAS API Client",
