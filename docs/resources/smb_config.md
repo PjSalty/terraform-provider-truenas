@@ -22,7 +22,7 @@ resource "truenas_smb_config" "this" {
   netbiosname = "truenas"
   workgroup   = "WORKGROUP"
   description = "TrueNAS SCALE SMB server"
-  enable_smb1 = false
+  minimum_protocol = "SMB2"
   unixcharset = "UTF-8"
   loglevel    = "MINIMUM"
   syslog      = false
@@ -41,7 +41,21 @@ The following arguments are supported:
 * `netbiosname` - (Optional) NetBIOS name of the server. Default: `truenas`.
 * `workgroup` - (Optional) Windows workgroup name. Default: `WORKGROUP`.
 * `description` - (Optional) Server description. Default: `TrueNAS Server`.
-* `enable_smb1` - (Optional) Enable SMB1 protocol support. Default: `false`.
+* `minimum_protocol` - (Optional) Minimum SMB protocol version the server will
+  negotiate: `SMB1`, `SMB2`, or `SMB3`. `SMB3` requires TrueNAS 26.0 or newer.
+* `enable_smb1` - (Optional, **deprecated**) Enable SMB1 protocol support. Use
+  `minimum_protocol` instead. The two are kept in sync automatically and cannot
+  both be set.
+
+  | `enable_smb1` | `minimum_protocol` |
+  | --- | --- |
+  | `true` | `SMB1` |
+  | `false` | `SMB2` |
+  | (not expressible) | `SMB3` |
+
+  TrueNAS 26.0 replaced `enable_smb1` with `minimum_protocol`. The provider
+  detects which the server speaks and sends the right one, so `minimum_protocol`
+  works on every supported version.
 * `unixcharset` - (Optional) UNIX character set. Default: `UTF-8`.
 * `aapl_extensions` - (Optional) Enable Apple SMB2/3 protocol extensions. Default: `false`.
 * `guest` - (Optional) Guest account for unauthenticated access. Default: `nobody`.

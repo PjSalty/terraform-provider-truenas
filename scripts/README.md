@@ -164,3 +164,33 @@ scriptable:
 The reference driver scripts used for the 2026-06 v2.0 matrix
 (`tn_headless_install.py`, `tn_postinstall.py`) follow exactly this
 flow with the `websockets` Python package.
+
+## Upstream API drift
+
+```sh
+make api-drift          # or ./scripts/api-drift.sh
+```
+
+Reports JSON-RPC methods this provider calls that a **newer TrueNAS API
+version removes**. Read-only, needs network but no TrueNAS: it clones
+upstream's versioned API model definitions to a temp dir and diffs them.
+
+This exists because nothing else can see that class of breakage. The code
+still compiles, the unit tests use fakes, and no live TrueNAS runs in CI,
+so a method going away upstream is invisible until someone tries it on a
+real box. `service.start` and `service.stop` were marked
+`removed_in="v26.04"` back in 25.10.0 and went `@private` in 26.0, and
+this repo kept calling them until it was found by hand.
+
+It reports **removals between adjacent API versions**, not "method missing
+from version X". Plain absence is noise: the `service.*` namespace simply
+was not modelled before 25.10.0, so every service method would look
+missing on 25.04.
+
+A method that is deliberately still called behind a version guard goes in
+`scripts/api-drift-allow.txt` with a reason. Only allowlist a call the
+provider has actually guarded; an unguarded entry is a bug waiting to ship.
+
+Runs in CI on the same weekly schedule as `govulncheck`, for the same
+reason: the change lands upstream against an unchanged codebase here, so a
+push-triggered run alone would never catch it.

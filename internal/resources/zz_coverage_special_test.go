@@ -19,6 +19,42 @@ import (
 
 // --- Service: name-keyed virtual resource over service.* ---
 
+// serviceControlJobID is the job id these fixtures hand back from
+// service.control. service.control is @job in middleware, so the client
+// polls core.get_jobs for the real answer; a fixture that returns a bare
+// bool would never exercise the path the provider actually takes.
+const serviceControlJobID = 4242
+
+// serviceControlJobResult answers core.get_jobs for the fixtures below.
+func serviceControlJobResult(result interface{}) interface{} {
+	return []interface{}{map[string]interface{}{
+		"id": serviceControlJobID, "state": "SUCCESS", "error": "", "result": result,
+	}}
+}
+
+// jobIDFromFilter pulls the job id out of a core.get_jobs call, whose
+// params are [[["id", "=", <id>]]]. Returns -1 when the shape does not
+// match, so an unrecognised filter falls through to the default fixture
+// rather than silently matching the service.control branch.
+func jobIDFromFilter(params []interface{}) int {
+	if len(params) == 0 {
+		return -1
+	}
+	filters, ok := params[0].([]interface{})
+	if !ok || len(filters) == 0 {
+		return -1
+	}
+	cond, ok := filters[0].([]interface{})
+	if !ok || len(cond) != 3 {
+		return -1
+	}
+	n, ok := cond[2].(float64) // JSON numbers decode as float64
+	if !ok {
+		return -1
+	}
+	return int(n)
+}
+
 func serviceFixtureClient(ctx context.Context, t *testing.T, enabled bool, state string) *wsclient.Client {
 	t.Helper()
 	svc := map[string]interface{}{
@@ -32,8 +68,10 @@ func serviceFixtureClient(ctx context.Context, t *testing.T, enabled bool, state
 			return svc, nil
 		case "service.update":
 			return 4, nil
-		case "service.start", "service.stop":
-			return true, nil
+		case "service.control":
+			return serviceControlJobID, nil
+		case "core.get_jobs":
+			return serviceControlJobResult(true), nil
 		}
 		return nil, &wsclient.RPCError{Code: wsclient.CodeMethodNotFound, Message: method}
 	})
@@ -524,7 +562,7 @@ func TestServiceResource_Create_StartFails(t *testing.T) {
 			return []interface{}{svc}, nil
 		case "service.update":
 			return 4, nil
-		case "service.start":
+		case "service.control":
 			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "start failed"}
 		}
 		return nil, &wsclient.RPCError{Code: wsclient.CodeMethodNotFound, Message: method}
@@ -537,7 +575,7 @@ func TestServiceResource_Create_StartFails(t *testing.T) {
 	cResp := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
 	r.Create(ctx, resource.CreateRequest{Plan: plan}, cResp)
 	if !cResp.Diagnostics.HasError() {
-		t.Error("expected error diagnostic when service.start fails")
+		t.Error("expected error diagnostic when service.control START fails")
 	}
 }
 
@@ -549,8 +587,12 @@ func TestServiceResource_Create_RereadFails(t *testing.T) {
 		switch method {
 		case "service.query":
 			return []interface{}{svc}, nil
-		case "service.update", "service.start", "service.stop":
+		case "service.update":
 			return true, nil
+		case "service.control":
+			return serviceControlJobID, nil
+		case "core.get_jobs":
+			return serviceControlJobResult(true), nil
 		case "service.get_instance":
 			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "reread failed"}
 		}
@@ -579,9 +621,16 @@ func TestServiceResource_Update_DisableStops(t *testing.T) {
 			return []interface{}{svc}, nil
 		case "service.update":
 			return true, nil
-		case "service.stop":
-			stopped = true
-			return true, nil
+		case "service.control":
+			// Assert the verb, not merely that some control call
+			// happened: a START here would leave the service running
+			// while Terraform recorded enable=false.
+			if len(params) > 0 && params[0] == "STOP" {
+				stopped = true
+			}
+			return serviceControlJobID, nil
+		case "core.get_jobs":
+			return serviceControlJobResult(true), nil
 		case "service.get_instance":
 			return svc, nil
 		}
@@ -601,7 +650,7 @@ func TestServiceResource_Update_DisableStops(t *testing.T) {
 		t.Errorf("Update: %v", uResp.Diagnostics)
 	}
 	if !stopped {
-		t.Error("expected service.stop to be called for enable=false")
+		t.Error("expected service.control STOP to be called for enable=false")
 	}
 }
 
@@ -700,12 +749,22 @@ func wsFailMethodClient(ctx context.Context, t *testing.T, obj map[string]interf
 		}
 		switch {
 		case method == "core.get_jobs":
+			// service.control resolves to a bool, every other job here
+			// resolves to the object. Returning obj for a control job
+			// would fail to decode as a bool, and the caller would then
+			// see a parse error where the test meant to exercise a
+			// forced failure -- green for the wrong reason.
+			if jobIDFromFilter(params) == serviceControlJobID {
+				return serviceControlJobResult(true), nil
+			}
 			return []interface{}{map[string]interface{}{
 				"id": int64(99), "state": "SUCCESS", "result": obj, "error": "",
 			}}, nil
+		case method == "service.control":
+			return serviceControlJobID, nil
 		case strings.HasSuffix(method, ".query"):
 			return []interface{}{obj}, nil
-		case strings.HasSuffix(method, ".delete"), strings.HasSuffix(method, ".start"), strings.HasSuffix(method, ".stop"):
+		case strings.HasSuffix(method, ".delete"):
 			return true, nil
 		case strings.HasSuffix(method, ".create"), strings.HasSuffix(method, ".update"):
 			return int64(99), nil
@@ -756,8 +815,8 @@ func TestServiceResource_ErrorBranches(t *testing.T) {
 		}
 	})
 
-	t.Run("Update start-fails", func(t *testing.T) {
-		c := wsFailMethodClient(ctx, t, svc, "service.start")
+	t.Run("Update control-fails", func(t *testing.T) {
+		c := wsFailMethodClient(ctx, t, svc, "service.control")
 		r := &ServiceResource{client: c}
 		sch := schemaOf(t, ctx, r)
 		st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("4"), "service": str("ssh"), "enable": flag(true)})

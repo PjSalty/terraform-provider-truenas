@@ -223,7 +223,16 @@ func TestUserResource_Schema(t *testing.T) {
 	if id := attrs["id"]; !id.IsComputed() {
 		t.Error("id should be computed")
 	}
-	if pw := attrs["password"]; !pw.IsRequired() {
-		t.Error("password should be required")
+	// password is Optional, not Required: a passwordless service account
+	// sets password_disabled instead. It stays Sensitive either way.
+	pw := attrs["password"]
+	if pw.IsRequired() {
+		t.Error("password should be optional so passwordless accounts are expressible")
+	}
+	if !pw.IsSensitive() {
+		t.Error("password must stay sensitive")
+	}
+	if pd := attrs["password_disabled"]; !pd.IsOptional() || !pd.IsComputed() {
+		t.Error("password_disabled should be optional+computed")
 	}
 }
