@@ -1223,54 +1223,6 @@ func FuzzUPSConfig_Unmarshal(f *testing.F) {
 	})
 }
 
-func FuzzUpdateCheckResult_Unmarshal(f *testing.F) {
-	addCommonSeeds(f)
-	f.Fuzz(func(_ *testing.T, data []byte) {
-		var v t.UpdateCheckResult
-		if err := json.Unmarshal(data, &v); err != nil {
-			return
-		}
-		b, err := json.Marshal(&v)
-		if err != nil {
-			return
-		}
-		var v2 t.UpdateCheckResult
-		_ = json.Unmarshal(b, &v2)
-	})
-}
-
-func FuzzUpdateTrainInfo_Unmarshal(f *testing.F) {
-	addCommonSeeds(f)
-	f.Fuzz(func(_ *testing.T, data []byte) {
-		var v t.UpdateTrainInfo
-		if err := json.Unmarshal(data, &v); err != nil {
-			return
-		}
-		b, err := json.Marshal(&v)
-		if err != nil {
-			return
-		}
-		var v2 t.UpdateTrainInfo
-		_ = json.Unmarshal(b, &v2)
-	})
-}
-
-func FuzzUpdateTrains_Unmarshal(f *testing.F) {
-	addCommonSeeds(f)
-	f.Fuzz(func(_ *testing.T, data []byte) {
-		var v t.UpdateTrains
-		if err := json.Unmarshal(data, &v); err != nil {
-			return
-		}
-		b, err := json.Marshal(&v)
-		if err != nil {
-			return
-		}
-		var v2 t.UpdateTrains
-		_ = json.Unmarshal(b, &v2)
-	})
-}
-
 func FuzzUser_Unmarshal(f *testing.F) {
 	addCommonSeeds(f)
 	f.Fuzz(func(_ *testing.T, data []byte) {
@@ -1380,5 +1332,31 @@ func FuzzVMware_Unmarshal(f *testing.F) {
 		}
 		var v2 t.VMware
 		_ = json.Unmarshal(b, &v2)
+	})
+}
+
+func FuzzUpdateConfig_Unmarshal(f *testing.F) {
+	f.Add([]byte(`{"id":1,"autocheck":true,"profile":"GENERAL"}`))
+	f.Add([]byte(`{"id":1,"autocheck":false,"profile":null}`))
+	f.Fuzz(func(_ *testing.T, data []byte) {
+		var v t.UpdateConfig
+		_ = json.Unmarshal(data, &v)
+	})
+}
+
+func FuzzUpdateStatus_Unmarshal(f *testing.F) {
+	f.Add([]byte(`{"code":"NORMAL","status":{"current_version":{"version":"25.10.4","profile":"GENERAL"},"new_version":null},"error":null}`))
+	f.Add([]byte(`{"code":"ERROR","status":null,"error":{"errname":"ENONET","reason":"x"}}`))
+	f.Fuzz(func(_ *testing.T, data []byte) {
+		var v t.UpdateStatus
+		_ = json.Unmarshal(data, &v)
+	})
+}
+
+func FuzzUpdateProfileChoice_Unmarshal(f *testing.F) {
+	f.Add([]byte(`{"name":"GENERAL","footnote":"","description":"d","available":true}`))
+	f.Fuzz(func(_ *testing.T, data []byte) {
+		var v t.UpdateProfileChoice
+		_ = json.Unmarshal(data, &v)
 	})
 }

@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`truenas_system_update` was rewritten and its schema changed.** It called
+  five `update.*` methods that do not exist in TrueNAS middleware and never
+  did on any release this provider supports, so every plan touching it failed
+  with a method-not-found before reaching anything else. It is now built on
+  `update.config` / `update.update`. `auto_download` became `autocheck`, and
+  `train` became `profile` because TrueNAS 26.0 replaced release trains with
+  update profiles. Existing state migrates automatically: `autocheck` carries
+  over, and `profile` is left empty for the next refresh, because a stored
+  train name is not a valid profile and planning one would be rejected by the
+  server. See issue #32.
+
+- `truenas_user` gained `webshare`, new in TrueNAS 26.0. Not modelling it was
+  a permanent break rather than a missing feature: middleware re-adds the
+  `truenas_webshare` group on every update when the payload omits the field,
+  so any account with it enabled failed every apply with "Provider produced
+  inconsistent result after apply" and could not be repaired through
+  configuration. Sent only on 26.0 and newer, since the field does not exist
+  before that and those models reject unknown keys.
+
+- The provider now detects the connected TrueNAS version once per session and
+  uses it where behaviour genuinely differs per release, instead of guessing.
+  An undetermined version is an error rather than a default, because choosing
+  a wire format from a guess is how an apply reports success while writing the
+  wrong thing.
+
 - `truenas_service` now drives services through `service.control` instead of
   `service.start` / `service.stop`. Those two methods were removed from the
   public API in TrueNAS 26.0: from 25.10.0 they carried
@@ -61,6 +86,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `password_disabled` is also exposed on the `truenas_user` data source.
 
 ### Fixed
+
+- `truenas_pool` now validates `encryption_options_json` against the connected
+  server before creating the pool. The map is forwarded verbatim into a strict
+  middleware submodel, and two of its keys changed in TrueNAS 26.0:
+  `algorithm` was removed, and the `pbkdf2iters` minimum rose from 100000 to
+  1300000. `algorithm` was the exact key the provider's own schema description
+  and docs told users to write, so following the documentation is what broke
+  the apply. Both keys remain valid on 25.10 and are only rejected against a
+  server that actually rejects them.
+
+- Authentication against TrueNAS 27 now explains itself.
+  `auth.login_with_api_key` is removed there, and without a configured
+  `username` the provider has no other handshake, so it surfaced as a bare
+  method-not-found naming only the method. It now names the version and the
+  fix. A warning is also logged whenever the legacy handshake is used, so the
+  deprecation is visible before it bites.
+
+- `auth.login_ex` responses of type `DENIED`, new in TrueNAS 26.0, now report
+  that the credential lacks API access. Previously they fell through as an
+  unexpected response type, which pointed at neither the cause nor the fix.
 
 - Importing a passwordless `truenas_user` no longer requires inventing a
   password for it. `ImportState` used to seed `password` with an empty

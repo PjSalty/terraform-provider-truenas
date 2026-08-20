@@ -44,7 +44,17 @@ The following arguments are supported:
 * `name` - (Required) The name of the pool (1-50 characters). Changing this attribute forces a new resource to be created.
 * `topology_json` - (Optional) The pool topology as a raw JSON object. Must contain at least a `data` key with a list of vdev definitions (e.g. {"data":[{"type":"MIRROR","disks":["sda","sdb"]}]}). May also contain cache, log, spares, special, and dedup keys. Required on create; ignored after import since the API does not round-trip the original request form. Changing this attribute forces a new resource to be created.
 * `encryption` - (Optional) Whether to create a ZFS-encrypted root dataset for this pool.
-* `encryption_options_json` - (Optional) Optional encryption options as a raw JSON object (e.g. generate_key, algorithm, passphrase, key, pbkdf2iters). Changing this attribute forces a new resource to be created.
+* `encryption_options_json` - (Optional) Encryption options as a raw JSON object:
+  `generate_key`, `passphrase`, `key`, `pbkdf2iters`.
+
+  Two of these changed in TrueNAS 26.0 and the provider validates them against
+  the connected server before creating the pool, so a bad key is a plan-time
+  diagnostic instead of a validation error partway through a create:
+
+  | key | constraint |
+  | --- | --- |
+  | `algorithm` | accepted only on TrueNAS 25.10 and older; removed in 26.0 |
+  | `pbkdf2iters` | minimum 1300000 on 26.0 and newer (was 100000) |
 * `deduplication` - (Optional) Deduplication mode: ON, VERIFY, OFF, or unset. Valid values: `ON`, `VERIFY`, `OFF`.
 * `checksum` - (Optional) Checksum algorithm: ON, OFF, FLETCHER2, FLETCHER4, SHA256, SHA512, SKEIN, EDONR, BLAKE3. Valid values: `ON`, `OFF`, `FLETCHER2`, `FLETCHER4`, `SHA256`, `SHA512`, `SKEIN`, `EDONR`, `BLAKE3`.
 * `allow_duplicate_serials` - (Optional) Whether to allow disks with duplicate serial numbers in this pool.

@@ -126,7 +126,10 @@ func (r *PoolResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 			},
 			"encryption_options_json": schema.StringAttribute{
 				Description: "Optional encryption options as a raw JSON object " +
-					"(e.g. generate_key, algorithm, passphrase, key, pbkdf2iters).",
+					"(generate_key, passphrase, key, pbkdf2iters). " +
+					"`algorithm` is accepted only on TrueNAS 25.10 and older; it was removed in 26.0. " +
+					"On 26.0 and newer `pbkdf2iters` must be at least 1300000. " +
+					"Keys are validated against the connected server before the pool is created.",
 				Optional: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -232,6 +235,14 @@ func (r *PoolResource) Create(ctx context.Context, req resource.CreateRequest, r
 				"Invalid encryption_options_json",
 				fmt.Sprintf("encryption_options_json must be valid JSON object: %s", err),
 			)
+			return
+		}
+		// Validated against the connected server before the call. The map is
+		// a raw passthrough into a strict, extra="forbid" submodel, so an
+		// out-of-date key is a hard ValidationError partway through creating
+		// a pool. Better to refuse here with the key and the version named.
+		if err := r.client.ValidatePoolEncryptionOptions(ctx, opts); err != nil {
+			resp.Diagnostics.AddError("Invalid encryption_options_json", err.Error())
 			return
 		}
 		createReq.EncryptionOptions = opts

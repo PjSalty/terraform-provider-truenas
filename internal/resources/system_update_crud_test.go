@@ -2,419 +2,461 @@ package resources
 
 import (
 	"context"
-
+	"strings"
 	"testing"
 
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
-
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
-// systemUpdateHandler returns an http.HandlerFunc that multiplexes every
-// TrueNAS update-related endpoint exercised by the resource. The `fail`
-// map lets a test force a specific path to return 500 so the error branches
-// in refreshState and applyConfig are covered deterministically.
-func systemUpdateHandler(t *testing.T, trains *struct {
-	Trains   map[string]map[string]string `json:"trains"`
-	Current  string                       `json:"current"`
-	Selected string                       `json:"selected"`
-}, autoDownload *bool, sysVersion string, checkStatus string, checkVersion string, fail map[string]bool) wsclient.TestHandler {
+// truenas_system_update was rewritten onto update.config / update.update after
+// issue #32: the five update.* methods it used to call do not exist in
+// middleware and never did on any release this provider supports.
+//
+// These tests assert the new surface, and in particular that the dead methods
+// are never emitted again.
+
+var deadUpdateMethods = []string{
+	"update.get_auto_download",
+	"update.set_auto_download",
+	"update.get_trains",
+	"update.set_train",
+	"update.check_available",
+}
+
+type updateRecorder struct {
+	methods []string
+	body    map[string]interface{}
+}
+
+func updateConfigServer(ctx context.Context, t *testing.T, rec *updateRecorder, cfg, status, choices interface{}, failMethod string) *wsclient.Client {
 	t.Helper()
-	return func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
-		if fail[method] {
-			return nil, &wsclient.RPCError{
-				Code:    wsclient.CodeMethodCallError,
-				Message: "forced failure",
-			}
+	return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		rec.methods = append(rec.methods, method)
+		if method == failMethod {
+			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "boom"}
 		}
 		switch method {
-		case "update.get_auto_download":
-			return *autoDownload, nil
-		case "update.get_trains":
-			return trains, nil
-		case "system.info":
-			return map[string]string{"version": sysVersion}, nil
-		case "update.check_available":
-			body := map[string]string{"status": checkStatus}
-			if checkVersion != "" {
-				body["version"] = checkVersion
+		case "update.config":
+			return cfg, nil
+		case "update.update":
+			if len(params) > 0 {
+				if m, ok := params[0].(map[string]interface{}); ok {
+					rec.body = m
+				}
 			}
-			return body, nil
-		case "update.set_auto_download":
-			return nil, nil
-		case "update.set_train":
-			return nil, nil
+			return cfg, nil
+		case "update.profile_choices":
+			return choices, nil
+		case "update.status":
+			return status, nil
 		}
-		t.Errorf("unexpected method: %s", method)
 		return nil, &wsclient.RPCError{Code: wsclient.CodeMethodNotFound, Message: method}
-	}
+	})
 }
 
-// stdTrains returns a default trains response mirroring the prod topology.
-func stdTrains() *struct {
-	Trains   map[string]map[string]string `json:"trains"`
-	Current  string                       `json:"current"`
-	Selected string                       `json:"selected"`
-} {
-	return &struct {
-		Trains   map[string]map[string]string `json:"trains"`
-		Current  string                       `json:"current"`
-		Selected string                       `json:"selected"`
-	}{
-		Trains: map[string]map[string]string{
-			"TrueNAS-SCALE-Fangtooth": {"description": "Fangtooth 25.04 [release]"},
-			"TrueNAS-SCALE-Goldeye":   {"description": "Goldeye 25.10"},
+func updateFixtures() (cfg, status, choices map[string]interface{}) {
+	cfg = map[string]interface{}{"id": 1, "autocheck": true, "profile": "GENERAL"}
+	status = map[string]interface{}{
+		"code": "NORMAL",
+		"status": map[string]interface{}{
+			"current_version": map[string]interface{}{"version": "25.10.4", "profile": "GENERAL"},
+			"new_version":     map[string]interface{}{"version": "25.10.6", "profile": "GENERAL"},
 		},
-		Current:  "TrueNAS-SCALE-Fangtooth",
-		Selected: "TrueNAS-SCALE-Fangtooth",
+		"error": nil,
 	}
+	choices = map[string]interface{}{
+		"GENERAL":          map[string]interface{}{"name": "GENERAL", "footnote": "", "description": "d", "available": true},
+		"MISSION_CRITICAL": map[string]interface{}{"name": "MISSION_CRITICAL", "footnote": "", "description": "d", "available": true},
+		"DEVELOPER":        map[string]interface{}{"name": "DEVELOPER", "footnote": "", "description": "d", "available": false},
+	}
+	return
 }
 
-// primedPlanWithSystemUpdate builds a tfsdk.Plan with auto_download and
-// train attributes set to the given values, all other (computed) attributes
-// left as null. Used to drive Create and Update flows.
-func primedPlanWithSystemUpdate(t *testing.T, ctx context.Context, r *SystemUpdateResource, autoDownload bool, train string) resource.CreateRequest {
+func assertNoDeadMethods(t *testing.T, rec *updateRecorder) {
 	t.Helper()
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-	typ := sch.Schema.Type().TerraformType(ctx)
-	objType := typ.(tftypes.Object)
-	vals := make(map[string]tftypes.Value, len(objType.AttributeTypes))
-	for name, at := range objType.AttributeTypes {
-		switch name {
-		case "auto_download":
-			vals[name] = tftypes.NewValue(at, autoDownload)
-		case "train":
-			if train == "" {
-				vals[name] = tftypes.NewValue(at, nil)
-			} else {
-				vals[name] = tftypes.NewValue(at, train)
+	for _, m := range rec.methods {
+		for _, dead := range deadUpdateMethods {
+			if m == dead {
+				t.Errorf("emitted %q, which does not exist in middleware (issue #32)", m)
 			}
-		default:
-			vals[name] = tftypes.NewValue(at, nil)
-		}
-	}
-	return resource.CreateRequest{
-		Plan: tfsdk.Plan{Schema: sch.Schema, Raw: tftypes.NewValue(objType, vals)},
-	}
-}
-
-func TestSystemUpdateResource_Metadata(t *testing.T) {
-	r := &SystemUpdateResource{}
-	md := &resource.MetadataResponse{}
-	r.Metadata(context.Background(), resource.MetadataRequest{ProviderTypeName: "truenas"}, md)
-	if md.TypeName != "truenas_system_update" {
-		t.Errorf("TypeName: %q", md.TypeName)
-	}
-}
-
-func TestSystemUpdateResource_Schema(t *testing.T) {
-	r := &SystemUpdateResource{}
-	sch := &resource.SchemaResponse{}
-	r.Schema(context.Background(), resource.SchemaRequest{}, sch)
-	want := []string{"id", "auto_download", "train", "current_version", "available_status", "available_version"}
-	for _, attr := range want {
-		if _, ok := sch.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute: %q", attr)
 		}
 	}
 }
 
-func TestSystemUpdateResource_Read_Success(t *testing.T) {
+func TestSystemUpdateResource_Read(t *testing.T) {
 	ctx := context.Background()
-	ad := false
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
+	cfg, status, choices := updateFixtures()
+	rec := &updateRecorder{}
+	r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, "")}
+	sch := schemaOf(t, ctx, r)
 
-	r := &SystemUpdateResource{client: c}
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-
-	state := primedStateWithID(t, ctx, *sch, systemUpdateSingletonID)
-	readResp := &resource.ReadResponse{State: state}
-	r.Read(ctx, resource.ReadRequest{State: state}, readResp)
-	if readResp.Diagnostics.HasError() {
-		t.Fatalf("Read: %v", readResp.Diagnostics)
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("system_update")})
+	resp := &resource.ReadResponse{State: st}
+	r.Read(ctx, resource.ReadRequest{State: st}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Read: %v", resp.Diagnostics)
 	}
+	assertNoDeadMethods(t, rec)
 
 	var got SystemUpdateResourceModel
-	readResp.State.Get(ctx, &got)
-	if got.CurrentVersion.ValueString() != "25.04.2.6" {
-		t.Errorf("CurrentVersion: %q", got.CurrentVersion.ValueString())
+	resp.State.Get(ctx, &got)
+	if !got.Autocheck.ValueBool() {
+		t.Error("autocheck not read back")
 	}
-	if got.Train.ValueString() != "TrueNAS-SCALE-Fangtooth" {
-		t.Errorf("Train: %q", got.Train.ValueString())
+	if got.Profile.ValueString() != "GENERAL" {
+		t.Errorf("profile = %q, want GENERAL", got.Profile.ValueString())
 	}
-	if got.AvailableStatus.ValueString() != "UNAVAILABLE" {
-		t.Errorf("AvailableStatus: %q", got.AvailableStatus.ValueString())
+	if got.CurrentVersion.ValueString() != "25.10.4" {
+		t.Errorf("current_version = %q", got.CurrentVersion.ValueString())
 	}
-	if got.AutoDownload.ValueBool() {
-		t.Errorf("AutoDownload should be false")
+	if got.AvailableVersion.ValueString() != "25.10.6" {
+		t.Errorf("available_version = %q", got.AvailableVersion.ValueString())
+	}
+	if got.Status.ValueString() != "NORMAL" {
+		t.Errorf("status = %q", got.Status.ValueString())
 	}
 }
 
-func TestSystemUpdateResource_Read_ErrorsEachBranch(t *testing.T) {
+// status and new_version are nullable. A nil status means "no information",
+// not "no update", and must not be dereferenced.
+func TestSystemUpdateResource_Read_nullStatus(t *testing.T) {
 	ctx := context.Background()
-	ad := true
-	cases := []struct {
-		name string
-		fail map[string]bool
-	}{
-		{"get_auto_download fails", map[string]bool{"update.get_auto_download": true}},
-		{"get_trains fails", map[string]bool{"update.get_trains": true}},
-		{"system/info fails", map[string]bool{"system.info": true}},
-		{"check_available fails", map[string]bool{"update.check_available": true}},
+	cfg, _, choices := updateFixtures()
+	status := map[string]interface{}{"code": "ERROR", "status": nil, "error": map[string]interface{}{"errname": "ENONET", "reason": "offline"}}
+	rec := &updateRecorder{}
+	r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, "")}
+	sch := schemaOf(t, ctx, r)
+
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("system_update")})
+	resp := &resource.ReadResponse{State: st}
+	r.Read(ctx, resource.ReadRequest{State: st}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Read with a null status: %v", resp.Diagnostics)
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "AVAILABLE", "25.04.3.0", tc.fail))
-			r := &SystemUpdateResource{client: c}
-			sch := &resource.SchemaResponse{}
-			r.Schema(ctx, resource.SchemaRequest{}, sch)
-			state := primedStateWithID(t, ctx, *sch, systemUpdateSingletonID)
-			readResp := &resource.ReadResponse{State: state}
-			r.Read(ctx, resource.ReadRequest{State: state}, readResp)
-			if !readResp.Diagnostics.HasError() {
-				t.Errorf("expected error diagnostic for %s", tc.name)
+	var got SystemUpdateResourceModel
+	resp.State.Get(ctx, &got)
+	if got.Status.ValueString() != "ERROR" {
+		t.Errorf("status = %q, want ERROR", got.Status.ValueString())
+	}
+	if got.CurrentVersion.ValueString() != "" || got.AvailableVersion.ValueString() != "" {
+		t.Error("version fields must be empty when the server reports no status")
+	}
+}
+
+// profile is nullable; an unset one must read back known-empty so plans do not
+// show a phantom diff.
+func TestSystemUpdateResource_Read_nullProfile(t *testing.T) {
+	ctx := context.Background()
+	_, status, choices := updateFixtures()
+	cfg := map[string]interface{}{"id": 1, "autocheck": false, "profile": nil}
+	rec := &updateRecorder{}
+	r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, "")}
+	sch := schemaOf(t, ctx, r)
+
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("system_update")})
+	resp := &resource.ReadResponse{State: st}
+	r.Read(ctx, resource.ReadRequest{State: st}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Read: %v", resp.Diagnostics)
+	}
+	var got SystemUpdateResourceModel
+	resp.State.Get(ctx, &got)
+	if got.Profile.IsNull() || got.Profile.IsUnknown() {
+		t.Error("a null profile must read back as known-empty")
+	}
+}
+
+func TestSystemUpdateResource_Create_sendsOneUpdateCall(t *testing.T) {
+	ctx := context.Background()
+	cfg, status, choices := updateFixtures()
+	rec := &updateRecorder{}
+	r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, "")}
+	sch := schemaOf(t, ctx, r)
+
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"autocheck": tftypes.NewValue(tftypes.Bool, true),
+		"profile":   str("MISSION_CRITICAL"),
+	})
+	resp := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
+	r.Create(ctx, resource.CreateRequest{Plan: plan}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Create: %v", resp.Diagnostics)
+	}
+	assertNoDeadMethods(t, rec)
+
+	if rec.body == nil {
+		t.Fatal("update.update was never called")
+	}
+	if rec.body["autocheck"] != true {
+		t.Errorf("autocheck = %v, want true", rec.body["autocheck"])
+	}
+	if rec.body["profile"] != "MISSION_CRITICAL" {
+		t.Errorf("profile = %v", rec.body["profile"])
+	}
+}
+
+// An unavailable profile is rejected client-side with the valid choices
+// listed, rather than failing server-side with an opaque error.
+func TestSystemUpdateResource_Create_rejectsUnavailableProfile(t *testing.T) {
+	ctx := context.Background()
+	cfg, status, choices := updateFixtures()
+	rec := &updateRecorder{}
+	r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, "")}
+	sch := schemaOf(t, ctx, r)
+
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"autocheck": tftypes.NewValue(tftypes.Bool, false),
+		"profile":   str("DEVELOPER"), // available: false
+	})
+	resp := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
+	r.Create(ctx, resource.CreateRequest{Plan: plan}, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("an unavailable profile was accepted")
+	}
+	if rec.body != nil {
+		t.Error("update.update was called despite the profile being unselectable")
+	}
+	detail := resp.Diagnostics.Errors()[0].Detail()
+	if !strings.Contains(detail, "GENERAL") {
+		t.Errorf("the diagnostic should list the available profiles, got: %s", detail)
+	}
+	if strings.Contains(detail, "DEVELOPER,") || strings.Contains(detail, ", DEVELOPER") {
+		t.Errorf("an unavailable profile was offered as a choice: %s", detail)
+	}
+}
+
+func TestSystemUpdateResource_Create_rejectsUnknownProfile(t *testing.T) {
+	ctx := context.Background()
+	cfg, status, choices := updateFixtures()
+	rec := &updateRecorder{}
+	r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, "")}
+	sch := schemaOf(t, ctx, r)
+
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"autocheck": tftypes.NewValue(tftypes.Bool, false),
+		"profile":   str("NOPE"),
+	})
+	resp := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
+	r.Create(ctx, resource.CreateRequest{Plan: plan}, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a nonexistent profile was accepted")
+	}
+}
+
+// Omitting profile must leave the server's value alone rather than clearing it.
+func TestSystemUpdateResource_Update_omittedProfileNotSent(t *testing.T) {
+	ctx := context.Background()
+	cfg, status, choices := updateFixtures()
+	rec := &updateRecorder{}
+	r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, "")}
+	sch := schemaOf(t, ctx, r)
+
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("system_update")})
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id":        str("system_update"),
+		"autocheck": tftypes.NewValue(tftypes.Bool, false),
+	})
+	resp := &resource.UpdateResponse{State: st}
+	r.Update(ctx, resource.UpdateRequest{State: st, Plan: plan}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", resp.Diagnostics)
+	}
+	if rec.body == nil {
+		t.Fatal("update.update was never called")
+	}
+	if _, present := rec.body["profile"]; present {
+		t.Errorf("profile was sent for a plan that did not set it: %v", rec.body)
+	}
+	if rec.body["autocheck"] != false {
+		t.Errorf("autocheck = %v, want false", rec.body["autocheck"])
+	}
+}
+
+func TestSystemUpdateResource_apiErrorsSurface(t *testing.T) {
+	cases := []string{"update.config", "update.status", "update.update", "update.profile_choices"}
+	for _, failMethod := range cases {
+		t.Run(failMethod, func(t *testing.T) {
+			ctx := context.Background()
+			cfg, status, choices := updateFixtures()
+			rec := &updateRecorder{}
+			r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, failMethod)}
+			sch := schemaOf(t, ctx, r)
+
+			plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+				"autocheck": tftypes.NewValue(tftypes.Bool, true),
+				"profile":   str("GENERAL"),
+			})
+			resp := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
+			r.Create(ctx, resource.CreateRequest{Plan: plan}, resp)
+			if !resp.Diagnostics.HasError() {
+				t.Errorf("a failing %s was reported as success", failMethod)
 			}
 		})
 	}
 }
 
-func TestSystemUpdateResource_Create_Success_PinsNewTrain(t *testing.T) {
+// Delete is a no-op: the update config is a singleton and removing the
+// resource must not reset the system's update policy.
+func TestSystemUpdateResource_Delete_isANoop(t *testing.T) {
 	ctx := context.Background()
-	ad := false
-	trains := stdTrains()
-	trains.Selected = "TrueNAS-SCALE-Fangtooth"
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, trains, &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
-
-	r := &SystemUpdateResource{client: c}
-	req := primedPlanWithSystemUpdate(t, ctx, r, false, "TrueNAS-SCALE-Goldeye")
-
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-	state := primedState(t, ctx, *sch)
-	resp := &resource.CreateResponse{State: state}
-	r.Create(ctx, req, resp)
-	if resp.Diagnostics.HasError() {
-		t.Fatalf("Create: %v", resp.Diagnostics)
-	}
-}
-
-func TestSystemUpdateResource_Create_Success_TrainAlreadySelected(t *testing.T) {
-	ctx := context.Background()
-	ad := false
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
-
-	r := &SystemUpdateResource{client: c}
-	// Train matches trains.Selected → SetUpdateTrain should be skipped.
-	req := primedPlanWithSystemUpdate(t, ctx, r, true, "TrueNAS-SCALE-Fangtooth")
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-	state := primedState(t, ctx, *sch)
-	resp := &resource.CreateResponse{State: state}
-	r.Create(ctx, req, resp)
-	if resp.Diagnostics.HasError() {
-		t.Fatalf("Create: %v", resp.Diagnostics)
-	}
-}
-
-func TestSystemUpdateResource_Create_Success_NoTrain(t *testing.T) {
-	ctx := context.Background()
-	ad := false
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
-
-	r := &SystemUpdateResource{client: c}
-	// No train supplied in plan → applyConfig skips the train block entirely.
-	req := primedPlanWithSystemUpdate(t, ctx, r, false, "")
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-	state := primedState(t, ctx, *sch)
-	resp := &resource.CreateResponse{State: state}
-	r.Create(ctx, req, resp)
-	if resp.Diagnostics.HasError() {
-		t.Fatalf("Create: %v", resp.Diagnostics)
-	}
-}
-
-func TestSystemUpdateResource_Create_InvalidTrain(t *testing.T) {
-	ctx := context.Background()
-	ad := false
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
-
-	r := &SystemUpdateResource{client: c}
-	req := primedPlanWithSystemUpdate(t, ctx, r, false, "TrueNAS-SCALE-Nonexistent")
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-	state := primedState(t, ctx, *sch)
-	resp := &resource.CreateResponse{State: state}
-	r.Create(ctx, req, resp)
-	if !resp.Diagnostics.HasError() {
-		t.Fatalf("expected error for invalid train")
-	}
-}
-
-func TestSystemUpdateResource_Create_GetTrainsFails(t *testing.T) {
-	ctx := context.Background()
-	ad := false
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"update.get_trains": true}))
-
-	r := &SystemUpdateResource{client: c}
-	req := primedPlanWithSystemUpdate(t, ctx, r, false, "TrueNAS-SCALE-Fangtooth")
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-	state := primedState(t, ctx, *sch)
-	resp := &resource.CreateResponse{State: state}
-	r.Create(ctx, req, resp)
-	if !resp.Diagnostics.HasError() {
-		t.Fatalf("expected error when get_trains fails")
-	}
-}
-
-func TestSystemUpdateResource_Create_SetTrainFails(t *testing.T) {
-	ctx := context.Background()
-	ad := false
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"update.set_train": true}))
-
-	r := &SystemUpdateResource{client: c}
-	// Requesting a train DIFFERENT from trains.Selected forces SetUpdateTrain.
-	req := primedPlanWithSystemUpdate(t, ctx, r, false, "TrueNAS-SCALE-Goldeye")
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-	state := primedState(t, ctx, *sch)
-	resp := &resource.CreateResponse{State: state}
-	r.Create(ctx, req, resp)
-	if !resp.Diagnostics.HasError() {
-		t.Fatalf("expected error when set_train fails")
-	}
-}
-
-func TestSystemUpdateResource_Create_SetAutoDownloadFails(t *testing.T) {
-	ctx := context.Background()
-	ad := false
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"update.set_auto_download": true}))
-
-	r := &SystemUpdateResource{client: c}
-	req := primedPlanWithSystemUpdate(t, ctx, r, true, "")
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-	state := primedState(t, ctx, *sch)
-	resp := &resource.CreateResponse{State: state}
-	r.Create(ctx, req, resp)
-	if !resp.Diagnostics.HasError() {
-		t.Fatalf("expected error when set_auto_download fails")
-	}
-}
-
-func TestSystemUpdateResource_Create_RefreshStateFails(t *testing.T) {
-	ctx := context.Background()
-	ad := false
-	// applyConfig succeeds, but the subsequent refreshState hits a failing
-	// get_auto_download. This exercises the "writes OK, reads fail" path.
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"update.get_auto_download": true}))
-
-	r := &SystemUpdateResource{client: c}
-	req := primedPlanWithSystemUpdate(t, ctx, r, false, "")
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-	state := primedState(t, ctx, *sch)
-	resp := &resource.CreateResponse{State: state}
-	r.Create(ctx, req, resp)
-	if !resp.Diagnostics.HasError() {
-		t.Fatalf("expected error when refresh fails after apply")
-	}
-}
-
-func TestSystemUpdateResource_Update_Success(t *testing.T) {
-	ctx := context.Background()
-	ad := true
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", nil))
-
-	r := &SystemUpdateResource{client: c}
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-
-	state := primedStateWithID(t, ctx, *sch, systemUpdateSingletonID)
-	plan := primedPlanWithSystemUpdate(t, ctx, r, false, "").Plan
-	uResp := &resource.UpdateResponse{State: state}
-	r.Update(ctx, resource.UpdateRequest{Plan: plan, State: state}, uResp)
-	if uResp.Diagnostics.HasError() {
-		t.Fatalf("Update: %v", uResp.Diagnostics)
-	}
-}
-
-func TestSystemUpdateResource_Update_ApplyFails(t *testing.T) {
-	ctx := context.Background()
-	ad := true
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"update.set_auto_download": true}))
-
-	r := &SystemUpdateResource{client: c}
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-
-	state := primedStateWithID(t, ctx, *sch, systemUpdateSingletonID)
-	plan := primedPlanWithSystemUpdate(t, ctx, r, false, "").Plan
-	uResp := &resource.UpdateResponse{State: state}
-	r.Update(ctx, resource.UpdateRequest{Plan: plan, State: state}, uResp)
-	if !uResp.Diagnostics.HasError() {
-		t.Fatalf("expected error when apply fails in Update")
-	}
-}
-
-func TestSystemUpdateResource_Update_RefreshFails(t *testing.T) {
-	ctx := context.Background()
-	ad := true
-	c := newWSTestClient(ctx, t, systemUpdateHandler(t, stdTrains(), &ad, "25.04.2.6", "UNAVAILABLE", "", map[string]bool{"system.info": true}))
-
-	r := &SystemUpdateResource{client: c}
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-
-	state := primedStateWithID(t, ctx, *sch, systemUpdateSingletonID)
-	plan := primedPlanWithSystemUpdate(t, ctx, r, false, "").Plan
-	uResp := &resource.UpdateResponse{State: state}
-	r.Update(ctx, resource.UpdateRequest{Plan: plan, State: state}, uResp)
-	if !uResp.Diagnostics.HasError() {
-		t.Fatalf("expected error when refresh fails in Update")
-	}
-}
-
-func TestSystemUpdateResource_Delete_NoOp(t *testing.T) {
-	ctx := context.Background()
-	r := &SystemUpdateResource{}
-	// Delete is a no-op, no client calls, no state mutation. Just prove
-	// it doesn't produce a diagnostic or panic.
-	resp := &resource.DeleteResponse{}
-	r.Delete(ctx, resource.DeleteRequest{}, resp)
+	cfg, status, choices := updateFixtures()
+	rec := &updateRecorder{}
+	r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, "")}
+	sch := schemaOf(t, ctx, r)
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("system_update")})
+	resp := &resource.DeleteResponse{State: st}
+	r.Delete(ctx, resource.DeleteRequest{State: st}, resp)
 	if resp.Diagnostics.HasError() {
 		t.Errorf("Delete: %v", resp.Diagnostics)
 	}
-}
-
-func TestSystemUpdateResource_ImportState_Valid(t *testing.T) {
-	ctx := context.Background()
-	r := &SystemUpdateResource{}
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-
-	state := primedState(t, ctx, *sch)
-	resp := &resource.ImportStateResponse{State: state}
-	r.ImportState(ctx, resource.ImportStateRequest{ID: systemUpdateSingletonID}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("ImportState(valid): %v", resp.Diagnostics)
+	if len(rec.methods) != 0 {
+		t.Errorf("Delete called the API: %v", rec.methods)
 	}
 }
 
-func TestSystemUpdateResource_ImportState_Invalid(t *testing.T) {
+func TestSystemUpdateResource_Schema_hasNewAttributes(t *testing.T) {
 	ctx := context.Background()
 	r := &SystemUpdateResource{}
-	sch := &resource.SchemaResponse{}
-	r.Schema(ctx, resource.SchemaRequest{}, sch)
-	state := primedState(t, ctx, *sch)
-	resp := &resource.ImportStateResponse{State: state}
-	r.ImportState(ctx, resource.ImportStateRequest{ID: "not-the-singleton"}, resp)
+	sch := schemaOf(t, ctx, r)
+	attrs := sch.Schema.Attributes
+	for _, want := range []string{"id", "autocheck", "profile", "status", "current_version", "available_version"} {
+		if _, ok := attrs[want]; !ok {
+			t.Errorf("schema is missing %q", want)
+		}
+	}
+	for _, gone := range []string{"auto_download", "train", "available_status"} {
+		if _, present := attrs[gone]; present {
+			t.Errorf("schema still declares %q, which the rewrite replaced", gone)
+		}
+	}
+	if sch.Schema.Version != 1 {
+		t.Errorf("schema version = %d, want 1 (the rename needs a state upgrader)", sch.Schema.Version)
+	}
+}
+
+func TestSystemUpdateResource_ImportState(t *testing.T) {
+	ctx := context.Background()
+	r := &SystemUpdateResource{}
+	sch := schemaOf(t, ctx, r)
+
+	// The singleton id is the only accepted value.
+	resp := &resource.ImportStateResponse{State: primedStateV2(t, ctx, sch)}
+	r.ImportState(ctx, resource.ImportStateRequest{ID: systemUpdateSingletonID}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Errorf("importing the singleton id failed: %v", resp.Diagnostics)
+	}
+
+	bad := &resource.ImportStateResponse{State: primedStateV2(t, ctx, sch)}
+	r.ImportState(ctx, resource.ImportStateRequest{ID: "1"}, bad)
+	if !bad.Diagnostics.HasError() {
+		t.Error("a non-singleton import id was accepted")
+	}
+}
+
+// Read and Update must surface a refresh failure rather than writing a
+// half-populated model into state.
+func TestSystemUpdateResource_ReadAndUpdate_refreshFailures(t *testing.T) {
+	ctx := context.Background()
+	cfg, status, choices := updateFixtures()
+
+	for _, failMethod := range []string{"update.config", "update.status"} {
+		t.Run(failMethod, func(t *testing.T) {
+			rec := &updateRecorder{}
+			r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, failMethod)}
+			sch := schemaOf(t, ctx, r)
+			st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("system_update")})
+
+			rResp := &resource.ReadResponse{State: st}
+			r.Read(ctx, resource.ReadRequest{State: st}, rResp)
+			if !rResp.Diagnostics.HasError() {
+				t.Errorf("Read succeeded despite %s failing", failMethod)
+			}
+
+			plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+				"id": str("system_update"), "autocheck": tftypes.NewValue(tftypes.Bool, true),
+			})
+			uResp := &resource.UpdateResponse{State: st}
+			r.Update(ctx, resource.UpdateRequest{State: st, Plan: plan}, uResp)
+			if !uResp.Diagnostics.HasError() {
+				t.Errorf("Update succeeded despite %s failing", failMethod)
+			}
+		})
+	}
+}
+
+// With no profile marked available the diagnostic must say so rather than
+// printing an empty list.
+func TestSystemUpdateResource_noAvailableProfiles(t *testing.T) {
+	ctx := context.Background()
+	cfg, status, _ := updateFixtures()
+	choices := map[string]interface{}{
+		"DEVELOPER": map[string]interface{}{"name": "DEVELOPER", "footnote": "", "description": "d", "available": false},
+	}
+	rec := &updateRecorder{}
+	r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, "")}
+	sch := schemaOf(t, ctx, r)
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"autocheck": tftypes.NewValue(tftypes.Bool, false),
+		"profile":   str("DEVELOPER"),
+	})
+	resp := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
+	r.Create(ctx, resource.CreateRequest{Plan: plan}, resp)
 	if !resp.Diagnostics.HasError() {
-		t.Errorf("ImportState(invalid) should have errored")
+		t.Fatal("an unavailable profile was accepted")
+	}
+	if !strings.Contains(resp.Diagnostics.Errors()[0].Detail(), "none reported as available") {
+		t.Errorf("diagnostic should say no profiles are available: %s", resp.Diagnostics.Errors()[0].Detail())
+	}
+}
+
+// Update must surface a write failure, distinct from a refresh failure.
+func TestSystemUpdateResource_Update_applyFailure(t *testing.T) {
+	ctx := context.Background()
+	cfg, status, choices := updateFixtures()
+	rec := &updateRecorder{}
+	r := &SystemUpdateResource{client: updateConfigServer(ctx, t, rec, cfg, status, choices, "update.update")}
+	sch := schemaOf(t, ctx, r)
+
+	st := stateFromValues(t, ctx, sch, map[string]tftypes.Value{"id": str("system_update")})
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"id": str("system_update"), "autocheck": tftypes.NewValue(tftypes.Bool, true),
+	})
+	resp := &resource.UpdateResponse{State: st}
+	r.Update(ctx, resource.UpdateRequest{State: st, Plan: plan}, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Error("a failed update.update was reported as success")
+	}
+}
+
+// truenas_pool forwards encryption_options_json straight into a strict
+// middleware submodel, so a key that the connected server rejects must be
+// refused before the create rather than failing mid-pool.
+func TestPoolResource_Create_rejectsRemovedEncryptionKey(t *testing.T) {
+	ctx := context.Background()
+	c := newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		if method == "system.info" {
+			return map[string]interface{}{"version": "26.0.0-BETA.2"}, nil
+		}
+		return nil, &wsclient.RPCError{Code: wsclient.CodeMethodNotFound, Message: method}
+	})
+	r := &PoolResource{client: c}
+	sch := schemaOf(t, ctx, r)
+
+	plan := planFromValues(t, ctx, sch, map[string]tftypes.Value{
+		"name":                    str("tank"),
+		"topology_json":           str(`{"data":[{"type":"STRIPE","disks":["sda"]}]}`),
+		"encryption":              tftypes.NewValue(tftypes.Bool, true),
+		"encryption_options_json": str(`{"algorithm":"AES-256-GCM"}`),
+	})
+	resp := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
+	r.Create(ctx, resource.CreateRequest{Plan: plan}, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a 26.0-removed encryption key was forwarded to middleware")
+	}
+	if !strings.Contains(resp.Diagnostics.Errors()[0].Detail(), "algorithm") {
+		t.Errorf("diagnostic should name the offending key: %s", resp.Diagnostics.Errors()[0].Detail())
 	}
 }

@@ -2,91 +2,95 @@
 page_title: "truenas_system_update Resource - terraform-provider-truenas"
 subcategory: "System Configuration"
 description: |-
-  Manages the TrueNAS SCALE system update configuration: the auto-download toggle and the active release train. Singleton resource; does not execute updates.
+  Manages the TrueNAS SCALE system update configuration: the nightly update check and the tracked update profile. Singleton resource; does not execute updates.
 ---
 
 # truenas_system_update (Resource)
 
-Manages the TrueNAS SCALE system update configuration: the auto-download
-toggle and the active release train. This resource is a **singleton**, TrueNAS
-has exactly one update config per system.
+Manages the TrueNAS SCALE system update configuration: the nightly update
+check and the update profile the system tracks. This resource is a
+**singleton**, TrueNAS has exactly one update config per system.
 
 It does **not** execute updates. Applying an update remains a separate manual
-action outside Terraform's control (UI, API call, or an Ansible playbook).
-Use this resource to pin a train and/or disable auto-download so that SCALE
+action outside Terraform's control (UI, API call, or an Ansible playbook). Use
+this resource to pin a profile and disable the automatic check so that SCALE
 updates never happen without a conscious action.
+
+~> **Breaking change in provider v2.5.** This resource previously exposed
+`auto_download` and `train`, backed by five `update.*` API methods that do not
+exist in TrueNAS middleware and never did on any release this provider
+supports. Any plan touching it failed. See
+[issue #32](https://github.com/PjSalty/terraform-provider-truenas/issues/32).
+It is now built on `update.config` / `update.update`:
+`auto_download` became `autocheck`, and `train` became `profile` because
+TrueNAS 26.0 replaced release trains with update profiles. Existing state is
+migrated automatically by a schema upgrader; `autocheck` carries over, and
+`profile` is left empty for the next refresh to fill because a stored train
+name is not a valid profile.
 
 ## Example Usage
 
-### Pin the current train, disable auto-download (recommended for prod)
+### Pin a profile and disable the automatic check (recommended for prod)
 
-```terraform
-resource "truenas_system_update" "prod" {
-  auto_download = false
-  train         = "TrueNAS-SCALE-Fangtooth"
+```hcl
+resource "truenas_system_update" "this" {
+  autocheck = false
+  profile   = "MISSION_CRITICAL"
 }
 ```
 
-### Let TrueNAS follow whatever train is currently selected
+### Follow whatever profile the system already has
 
-Omit `train` and the provider reads and preserves the system's existing
-selection on every apply. `auto_download` still defaults to `false`.
-
-```terraform
-resource "truenas_system_update" "prod" {
-  auto_download = false
+```hcl
+resource "truenas_system_update" "this" {
+  autocheck = false
 }
 ```
+
+Omitting `profile` preserves whatever the system has configured and reports it
+as a computed attribute.
 
 ## Schema
 
 ### Optional
 
-- `auto_download` (Boolean), Whether TrueNAS should automatically download
-  available updates into the local update cache. Defaults to `false`, the
-  conservative pinning value. With `auto_download` disabled, updates never
-  land on the system without an explicit operator action.
-- `train` (String), The active release train (for example,
-  `TrueNAS-SCALE-Fangtooth`). When set, Terraform reconciles the selected
-  train on every apply. When omitted, Terraform preserves whatever the
-  system has configured and reports it as a computed attribute. Validated
-  against the list returned by the TrueNAS API at apply time.
+- `autocheck` (Boolean) Whether TrueNAS automatically checks for and downloads
+  updates nightly. Defaults to `false`, the conservative value: with it
+  disabled, updates never land on the system without an explicit operator
+  action.
+- `profile` (String) The update profile this system tracks, for example
+  `GENERAL` or `MISSION_CRITICAL`. Validated against `update.profile_choices`
+  at apply time, honoring the `available` flag, so an unselectable profile is
+  rejected with the valid choices listed rather than failing server-side.
+- `timeouts` (Block, Optional)
 
 ### Read-Only
 
-- `id` (String), Fixed singleton identifier. Always `"system_update"`.
-- `current_version` (String), The version of TrueNAS SCALE currently
-  running on the system. Refreshed from `/system/info` on every Read.
-- `available_status` (String), The pending-update status reported by the
-  TrueNAS update server. One of `AVAILABLE`, `UNAVAILABLE`, `REBOOT_REQUIRED`,
-  `HA_UNAVAILABLE`. `UNAVAILABLE` is the normal steady-state value.
-- `available_version` (String), When `available_status` is `AVAILABLE`,
-  this is the version string of the pending update. Empty in all other
-  states.
+- `id` (String) Fixed singleton identifier. Always `"system_update"`.
+- `status` (String) Update subsystem status code reported by TrueNAS: `NORMAL`
+  or `ERROR`.
+- `current_version` (String) The version the system is currently running.
+- `available_version` (String) The version available to update to, empty when
+  none is offered.
 
 ## Import
 
-The resource is a singleton; the only valid import ID is the literal string
-`system_update`.
-
 ```shell
-terraform import truenas_system_update.prod system_update
+terraform import truenas_system_update.this system_update
 ```
 
-## Behaviour notes
+The ID is the literal string `system_update`; any other value is rejected.
+
+## Behavior notes
 
 ### Delete is a no-op
 
-`terraform destroy` removes the resource from Terraform state but does **not**
-reset the TrueNAS update config. The last-applied `auto_download` and `train`
-values remain in effect on the system. This prevents a surprising reboot-risk
-vector where an accidental `destroy` could re-enable auto-download and stage
-an upgrade.
+Removing this resource from configuration does not reset the system's update
+policy. The update config is a singleton that always exists, so there is
+nothing to delete; Terraform simply stops managing it.
 
-### Update execution is out of scope
+### Version compatibility
 
-This resource cannot start, cancel, or apply a pending update. Those actions
-are intentionally kept outside Terraform so a routine `terraform plan` diff
-can never end up rebooting production. To apply an update, use the TrueNAS
-UI, an API call, or a dedicated Ansible playbook gated on backups and a
-maintenance window.
+`update.config`, `update.update`, `update.profile_choices` and `update.status`
+are present on TrueNAS 25.10, 26.0 and 27.0 alike, so one code path covers
+every supported release.

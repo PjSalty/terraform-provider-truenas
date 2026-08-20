@@ -26,13 +26,6 @@ core.get_jobs   Real method, but the core service is special-cased upstream and 
                 versioned Args model (middlewared/service/core_service.py: def get_jobs).
                 Not dead, just unmodelled. This is the job-polling call CallJob depends on.
 
-# truenas_system_update, tracked in issue #32. These five have NO Args model in
-# any versioned API directory and no @api_method definition anywhere in
-# middleware, so the resource has been dead on every supported TrueNAS. They
-# are parked here only so this gate is usable while #32 is decided; remove
-# these lines when the resource is rewritten on update.config or removed.
-update.get_auto_download
-update.set_auto_download
-update.get_trains
-update.set_train
-update.check_available
+# truenas_system_update was rewritten onto update.config / update.update in the
+# 26.0 readiness series, so the five dead update.* methods are no longer
+# referenced and no allowlist entry is needed. Issue #32 is resolved.

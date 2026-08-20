@@ -24,6 +24,12 @@ import (
 func wsJSONHandler(body map[string]interface{}) wsclient.TestHandler {
 	return func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		switch {
+		case method == "system.info":
+			// Version-gated fields (truenas_user.webshare) probe the server
+			// before writing. The generic fallback below would answer with
+			// the entity body, which has no `version`, so the probe would
+			// fail for every resource rather than only the ones that care.
+			return map[string]interface{}{"version": "26.0.0-BETA.2"}, nil
 		case method == "core.get_jobs":
 			return []interface{}{map[string]interface{}{
 				"id": 1, "state": "SUCCESS", "result": body, "error": "",

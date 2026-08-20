@@ -123,6 +123,14 @@ type Client struct {
 	// because Call() is concurrent.
 	nextID atomic.Uint64
 
+	// serverVersion caches the connected TrueNAS release. A server does not
+	// change version mid-apply, so one probe serves every resource.
+	// serverVersionErr caches a parse failure so a malformed version is not
+	// re-probed on every call.
+	serverVersion    ServerVersion
+	serverVersionErr error
+	serverVersionMu  sync.Mutex
+
 	// smbDialectCache remembers whether this server speaks enable_smb1
 	// (25.10 and older) or minimum_protocol (26.0 and newer), so an
 	// Update does not have to re-probe smb.config every time. Zero value
