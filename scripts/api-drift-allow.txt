@@ -1,0 +1,38 @@
+# Methods this provider still references that a newer TrueNAS API version
+# removes, or has scheduled for removal, and which are DELIBERATELY still
+# referenced for now.
+#
+# Adding a line here silences scripts/api-drift.sh for that method. Only do
+# that when the call is genuinely version-guarded (the provider has already
+# checked the newer method is unavailable before falling back), or when the
+# migration is tracked in a real, open issue. An entry with neither is a bug
+# waiting to ship.
+#
+# Format: the method name first, then a free-text reason.
+
+service.start   pre-25.10 fallback only. controlService() calls service.control first and
+service.stop    reaches these two only on a method-not-found, which is exactly the 25.04
+                case where service.control does not exist. Guarded; see
+                internal/wsclient/service.go.
+
+auth.login_with_api_key
+                NOT yet guarded. Tracked in issue #29. Selected whenever `username` is
+                unset, which is the default, so a default-configured provider keeps
+                working on 26 and then breaks on 27. There is no username-free handshake
+                on 27, so the fix is a deprecation warning now plus a fail-closed once
+                the server reports 27+, not a silent swap. Remove this line when #29 lands.
+
+core.get_jobs   Real method, but the core service is special-cased upstream and carries no
+                versioned Args model (middlewared/service/core_service.py: def get_jobs).
+                Not dead, just unmodelled. This is the job-polling call CallJob depends on.
+
+# truenas_system_update, tracked in issue #32. These five have NO Args model in
+# any versioned API directory and no @api_method definition anywhere in
+# middleware, so the resource has been dead on every supported TrueNAS. They
+# are parked here only so this gate is usable while #32 is decided; remove
+# these lines when the resource is rewritten on update.config or removed.
+update.get_auto_download
+update.set_auto_download
+update.get_trains
+update.set_train
+update.check_available

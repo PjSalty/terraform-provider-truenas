@@ -135,3 +135,19 @@ jobs:
         with:
           go-version-file: go.mod
       - run: go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest && tfplugindocs validate
+
+  # Catches TrueNAS removing a JSON-RPC method the provider still calls.
+  # Nothing else here can see that: the code compiles, the unit tests use
+  # fakes, and no live TrueNAS is in CI, so a removal is only observable
+  # against upstream's own API definitions. service.start/service.stop
+  # went @private in 26.0 and this repo kept calling them until someone
+  # noticed by hand.
+  #
+  # Rides the same weekly schedule as govulncheck for the same reason: a
+  # removal lands upstream against an unchanged codebase here, so a
+  # push-triggered run alone would never see it.
+  api-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/api-drift.sh

@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/boolvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -25,6 +27,7 @@ import (
 var (
 	_ resource.Resource                = &SMBConfigResource{}
 	_ resource.ResourceWithImportState = &SMBConfigResource{}
+	_ resource.ResourceWithModifyPlan  = &SMBConfigResource{}
 )
 
 // SMBConfigResource manages the TrueNAS SMB service configuration.
@@ -34,11 +37,13 @@ type SMBConfigResource struct {
 
 // SMBConfigResourceModel describes the resource data model.
 type SMBConfigResourceModel struct {
-	ID             types.String   `tfsdk:"id"`
-	NetbiosName    types.String   `tfsdk:"netbiosname"`
-	Workgroup      types.String   `tfsdk:"workgroup"`
-	Description    types.String   `tfsdk:"description"`
-	EnableSMB1     types.Bool     `tfsdk:"enable_smb1"`
+	ID              types.String `tfsdk:"id"`
+	NetbiosName     types.String `tfsdk:"netbiosname"`
+	Workgroup       types.String `tfsdk:"workgroup"`
+	Description     types.String `tfsdk:"description"`
+	EnableSMB1      types.Bool   `tfsdk:"enable_smb1"`
+	MinimumProtocol types.String `tfsdk:"minimum_protocol"`
+
 	UnixCharset    types.String   `tfsdk:"unixcharset"`
 	AAPLExtensions types.Bool     `tfsdk:"aapl_extensions"`
 	Guest          types.String   `tfsdk:"guest"`
@@ -93,11 +98,43 @@ func (r *SMBConfigResource) Schema(ctx context.Context, _ resource.SchemaRequest
 					stringvalidator.LengthBetween(0, 1024),
 				},
 			},
+			// No Default here, deliberately. booldefault.StaticBool(false)
+			// made the planned value always known-and-false, so
+			// buildUpdateRequest emitted enable_smb1 on EVERY apply,
+			// including the reset path, for users who never set it. On
+			// TrueNAS 26.0 that key is a hard ValidationError, so the
+			// static default is what turned "user does not care about
+			// SMB1" into "every apply fails". UseStateForUnknown supplies
+			// the refreshed server value instead.
 			"enable_smb1": schema.BoolAttribute{
-				Description: "Enable SMB1 protocol support.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
+				Description: "Enable SMB1 protocol support. Deprecated: use `minimum_protocol` instead. " +
+					"`true` is equivalent to `minimum_protocol = \"SMB1\"`, `false` to `\"SMB2\"`.",
+				DeprecationMessage: "Use minimum_protocol instead. TrueNAS 26.0 replaced enable_smb1 with " +
+					"minimum_protocol; set minimum_protocol = \"SMB1\" or \"SMB2\".",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.Bool{
+					boolvalidator.ConflictsWith(path.MatchRoot("minimum_protocol")),
+				},
+			},
+			// The going-forward attribute. Works on every supported
+			// version: the client translates SMB1/SMB2 back to the legacy
+			// boolean on TrueNAS 25.10 and older.
+			"minimum_protocol": schema.StringAttribute{
+				Description: "Minimum SMB protocol version the server will negotiate " +
+					"(`SMB1`, `SMB2`, or `SMB3`). `SMB3` requires TrueNAS 26.0 or newer.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.String{
+					stringvalidator.OneOf(truenas.SMBProtocolSMB1, truenas.SMBProtocolSMB2, truenas.SMBProtocolSMB3),
+					stringvalidator.ConflictsWith(path.MatchRoot("enable_smb1")),
+				},
 			},
 			"unixcharset": schema.StringAttribute{
 				Description: "UNIX character set.",
@@ -246,7 +283,10 @@ func (r *SMBConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest
 	netbiosname := "truenas"
 	workgroup := "WORKGROUP"
 	description := "TrueNAS Server"
-	enableSMB1 := false
+	// SMB2 is middleware's own default for the new column (plugins/smb.py)
+	// and is what the legacy enable_smb1=false mapped to, so this resets to
+	// exactly the same state as before on 25.10 while also being valid on 26.
+	minProto := truenas.SMBProtocolSMB2
 	unixcharset := "UTF-8"
 	aaplExtensions := false
 	guest := "nobody"
@@ -254,15 +294,15 @@ func (r *SMBConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest
 	dirmask := "DEFAULT"
 
 	_, err := r.client.UpdateSMBConfig(ctx, &truenas.SMBConfigUpdateRequest{
-		NetbiosName:    &netbiosname,
-		Workgroup:      &workgroup,
-		Description:    &description,
-		EnableSMB1:     &enableSMB1,
-		UnixCharset:    &unixcharset,
-		AAPLExtensions: &aaplExtensions,
-		Guest:          &guest,
-		Filemask:       &filemask,
-		Dirmask:        &dirmask,
+		NetbiosName:     &netbiosname,
+		Workgroup:       &workgroup,
+		Description:     &description,
+		MinimumProtocol: &minProto,
+		UnixCharset:     &unixcharset,
+		AAPLExtensions:  &aaplExtensions,
+		Guest:           &guest,
+		Filemask:        &filemask,
+		Dirmask:         &dirmask,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -276,6 +316,46 @@ func (r *SMBConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest
 
 func (r *SMBConfigResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// ModifyPlan keeps enable_smb1 and minimum_protocol in lockstep so that
+// whichever one the user declared, the plan carries a concrete value for
+// both. buildUpdateRequest then only ever reads minimum_protocol.
+//
+// Both attributes are Optional+Computed, so a user who declares neither gets
+// the refreshed server values via UseStateForUnknown and nothing here fires.
+// The validators make declaring both an error, so the two branches below are
+// genuinely exclusive.
+func (r *SMBConfigResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Destroy: there is no plan to reconcile.
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	// Diagnostics are appended, not short-circuited on: matching the house
+	// pattern in certificate.go. A failed Get leaves both fields null, so
+	// the switch below falls through and the framework still surfaces the
+	// error it just recorded.
+	var config SMBConfigResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+
+	switch {
+	case !config.MinimumProtocol.IsNull() && !config.MinimumProtocol.IsUnknown():
+		// Going-forward attribute wins; derive the deprecated one so state
+		// stays self-consistent.
+		smb1 := config.MinimumProtocol.ValueString() == truenas.SMBProtocolSMB1
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("enable_smb1"), types.BoolValue(smb1))...)
+
+	case !config.EnableSMB1.IsNull() && !config.EnableSMB1.IsUnknown():
+		// Deprecated attribute declared: translate it forward using the
+		// same mapping middleware's own migration uses
+		// (true -> SMB1, false -> SMB2).
+		proto := truenas.SMBProtocolSMB2
+		if config.EnableSMB1.ValueBool() {
+			proto = truenas.SMBProtocolSMB1
+		}
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("minimum_protocol"), types.StringValue(proto))...)
+	}
 }
 
 func (r *SMBConfigResource) buildUpdateRequest(plan *SMBConfigResourceModel) *truenas.SMBConfigUpdateRequest {
@@ -293,9 +373,13 @@ func (r *SMBConfigResource) buildUpdateRequest(plan *SMBConfigResourceModel) *tr
 		v := plan.Description.ValueString()
 		updateReq.Description = &v
 	}
-	if !plan.EnableSMB1.IsNull() && !plan.EnableSMB1.IsUnknown() {
-		v := plan.EnableSMB1.ValueBool()
-		updateReq.EnableSMB1 = &v
+	// Only the normalized attribute is ever sent. ModifyPlan has already
+	// derived minimum_protocol from enable_smb1 when the user declared the
+	// deprecated one, so this single branch covers all three cases and the
+	// legacy boolean never reaches the wire encoder.
+	if !plan.MinimumProtocol.IsNull() && !plan.MinimumProtocol.IsUnknown() {
+		v := plan.MinimumProtocol.ValueString()
+		updateReq.MinimumProtocol = &v
 	}
 	if !plan.UnixCharset.IsNull() && !plan.UnixCharset.IsUnknown() {
 		v := plan.UnixCharset.ValueString()
@@ -326,7 +410,11 @@ func (r *SMBConfigResource) mapResponseToModel(config *truenas.SMBConfig, model 
 	model.NetbiosName = types.StringValue(config.NetbiosName)
 	model.Workgroup = types.StringValue(config.Workgroup)
 	model.Description = types.StringValue(config.Description)
-	model.EnableSMB1 = types.BoolValue(config.EnableSMB1)
+	// Both are written from the SAME normalized source, so the deprecated
+	// attribute and its replacement can never disagree, on either server
+	// version, on any of Create/Read/Update/Import.
+	model.MinimumProtocol = types.StringValue(config.Protocol)
+	model.EnableSMB1 = types.BoolValue(config.SMB1Enabled)
 	model.UnixCharset = types.StringValue(config.UnixCharset)
 	model.AAPLExtensions = types.BoolValue(config.AAPLExtensions)
 	model.Guest = types.StringValue(config.Guest)

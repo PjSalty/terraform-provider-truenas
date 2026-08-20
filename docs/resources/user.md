@@ -36,13 +36,35 @@ resource "truenas_user" "example" {
 }
 ```
 
+### Passwordless service account
+
+An account that only owns files, such as an NFS `mapall` user, needs no
+password login:
+
+```hcl
+resource "truenas_user" "nfs_mapall" {
+  username          = "nfsmap"
+  full_name         = "NFS mapall account"
+  password_disabled = true
+  shell             = "/usr/sbin/nologin"
+  home              = "/var/empty"
+  smb               = false
+}
+```
+
 ## Argument Reference
 
 The following arguments are supported:
 
 * `username` - (Required) The login name of the user. Changing this attribute forces a new resource to be created.
 * `full_name` - (Required) The full (display) name of the user.
-* `password` - (Required) The password for the user. Marked sensitive.
+* `password` - (Optional) The password for the user. Marked sensitive. Omit it
+  and set `password_disabled = true` for an account that should have no
+  password login. Exactly one of the two is required on create.
+* `password_disabled` - (Optional) Disable password authentication for this
+  user. Default: `false`. Cannot be combined with `password`, and TrueNAS
+  rejects it for SMB users because Samba needs a password to derive the NT
+  hash. Turning it back off requires setting `password` in the same change.
 * `uid` - (Optional) The UNIX UID for the user. If not set, TrueNAS will assign one.
 * `email` - (Optional) Email address of the user. Default: ``.
 * `group` - (Optional) The primary group ID. If not specified and group_create is true, a group matching the username will be created.
