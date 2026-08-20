@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -127,6 +128,18 @@ type Client struct {
 	// change version mid-apply, so one probe serves every resource.
 	// serverVersionErr caches a parse failure so a malformed version is not
 	// re-probed on every call.
+	// apiVersion, when non-empty, pins the WebSocket endpoint to a specific
+	// TrueNAS API version instead of /api/current. Empty is the default and
+	// preserves the behavior every release of this provider has had.
+	//
+	// Pinning makes middleware run its from_previous/to_previous adapters,
+	// which absorb field renames the provider would otherwise see raw. It is
+	// deliberately NOT the default: a pin cannot resurrect a method that went
+	// @private, and adapt() raises when a model is missing from an
+	// intermediate version, so switching it on by default would trade a known
+	// behavior for an unknown one.
+	apiVersion string
+
 	serverVersion    ServerVersion
 	serverVersionErr error
 	serverVersionMu  sync.Mutex
@@ -227,6 +240,22 @@ func New(ctx context.Context, baseURL, apiKey string, insecureSkipVerify bool) (
 // empty it falls back to the legacy auth.login_with_api_key, which
 // TrueNAS deprecates in 26 and removes in 27.
 func NewWithUsername(ctx context.Context, baseURL, apiKey, username string, insecureSkipVerify bool) (*Client, error) {
+	return NewWithAPIVersion(ctx, baseURL, apiKey, username, "", insecureSkipVerify)
+}
+
+// NewWithAPIVersion is NewWithUsername plus an explicit TrueNAS API version.
+//
+// An empty apiVersion dials /api/current, which is the default and what every
+// release of this provider has done. A non-empty one pins the endpoint to
+// /api/v<version>, which makes middleware run its from_previous/to_previous
+// adapters so renamed fields are translated server-side instead of arriving
+// raw.
+//
+// Pinning is opt-in on purpose. It cannot resurrect a method that went
+// @private, and middleware's adapt() raises when a model is missing from an
+// intermediate version, so making it the default would trade a known
+// behavior for an unknown one on every existing deployment.
+func NewWithAPIVersion(ctx context.Context, baseURL, apiKey, username, apiVersion string, insecureSkipVerify bool) (*Client, error) {
 	if baseURL == "" {
 		return nil, fmt.Errorf("truenas base URL is required")
 	}
@@ -234,13 +263,14 @@ func NewWithUsername(ctx context.Context, baseURL, apiKey, username string, inse
 		return nil, fmt.Errorf("truenas API key is required")
 	}
 
-	wsURL, err := wsURLFromBase(baseURL)
+	wsURL, err := wsURLFromBase(baseURL, apiVersion)
 	if err != nil {
 		return nil, err
 	}
 
 	lifetime, cancel := context.WithCancel(context.Background())
 	c := &Client{
+		apiVersion:         apiVersion,
 		baseURL:            baseURL,
 		apiKey:             apiKey,
 		pending:            make(map[uint64]chan *rpcResponse),
@@ -375,21 +405,49 @@ func newCorrelationIDFrom(src io.Reader) string {
 // trailing slashes and any /api/v2.0 suffix the operator may have
 // carried over from REST configuration. Returns an error on a
 // malformed URL.
-func wsURLFromBase(base string) (string, error) {
+// apiVersionPattern matches a TrueNAS API version endpoint segment, e.g.
+// "v25.10.5" or "25.10.5". Anything else is rejected rather than pasted into
+// a URL, so a typo fails with a clear message instead of a 404 mid-dial.
+var apiVersionPattern = regexp.MustCompile(`^v?\d+\.\d+(\.\d+)*$`)
+
+// apiPathForVersion returns the WebSocket path for the requested API version.
+//
+// An empty version means /api/current, which is the default and what every
+// release of this provider has used. Pinning is opt-in: see the note on the
+// Config field.
+func apiPathForVersion(apiVersion string) (string, error) {
+	v := strings.TrimSpace(apiVersion)
+	if v == "" {
+		return "/api/current", nil
+	}
+	if !apiVersionPattern.MatchString(v) {
+		return "", fmt.Errorf("invalid api_version %q: expected a TrueNAS API version such as %q", apiVersion, "v25.10.5")
+	}
+	if !strings.HasPrefix(v, "v") {
+		v = "v" + v
+	}
+	return "/api/" + v, nil
+}
+
+func wsURLFromBase(base, apiVersion string) (string, error) {
 	if base == "" {
 		return "", errors.New("base URL is empty")
+	}
+	path, err := apiPathForVersion(apiVersion)
+	if err != nil {
+		return "", err
 	}
 	trimmed := strings.TrimRight(base, "/")
 	trimmed = strings.TrimSuffix(trimmed, "/api/v2.0")
 	switch {
 	case strings.HasPrefix(trimmed, "https://"):
-		return "wss://" + strings.TrimPrefix(trimmed, "https://") + "/api/current", nil
+		return "wss://" + strings.TrimPrefix(trimmed, "https://") + path, nil
 	case strings.HasPrefix(trimmed, "http://"):
-		return "ws://" + strings.TrimPrefix(trimmed, "http://") + "/api/current", nil
+		return "ws://" + strings.TrimPrefix(trimmed, "http://") + path, nil
 	case strings.HasPrefix(trimmed, "wss://"), strings.HasPrefix(trimmed, "ws://"):
 		// Already a WebSocket URL; trust the operator and strip any
 		// stale /api/v2.0 suffix as above.
-		return trimmed + "/api/current", nil
+		return trimmed + path, nil
 	default:
 		return "", fmt.Errorf("unsupported URL scheme in %q (expected http://, https://, ws:// or wss://)", base)
 	}
