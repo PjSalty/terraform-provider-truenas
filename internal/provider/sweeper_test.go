@@ -95,6 +95,10 @@ func init() {
 		Name: "truenas_share_nfs",
 		F:    sweepNFSShares,
 	})
+	resource.AddTestSweepers("truenas_share_webshare", &resource.Sweeper{
+		Name: "truenas_share_webshare",
+		F:    sweepWebshares,
+	})
 	resource.AddTestSweepers("truenas_share_smb", &resource.Sweeper{
 		Name: "truenas_share_smb",
 		F:    sweepSMBShares,
@@ -405,6 +409,34 @@ func sweepNFSShares(_ string) error {
 		}
 		err := c.DeleteNFSShare(ctx, s.ID)
 		sweepLog("truenas_share_nfs", "delete", s.Path, err)
+	}
+	return nil
+}
+
+// sweepWebshares reclaims acceptance-test WebShare shares.
+//
+// WebShare only exists from TrueNAS 26.0. On an older box the namespace is
+// absent and listing fails, which is not a sweep failure: there is nothing
+// to reclaim, so it returns cleanly rather than failing the whole sweep for
+// every other resource.
+func sweepWebshares(_ string) error {
+	ctx, cancel := sweepCtx()
+	defer cancel()
+	c := testAccSweeperClient()
+
+	shares, err := c.ListWebshares(ctx)
+	if err != nil {
+		sweepLog("truenas_share_webshare", "skip", "namespace unavailable (pre-26.0)", nil)
+		return nil
+	}
+	for _, s := range shares {
+		// Match on the share name, which the tests prefix, or on the
+		// backing dataset path for anything created with a stray name.
+		if !sweeperHasAcctestPrefix(s.Name) && !sweeperDatasetIsAcctest(s.Path) {
+			continue
+		}
+		err := c.DeleteWebshare(ctx, s.ID)
+		sweepLog("truenas_share_webshare", "delete", s.Name, err)
 	}
 	return nil
 }
