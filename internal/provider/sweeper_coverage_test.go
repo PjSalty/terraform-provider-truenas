@@ -44,6 +44,7 @@ var resourceSweeperExclusions = map[string]string{
 	"snmp_config":       "singleton: Delete resets SNMP config to defaults",
 	"ssh_config":        "singleton: Delete resets SSH config to defaults",
 	"system_update":     "singleton: Delete is a no-op by design (prevents surprise-reboot footgun); no list endpoint, no fixtures to sweep",
+	"lxc_config":        "singleton: one system-wide LXC config, no list endpoint and nothing to sweep",
 	"systemdataset":     "singleton: Delete resets system dataset pool to boot-pool",
 	"ups_config":        "singleton: Delete resets UPS config to defaults",
 	"network_interface": "dangerous: listing returns real NICs that cannot be distinguished from fixtures, sweeping risks host disconnect",

@@ -217,6 +217,18 @@ while IFS= read -r m; do
 
   token="$(printf '%s' "$m" | normalise)"
   grep -qx "$token" "$WORK/newest.txt" && continue
+  # A service's models are not always named after its namespace. LXCConfig*
+  # models back the "lxc" namespace, so lxc.bridge_choices normalises to
+  # lxcbridgechoices while the model is lxcconfigbridgechoices. Retry the
+  # lookup through the alias before calling it a removal, or the check
+  # reports a method that plainly exists.
+  alias_token=""
+  case "$m" in
+    lxc.*) alias_token="$(printf 'lxcconfig%s' "${m#lxc.}" | normalise)" ;;
+  esac
+  if [ -n "$alias_token" ] && grep -qx "$alias_token" "$WORK/newest.txt"; then
+    continue
+  fi
   if grep -qxF "$m" "$WORK/allow.txt" 2>/dev/null; then
     say "    allowlisted: $m (no model in $NEWEST)"
     continue
