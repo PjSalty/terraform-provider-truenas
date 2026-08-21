@@ -37,6 +37,7 @@ func TestDataSourceConfigure_Batch(t *testing.T) {
 		NewISCSITargetDataSource,
 		NewKerberosRealmDataSource,
 		NewKeychainCredentialDataSource,
+		NewLXCConfigDataSource,
 		NewNetworkConfigDataSource,
 		NewNetworkInterfaceDataSource,
 		NewPoolDataSource,

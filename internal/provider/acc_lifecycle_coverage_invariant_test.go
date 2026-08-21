@@ -68,6 +68,7 @@ var lifecycleResourceExclusions = map[string]map[string]string{
 	"FTPConfig":     {"disappears": "singleton: Delete is a no-op reset"},
 	"FilesystemACL": {"disappears": "path-based singleton, see filesystem_acl_template for template flow"},
 	"KMIPConfig":    {"disappears": "singleton with one-shot trigger flags", "import": "singleton: trigger flags don't round-trip cleanly through import"},
+	"LXCConfig":     {"disappears": "singleton: the LXC config row exists as soon as the namespace does, Delete is a no-op"},
 	"MailConfig":    {"disappears": "singleton: Delete is a no-op reset"},
 	"NetworkConfig": {"disappears": "singleton: Delete is a no-op reset"},
 	"NFSConfig":     {"disappears": "singleton: Delete is a no-op reset"},
