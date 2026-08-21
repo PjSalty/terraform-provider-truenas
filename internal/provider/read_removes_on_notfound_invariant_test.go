@@ -58,8 +58,11 @@ var singletonsByDesign = map[string]bool{
 	"snmp_config.go":       true,
 	"ssh_config.go":        true,
 	"system_update.go":     true,
-	"systemdataset.go":     true,
-	"ups_config.go":        true,
+	// Singleton: the LXC config always exists, so there is no not-found
+	// state for Read to remove.
+	"lxc_config.go":    true,
+	"systemdataset.go": true,
+	"ups_config.go":    true,
 }
 
 // TestResourcesRemoveFromStateOnNotFound verifies that every resource

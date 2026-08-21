@@ -35,6 +35,7 @@ var deleteNotFoundExclusions = map[string]string{
 	"snmp_config":       "singleton: Delete resets SNMP config via Update",
 	"ssh_config":        "singleton: Delete resets SSH config via Update",
 	"system_update":     "singleton: Delete is a no-op by design (prevents surprise-reboot footgun from accidental destroy)",
+	"lxc_config":        "singleton: Delete is a no-op, the LXC config always exists and removing the resource must not reset container networking",
 	"systemdataset":     "singleton: Delete resets system dataset pool via Update",
 	"ups_config":        "singleton: Delete resets UPS config via Update",
 }
