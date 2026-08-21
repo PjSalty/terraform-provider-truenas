@@ -57,6 +57,7 @@ func allDataSources() []dataSourceCase {
 		{"snapshot_task", NewSnapshotTaskDataSource, "_snapshot_task"},
 		{"alert_service", NewAlertServiceDataSource, "_alert_service"},
 		// TrueNAS 26.0
+		{"container_images", NewContainerImagesDataSource, "_container_images"},
 		{"lxc_config", NewLXCConfigDataSource, "_lxc_config"},
 	}
 }

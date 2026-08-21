@@ -145,3 +145,26 @@ func (c *Client) GetContainerNICAttachChoices(ctx context.Context) (*types.Conta
 	tflog.Trace(ctx, "GetContainerNICAttachChoices (ws) success")
 	return &choices, nil
 }
+
+// ListContainerImages returns every image the LXC registry currently
+// publishes, with its available versions.
+//
+// This reaches out to the upstream image registry, so it is slower than a
+// local read and fails when the server has no route to it.
+func (c *Client) ListContainerImages(ctx context.Context) ([]types.ContainerImage, error) {
+	tflog.Trace(ctx, "ListContainerImages (ws) start")
+
+	result, err := c.Call(ctx, "container.image.query_registry", nil,
+		CallOptions{Read: true, Idempotent: true})
+	if err != nil {
+		return nil, errContainerDeviceUnsupported(err, "listing container images")
+	}
+
+	var images []types.ContainerImage
+	if err := json.Unmarshal(result, &images); err != nil {
+		return nil, fmt.Errorf("parsing container image list: %w", err)
+	}
+
+	tflog.Trace(ctx, "ListContainerImages (ws) success")
+	return images, nil
+}
