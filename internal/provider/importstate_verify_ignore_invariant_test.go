@@ -44,9 +44,10 @@ var ignoreFieldRE = regexp.MustCompile(`"([^"]+)"`)
 var allowedIgnoreFields = map[string]string{
 	// Create-only inputs the entry model does not carry, so no read can
 	// return them.
-	"container_test.go::image":    "computed-but-not-readable: image is on ContainerCreate only, ContainerEntry has no image field, so no read can report it (ModifyPlan stops this forcing a replace after import)",
-	"container_test.go::pool":     "computed-but-not-readable: pool is on ContainerCreate only, ContainerEntry has no pool field, so no read can report it (ModifyPlan stops this forcing a replace after import)",
-	"container_test.go::timeouts": "provider-side only: the timeouts block is Terraform config, never round-tripped through the API",
+	"container_test.go::image":           "computed-but-not-readable: image is on ContainerCreate only, ContainerEntry has no image field, so no read can report it (ModifyPlan stops this forcing a replace after import)",
+	"container_device_test.go::timeouts": "provider-side only: the timeouts block is Terraform config, never round-tripped through the API",
+	"container_test.go::pool":            "computed-but-not-readable: pool is on ContainerCreate only, ContainerEntry has no pool field, so no read can report it (ModifyPlan stops this forcing a replace after import)",
+	"container_test.go::timeouts":        "provider-side only: the timeouts block is Terraform config, never round-tripped through the API",
 
 	// Secrets / sensitive write-only inputs that the API never returns.
 	"acc_iscsi_auth_test.go::secret":          "CHAP secret: write-only; TrueNAS returns it masked on read",
