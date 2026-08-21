@@ -218,3 +218,53 @@ func TestContainerDevice_decodeErrors(t *testing.T) {
 		t.Errorf("nic_attach_choices: %v", err)
 	}
 }
+
+func TestListContainerImages(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	t.Run("decodes names and versions", func(t *testing.T) {
+		c, _ := deviceServer(t, "container.image.query_registry", []interface{}{
+			map[string]interface{}{
+				"name": "alpine:3.21:amd64:default",
+				"versions": []interface{}{
+					map[string]interface{}{"version": "20260819_13:00"},
+					map[string]interface{}{"version": "20260820_13:00"},
+				},
+			},
+		}, nil).NewClient(ctx)
+		got, err := c.ListContainerImages(ctx)
+		if err != nil {
+			t.Fatalf("ListContainerImages: %v", err)
+		}
+		if len(got) != 1 || got[0].Name != "alpine:3.21:amd64:default" {
+			t.Fatalf("decoded %+v", got)
+		}
+		// Versions arrive oldest-first; callers rely on that to pick the
+		// newest, so the order must survive decoding.
+		if len(got[0].Versions) != 2 || got[0].Versions[1].Version != "20260820_13:00" {
+			t.Errorf("versions = %+v", got[0].Versions)
+		}
+	})
+
+	t.Run("a missing namespace names the required version", func(t *testing.T) {
+		ts := NewTestServer(t, func(ctx context.Context, m string, p []interface{}) (interface{}, *RPCError) {
+			return nil, &RPCError{Code: CodeMethodNotFound, Message: m}
+		})
+		c, _ := ts.NewClient(ctx)
+		_, err := c.ListContainerImages(ctx)
+		if err == nil {
+			t.Fatal("a missing namespace was treated as success")
+		}
+		if !strings.Contains(err.Error(), "26.0") {
+			t.Errorf("diagnostic should name the required version, got: %v", err)
+		}
+	})
+
+	t.Run("a malformed response is an error", func(t *testing.T) {
+		c, _ := deviceServer(t, "container.image.query_registry", "not-a-list", nil).NewClient(ctx)
+		if _, err := c.ListContainerImages(ctx); err == nil || !strings.Contains(err.Error(), "parsing") {
+			t.Errorf("err = %v", err)
+		}
+	})
+}

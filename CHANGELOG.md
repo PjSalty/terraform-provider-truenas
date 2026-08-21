@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- New `truenas_container_images` data source listing the images an LXC
+  container can be created from, with every version the registry publishes for
+  each.
+
+  This exists because image versions are datestamped and the registry keeps
+  only the most recent few, so a version hardcoded in a configuration stops
+  resolving within days. `latest_by_name` and the per-image `latest_version`
+  resolve one at plan time instead. `name_prefix` narrows the list, results are
+  sorted by name so they do not churn between plans, and an image with no
+  published versions is listed with an empty `latest_version` rather than being
+  dropped, so a reference to it fails on the empty value instead of on a
+  missing map key.
+
 - New `truenas_container_device` resource for attaching devices to the LXC
   containers TrueNAS introduced in 26.0: a bind-mounted host path, a GPU, a
   virtual NIC, or a passed-through USB device.
