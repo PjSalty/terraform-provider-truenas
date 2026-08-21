@@ -2,6 +2,7 @@ package wsclient
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -382,5 +383,99 @@ func TestUpdateSMBConfig_responseDecodeError(t *testing.T) {
 	_, err := c.UpdateSMBConfig(ctx, &types.SMBConfigUpdateRequest{MinimumProtocol: strp("SMB2")})
 	if err == nil || !strings.Contains(err.Error(), "parsing") {
 		t.Errorf("got %v", err)
+	}
+}
+
+// --- search_protocols, new in TrueNAS 26.0 ---
+
+func TestBuildSMBUpdateBody_searchProtocolsOn26(t *testing.T) {
+	sp := []string{"SPOTLIGHT"}
+	body, err := buildSMBUpdateBody(
+		&types.SMBConfigUpdateRequest{SearchProtocols: &sp},
+		types.SMBDialectMinimumProtocol)
+	if err != nil {
+		t.Fatalf("buildSMBUpdateBody: %v", err)
+	}
+	if body.SearchProtocols == nil || len(*body.SearchProtocols) != 1 || (*body.SearchProtocols)[0] != "SPOTLIGHT" {
+		t.Errorf("search_protocols = %v, want [SPOTLIGHT]", body.SearchProtocols)
+	}
+}
+
+// The field does not exist before 26.0 and those models forbid unknown keys,
+// so asking for it against an older server must be a clear refusal rather
+// than a ValidationError from middleware.
+func TestBuildSMBUpdateBody_searchProtocolsRejectedPre26(t *testing.T) {
+	sp := []string{"SPOTLIGHT"}
+	_, err := buildSMBUpdateBody(
+		&types.SMBConfigUpdateRequest{SearchProtocols: &sp},
+		types.SMBDialectEnableSMB1)
+	if err == nil {
+		t.Fatal("search_protocols was sent to a pre-26.0 server")
+	}
+	if !strings.Contains(err.Error(), "26.0") {
+		t.Errorf("diagnostic should name the required version, got: %v", err)
+	}
+}
+
+// Not requesting it must emit no key at all, on either dialect.
+func TestBuildSMBUpdateBody_searchProtocolsOmittedWhenUnset(t *testing.T) {
+	for _, d := range []types.SMBDialect{types.SMBDialectEnableSMB1, types.SMBDialectMinimumProtocol} {
+		body, err := buildSMBUpdateBody(&types.SMBConfigUpdateRequest{NetbiosName: strp("truenas")}, d)
+		if err != nil {
+			t.Fatalf("buildSMBUpdateBody: %v", err)
+		}
+		if body.SearchProtocols != nil {
+			t.Errorf("dialect %v: search_protocols emitted for a request that did not set it", d)
+		}
+	}
+}
+
+// An empty list is a meaningful value (disable Spotlight), distinct from
+// "not requested", so it must still be sent.
+func TestBuildSMBUpdateBody_searchProtocolsEmptyListIsSent(t *testing.T) {
+	sp := []string{}
+	body, err := buildSMBUpdateBody(
+		&types.SMBConfigUpdateRequest{SearchProtocols: &sp},
+		types.SMBDialectMinimumProtocol)
+	if err != nil {
+		t.Fatalf("buildSMBUpdateBody: %v", err)
+	}
+	if body.SearchProtocols == nil {
+		t.Error("an explicit empty list was dropped; Spotlight could not be turned off")
+	}
+}
+
+func TestNormalizeSMBConfig_searchProtocolsRoundTrip(t *testing.T) {
+	sp := []string{"SPOTLIGHT"}
+	cfg := types.SMBConfig{MinimumProtocol: strp("SMB2"), SearchProtocols: &sp}
+	if err := normalizeSMBConfig(&cfg); err != nil {
+		t.Fatalf("normalizeSMBConfig: %v", err)
+	}
+	if cfg.SearchProtocols == nil || len(*cfg.SearchProtocols) != 1 {
+		t.Errorf("search_protocols did not survive: %v", cfg.SearchProtocols)
+	}
+}
+
+// A pointer to a NIL slice must still marshal as [], not null. ElementsAs
+// leaves the slice nil for an empty list, and middleware rejects null with
+// "Input should be a valid list". The earlier empty-list test used a
+// non-nil []string{} and so did not catch this.
+func TestSMBUpdateBody_nilSliceMarshalsAsEmptyList(t *testing.T) {
+	var nilSlice []string
+	body, err := buildSMBUpdateBody(
+		&types.SMBConfigUpdateRequest{SearchProtocols: &nilSlice},
+		types.SMBDialectMinimumProtocol)
+	if err != nil {
+		t.Fatalf("buildSMBUpdateBody: %v", err)
+	}
+	b, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(b), `"search_protocols":null`) {
+		t.Errorf("search_protocols marshalled as null, which middleware rejects: %s", b)
+	}
+	if !strings.Contains(string(b), `"search_protocols":[]`) {
+		t.Errorf("expected an empty JSON list, got: %s", b)
 	}
 }

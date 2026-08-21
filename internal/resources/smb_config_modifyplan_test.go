@@ -107,10 +107,62 @@ func TestSMBConfigResource_ModifyPlan_destroyIsANoop(t *testing.T) {
 // would if the two ever drifted) would send the legacy key to a 26.0 box.
 func TestSMBConfigResource_BuildUpdateRequest_onlyReadsProtocol(t *testing.T) {
 	r := &SMBConfigResource{}
-	req := r.buildUpdateRequest(&SMBConfigResourceModel{
+	req := r.buildUpdateRequest(context.Background(), &SMBConfigResourceModel{
 		MinimumProtocol: types.StringValue(truenas.SMBProtocolSMB3),
 	})
 	if req.MinimumProtocol == nil || *req.MinimumProtocol != truenas.SMBProtocolSMB3 {
 		t.Fatalf("MinimumProtocol = %v, want SMB3", req.MinimumProtocol)
+	}
+}
+
+// --- search_protocols, new in TrueNAS 26.0 ---
+
+func TestSMBConfigResource_searchProtocolsRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	r := &SMBConfigResource{}
+
+	// Set in the plan: forwarded to the request.
+	spVal, _ := types.ListValueFrom(ctx, types.StringType, []string{"SPOTLIGHT"})
+	req := r.buildUpdateRequest(ctx, &SMBConfigResourceModel{
+		MinimumProtocol: types.StringValue(truenas.SMBProtocolSMB2),
+		SearchProtocols: spVal,
+	})
+	if req.SearchProtocols == nil || len(*req.SearchProtocols) != 1 {
+		t.Fatalf("search_protocols not forwarded: %v", req.SearchProtocols)
+	}
+
+	// Unset: omitted, so it never reaches a server without the field.
+	req2 := r.buildUpdateRequest(ctx, &SMBConfigResourceModel{
+		MinimumProtocol: types.StringValue(truenas.SMBProtocolSMB2),
+		SearchProtocols: types.ListNull(types.StringType),
+	})
+	if req2.SearchProtocols != nil {
+		t.Error("search_protocols sent for a plan that did not set it")
+	}
+}
+
+// A server without the field must read back a known empty list, not null,
+// or every plan on 25.10 shows a phantom diff.
+func TestSMBConfigResource_searchProtocolsAbsentReadsEmpty(t *testing.T) {
+	ctx := context.Background()
+	r := &SMBConfigResource{}
+	var m SMBConfigResourceModel
+	r.mapResponseToModel(ctx, &truenas.SMBConfig{
+		Protocol: truenas.SMBProtocolSMB2, SearchProtocols: nil,
+	}, &m)
+	if m.SearchProtocols.IsNull() || m.SearchProtocols.IsUnknown() {
+		t.Error("search_protocols read back null/unknown from a server without the field")
+	}
+	if len(m.SearchProtocols.Elements()) != 0 {
+		t.Errorf("expected an empty list, got %v", m.SearchProtocols)
+	}
+
+	sp := []string{"SPOTLIGHT"}
+	var m2 SMBConfigResourceModel
+	r.mapResponseToModel(ctx, &truenas.SMBConfig{
+		Protocol: truenas.SMBProtocolSMB2, SearchProtocols: &sp,
+	}, &m2)
+	if len(m2.SearchProtocols.Elements()) != 1 {
+		t.Errorf("search_protocols did not round-trip: %v", m2.SearchProtocols)
 	}
 }

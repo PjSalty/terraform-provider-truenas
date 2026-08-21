@@ -41,6 +41,10 @@ The following arguments are supported:
 * `netbiosname` - (Optional) NetBIOS name of the server. Default: `truenas`.
 * `workgroup` - (Optional) Windows workgroup name. Default: `WORKGROUP`.
 * `description` - (Optional) Server description. Default: `TrueNAS Server`.
+* `search_protocols` - (Optional) Extra search protocols the SMB server
+  answers. Currently only `SPOTLIGHT` (macOS Spotlight). **Requires TrueNAS
+  26.0 or newer**; it is only sent when set, and asking for it against an
+  older server is a clear error rather than a middleware validation failure.
 * `minimum_protocol` - (Optional) Minimum SMB protocol version the server will
   negotiate: `SMB1`, `SMB2`, or `SMB3`. `SMB3` requires TrueNAS 26.0 or newer.
 * `enable_smb1` - (Optional, **deprecated**) Enable SMB1 protocol support. Use

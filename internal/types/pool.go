@@ -28,6 +28,10 @@ type PoolCreateRequest struct {
 	Deduplication         string                 `json:"deduplication,omitempty"`
 	Checksum              string                 `json:"checksum,omitempty"`
 	AllowDuplicateSerials bool                   `json:"allow_duplicate_serials,omitempty"`
+	// ForceTopology is new in TrueNAS 26.0: it bypasses topology policy
+	// validation. Pointer + omitempty so the key never reaches a pre-26.0
+	// server, whose model forbids unknown fields.
+	ForceTopology *bool `json:"force_topology,omitempty"`
 }
 
 // PoolExportRequest is the body for POST /pool/id/{id}/export /

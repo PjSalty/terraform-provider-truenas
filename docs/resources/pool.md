@@ -44,6 +44,10 @@ The following arguments are supported:
 * `name` - (Required) The name of the pool (1-50 characters). Changing this attribute forces a new resource to be created.
 * `topology_json` - (Optional) The pool topology as a raw JSON object. Must contain at least a `data` key with a list of vdev definitions (e.g. {"data":[{"type":"MIRROR","disks":["sda","sdb"]}]}). May also contain cache, log, spares, special, and dedup keys. Required on create; ignored after import since the API does not round-trip the original request form. Changing this attribute forces a new resource to be created.
 * `encryption` - (Optional) Whether to create a ZFS-encrypted root dataset for this pool.
+* `force_topology` - (Optional) Bypass topology policy validation, allowing
+  data vdevs that differ in type or width from the rest of the pool.
+  **Requires TrueNAS 26.0 or newer**; only sent when set, so leaving it unset
+  is safe on any version. Changing it forces a new pool.
 * `encryption_options_json` - (Optional) Encryption options as a raw JSON object:
   `generate_key`, `passphrase`, `key`, `pbkdf2iters`.
 
