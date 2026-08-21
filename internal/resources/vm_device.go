@@ -92,7 +92,11 @@ func (r *VMDeviceResource) Schema(ctx context.Context, _ resource.SchemaRequest,
 					stringplanmodifier.RequiresReplace(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("DISK", "NIC", "CDROM", "DISPLAY", "RAW", "PCI", "USB"),
+					// ISCSI_DISK is new in TrueNAS 27.0. Accepting it here only
+					// unblocks plan-time validation; its nested targets/luns
+					// shape is not modeled yet, so it is usable through the
+					// attributes this resource already exposes.
+					stringvalidator.OneOf("DISK", "NIC", "CDROM", "DISPLAY", "RAW", "PCI", "USB", "ISCSI_DISK"),
 				},
 			},
 			"order": schema.Int64Attribute{

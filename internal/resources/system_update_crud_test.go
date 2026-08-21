@@ -460,3 +460,55 @@ func TestPoolResource_Create_rejectsRemovedEncryptionKey(t *testing.T) {
 		t.Errorf("diagnostic should name the offending key: %s", resp.Diagnostics.Errors()[0].Detail())
 	}
 }
+
+// force_topology is new in TrueNAS 26.0 and is only sent when explicitly
+// set: the field does not exist before 26.0 and those models reject unknown
+// keys, so an unset attribute must emit nothing rather than a default false.
+func TestPoolResource_forceTopologyOnlySentWhenSet(t *testing.T) {
+	ctx := context.Background()
+	var got map[string]interface{}
+	mk := func() *wsclient.Client {
+		return newWSTestClient(ctx, t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+			switch method {
+			case "system.info":
+				return map[string]interface{}{"version": "26.0.0-BETA.2"}, nil
+			case "pool.create":
+				if len(params) > 0 {
+					if m, ok := params[0].(map[string]interface{}); ok {
+						got = m
+					}
+				}
+				return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "stop here"}
+			}
+			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodNotFound, Message: method}
+		})
+	}
+
+	base := map[string]tftypes.Value{
+		"name":          str("tank"),
+		"topology_json": str(`{"data":[{"type":"STRIPE","disks":["sda"]}]}`),
+	}
+
+	// Unset: no key on the wire.
+	r := &PoolResource{client: mk()}
+	sch := schemaOf(t, ctx, r)
+	resp := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
+	r.Create(ctx, resource.CreateRequest{Plan: planFromValues(t, ctx, sch, base)}, resp)
+	if _, present := got["force_topology"]; present {
+		t.Errorf("force_topology sent for a plan that did not set it: %v", got)
+	}
+
+	// Set: forwarded.
+	got = nil
+	withForce := map[string]tftypes.Value{}
+	for k, v := range base {
+		withForce[k] = v
+	}
+	withForce["force_topology"] = tftypes.NewValue(tftypes.Bool, true)
+	r2 := &PoolResource{client: mk()}
+	resp2 := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
+	r2.Create(ctx, resource.CreateRequest{Plan: planFromValues(t, ctx, sch, withForce)}, resp2)
+	if got["force_topology"] != true {
+		t.Errorf("force_topology = %v, want true", got["force_topology"])
+	}
+}

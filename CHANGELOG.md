@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `truenas_smb_config` gained `search_protocols`, new in TrueNAS 26.0.
+  Currently only `SPOTLIGHT` (macOS Spotlight). Version-gated the same way as
+  `minimum_protocol`: it is only sent to a server that has the field, because
+  the pre-26.0 models reject unknown keys, and asking for it against an older
+  server is a clear error rather than a middleware validation failure.
+
+- `truenas_pool` gained `force_topology`, new in TrueNAS 26.0, which bypasses
+  topology policy validation to allow data vdevs that differ in type or width
+  from the rest of the pool. Create-only, and only sent when explicitly set,
+  so leaving it unset stays safe on every supported version.
+
+- `truenas_vm_device` accepts the `ISCSI_DISK` device type, new in TrueNAS
+  27.0. This unblocks plan-time validation for it; the nested
+  targets/LUNs shape is not modelled yet, so it is usable through the
+  attributes the resource already exposes.
+
 - Optional `api_version` provider argument (and `TRUENAS_API_VERSION`) pins the
   WebSocket endpoint to a specific TrueNAS API version instead of
   `/api/current`. Pinning makes middleware run its `from_previous` /
