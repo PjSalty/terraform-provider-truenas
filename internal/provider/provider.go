@@ -418,6 +418,7 @@ func (p *TrueNASProvider) DataSources(_ context.Context) []func() datasource.Dat
 		datasources.NewAppDataSource,
 		datasources.NewCatalogDataSource,
 		datasources.NewDirectoryServicesDataSource,
+		datasources.NewContainerImagesDataSource,
 		datasources.NewLXCConfigDataSource,
 		datasources.NewSystemDatasetDataSource,
 		datasources.NewNetworkInterfaceDataSource,
