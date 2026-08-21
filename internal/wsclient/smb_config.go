@@ -44,6 +44,10 @@ type smbUpdateBody struct {
 
 	EnableSMB1      *bool   `json:"enable_smb1,omitempty"`
 	MinimumProtocol *string `json:"minimum_protocol,omitempty"`
+
+	// 26.0 and newer only. Omitted entirely on older servers, whose models
+	// reject unknown keys.
+	SearchProtocols *[]string `json:"search_protocols,omitempty"`
 }
 
 // normalizeSMBConfig fills the derived protocol fields from whichever key the
@@ -112,6 +116,24 @@ func buildSMBUpdateBody(req *types.SMBConfigUpdateRequest, d types.SMBDialect) (
 		Guest:          req.Guest,
 		Filemask:       req.Filemask,
 		Dirmask:        req.Dirmask,
+	}
+
+	// search_protocols arrived in 26.0. It is only ever emitted against a
+	// server that has the field, for the same reason as the protocol keys:
+	// the pre-26.0 models are extra="forbid", so an unknown key is a hard
+	// ValidationError rather than an ignored one.
+	if req.SearchProtocols != nil {
+		if d != types.SMBDialectMinimumProtocol {
+			return nil, fmt.Errorf("search_protocols requires TrueNAS 26.0 or newer; "+
+				"this server still uses the %q field", "enable_smb1")
+		}
+		// Must never marshal as JSON null: middleware rejects that with
+		// "Input should be a valid list". append([]string(nil), ...) yields
+		// nil for an empty input, so start from a non-nil empty slice. An
+		// empty list is a real value here, it is how Spotlight is disabled.
+		v := make([]string, 0, len(*req.SearchProtocols))
+		v = append(v, (*req.SearchProtocols)...)
+		body.SearchProtocols = &v
 	}
 
 	// No protocol requested means no protocol key on the wire. Emitting one

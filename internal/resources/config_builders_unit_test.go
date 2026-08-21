@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -91,7 +92,7 @@ func TestSMBConfigResource_BuildUpdateRequest(t *testing.T) {
 			Filemask:       types.StringValue("0775"),
 			Dirmask:        types.StringValue("0775"),
 		}
-		req := r.buildUpdateRequest(plan)
+		req := r.buildUpdateRequest(context.Background(), plan)
 		if req.NetbiosName == nil || *req.NetbiosName != "TRUENAS" {
 			t.Errorf("NetbiosName mismatch")
 		}
@@ -109,7 +110,7 @@ func TestSMBConfigResource_BuildUpdateRequest(t *testing.T) {
 			EnableSMB1:      types.BoolNull(),
 			MinimumProtocol: types.StringNull(),
 		}
-		req := r.buildUpdateRequest(plan)
+		req := r.buildUpdateRequest(context.Background(), plan)
 		if req.NetbiosName != nil || req.Workgroup != nil || req.MinimumProtocol != nil {
 			t.Errorf("null fields should be skipped")
 		}
@@ -385,7 +386,7 @@ func TestSMBConfigResource_MapResponseToModel(t *testing.T) {
 	for i, cfg := range cases {
 		t.Run("case", func(t *testing.T) {
 			var m SMBConfigResourceModel
-			r.mapResponseToModel(cfg, &m)
+			r.mapResponseToModel(context.Background(), cfg, &m)
 			if m.NetbiosName.ValueString() != cfg.NetbiosName {
 				t.Errorf("case %d: NetbiosName mismatch", i)
 			}
