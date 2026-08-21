@@ -90,6 +90,12 @@ func init() {
 		F:    sweepNVMetPortSubsys,
 	})
 
+	// ---- Containers: own a root dataset, so they must go before datasets --
+	resource.AddTestSweepers("truenas_container", &resource.Sweeper{
+		Name: "truenas_container",
+		F:    sweepContainers,
+	})
+
 	// ---- Shares and iscsi leaf resources: must run before datasets/zvols --
 	resource.AddTestSweepers("truenas_share_nfs", &resource.Sweeper{
 		Name: "truenas_share_nfs",
@@ -419,6 +425,30 @@ func sweepNFSShares(_ string) error {
 // absent and listing fails, which is not a sweep failure: there is nothing
 // to reclaim, so it returns cleanly rather than failing the whole sweep for
 // every other resource.
+func sweepContainers(_ string) error {
+	ctx, cancel := sweepCtx()
+	defer cancel()
+	c := testAccSweeperClient()
+
+	containers, err := c.ListContainers(ctx)
+	if err != nil {
+		sweepLog("truenas_container", "skip", "namespace unavailable (pre-26.0)", nil)
+		return nil
+	}
+	for _, ct := range containers {
+		if !sweeperHasAcctestPrefix(ct.Name) {
+			continue
+		}
+		// Force stops a running container so the delete does not fail on
+		// it. Recursive stays false here for the same reason the resource
+		// never sets it: it destroys snapshots and clones anywhere in the
+		// pool, which is far past reclaiming a test container.
+		err := c.DeleteContainer(ctx, ct.ID, &truenas.ContainerDeleteOptions{Force: true})
+		sweepLog("truenas_container", "delete", ct.Name, err)
+	}
+	return nil
+}
+
 func sweepWebshares(_ string) error {
 	ctx, cancel := sweepCtx()
 	defer cancel()

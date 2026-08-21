@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- New `truenas_container` resource for the LXC containers TrueNAS introduced
+  in 26.0. Manages the image, pool, init process, capability policy and
+  user-namespace ID mapping on the `container` namespace. Devices are not
+  covered: they live in `container.device` upstream and are excluded from the
+  container create model.
+
+  Requires TrueNAS 26.0 or newer, with the same version-naming diagnostics and
+  skip-not-fail acceptance tests as the other 26.0 resources.
+
+  Three things came out of running this against a live 26.0-BETA.1 box rather
+  than only against fakes:
+
+  - `container.delete` changed shape mid-cycle. 26.0-BETA.1 takes the container
+    ID alone and returns directly; later builds take an options argument and run
+    as a job. The newer form is sent first and the older one is used when the
+    server rejects the extra argument. The fallback matches only middleware's
+    arity wording, so a real validation failure is never retried as a version
+    problem.
+  - `image` and `pool` exist only on the upstream create model, so no read
+    returns them and an imported container has neither in state. Both are
+    `RequiresReplace`, which made the first apply after an import destroy and
+    recreate the container. That is now suppressed for exactly those two
+    attributes and only while state has nothing to compare against.
+  - The derived attributes (`dataset`, `default_network`, `status`) pin their
+    planned value, without which `terraform plan` reported a change immediately
+    after a successful apply, forever.
+
+  `recursive` is never passed to `container.delete`. It destroys the container
+  dataset's child datasets and snapshots, any clones of those snapshots anywhere
+  in the pool, and any holds on them, none of which Terraform was asked to
+  manage.
+
+  `idmap` cannot express an unmapped container, where container root is host
+  root. A container that is already unmapped upstream reads back as null rather
+  than being reported as `DEFAULT`, so it shows in the plan instead of looking
+  safer than it is.
+
 - New `truenas_lxc_config` resource and `truenas_lxc_config` data source for
   the system-wide LXC container configuration TrueNAS introduced in 26.0.
   Manages `preferred_pool`, `bridge`, `v4_network` and `v6_network` on the
