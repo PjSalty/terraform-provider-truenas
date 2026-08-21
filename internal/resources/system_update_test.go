@@ -35,13 +35,23 @@ func TestAccSystemUpdate_schemaValidation(t *testing.T) {
 	})
 }
 
+// The attributes here are autocheck/profile, not the old auto_download/train.
+// The resource was rewritten onto update.config in the 26.0 readiness series
+// (issue #32); the previous names were backed by methods that never existed.
+//
+// This config was never exercised by `go test ./...`, because acceptance
+// tests skip without TF_ACC, so the stale HCL survived the rewrite and only
+// surfaced when the suite ran against a real 26.0 box.
+//
+// profile is deliberately omitted: valid profiles are per-system and are
+// validated against update.profile_choices at apply time, so hardcoding one
+// would fail on any box that does not offer it.
 func testAccSystemUpdateConfigBasic() string {
 	return `
 provider "truenas" {}
 
 resource "truenas_system_update" "test" {
-  auto_download = false
-  train         = "TrueNAS-SCALE-Fangtooth"
+  autocheck = false
 }
 `
 }
