@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- New `truenas_share_webshare` resource for WebShare, the browser-based share
+  protocol TrueNAS introduced in 26.0. Manages `name`, `path`, `enabled` and
+  `is_home_base`; `dataset`, `relative_path` and `locked` are derived by
+  middleware and exposed read-only, because they are `excluded_field()` on the
+  upstream create model and a config setting them would be expressing
+  something the server ignores.
+
+  Requires TrueNAS 26.0 or newer. The `sharing.webshare` namespace does not
+  exist on 25.10 or earlier, so every operation there fails with a diagnostic
+  naming the required version rather than an opaque method-not-found. The
+  acceptance tests skip on such a server rather than failing, and the sweeper
+  treats the missing namespace as "nothing to reclaim" instead of a sweep
+  failure.
+
 - `truenas_smb_config` gained `search_protocols`, new in TrueNAS 26.0.
   Currently only `SPOTLIGHT` (macOS Spotlight). Version-gated the same way as
   `minimum_protocol`: it is only sent to a server that has the field, because
