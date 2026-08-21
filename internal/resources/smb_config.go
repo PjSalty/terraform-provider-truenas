@@ -5,12 +5,14 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/boolvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -43,6 +45,7 @@ type SMBConfigResourceModel struct {
 	Description     types.String `tfsdk:"description"`
 	EnableSMB1      types.Bool   `tfsdk:"enable_smb1"`
 	MinimumProtocol types.String `tfsdk:"minimum_protocol"`
+	SearchProtocols types.List   `tfsdk:"search_protocols"`
 
 	UnixCharset    types.String   `tfsdk:"unixcharset"`
 	AAPLExtensions types.Bool     `tfsdk:"aapl_extensions"`
@@ -136,6 +139,22 @@ func (r *SMBConfigResource) Schema(ctx context.Context, _ resource.SchemaRequest
 					stringvalidator.ConflictsWith(path.MatchRoot("enable_smb1")),
 				},
 			},
+			// New in TrueNAS 26.0. Version-gated the same way as
+			// minimum_protocol: the pre-26 models are extra="forbid", so the
+			// key must not reach an older server.
+			"search_protocols": schema.ListAttribute{
+				Description: "Extra search protocols the SMB server answers. Currently only " +
+					"`SPOTLIGHT` (macOS Spotlight). Requires TrueNAS 26.0 or newer.",
+				ElementType: types.StringType,
+				Optional:    true,
+				Computed:    true,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.List{
+					listvalidator.ValueStringsAre(stringvalidator.OneOf("SPOTLIGHT")),
+				},
+			},
 			"unixcharset": schema.StringAttribute{
 				Description: "UNIX character set.",
 				Optional:    true,
@@ -203,7 +222,7 @@ func (r *SMBConfigResource) Create(ctx context.Context, req resource.CreateReque
 
 	tflog.Debug(ctx, "Creating SMB config resource (updating singleton)")
 
-	updateReq := r.buildUpdateRequest(&plan)
+	updateReq := r.buildUpdateRequest(ctx, &plan)
 
 	config, err := r.client.UpdateSMBConfig(ctx, updateReq)
 	if err != nil {
@@ -214,7 +233,7 @@ func (r *SMBConfigResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	r.mapResponseToModel(config, &plan)
+	r.mapResponseToModel(ctx, config, &plan)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -240,7 +259,7 @@ func (r *SMBConfigResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	r.mapResponseToModel(config, &state)
+	r.mapResponseToModel(ctx, config, &state)
 
 	diags = resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(diags...)
@@ -257,7 +276,7 @@ func (r *SMBConfigResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	updateReq := r.buildUpdateRequest(&plan)
+	updateReq := r.buildUpdateRequest(ctx, &plan)
 
 	config, err := r.client.UpdateSMBConfig(ctx, updateReq)
 	if err != nil {
@@ -268,7 +287,7 @@ func (r *SMBConfigResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	r.mapResponseToModel(config, &plan)
+	r.mapResponseToModel(ctx, config, &plan)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -358,7 +377,7 @@ func (r *SMBConfigResource) ModifyPlan(ctx context.Context, req resource.ModifyP
 	}
 }
 
-func (r *SMBConfigResource) buildUpdateRequest(plan *SMBConfigResourceModel) *truenas.SMBConfigUpdateRequest {
+func (r *SMBConfigResource) buildUpdateRequest(ctx context.Context, plan *SMBConfigResourceModel) *truenas.SMBConfigUpdateRequest {
 	updateReq := &truenas.SMBConfigUpdateRequest{}
 
 	if !plan.NetbiosName.IsNull() && !plan.NetbiosName.IsUnknown() {
@@ -380,6 +399,15 @@ func (r *SMBConfigResource) buildUpdateRequest(plan *SMBConfigResourceModel) *tr
 	if !plan.MinimumProtocol.IsNull() && !plan.MinimumProtocol.IsUnknown() {
 		v := plan.MinimumProtocol.ValueString()
 		updateReq.MinimumProtocol = &v
+	}
+	if !plan.SearchProtocols.IsNull() && !plan.SearchProtocols.IsUnknown() {
+		// A nil slice here would marshal as JSON null, which middleware
+		// rejects with "Input should be a valid list". The wire encoder in
+		// wsclient normalises that in one place for every caller, so this
+		// just forwards what the plan holds.
+		var got []string
+		plan.SearchProtocols.ElementsAs(ctx, &got, false)
+		updateReq.SearchProtocols = &got
 	}
 	if !plan.UnixCharset.IsNull() && !plan.UnixCharset.IsUnknown() {
 		v := plan.UnixCharset.ValueString()
@@ -405,7 +433,7 @@ func (r *SMBConfigResource) buildUpdateRequest(plan *SMBConfigResourceModel) *tr
 	return updateReq
 }
 
-func (r *SMBConfigResource) mapResponseToModel(config *truenas.SMBConfig, model *SMBConfigResourceModel) {
+func (r *SMBConfigResource) mapResponseToModel(ctx context.Context, config *truenas.SMBConfig, model *SMBConfigResourceModel) {
 	model.ID = types.StringValue("1")
 	model.NetbiosName = types.StringValue(config.NetbiosName)
 	model.Workgroup = types.StringValue(config.Workgroup)
@@ -414,6 +442,14 @@ func (r *SMBConfigResource) mapResponseToModel(config *truenas.SMBConfig, model 
 	// attribute and its replacement can never disagree, on either server
 	// version, on any of Create/Read/Update/Import.
 	model.MinimumProtocol = types.StringValue(config.Protocol)
+	// A server without the field reports an empty list rather than null, so
+	// the attribute stays known and plans on 25.10 show no phantom diff.
+	sp := []string{}
+	if config.SearchProtocols != nil {
+		sp = *config.SearchProtocols
+	}
+	spVal, _ := types.ListValueFrom(ctx, types.StringType, sp)
+	model.SearchProtocols = spVal
 	model.EnableSMB1 = types.BoolValue(config.SMB1Enabled)
 	model.UnixCharset = types.StringValue(config.UnixCharset)
 	model.AAPLExtensions = types.BoolValue(config.AAPLExtensions)

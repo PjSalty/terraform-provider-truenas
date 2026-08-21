@@ -47,6 +47,11 @@ type SMBConfig struct {
 	EnableSMB1      *bool   `json:"enable_smb1"`
 	MinimumProtocol *string `json:"minimum_protocol"`
 
+	// SearchProtocols is new in TrueNAS 26.0 (macOS Spotlight). A pointer
+	// so "this server has no such field" stays distinct from "the server
+	// returned an empty list", which is its default.
+	SearchProtocols *[]string `json:"search_protocols"`
+
 	// Derived by NormalizeSMBConfig, never decoded from the wire.
 	Protocol    string     `json:"-"` // SMB1 | SMB2 | SMB3
 	SMB1Enabled bool       `json:"-"` // Protocol == SMB1
@@ -69,4 +74,9 @@ type SMBConfigUpdateRequest struct {
 	Filemask        *string `json:"filemask,omitempty"`
 	Dirmask         *string `json:"dirmask,omitempty"`
 	MinimumProtocol *string `json:"-"`
+
+	// SearchProtocols is json:"-" for the same reason as MinimumProtocol:
+	// this struct is not the wire body, and the key must not reach a
+	// pre-26.0 server whose model forbids unknown fields.
+	SearchProtocols *[]string `json:"-"`
 }

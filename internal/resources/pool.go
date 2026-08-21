@@ -51,6 +51,7 @@ type PoolResourceModel struct {
 	TopologyJSON          types.String   `tfsdk:"topology_json"`
 	Encryption            types.Bool     `tfsdk:"encryption"`
 	EncryptionOptionsJSON types.String   `tfsdk:"encryption_options_json"`
+	ForceTopology         types.Bool     `tfsdk:"force_topology"`
 	Deduplication         types.String   `tfsdk:"deduplication"`
 	Checksum              types.String   `tfsdk:"checksum"`
 	AllowDuplicateSerials types.Bool     `tfsdk:"allow_duplicate_serials"`
@@ -122,6 +123,18 @@ func (r *PoolResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 				Computed:    true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			// New in TrueNAS 26.0. Create-only, like the other pool
+			// topology inputs, hence RequiresReplace.
+			"force_topology": schema.BoolAttribute{
+				Description: "Bypass topology policy validation, allowing data vdevs that differ in " +
+					"type or width from the rest of the pool. Requires TrueNAS 26.0 or newer; it is " +
+					"only sent when set, so leaving it unset is safe on any version. Changing it " +
+					"forces a new pool.",
+				Optional: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
 				},
 			},
 			"encryption_options_json": schema.StringAttribute{
@@ -227,6 +240,13 @@ func (r *PoolResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 	if !plan.Encryption.IsNull() && !plan.Encryption.IsUnknown() {
 		createReq.Encryption = plan.Encryption.ValueBool()
+	}
+	// Only sent when explicitly set. The field does not exist before 26.0
+	// and those models reject unknown keys, so an unset attribute must emit
+	// nothing rather than a default false.
+	if !plan.ForceTopology.IsNull() && !plan.ForceTopology.IsUnknown() {
+		ft := plan.ForceTopology.ValueBool()
+		createReq.ForceTopology = &ft
 	}
 	if !plan.EncryptionOptionsJSON.IsNull() && !plan.EncryptionOptionsJSON.IsUnknown() && plan.EncryptionOptionsJSON.ValueString() != "" {
 		var opts map[string]interface{}
