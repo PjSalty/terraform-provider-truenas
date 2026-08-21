@@ -90,6 +90,12 @@ func init() {
 		F:    sweepNVMetPortSubsys,
 	})
 
+	// ---- Container devices: attached to containers, so they go first ----
+	resource.AddTestSweepers("truenas_container_device", &resource.Sweeper{
+		Name: "truenas_container_device",
+		F:    sweepContainerDevices,
+	})
+
 	// ---- Containers: own a root dataset, so they must go before datasets --
 	resource.AddTestSweepers("truenas_container", &resource.Sweeper{
 		Name: "truenas_container",
@@ -425,6 +431,48 @@ func sweepNFSShares(_ string) error {
 // absent and listing fails, which is not a sweep failure: there is nothing
 // to reclaim, so it returns cleanly rather than failing the whole sweep for
 // every other resource.
+// Devices carry no name of their own, so they are matched through the
+// container they are attached to.
+func sweepContainerDevices(_ string) error {
+	ctx, cancel := sweepCtx()
+	defer cancel()
+	c := testAccSweeperClient()
+
+	containers, err := c.ListContainers(ctx)
+	if err != nil {
+		sweepLog("truenas_container_device", "skip", "namespace unavailable (pre-26.0)", nil)
+		return nil
+	}
+	acctest := map[int]string{}
+	for _, ct := range containers {
+		if sweeperHasAcctestPrefix(ct.Name) {
+			acctest[ct.ID] = ct.Name
+		}
+	}
+	if len(acctest) == 0 {
+		return nil
+	}
+
+	devices, err := c.ListContainerDevices(ctx)
+	if err != nil {
+		sweepLog("truenas_container_device", "skip", "namespace unavailable (pre-26.0)", nil)
+		return nil
+	}
+	for _, d := range devices {
+		name, ours := acctest[d.Container]
+		if !ours {
+			continue
+		}
+		// Force detaches a device in use. raw_file and zvol stay false for
+		// the same reason the resource never sets them: they destroy the
+		// storage behind the device, which is well past reclaiming a test
+		// attachment.
+		err := c.DeleteContainerDevice(ctx, d.ID, &truenas.ContainerDeviceDeleteOptions{Force: true})
+		sweepLog("truenas_container_device", "delete", fmt.Sprintf("%d on %s", d.ID, name), err)
+	}
+	return nil
+}
+
 func sweepContainers(_ string) error {
 	ctx, cancel := sweepCtx()
 	defer cancel()

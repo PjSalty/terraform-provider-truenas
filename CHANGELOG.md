@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- New `truenas_container_device` resource for attaching devices to the LXC
+  containers TrueNAS introduced in 26.0: a bind-mounted host path, a GPU, a
+  virtual NIC, or a passed-through USB device.
+
+  Upstream models the device as one `attributes` object discriminated on a
+  `dtype` field. This resource expresses that as four mutually exclusive
+  blocks (`filesystem`, `gpu`, `nic`, `usb`) rather than a free-form map,
+  because the four shapes share no fields: a map would accept any key and only
+  fail server-side, and neither Terraform nor the docs could say what a valid
+  device looks like. Setting none of them, or more than one, fails at plan
+  time.
+
+  The provider never asks the API to remove the raw file or ZFS volume behind a
+  device: that storage has its own lifecycle and is not something detaching a
+  device attachment was asked to touch. A device in use IS force-detached, so
+  removing one from a running container works rather than failing.
+
+  Rules that would otherwise only fail server-side are checked at plan time: a
+  bind-mount source must be under `/mnt/`, neither path may contain braces, and
+  a USB `vendor_id`/`product_id` pair must be set together and be hexadecimal.
+
+  A device whose `dtype` this provider version does not model fails the read
+  with a message saying so, rather than producing state with all four blocks
+  empty that Terraform would plan as needing recreation on every run.
+
 - New `truenas_container` resource for the LXC containers TrueNAS introduced
   in 26.0. Manages the image, pool, init process, capability policy and
   user-namespace ID mapping on the `container` namespace. Devices are not

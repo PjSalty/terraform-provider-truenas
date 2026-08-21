@@ -40,6 +40,12 @@ func testAccContainerPreCheck(t *testing.T) {
 // failing for a reason that has nothing to do with the provider. Alpine is
 // picked because it is the smallest image on offer, which keeps the
 // create job (an image pull) short.
+// acctestEnabled reports whether the acceptance suite is actually running.
+// Config strings are built as arguments to resource.Test, so a helper that
+// reaches the API runs even on a plain `go test` where resource.Test would
+// skip.
+func acctestEnabled() bool { return os.Getenv("TF_ACC") != "" }
+
 func testAccContainerImage(t *testing.T) (string, string) {
 	t.Helper()
 
@@ -47,7 +53,7 @@ func testAccContainerImage(t *testing.T) (string, string) {
 	// even on a plain `go test` where resource.Test would skip. Without
 	// this guard the unit run tries to reach a TrueNAS that is not
 	// configured and fails three tests that were never meant to execute.
-	if os.Getenv("TF_ACC") == "" {
+	if !acctestEnabled() {
 		return "placeholder", "placeholder"
 	}
 
