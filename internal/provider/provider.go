@@ -328,6 +328,7 @@ func (p *TrueNASProvider) Resources(_ context.Context) []func() resource.Resourc
 		resources.NewDatasetResource,
 		resources.NewNFSShareResource,
 		resources.NewWebshareResource,
+		resources.NewContainerResource,
 		resources.NewLXCConfigResource,
 		resources.NewSMBShareResource,
 		resources.NewSnapshotTaskResource,
