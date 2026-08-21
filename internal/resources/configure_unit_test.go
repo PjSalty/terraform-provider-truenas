@@ -49,6 +49,7 @@ func TestResourceConfigure_Batch(t *testing.T) {
 		NewKerberosRealmResource,
 		NewKeychainCredentialResource,
 		NewKMIPConfigResource,
+		NewLXCConfigResource,
 		NewMailConfigResource,
 		NewNetworkConfigResource,
 		NewNetworkInterfaceResource,

@@ -31,6 +31,7 @@ var singletonResourceTestFiles = map[string]string{
 	"filesystem_acl_test.go":    "path-scoped, destroy resets ACL to defaults on the path, the path itself is the dataset's concern",
 	"ftp_config_test.go":        "singleton, destroy resets the singleton",
 	"kmip_config_test.go":       "singleton, destroy resets the singleton",
+	"lxc_config_test.go":        "singleton, destroy is a no-op: the LXC config row always exists once the namespace does",
 	"mail_config_test.go":       "singleton, destroy resets the singleton",
 	"network_config_test.go":    "singleton, destroy resets the singleton",
 	"nfs_config_test.go":        "singleton, destroy resets the singleton",

@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- New `truenas_lxc_config` resource and `truenas_lxc_config` data source for
+  the system-wide LXC container configuration TrueNAS introduced in 26.0.
+  Manages `preferred_pool`, `bridge`, `v4_network` and `v6_network` on the
+  `lxc` singleton.
+
+  Requires TrueNAS 26.0 or newer. The `lxc` namespace does not exist on 25.10
+  or earlier, so every operation there fails with a diagnostic naming the
+  required version rather than an opaque method-not-found, and the acceptance
+  tests skip on such a server rather than failing.
+
+  A named `bridge` is validated against `lxc.bridge_choices` before the write,
+  so an interface that does not exist is rejected with the valid choices
+  listed. The `"[AUTO]"` sentinel that `lxc.bridge_choices` advertises for the
+  automatic bridge is rejected at plan time with a message naming the spelling
+  that works: TrueNAS stores it as a null that refreshes back as `""`, so a
+  configuration using it can never converge, and Terraform forbids a provider
+  rewriting a value the configuration set explicitly. Use `bridge = ""`, or
+  omit it.
+
+  `v4_network` and `v6_network` are checked at plan time for CIDR syntax,
+  address family and TrueNAS's minimum of 4 addresses, so those failures name
+  the attribute instead of arriving as a middleware validation error at apply
+  time.
+
 - New `truenas_share_webshare` resource for WebShare, the browser-based share
   protocol TrueNAS introduced in 26.0. Manages `name`, `path`, `enabled` and
   `is_home_base`; `dataset`, `relative_path` and `locked` are derived by
