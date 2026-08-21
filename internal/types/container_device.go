@@ -54,3 +54,18 @@ type ContainerNICAttachChoices struct {
 	Bridge  []string `json:"BRIDGE"`
 	Macvlan []string `json:"MACVLAN"`
 }
+
+// ContainerImage is one image available from the LXC image registry, with
+// every version currently published for it. Both fields of a
+// truenas_container image block come from here.
+type ContainerImage struct {
+	Name     string                  `json:"name"`
+	Versions []ContainerImageVersion `json:"versions"`
+}
+
+// ContainerImageVersion is one datestamped publication of an image. The
+// registry keeps only the most recent few, so a version pinned today stops
+// resolving within days.
+type ContainerImageVersion struct {
+	Version string `json:"version"`
+}
