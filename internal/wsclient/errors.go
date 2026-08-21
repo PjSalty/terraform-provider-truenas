@@ -266,3 +266,32 @@ var ErrConnectionLost = errors.New("websocket connection lost")
 // ErrConnectionLost: the connection is gone deliberately, not
 // transiently, so retry is not appropriate.
 var ErrShuttingDown = errors.New("websocket client is shutting down")
+
+// isTooManyArguments reports whether the server rejected a call because it
+// was given more positional arguments than its Args model declares.
+//
+// This is how a method that GAINED a parameter in a later TrueNAS release
+// answers a client that sends the newer shape. It is deliberately narrow:
+// it matches middleware's arity message only, not EINVAL generally, so a
+// genuine validation failure never triggers a version fallback that would
+// retry with a different call and report whatever that returned.
+func isTooManyArguments(err error) bool {
+	if err == nil {
+		return false
+	}
+	var rpcErr *RPCError
+	if !errors.As(err, &rpcErr) {
+		return false
+	}
+	if rpcErr.Code != CodeInvalidParams && rpcErr.Code != CodeMethodCallError {
+		return false
+	}
+	// Message is the static server label ("Invalid params"); the arity
+	// text arrives in Data.reason, so both are checked.
+	_, reason := rpcErr.errnameAndReason()
+	return strings.Contains(rpcErr.Message, tooManyArgumentsText) ||
+		strings.Contains(reason, tooManyArgumentsText)
+}
+
+// tooManyArgumentsText is middlewared's arity-rejection wording.
+const tooManyArgumentsText = "Too many arguments"
