@@ -12,7 +12,17 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
+// Usernames carry the tf-acc- prefix and a per-run suffix, matching the
+// pattern TestAccUser_disappears already uses below.
+//
+// Both halves are load-bearing. Without the prefix the sweeper skips the
+// account, since it only destroys names starting with sweep.AcctestPrefix,
+// so a run that dies mid-apply leaves an orphan. Without the suffix the next
+// run then fails at create with [EEXIST] and stays broken until someone
+// deletes the account by hand. That is exactly what was found on the
+// 26.0-BETA box: a leftover "tfaccupdate" from an earlier interrupted run.
 func TestAccUser_basic(t *testing.T) {
+	basicUser := fmt.Sprintf("tf-acc-user-basic-%d", acctest.ShortSuffix())
 	resourceName := "truenas_user.test"
 
 	resource.Test(t, resource.TestCase{
@@ -21,9 +31,9 @@ func TestAccUser_basic(t *testing.T) {
 		CheckDestroy:             testAccCheckUserDestroy(resourceName),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccUserConfigBasic("tfacctest", "TF Acc Test User"),
+				Config: testAccUserConfigBasic(basicUser, "TF Acc Test User"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "username", "tfacctest"),
+					resource.TestCheckResourceAttr(resourceName, "username", basicUser),
 					resource.TestCheckResourceAttr(resourceName, "full_name", "TF Acc Test User"),
 					resource.TestCheckResourceAttr(resourceName, "locked", "false"),
 					resource.TestCheckResourceAttr(resourceName, "smb", "false"),
@@ -45,6 +55,7 @@ func TestAccUser_basic(t *testing.T) {
 }
 
 func TestAccUser_update(t *testing.T) {
+	updateUser := fmt.Sprintf("tf-acc-user-update-%d", acctest.ShortSuffix())
 	resourceName := "truenas_user.test"
 
 	resource.Test(t, resource.TestCase{
@@ -53,14 +64,14 @@ func TestAccUser_update(t *testing.T) {
 		CheckDestroy:             testAccCheckUserDestroy(resourceName),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccUserConfigBasic("tfaccupdate", "TF Acc Before"),
+				Config: testAccUserConfigBasic(updateUser, "TF Acc Before"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "full_name", "TF Acc Before"),
 				),
 			},
 			// Update full_name in-place
 			{
-				Config: testAccUserConfigBasic("tfaccupdate", "TF Acc After"),
+				Config: testAccUserConfigBasic(updateUser, "TF Acc After"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "full_name", "TF Acc After"),
 				),
