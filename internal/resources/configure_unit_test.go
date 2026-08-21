@@ -28,6 +28,7 @@ func TestResourceConfigure_Batch(t *testing.T) {
 		NewCertificateResource,
 		NewCloudBackupResource,
 		NewContainerResource,
+		NewContainerDeviceResource,
 		NewCloudSyncCredentialResource,
 		NewCloudSyncResource,
 		NewCronJobResource,
