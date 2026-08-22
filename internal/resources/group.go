@@ -72,11 +72,16 @@ func (r *GroupResource) Schema(ctx context.Context, _ resource.SchemaRequest, re
 				Description: "The name of the group.",
 				Required:    true,
 				Validators: []validator.String{
+					// Upstream GroupName is validate_name with a wider start set
+					// (letters, digits, underscore, dot) and, unlike a username,
+					// NO length cap. The old pattern was lowercase-only, had no
+					// dot, refused a leading digit, and permitted a trailing $
+					// that upstream rejects.
 					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^[a-z_][a-z0-9_-]*\$?$`),
-						"group name must start with a lowercase letter or underscore and contain only lowercase letters, digits, underscores, or hyphens",
+						regexp.MustCompile(`^[A-Za-z0-9_.][A-Za-z0-9_.-]*$`),
+						"group name must contain only letters, digits, underscore, dash or dot, and start with a letter, digit, underscore or dot",
 					),
-					stringvalidator.LengthBetween(1, 32),
+					stringvalidator.LengthAtLeast(1),
 				},
 			},
 			"gid": schema.Int64Attribute{
