@@ -14,7 +14,8 @@ GOFMT        ?= gofmt
 # $GOPATH/bin/golangci-lint so `make lint` / `make prod-ready` work out
 # of the box on a fresh checkout where $GOPATH/bin isn't exported.
 GOLANGCI_LINT ?= $(shell command -v golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
-TFPLUGINDOCS ?= tfplugindocs
+# Pinned by go.mod via tools/tools.go, so local runs and CI use one version.
+TFPLUGINDOCS ?= go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
 
 PKGS         := ./...
 INTERNAL     := ./internal/...
