@@ -2,19 +2,17 @@ package datasources
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // TestPoolDataSource_Read_ByName_ListError exercises the error branch in the
 // by-name lookup path when the underlying ListPools API call fails.
 func TestPoolDataSource_Read_ByName_ListError(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"message": "boom"})
-	}))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[EFAULT] boom"))
 
 	ds := NewPoolDataSource().(*PoolDataSource)
 	ds.client = c

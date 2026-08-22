@@ -9,9 +9,6 @@ package resources
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -462,34 +459,23 @@ func TestErrorBranches_InvalidJSON_Pool(t *testing.T) {
 // fail. Exercises the "Error Updating Service" and "Error Reading Service"
 // branches inside Create and Update handlers.
 func TestErrorBranches_Service_CreateUpdateFail(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "service": "ssh", "enable": false, "state": "STOPPED",
 	}
-	// Counter tracks GET requests so the second Get can fail in Update.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if strings.Contains(req.URL.Path, "start") || strings.Contains(req.URL.Path, "stop") {
-			http.Error(w, "start/stop fail", http.StatusBadRequest)
-			return
+	// The lookup succeeds; the write and the start/stop both fail. Branching
+	// on the method name says that directly, where the REST original had to
+	// infer it from the URL path.
+	c := newWSTestClient(context.Background(), t, func(_ context.Context, method string, _ []interface{}) (interface{}, *wsclient.RPCError) {
+		switch method {
+		case "service.update":
+			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "[EINVAL] update fail"}
+		case "service.control", "service.start", "service.stop":
+			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "[EINVAL] start/stop fail"}
+		case "service.query":
+			return []interface{}{body}, nil
 		}
-		if req.Method == http.MethodPut {
-			http.Error(w, "update fail", http.StatusBadRequest)
-			return
-		}
-		// GET returns a list for search; single body for id lookups.
-		if req.Method == http.MethodGet {
-			if strings.Contains(req.URL.Path, "/service") {
-				_ = json.NewEncoder(w).Encode([]interface{}{body})
-				return
-			}
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}))
-	defer srv.Close()
-	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
-	if err != nil {
-		t.Fatalf("wsclient.New: %v", err)
-	}
+		return body, nil
+	})
 	c.RetryPolicy = wsclient.RetryPolicy{MaxAttempts: 1}
 	r := &ServiceResource{client: c}
 	ctx := context.Background()
@@ -525,39 +511,28 @@ func TestErrorBranches_Service_CreateUpdateFail(t *testing.T) {
 // successful UpdateService but a failing post-update GetService, covering
 // the "Error Reading Service" branch at line 160.
 func TestErrorBranches_Service_UpdateOK_ReadFail(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "service": "ssh", "enable": true, "state": "RUNNING",
 	}
-	var getCount int
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if strings.Contains(req.URL.Path, "start") || strings.Contains(req.URL.Path, "stop") || strings.Contains(req.URL.Path, "reload") {
-			_, _ = w.Write([]byte("true"))
-			return
-		}
-		if req.Method == http.MethodPut {
-			// Return the updated body (update succeeds).
-			_ = json.NewEncoder(w).Encode(body)
-			return
-		}
-		if req.Method == http.MethodGet {
-			getCount++
-			// First GET (lookup by name) returns list; subsequent GETs (reload
-			// after update) return 400 to hit the error branch at line 160.
-			if getCount == 1 {
-				_ = json.NewEncoder(w).Encode([]interface{}{body})
-				return
+	// The first query is the by-name lookup and succeeds; the read-back
+	// after the update fails. Counting queries rather than GETs makes the
+	// intent exact: no unrelated call can consume the counter.
+	var queries int
+	c := newWSTestClient(context.Background(), t, func(_ context.Context, method string, _ []interface{}) (interface{}, *wsclient.RPCError) {
+		switch method {
+		case "service.control", "service.start", "service.stop":
+			return true, nil
+		case "service.update":
+			return body, nil
+		case "service.query", "service.get_instance":
+			queries++
+			if queries == 1 {
+				return []interface{}{body}, nil
 			}
-			http.Error(w, "read fail", http.StatusBadRequest)
-			return
+			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "[EINVAL] read fail"}
 		}
-		_ = json.NewEncoder(w).Encode(body)
-	}))
-	defer srv.Close()
-	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
-	if err != nil {
-		t.Fatalf("wsclient.New: %v", err)
-	}
+		return body, nil
+	})
 	c.RetryPolicy = wsclient.RetryPolicy{MaxAttempts: 1}
 	r := &ServiceResource{client: c}
 	ctx := context.Background()
@@ -574,7 +549,7 @@ func TestErrorBranches_Service_UpdateOK_ReadFail(t *testing.T) {
 	}()
 
 	// Create with enable=false: exercises the else-stop branch (line 153).
-	getCount = 0
+	queries = 0
 	planDisable := planFromValues(t, ctx, sch, map[string]tftypes.Value{
 		"service": str("ssh"),
 		"enable":  flag(false),
@@ -585,8 +560,8 @@ func TestErrorBranches_Service_UpdateOK_ReadFail(t *testing.T) {
 		r.Create(ctx, resource.CreateRequest{Plan: planDisable}, cResp)
 	}()
 
-	// Also drive Update: Update PUT OK, subsequent GetService fails -> line 262.
-	getCount = 0 // reset
+	// Also drive Update: the write succeeds, the read-back after it fails.
+	queries = 0 // reset
 	vals := map[string]tftypes.Value{
 		"id":      str("1"),
 		"service": str("ssh"),
@@ -605,7 +580,6 @@ func TestErrorBranches_Service_UpdateOK_ReadFail(t *testing.T) {
 // where the current config is ACTIVEDIRECTORY+Enable, exercising the leave
 // branch that otherwise never runs.
 func TestErrorBranches_DirectoryServices_DeleteAD(t *testing.T) {
-	skipWSCutover(t)
 	adService := "ACTIVEDIRECTORY"
 	body := map[string]interface{}{
 		"id":                   1,
@@ -616,20 +590,13 @@ func TestErrorBranches_DirectoryServices_DeleteAD(t *testing.T) {
 		"timeout":              60,
 		"kerberos_realm":       nil,
 	}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		// directoryservices/leave returns an error so we also exercise the
-		// inner leave-error warning path.
-		if strings.Contains(req.URL.Path, "/leave") {
-			http.Error(w, "leave failed", http.StatusBadRequest)
-			return
+	// leave fails, so the inner leave-error warning path runs too.
+	c := newWSTestClient(context.Background(), t, func(_ context.Context, method string, _ []interface{}) (interface{}, *wsclient.RPCError) {
+		if method == "directoryservices.leave" {
+			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "[EINVAL] leave failed"}
 		}
-		_ = json.NewEncoder(w).Encode(body)
-	}))
-	defer srv.Close()
-	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
-	if err != nil {
-		t.Fatalf("wsclient.New: %v", err)
-	}
+		return body, nil
+	})
 	c.RetryPolicy = wsclient.RetryPolicy{MaxAttempts: 1}
 	r := &DirectoryServicesResource{client: c}
 	ctx := context.Background()
@@ -644,26 +611,20 @@ func TestErrorBranches_DirectoryServices_DeleteAD(t *testing.T) {
 // that returns a bare group ID on PUT (matching the real API) so the
 // successful post-update path executes.
 func TestErrorBranches_Group_UpdateSuccess(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "gid": 1000, "group": "users", "name": "users",
 		"builtin": false, "smb": false, "sudo_commands": []interface{}{},
 		"sudo_commands_nopasswd": []interface{}{},
 		"users":                  []interface{}{},
 	}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		// PUT/POST on /group/id/X or /group returns a bare int ID.
-		if req.Method == http.MethodPut || (req.Method == http.MethodPost && strings.HasSuffix(req.URL.Path, "/group")) {
-			_, _ = w.Write([]byte("1"))
-			return
+	// group.create and group.update answer with a bare id, as the real API
+	// does, so the successful post-update read path executes.
+	c := newWSTestClient(context.Background(), t, func(_ context.Context, method string, _ []interface{}) (interface{}, *wsclient.RPCError) {
+		if method == "group.create" || method == "group.update" {
+			return 1, nil
 		}
-		_ = json.NewEncoder(w).Encode(body)
-	}))
-	defer srv.Close()
-	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
-	if err != nil {
-		t.Fatalf("wsclient.New: %v", err)
-	}
+		return body, nil
+	})
 	r := &GroupResource{client: c}
 	ctx := context.Background()
 	sch := schemaOf(t, ctx, r)
@@ -858,26 +819,19 @@ func TestErrorBranches_Catalog(t *testing.T) {
 
 // Exercises the sync-on-create branch and the null SyncOnCreate fallback.
 func TestErrorBranches_Catalog_SyncOnCreate(t *testing.T) {
-	skipWSCutover(t)
-	// Mock that returns 200 OK for catalog ops, 400 for sync.
+	// catalog ops succeed; sync fails, which is the branch under test.
 	body := map[string]interface{}{
 		"id":               "TRUENAS",
 		"label":            "TRUENAS",
 		"preferred_trains": []interface{}{"stable"},
 		"location":         "/mnt/tank/catalog",
 	}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if strings.HasSuffix(req.URL.Path, "/catalog/sync") {
-			http.Error(w, "sync failed", http.StatusBadRequest)
-			return
+	c := newWSTestClient(context.Background(), t, func(_ context.Context, method string, _ []interface{}) (interface{}, *wsclient.RPCError) {
+		if method == "catalog.sync" {
+			return nil, &wsclient.RPCError{Code: wsclient.CodeMethodCallError, Message: "[EINVAL] sync failed"}
 		}
-		_ = json.NewEncoder(w).Encode(body)
-	}))
-	defer srv.Close()
-	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
-	if err != nil {
-		t.Fatalf("wsclient.New: %v", err)
-	}
+		return body, nil
+	})
 	c.RetryPolicy = wsclient.RetryPolicy{MaxAttempts: 1}
 	r := &CatalogResource{client: c}
 	ctx := context.Background()

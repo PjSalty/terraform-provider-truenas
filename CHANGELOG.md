@@ -255,6 +255,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- All 40 unit tests disabled by the v2.0 WebSocket cutover run again (issue #2).
+  They were httptest fixtures against the REST API, skipped rather than
+  rewritten when the transport changed, so the branches they covered had been
+  unverified since. They now drive the same assertions through
+  `wsclient.NewTestServer`. The REST-era test machinery they were the last
+  users of is gone with them: `newTestServer`, `newTestServerClient`,
+  `writeJSON`, and both `skipWSCutover` helpers.
+
 - The `TIMEMACHINE_SHARE` SMB preset is covered by an acceptance test again. It
   was skipped with "provider does not manage that yet", referring to the
   `aapl_extensions` toggle on the global SMB config. The provider does manage
