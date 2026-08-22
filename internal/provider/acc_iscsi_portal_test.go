@@ -16,7 +16,7 @@ func TestAccISCSIPortalResource_basic(t *testing.T) {
 		t.Skip(skipMsg)
 	}
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeWildcardPortal(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
@@ -61,7 +61,7 @@ func TestAccISCSIPortalResource_update(t *testing.T) {
 		t.Skip(skipMsg)
 	}
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeWildcardPortal(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
@@ -102,7 +102,7 @@ func TestAccISCSIPortalResource_disappears(t *testing.T) {
 		t.Skip(skipMsg)
 	}
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeWildcardPortal(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{

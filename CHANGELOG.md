@@ -245,6 +245,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- iSCSI portal and scrub-task acceptance tests now skip, naming the cause, when
+  the target TrueNAS already has the one object middleware allows. A box with a
+  pre-existing wildcard portal (a CSI driver's, or litter from an aborted run)
+  or an existing scrub task previously failed every one of those tests
+  identically, after a minute of applying, with an error that reads like a
+  provider defect rather than an environment collision.
+
 - The provider's offline plan/apply/refresh/destroy integration tests run again.
   They drove a stateful mock through the real provider factory to catch
   protocol-level regressions that handler unit tests cannot see, and the v2.0
