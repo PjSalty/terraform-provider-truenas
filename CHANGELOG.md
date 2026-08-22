@@ -245,6 +245,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The provider's offline plan/apply/refresh/destroy integration tests run again.
+  They drove a stateful mock through the real provider factory to catch
+  protocol-level regressions that handler unit tests cannot see, and the v2.0
+  WebSocket cutover left all of them skipped because the mock spoke REST, so
+  that layer had no offline verification at all. The mock now dispatches on
+  JSON-RPC method names; the state it keeps and the bodies it builds were
+  always transport-agnostic. Two of the tests were also strengthened:
+  `ReadOnly_AllowsRead` had no data source in its config, so it never read
+  anything despite its name, and the drift test asserted only a non-empty plan,
+  which cannot tell "correctly detected as gone" from "Read returned something
+  wrong".
+
 - Corrected the package and code comments that still described the REST client
   deleted in v2.0. `internal/types` documented a migration policy for moving
   types out of `internal/client` "after v2.0 (Phase 5) deletes" it, which had

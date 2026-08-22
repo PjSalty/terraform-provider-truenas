@@ -298,11 +298,3 @@ func TestProvider_Configure_ClientError(t *testing.T) {
 		t.Error("DataSourceData should not be set when client creation fails")
 	}
 }
-
-// skipWSCutover skips provider unit tests that historically mocked the
-// REST transport via httptest. See internal/resources/crud_unit_test.go
-// for the full rationale.
-func skipWSCutover(t *testing.T) {
-	t.Helper()
-	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go; rewrite tracked in issue #2")
-}

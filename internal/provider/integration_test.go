@@ -1,26 +1,30 @@
 package provider
 
-// Integration tests, full terraform-plugin-testing lifecycle against
-// a mocked TrueNAS REST server.
+// Integration tests, full terraform-plugin-testing lifecycle against a
+// mocked TrueNAS JSON-RPC server.
 //
-// These tests use `resource.UnitTest` (NOT `resource.Test`) so they run
-// as part of the default `go test ./...` suite without requiring TF_ACC
-// or a real TrueNAS instance. Each test spins up an httptest.Server that
-// mimics just enough of the TrueNAS API for the resource(s) under test,
-// then exercises the full plan → apply → refresh → destroy cycle
-// through the real provider factory wired to the mock.
+// These use `resource.UnitTest` (NOT `resource.Test`) so they run as part
+// of the default `go test ./...` suite without TF_ACC or a real TrueNAS.
+// Each test stands up a wsclient.TestServer speaking just enough of the
+// JSON-RPC API for the resource(s) under test, then exercises the full
+// plan -> apply -> refresh -> destroy cycle through the real provider
+// factory wired to that server.
 //
 // The goal is to catch protocol-level regressions (schema decode errors,
 // plan mismatches, CRUD wiring bugs) that unit tests on resource handlers
 // alone cannot see. Acceptance tests in the same package exercise the
-// real API but require TF_ACC and network access; these integration
-// tests fill the gap between the two.
+// real API but need TF_ACC and network access; these fill the gap.
+//
+// They were skipped wholesale during the v2.0 WebSocket cutover, because
+// the mock was an httptest server speaking REST. That left this entire
+// layer with no offline verification. The mock now dispatches on JSON-RPC
+// method names, which is the only thing that had to change: the state it
+// keeps, and the response bodies it builds, were always transport-
+// agnostic.
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"regexp"
 	"strings"
 	"sync"
@@ -33,12 +37,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
-// mockTrueNAS is a minimal in-memory TrueNAS REST API stand-in used by
-// integration tests. It supports the subset of endpoints needed by the
-// currently-tested resources (dataset + nfs share) and can be expanded
-// on demand as more integration tests are added.
+// mockTrueNAS is a minimal in-memory TrueNAS stand-in used by the
+// integration tests. It supports the subset of JSON-RPC methods needed by
+// the currently-tested resources (dataset + nfs share) and can be
+// expanded on demand as more integration tests are added.
 type mockTrueNAS struct {
 	mu       sync.Mutex
 	datasets map[string]map[string]interface{}
@@ -54,147 +60,238 @@ func newMockTrueNAS() *mockTrueNAS {
 	}
 }
 
-// handler returns an http.Handler suitable for httptest.NewServer.
-func (m *mockTrueNAS) handler() http.Handler {
-	mux := http.NewServeMux()
-
-	datasetIDRe := regexp.MustCompile(`^/api/v2\.0/pool/dataset/id/(.+)$`)
-	nfsIDRe := regexp.MustCompile(`^/api/v2\.0/sharing/nfs/id/(\d+)$`)
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+// handler returns a wsclient.TestHandler that dispatches on JSON-RPC
+// method names.
+//
+// Call shapes are taken from the client, not guessed:
+//
+//	pool.dataset.query   [[["id","=",X]], {"get":true}]  -> one object
+//	pool.dataset.query   nil                             -> a list
+//	pool.dataset.create  [body]                          -> the object
+//	pool.dataset.update  [id, body]                      -> the object
+//	pool.dataset.delete  [id]
+//	sharing.nfs.get_instance [id]                        -> the object
+//	sharing.nfs.query    nil                             -> a list
+//	sharing.nfs.create   [body]                          -> the object
+//	sharing.nfs.update   [id, body]                      -> the object
+//	sharing.nfs.delete   [id]
+//
+// A missing row answers CodeMethodCallError with an ENOENT reason, which
+// is what wsclient.IsNotFound matches. Returning a bare nil instead would
+// make a deleted resource look like a successful read of an empty object,
+// and the drift test would then pass for the wrong reason.
+func (m *mockTrueNAS) handler() wsclient.TestHandler {
+	return func(_ context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
-		path := r.URL.Path
-
+		switch method {
 		// --- Datasets ---
-		if path == "/api/v2.0/pool/dataset" {
-			switch r.Method {
-			case http.MethodPost:
-				var body map[string]interface{}
-				_ = json.NewDecoder(r.Body).Decode(&body)
-				name, _ := body["name"].(string)
-				if name == "" {
-					http.Error(w, `{"message":"name required"}`, http.StatusBadRequest)
-					return
-				}
-				resp := datasetResponse(name, body)
-				m.datasets[name] = resp
-				writeJSON(w, http.StatusOK, resp)
-				return
-			case http.MethodGet:
-				list := make([]map[string]interface{}, 0, len(m.datasets))
-				for _, d := range m.datasets {
-					list = append(list, d)
-				}
-				writeJSON(w, http.StatusOK, list)
-				return
+		case "pool.dataset.create":
+			body, err := mockObjectArg(params, 0, method)
+			if err != nil {
+				return nil, err
 			}
-		}
+			name, _ := body["name"].(string)
+			if name == "" {
+				return nil, mockRPCErr("[EINVAL] name is required")
+			}
+			row := datasetResponse(name, body)
+			m.datasets[name] = row
+			return row, nil
 
-		if match := datasetIDRe.FindStringSubmatch(path); match != nil {
-			// The path segment is URL-encoded, decode slashes.
-			id := strings.ReplaceAll(match[1], "%2F", "/")
-			id = strings.ReplaceAll(id, "%2f", "/")
-			switch r.Method {
-			case http.MethodGet:
-				ds, ok := m.datasets[id]
-				if !ok {
-					http.Error(w, `{"message":"not found"}`, http.StatusNotFound)
-					return
+		case "pool.dataset.query":
+			// The id-filtered form the resource Read path uses.
+			if id, ok := mockQueryID(params); ok {
+				row, found := m.datasets[id]
+				if !found {
+					return nil, mockRPCErr(fmt.Sprintf("[ENOENT] dataset %q does not exist", id))
 				}
-				writeJSON(w, http.StatusOK, ds)
-				return
-			case http.MethodPut:
-				ds, ok := m.datasets[id]
-				if !ok {
-					http.Error(w, `{"message":"not found"}`, http.StatusNotFound)
-					return
-				}
-				var body map[string]interface{}
-				_ = json.NewDecoder(r.Body).Decode(&body)
-				// merge updatable properties back into the response shape.
-				for k, v := range body {
-					if k == "comments" {
-						ds["comments"] = map[string]interface{}{"value": v, "source": "LOCAL"}
-						continue
-					}
-					ds[k] = map[string]interface{}{"value": fmt.Sprintf("%v", v), "source": "LOCAL"}
-				}
-				writeJSON(w, http.StatusOK, ds)
-				return
-			case http.MethodDelete:
-				delete(m.datasets, id)
-				writeJSON(w, http.StatusOK, map[string]interface{}{})
-				return
+				return row, nil
 			}
-		}
+			out := make([]interface{}, 0, len(m.datasets))
+			for _, row := range m.datasets {
+				out = append(out, row)
+			}
+			return out, nil
+
+		case "pool.dataset.update":
+			id, err := mockStringArg(params, 0, method)
+			if err != nil {
+				return nil, err
+			}
+			body, rerr := mockObjectArg(params, 1, method)
+			if rerr != nil {
+				return nil, rerr
+			}
+			existing, found := m.datasets[id]
+			if !found {
+				return nil, mockRPCErr(fmt.Sprintf("[ENOENT] dataset %q does not exist", id))
+			}
+			for k, v := range body {
+				existing[k] = v
+			}
+			row := datasetResponse(id, existing)
+			m.datasets[id] = row
+			return row, nil
+
+		case "pool.dataset.delete":
+			id, err := mockStringArg(params, 0, method)
+			if err != nil {
+				return nil, err
+			}
+			if _, found := m.datasets[id]; !found {
+				return nil, mockRPCErr(fmt.Sprintf("[ENOENT] dataset %q does not exist", id))
+			}
+			delete(m.datasets, id)
+			return true, nil
 
 		// --- NFS shares ---
-		if path == "/api/v2.0/sharing/nfs" {
-			switch r.Method {
-			case http.MethodPost:
-				var body map[string]interface{}
-				_ = json.NewDecoder(r.Body).Decode(&body)
-				id := m.nextNFS
-				m.nextNFS++
-				body["id"] = id
-				fillNFSDefaults(body)
-				m.nfs[id] = body
-				writeJSON(w, http.StatusOK, body)
-				return
-			case http.MethodGet:
-				list := make([]map[string]interface{}, 0, len(m.nfs))
-				for _, n := range m.nfs {
-					list = append(list, n)
-				}
-				writeJSON(w, http.StatusOK, list)
-				return
+		case "sharing.nfs.create":
+			body, err := mockObjectArg(params, 0, method)
+			if err != nil {
+				return nil, err
 			}
+			id := m.nextNFS
+			m.nextNFS++
+			body["id"] = float64(id)
+			fillNFSDefaults(body)
+			m.nfs[id] = body
+			return body, nil
+
+		case "sharing.nfs.get_instance":
+			id, err := mockIntArg(params, 0, method)
+			if err != nil {
+				return nil, err
+			}
+			row, found := m.nfs[id]
+			if !found {
+				return nil, mockRPCErr(fmt.Sprintf("[ENOENT] nfs share %d does not exist", id))
+			}
+			return row, nil
+
+		case "sharing.nfs.query":
+			out := make([]interface{}, 0, len(m.nfs))
+			for _, row := range m.nfs {
+				out = append(out, row)
+			}
+			return out, nil
+
+		case "sharing.nfs.update":
+			id, err := mockIntArg(params, 0, method)
+			if err != nil {
+				return nil, err
+			}
+			body, rerr := mockObjectArg(params, 1, method)
+			if rerr != nil {
+				return nil, rerr
+			}
+			existing, found := m.nfs[id]
+			if !found {
+				return nil, mockRPCErr(fmt.Sprintf("[ENOENT] nfs share %d does not exist", id))
+			}
+			for k, v := range body {
+				existing[k] = v
+			}
+			existing["id"] = float64(id)
+			fillNFSDefaults(existing)
+			m.nfs[id] = existing
+			return existing, nil
+
+		case "sharing.nfs.delete":
+			id, err := mockIntArg(params, 0, method)
+			if err != nil {
+				return nil, err
+			}
+			if _, found := m.nfs[id]; !found {
+				return nil, mockRPCErr(fmt.Sprintf("[ENOENT] nfs share %d does not exist", id))
+			}
+			delete(m.nfs, id)
+			return true, nil
 		}
 
-		if match := nfsIDRe.FindStringSubmatch(path); match != nil {
-			var id int
-			_, _ = fmt.Sscanf(match[1], "%d", &id)
-			switch r.Method {
-			case http.MethodGet:
-				n, ok := m.nfs[id]
-				if !ok {
-					http.Error(w, `{"message":"not found"}`, http.StatusNotFound)
-					return
-				}
-				fillNFSDefaults(n)
-				writeJSON(w, http.StatusOK, n)
-				return
-			case http.MethodPut:
-				n, ok := m.nfs[id]
-				if !ok {
-					http.Error(w, `{"message":"not found"}`, http.StatusNotFound)
-					return
-				}
-				var body map[string]interface{}
-				_ = json.NewDecoder(r.Body).Decode(&body)
-				for k, v := range body {
-					n[k] = v
-				}
-				fillNFSDefaults(n)
-				writeJSON(w, http.StatusOK, n)
-				return
-			case http.MethodDelete:
-				delete(m.nfs, id)
-				writeJSON(w, http.StatusOK, map[string]interface{}{})
-				return
-			}
+		// Anything unmodelled is a hard error rather than a silent nil.
+		// A nil would let a resource that started calling a new method
+		// appear to work here while doing nothing on a real server.
+		return nil, &wsclient.RPCError{
+			Code:    wsclient.CodeMethodNotFound,
+			Message: method,
 		}
-
-		http.Error(w, fmt.Sprintf(`{"message":"mock: unhandled %s %s"}`, r.Method, path), http.StatusNotFound)
-	})
-	return mux
+	}
 }
 
-// datasetResponse builds a PropertyValue-shaped dataset response from a
-// flat create request body. Only the fields used by the dataset resource
-// are populated.
+// mockRPCErr builds the shape wsclient.IsNotFound and the diagnostic
+// helpers read: the errno lives in Data.reason, not in Message, which is
+// a static server-side label.
+func mockRPCErr(reason string) *wsclient.RPCError {
+	return &wsclient.RPCError{
+		Code:    wsclient.CodeMethodCallError,
+		Message: "Method call error",
+		Data:    []byte(fmt.Sprintf(`{"errname":"ENOENT","reason":%q}`, reason)),
+	}
+}
+
+// mockQueryID pulls X out of the [[["id","=",X]], {"get":true}] filter
+// form. It reports false for any other shape, including a bare list
+// query, so the caller can tell "read one" from "list all".
+func mockQueryID(params []interface{}) (string, bool) {
+	if len(params) < 1 {
+		return "", false
+	}
+	filters, ok := params[0].([]interface{})
+	if !ok || len(filters) != 1 {
+		return "", false
+	}
+	clause, ok := filters[0].([]interface{})
+	if !ok || len(clause) != 3 {
+		return "", false
+	}
+	field, _ := clause[0].(string)
+	op, _ := clause[1].(string)
+	value, _ := clause[2].(string)
+	if field != "id" || op != "=" {
+		return "", false
+	}
+	return value, true
+}
+
+func mockObjectArg(params []interface{}, i int, method string) (map[string]interface{}, *wsclient.RPCError) {
+	if len(params) <= i {
+		return nil, mockRPCErr(fmt.Sprintf("[EINVAL] %s: missing argument %d", method, i))
+	}
+	body, ok := params[i].(map[string]interface{})
+	if !ok {
+		return nil, mockRPCErr(fmt.Sprintf("[EINVAL] %s: argument %d is not an object", method, i))
+	}
+	return body, nil
+}
+
+func mockStringArg(params []interface{}, i int, method string) (string, *wsclient.RPCError) {
+	if len(params) <= i {
+		return "", mockRPCErr(fmt.Sprintf("[EINVAL] %s: missing argument %d", method, i))
+	}
+	v, ok := params[i].(string)
+	if !ok {
+		return "", mockRPCErr(fmt.Sprintf("[EINVAL] %s: argument %d is not a string", method, i))
+	}
+	return v, nil
+}
+
+// JSON numbers arrive as float64, so an int argument is read through
+// that rather than asserted as int.
+func mockIntArg(params []interface{}, i int, method string) (int, *wsclient.RPCError) {
+	if len(params) <= i {
+		return 0, mockRPCErr(fmt.Sprintf("[EINVAL] %s: missing argument %d", method, i))
+	}
+	switch v := params[i].(type) {
+	case float64:
+		return int(v), nil
+	case int:
+		return v, nil
+	}
+	return 0, mockRPCErr(fmt.Sprintf("[EINVAL] %s: argument %d is not a number", method, i))
+}
+
 func datasetResponse(id string, body map[string]interface{}) map[string]interface{} {
 	get := func(k, fallback string) string {
 		if v, ok := body[k]; ok {
@@ -279,17 +376,6 @@ func fillNFSDefaults(body map[string]interface{}) {
 	}
 }
 
-// writeJSON writes v as JSON with the given status code.
-func writeJSON(w http.ResponseWriter, code int, v interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-// integrationProviderFactories returns a ProtoV6 provider factory bound
-// to a TrueNASProvider that talks to the given mock server URL instead
-// of a real TrueNAS instance. The factory injects the URL/API key via
-// environment variables so the real Configure path runs end-to-end.
 func integrationProviderFactories(t *testing.T, srvURL string) map[string]func() (tfprotov6.ProviderServer, error) {
 	t.Helper()
 	t.Setenv("TRUENAS_URL", srvURL)
@@ -313,15 +399,13 @@ func integrationProviderFactories(t *testing.T, srvURL string) map[string]func()
 // round-trip a dataset create, reflect the computed attributes back
 // into state, and emit the correct plan assertions.
 func TestIntegration_Dataset_CreateReadDestroy(t *testing.T) {
-	skipWSCutover(t)
 	// Cannot use t.Parallel() because integrationProviderFactories calls
 	// t.Setenv, which is incompatible with parallel tests.
 	mock := newMockTrueNAS()
-	srv := httptest.NewServer(mock.handler())
-	defer srv.Close()
+	srv := wsclient.NewTestServer(t, mock.handler())
 
 	resource.UnitTest(t, resource.TestCase{
-		ProtoV6ProviderFactories: integrationProviderFactories(t, srv.URL),
+		ProtoV6ProviderFactories: integrationProviderFactories(t, srv.URL()),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -379,15 +463,13 @@ resource "truenas_dataset" "integration" {
 // (acc_dataset_test.go TestAccDatasetResource_disappears) does the
 // same against a real TrueNAS with a client.DeleteDataset call.
 func TestIntegration_Dataset_DriftDetected(t *testing.T) {
-	skipWSCutover(t)
 	// Cannot use t.Parallel() because integrationProviderFactories calls
 	// t.Setenv, which is incompatible with parallel tests.
 	mock := newMockTrueNAS()
-	srv := httptest.NewServer(mock.handler())
-	defer srv.Close()
+	srv := wsclient.NewTestServer(t, mock.handler())
 
 	resource.UnitTest(t, resource.TestCase{
-		ProtoV6ProviderFactories: integrationProviderFactories(t, srv.URL),
+		ProtoV6ProviderFactories: integrationProviderFactories(t, srv.URL()),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -408,12 +490,29 @@ resource "truenas_dataset" "drift" {
 						return nil
 					},
 				),
-				// After the Check runs, Terraform will refresh on the
-				// next step (re-planning the same config) and see the
-				// resource is gone from the mock. The provider's Read
-				// should return IsNotFound, which removes the resource
-				// from state and re-plans a Create.
+				// After the Check runs, Terraform refreshes on the next
+				// step and sees the resource is gone from the mock.
 				ExpectNonEmptyPlan: true,
+			},
+			{
+				// ExpectNonEmptyPlan alone cannot tell "correctly detected
+				// as gone" from "Read returned something wrong": both leave
+				// a non-empty plan. Asserting the action is Create is what
+				// pins the actual behaviour, that Read recognised the
+				// ENOENT, removed the resource from state, and re-planned
+				// it from scratch rather than planning an Update against a
+				// row that is not there.
+				Config: `
+resource "truenas_dataset" "drift" {
+  pool = "tank"
+  name = "drift-test"
+}
+`,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_dataset.drift", plancheck.ResourceActionCreate),
+					},
+				},
 			},
 		},
 	})
@@ -423,15 +522,13 @@ resource "truenas_dataset" "drift" {
 // change (comments) plans as an Update action (not Create or Replace)
 // and that the updated value round-trips through refresh.
 func TestIntegration_Dataset_Update(t *testing.T) {
-	skipWSCutover(t)
 	// Cannot use t.Parallel() because integrationProviderFactories calls
 	// t.Setenv, which is incompatible with parallel tests.
 	mock := newMockTrueNAS()
-	srv := httptest.NewServer(mock.handler())
-	defer srv.Close()
+	srv := wsclient.NewTestServer(t, mock.handler())
 
 	resource.UnitTest(t, resource.TestCase{
-		ProtoV6ProviderFactories: integrationProviderFactories(t, srv.URL),
+		ProtoV6ProviderFactories: integrationProviderFactories(t, srv.URL()),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -468,15 +565,13 @@ resource "truenas_dataset" "integration" {
 // single-resource integration tests miss (e.g., planning ordering,
 // unknown-value propagation across resource boundaries).
 func TestIntegration_MultiResource(t *testing.T) {
-	skipWSCutover(t)
 	// Cannot use t.Parallel() because integrationProviderFactories calls
 	// t.Setenv, which is incompatible with parallel tests.
 	mock := newMockTrueNAS()
-	srv := httptest.NewServer(mock.handler())
-	defer srv.Close()
+	srv := wsclient.NewTestServer(t, mock.handler())
 
 	resource.UnitTest(t, resource.TestCase{
-		ProtoV6ProviderFactories: integrationProviderFactories(t, srv.URL),
+		ProtoV6ProviderFactories: integrationProviderFactories(t, srv.URL()),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -531,12 +626,10 @@ resource "truenas_share_nfs" "share" {
 // swallowing ErrReadOnly on the way up, that is the regression this
 // test is meant to catch.
 func TestIntegration_ReadOnly_RefusesCreate(t *testing.T) {
-	skipWSCutover(t)
 	mock := newMockTrueNAS()
-	srv := httptest.NewServer(mock.handler())
-	defer srv.Close()
+	srv := wsclient.NewTestServer(t, mock.handler())
 
-	factories := integrationProviderFactories(t, srv.URL)
+	factories := integrationProviderFactories(t, srv.URL())
 	// Set AFTER integrationProviderFactories so it wins over the clear.
 	t.Setenv("TRUENAS_READONLY", "1")
 
@@ -605,22 +698,31 @@ func TestIntegration_ReadOnly_AllowsRead(t *testing.T) {
 		"name": "tank/seeded",
 		"type": "FILESYSTEM",
 	})
-	srv := httptest.NewServer(mock.handler())
-	defer srv.Close()
+	srv := wsclient.NewTestServer(t, mock.handler())
 
-	factories := integrationProviderFactories(t, srv.URL)
+	factories := integrationProviderFactories(t, srv.URL())
 	t.Setenv("TRUENAS_READONLY", "1")
 
-	// No resource block, just a data source style smoke test via
-	// the provider schema/Configure path. If the provider cannot
-	// configure itself at all in read-only mode, this test fails.
+	// This config previously held a bare `provider "truenas" {}` block
+	// and nothing else, so it proved only that Configure did not panic:
+	// no read ever happened, while the comment above claimed the read
+	// path was verified. It now reads the seeded dataset through the
+	// data source, which is the assertion the test name makes.
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: factories,
 		Steps: []resource.TestStep{
 			{
 				Config: `
 provider "truenas" {}
+
+data "truenas_dataset" "seeded" {
+  id = "tank/seeded"
+}
 `,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("data.truenas_dataset.seeded", "id", "tank/seeded"),
+					resource.TestCheckResourceAttr("data.truenas_dataset.seeded", "name", "tank/seeded"),
+				),
 			},
 		},
 	})
