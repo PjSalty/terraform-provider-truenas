@@ -15,6 +15,25 @@ but lacks the APIs behind `nvmet_*`, `truenas_directory_services`, the
 v1.10.x provider line there if you need those. The provider needs to be
 configured with a base URL and an API key before it can be used.
 
+Some resources need **TrueNAS 26.0 or newer**, because the API namespaces
+behind them do not exist before it. Against an older server they fail with
+a diagnostic naming the required version rather than an opaque
+method-not-found:
+
+| Requires 26.0 | What it manages |
+|---|---|
+| `truenas_container` | LXC containers |
+| `truenas_container_device` | devices attached to a container |
+| `truenas_lxc_config` (resource and data source) | system-wide container configuration |
+| `truenas_container_images` (data source) | images a container can be built from |
+| `truenas_share_webshare` | WebShare shares |
+
+Individual 26.0 arguments on otherwise-supported resources are called out
+in that resource's own documentation, and are only sent to a server that
+has them: `truenas_smb_config.search_protocols`, `truenas_user.webshare`,
+`truenas_pool.force_topology`, and the `ISCSI_DISK` device type on
+`truenas_vm_device`.
+
 Use the navigation to the left to read about the available resources and
 data sources.
 
