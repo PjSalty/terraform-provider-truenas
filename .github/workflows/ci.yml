@@ -59,12 +59,12 @@ jobs:
             [github.com/PjSalty/terraform-provider-truenas/internal/wsclient]=100
             [github.com/PjSalty/terraform-provider-truenas/internal/sweep]=100
             [github.com/PjSalty/terraform-provider-truenas/internal/fwresource]=100
+            [github.com/PjSalty/terraform-provider-truenas/internal/customtypes]=100
           )
           declare -A TIER2_FLOOR=(
             [github.com/PjSalty/terraform-provider-truenas/internal/resources]=100
             [github.com/PjSalty/terraform-provider-truenas/internal/datasources]=100
             [github.com/PjSalty/terraform-provider-truenas/internal/provider]=100
-            [github.com/PjSalty/terraform-provider-truenas/internal/recordreplay]=100
           )
 
           declare -A PKG_COV
@@ -147,6 +147,21 @@ jobs:
       # not whether the two copies agree. This is a plain diff because the
       # guide templates carry no Go template directives, so the pairs are
       # byte-identical by construction.
+      # The two coverage-floor arrays are marked "keep in sync" and were
+      # not: scripts/acc.sh enforced a floor on internal/customtypes that
+      # ci.yml never had, so CI would have passed on a drop that a local
+      # run caught. A comment asking for two things to match is not a
+      # control; this is.
+      - name: coverage floors match between CI and acc.sh
+        run: |
+          ci=$(grep -oE '\[github[^]]*\]=[0-9]+' .github/workflows/ci.yml | sort)
+          sh=$(grep -oE '\[github[^]]*\]=[0-9]+' scripts/acc.sh | sort)
+          if [ "$ci" != "$sh" ]; then
+            echo "::error::coverage floors differ between .github/workflows/ci.yml and scripts/acc.sh"
+            diff <(printf '%s\n' "$ci") <(printf '%s\n' "$sh") || true
+            exit 1
+          fi
+
       - name: guides templates match docs
         run: |
           rc=0
