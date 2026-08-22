@@ -245,6 +245,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Two acceptance tests asserted things that could never happen, so they failed
+  on every `TF_ACC` run. `TestAccValidator_DNSNameserver_rejectsGarbage` set an
+  `address` argument that `truenas_dns_nameserver` has never had (the attribute
+  is `nameserver1`), so Terraform answered "Unsupported argument" instead of the
+  validator message the test was looking for.
+  `TestAccValidator_ISCSITargetExtent_lunidAtLeast` expected "must be at least"
+  from an `int64validator.Between(0, 1023)`, which emits "must be between". Both
+  now assert the diagnostic the validator actually produces, and both stale doc
+  comments above them were corrected rather than left describing validators that
+  are not there.
+
 - Acceptance-test sweepers work again on TrueNAS 26.0. They listed fixtures with
   HTTP GETs against `/api/v2.0`, and 26.0 removed the REST API: every one of
   those 29 calls answers **404**. Because the plugin-testing framework aborts a
