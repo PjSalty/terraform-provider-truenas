@@ -3,7 +3,6 @@ package resources
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
@@ -108,11 +107,11 @@ func (r *VMResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp 
 					"no spaces, hyphens, underscores, or punctuation.",
 				Required: true,
 				Validators: []validator.String{
+					// Upstream types this as NonEmptyString with no character
+					// rule at all. The alphanumeric-only pattern that used to be
+					// here made an ordinary name like web_server impossible to
+					// express, so it is gone; the length bound stays.
 					stringvalidator.LengthBetween(1, 150),
-					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^[A-Za-z0-9]+$`),
-						"VM name must contain only alphanumeric characters",
-					),
 				},
 			},
 			"description": schema.StringAttribute{
