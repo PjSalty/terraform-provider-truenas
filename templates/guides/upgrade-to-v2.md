@@ -46,10 +46,25 @@ types. Plans touching those resources fail with method-not-found
 errors on 25.04. If you need them, upgrade SCALE first; otherwise
 v2.0 on 25.04 is fine for the common surface.
 
-**26.0-BETA**: 4 known failures from 26.0 API drift (`service.start`
-signature change, SMB config shape), tracked for a v2.x release
-alongside 26.0 final. 26.0 removes REST entirely, so v1.x cannot
+**26.0-BETA**: known failures from 26.0 API drift, tracked for a v2.x
+release alongside 26.0 final. 26.0 removes REST entirely, so v1.x cannot
 target it at all.
+
+- `service.start` / `service.stop` are **removed**, not merely changed.
+  They are `@private` on 26.0, which registers them on no endpoint, so
+  pinning an older API version does not recover them. **Fixed**:
+  `truenas_service` now uses `service.control` (present from 25.10.0),
+  and falls back to the old methods on 25.04 and older, which never had
+  `service.control`. Every supported release stays covered.
+- SMB config shape: `enable_smb1` is replaced by `minimum_protocol`, and
+  the 26.0 models are `strict`/`extra="forbid"`, so sending the old key is
+  a hard validation error rather than an ignored field. **Fixed**:
+  `truenas_smb_config` gained a `minimum_protocol` attribute and detects
+  which key the server speaks, translating `SMB1`/`SMB2` back to the legacy
+  boolean on 25.10 and older. `enable_smb1` is deprecated but still
+  accepted. Its static `false` default was also removed: that default is
+  what made the provider send the key on every apply, including the reset
+  path, even for configs that never mentioned it.
 
 If the provider Configure step fails with a websocket dial error against a SCALE 24.10 (or older) host, that's the version mismatch. Upgrade SCALE, or stay on the v1.x provider line.
 

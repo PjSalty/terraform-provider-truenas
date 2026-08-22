@@ -136,6 +136,29 @@ jobs:
           go-version-file: go.mod
       - run: go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest && tfplugindocs validate
 
+      # tfplugindocs generate DELETES docs/guides/ and repopulates it from
+      # templates/guides/, so a fix applied only to the docs/ copy is
+      # reverted the next time anyone regenerates. That already happened:
+      # architecture.md was corrected off REST in docs/ while the template
+      # kept drawing a REST client and an internal/client package that no
+      # longer exists.
+      #
+      # `tfplugindocs validate` cannot see this. It checks Registry format,
+      # not whether the two copies agree. This is a plain diff because the
+      # guide templates carry no Go template directives, so the pairs are
+      # byte-identical by construction.
+      - name: guides templates match docs
+        run: |
+          rc=0
+          for f in templates/guides/*.md; do
+            b="$(basename "$f")"
+            if ! diff -u "$f" "docs/guides/$b"; then
+              echo "::error file=$f::$f drifted from docs/guides/$b. tfplugindocs generate repopulates docs/guides/ from templates/, so this drift silently reverts the docs page. Change both."
+              rc=1
+            fi
+          done
+          exit $rc
+
   # Catches TrueNAS removing a JSON-RPC method the provider still calls.
   # Nothing else here can see that: the code compiles, the unit tests use
   # fakes, and no live TrueNAS is in CI, so a removal is only observable
