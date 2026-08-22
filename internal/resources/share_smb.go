@@ -140,13 +140,21 @@ func (r *SMBShareResource) Schema(ctx context.Context, _ resource.SchemaRequest,
 				},
 			},
 			"path": schema.StringAttribute{
-				Description: "The path to share (e.g., /mnt/tank/data). Must start with /mnt/.",
-				Required:    true,
+				Description: "The path to share (e.g., /mnt/tank/data). Must start with /mnt/, " +
+					"except for an EXTERNAL_SHARE, where it is the literal string EXTERNAL " +
+					"because the share proxies to `options.remote_path` rather than serving " +
+					"anything local.",
+				Required: true,
 				Validators: []validator.String{
-					stringvalidator.LengthBetween(5, 1023),
+					// LengthAtMost, not LengthBetween(5, ...): the regex below
+					// already requires either the 5-character /mnt/ prefix or
+					// the 8-character sentinel, so a lower bound can never fire
+					// and only reads as a check that is not there.
+					stringvalidator.LengthAtMost(1023),
 					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^/mnt/`),
-						"SMB share path must start with /mnt/",
+						regexp.MustCompile(`^(?:/mnt/.*|`+smbExternalPath+`)$`),
+						"SMB share path must start with /mnt/, or be the literal string "+
+							smbExternalPath+" for an EXTERNAL_SHARE",
 					),
 				},
 			},
@@ -205,7 +213,10 @@ func (r *SMBShareResource) Schema(ctx context.Context, _ resource.SchemaRequest,
 					"and no longer accepted by the upstream API. FCP_SHARE, for " +
 					"Final Cut Pro storage, was added in 25.10.1, so it is rejected " +
 					"by a 25.10.0 server. Each purpose accepts a different set of " +
-					"`options`; see that attribute.",
+					"`options`; see that attribute. TIMEMACHINE_SHARE and FCP_SHARE " +
+					"additionally require `aapl_extensions` on the global SMB config " +
+					"(`truenas_smb_config`); without it the create fails with an " +
+					"EINVAL naming `purpose` rather than the setting it wants.",
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
@@ -600,6 +611,16 @@ func (r *SMBShareResource) ValidateConfig(ctx context.Context, req resource.Vali
 					"proxies to remote_path rather than serving anything local.",
 					smbExternalPath, cfg.Path.ValueString()))
 		}
+	}
+
+	// The path validator admits EXTERNAL so an EXTERNAL_SHARE can be written
+	// at all. Only that purpose may use it: on any other, TrueNAS treats it as
+	// a local path and fails with a mount error that names neither field.
+	if purpose != smbPurposeExternal &&
+		!cfg.Path.IsNull() && !cfg.Path.IsUnknown() && cfg.Path.ValueString() == smbExternalPath {
+		resp.Diagnostics.AddAttributeError(path.Root("path"), "Invalid SMB Share",
+			fmt.Sprintf("path %q is only valid for purpose %s, not %s. Every other purpose "+
+				"serves a local path under /mnt/.", smbExternalPath, smbPurposeExternal, purpose))
 	}
 
 	if cfg.Options.IsNull() || cfg.Options.IsUnknown() {

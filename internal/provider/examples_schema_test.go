@@ -127,6 +127,13 @@ type field struct {
 	readOnly bool
 }
 
+// terraformMetaArguments are accepted in any resource block regardless of the
+// provider schema, so they are not evidence of a broken example.
+var terraformMetaArguments = map[string]bool{
+	"depends_on": true, "count": true, "for_each": true, "provider": true,
+	"lifecycle": true, "provisioner": true, "connection": true,
+}
+
 // checkExampleBody reports every name in body that known does not define or
 // that uses the wrong syntax for its kind, then recurses into nested bodies.
 func checkExampleBody(body *hclsyntax.Body, known map[string]field, path string) []string {
@@ -138,6 +145,9 @@ func checkExampleBody(body *hclsyntax.Body, known map[string]field, path string)
 	}
 	sort.Strings(names)
 	for _, name := range names {
+		if terraformMetaArguments[name] {
+			continue
+		}
 		f, ok := known[name]
 		if !ok {
 			problems = append(problems, unknownField(path, name, known))
@@ -166,6 +176,9 @@ func checkExampleBody(body *hclsyntax.Body, known map[string]field, path string)
 	}
 
 	for _, nested := range body.Blocks {
+		if terraformMetaArguments[nested.Type] {
+			continue
+		}
 		f, ok := known[nested.Type]
 		if !ok {
 			problems = append(problems, unknownField(path, nested.Type, known))

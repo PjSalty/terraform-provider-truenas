@@ -71,7 +71,7 @@ resource "truenas_share_smb" "timemachine" {
 
 The following arguments are supported:
 
-* `path` - (Required) The path to share (e.g., /mnt/tank/data).
+* `path` - (Required) The path to share (e.g., /mnt/tank/data). Must start with `/mnt/`, except for an `EXTERNAL_SHARE`, where it is the literal string `EXTERNAL` because the share proxies to `options.remote_path` rather than serving anything local.
 * `name` - (Required) The share name visible to SMB clients.
 * `comment` - (Optional) A comment describing the share.
 * `browsable` - (Optional) Whether the share is browsable in network discovery. Default: `true`.
@@ -127,6 +127,37 @@ Notes:
 
 Every `options` attribute is also Computed: leave one out and the server's default for
 that purpose is read back into state.
+
+### Server prerequisites
+
+`TIMEMACHINE_SHARE` and `FCP_SHARE` require `aapl_extensions` on the global SMB
+config. Without it the create fails with an EINVAL that names `purpose`, not the
+setting it actually wants:
+
+```
+[EINVAL] sharingsmb_create.purpose: Apple SMB2/3 protocol extension support is
+required by this parameter.
+```
+
+Set it through `truenas_smb_config` and depend on it:
+
+```terraform
+resource "truenas_smb_config" "aapl" {
+  aapl_extensions = true
+}
+
+resource "truenas_share_smb" "backups" {
+  depends_on = [truenas_smb_config.aapl]
+
+  path    = "/mnt/tank/backups"
+  name    = "backups"
+  purpose = "TIMEMACHINE_SHARE"
+
+  options = {
+    auto_dataset_creation = true
+  }
+}
+```
 
 ### Timeouts
 
