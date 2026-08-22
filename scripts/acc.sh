@@ -126,7 +126,6 @@ if [ "${ACC_ONLY}" -eq 0 ]; then
     [github.com/PjSalty/terraform-provider-truenas/internal/resources]=100
     [github.com/PjSalty/terraform-provider-truenas/internal/datasources]=100
     [github.com/PjSalty/terraform-provider-truenas/internal/provider]=100
-    [github.com/PjSalty/terraform-provider-truenas/internal/recordreplay]=100
   )
 
   # Aggregate per-package coverage from coverage.out (a real run's

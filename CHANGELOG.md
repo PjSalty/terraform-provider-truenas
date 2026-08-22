@@ -228,6 +228,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   `password_disabled` is also exposed on the `truenas_user` data source.
 
+### Removed
+
+- Removed `internal/recordreplay/`. It was a record/replay proxy for the REST
+  API, orphaned by the v2.0 WebSocket cutover: nothing in the module ever
+  imported it, and it could not be adapted. It forwards with a plain
+  `http.Client.Do`, which cannot proxy the connection upgrade a WebSocket
+  needs, and it keys its fixtures on HTTP method plus path plus query, which
+  JSON-RPC over one socket does not have, because every call is the same
+  request to `/api/current`. CI was enforcing a 100% coverage floor on it, so
+  the repo paid test-maintenance cost on 765 lines nothing called, and
+  `docs/guides/architecture.md` advertised it as a "record/replay proxy for
+  live-API-free CI", a capability that did not exist. If that capability is
+  ever wanted it belongs as a recording wrapper around
+  `wsclient.TestHandler`, where the frames are already decoded.
+
 ### Fixed
 
 - Acceptance-test sweepers work again on TrueNAS 26.0. They listed fixtures with
