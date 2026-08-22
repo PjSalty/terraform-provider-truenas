@@ -134,7 +134,22 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest && tfplugindocs validate
+      # `make docs`, not a second copy of the command. Two things were wrong
+      # with `go install tfplugindocs@latest && tfplugindocs validate`:
+      #
+      # @latest resolved to a different tfplugindocs than the v0.24.0 go.mod
+      # pins, so CI validated with one version while `make docs` used another,
+      # and every run refetched the tool over the network. That is what failed
+      # on 2026-08-22: a TLS handshake timeout pulling hc-install, reported as
+      # a docs failure without a single page being validated.
+      #
+      # The bare `validate` also dropped --provider-name, which the Makefile
+      # passes. Without it the tool infers the provider name from the checkout
+      # directory, so the job only passed because the directory happens to be
+      # named terraform-provider-truenas. In any other checkout path it fails
+      # on datasources it cannot match. Calling the Makefile keeps one
+      # invocation for both.
+      - run: make docs
 
       # tfplugindocs generate DELETES docs/guides/ and repopulates it from
       # templates/guides/, so a fix applied only to the docs/ copy is
