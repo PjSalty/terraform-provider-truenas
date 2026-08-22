@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -104,6 +105,13 @@ func (r *ReplicationResource) Schema(ctx context.Context, _ resource.SchemaReque
 				Description: "List of source dataset paths.",
 				Required:    true,
 				ElementType: types.StringType,
+				// A replication task with no sources replicates nothing.
+				// The API accepts an empty list on update, so without this
+				// the task silently stops doing anything and the apply
+				// still reports success.
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(1),
+				},
 			},
 			"target_dataset": schema.StringAttribute{
 				Description: "Target dataset path.",
