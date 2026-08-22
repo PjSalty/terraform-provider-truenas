@@ -146,9 +146,16 @@ func (r *FTPConfigResource) Schema(ctx context.Context, _ resource.SchemaRequest
 				Computed:    true,
 				Default:     stringdefault.StaticString("077"),
 				Validators: []validator.String{
+					// Upstream UnixPerm parses the value as octal and requires
+					// mode & 0o777 == mode, so 777 is the ceiling and setuid or
+					// sticky bits are rejected. The old pattern allowed a
+					// 4-digit value like 1777, which passed plan and failed at
+					// apply, and refused a 2-digit value like 77, which the
+					// server accepts. Leading zeros are fine because they do not
+					// change the parsed mode.
 					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^[0-7]{3,4}$`),
-						"must be a 3- or 4-digit octal umask value",
+						regexp.MustCompile(`^0*[0-7]{1,3}$`),
+						"must be an octal permission value no greater than 777",
 					),
 				},
 			},
@@ -158,9 +165,16 @@ func (r *FTPConfigResource) Schema(ctx context.Context, _ resource.SchemaRequest
 				Computed:    true,
 				Default:     stringdefault.StaticString("022"),
 				Validators: []validator.String{
+					// Upstream UnixPerm parses the value as octal and requires
+					// mode & 0o777 == mode, so 777 is the ceiling and setuid or
+					// sticky bits are rejected. The old pattern allowed a
+					// 4-digit value like 1777, which passed plan and failed at
+					// apply, and refused a 2-digit value like 77, which the
+					// server accepts. Leading zeros are fine because they do not
+					// change the parsed mode.
 					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^[0-7]{3,4}$`),
-						"must be a 3- or 4-digit octal umask value",
+						regexp.MustCompile(`^0*[0-7]{1,3}$`),
+						"must be an octal permission value no greater than 777",
 					),
 				},
 			},

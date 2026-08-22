@@ -89,9 +89,13 @@ func (r *ISCSITargetResource) Schema(ctx context.Context, _ resource.SchemaReque
 				Required:    true,
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(1, 120),
+					// Upstream RE_TARGET_NAME is ^[-a-z0-9.:]+$, which places no
+					// restriction on the first character. Requiring it to be
+					// alphanumeric rejected names upstream accepts, including a
+					// leading dot or colon.
 					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^[a-z0-9][a-z0-9.\-:]*$`),
-						"iSCSI target name must be lowercase alphanumeric, may contain dots, hyphens, and colons",
+						regexp.MustCompile(`^[-a-z0-9.:]+$`),
+						"iSCSI target name must be lowercase alphanumeric, dots, hyphens and colons only",
 					),
 				},
 			},
