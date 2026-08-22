@@ -1,8 +1,9 @@
 // Package wsclient implements a TrueNAS SCALE client over the JSON-RPC 2.0
 // WebSocket transport (the supported API surface from TrueNAS SCALE 25.04
-// onwards). The legacy REST client lives in internal/client and is being
-// migrated method-by-method; both packages export the same per-resource
-// helper signatures so resource code is transport-agnostic.
+// onwards, and the only one from 26.0, which removed REST).
+//
+// It is the provider's sole transport. The REST client it was migrated
+// from, internal/client, was deleted in v2.0.
 package wsclient
 
 import (

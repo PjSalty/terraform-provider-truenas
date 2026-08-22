@@ -562,7 +562,7 @@ func (r *DatasetResource) mapResponseToModel(dataset *truenas.DatasetResponse, m
 	}
 	// SCALE 25.10+ moved comments from top-level `comments` (always null)
 	// to `user_properties.comments`. GetComments() handles both shapes
-	// transparently, see internal/client/dataset.go.
+	// transparently, see internal/wsclient/dataset.go.
 	model.Comments = types.StringValue(dataset.GetComments())
 	if dataset.Sync != nil {
 		model.Sync = types.StringValue(dataset.Sync.Value)
