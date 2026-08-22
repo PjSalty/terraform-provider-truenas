@@ -19,16 +19,13 @@ represented in-place force a resource replacement as noted below.
 
 ```terraform
 resource "truenas_ups_config" "this" {
-  identifier     = "ups"
-  mode           = "MASTER"
-  driver         = "usbhid-ups"
-  port           = "auto"
-  monuser        = "upsmon"
-  monpwd         = "changeme"
-  shutdown_mode  = "BATT"
-  shutdown_timer = 30
-  rmonitor       = false
-  powerdown      = false
+  identifier    = "ups"
+  description   = "Rack 1 UPS"
+  mode          = "MASTER"
+  driver        = "usbhid-ups"
+  port          = "auto"
+  shutdown      = "BATT"
+  shutdowntimer = 30
 }
 ```
 

@@ -24,14 +24,14 @@ resource "truenas_ftp_config" "this" {
   ipconnections = 5
   loginattempt  = 3
   timeout       = 600
-  rootlogin     = false
   onlyanonymous = false
   onlylocal     = false
   defaultroot   = true
-  ident         = false
   fxp           = false
   resume        = false
-  ssltls_policy = "on"
+  tls           = false
+  filemask      = "0077"
+  dirmask       = "0077"
 }
 ```
 

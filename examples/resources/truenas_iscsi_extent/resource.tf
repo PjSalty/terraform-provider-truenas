@@ -2,7 +2,6 @@ resource "truenas_zvol" "iscsi_lun" {
   pool    = "tank"
   name    = "vols/iscsi-lun1"
   volsize = 10737418240 # 10 GiB
-  sparse  = true
 }
 
 resource "truenas_iscsi_extent" "example" {
