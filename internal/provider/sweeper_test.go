@@ -54,18 +54,14 @@ func sweepLog(resourceType, action, name string, err error) {
 	sweep.Log(resourceType, action, name, err)
 }
 
-// sweeperGetList is a thin wrapper around internal/sweep.GetList.
+// sweeperQueryList is a thin wrapper around internal/sweep.QueryList.
 //
-// Sweepers run as TF_ACC=1 test cleanup and bind to a separate REST
-// client built from the same TRUENAS_* env vars that the production
-// wsclient uses. internal/sweep retains the REST path during the v2.0
-// cutover because TrueNAS' collection-list endpoints (used here to
-// discover dangling tf-acc-* fixtures) don't have direct typed
-// equivalents on the wsclient call surface yet. Production runtime is
-// wsclient-only; sweep is dev-time infrastructure with a parallel
-// transport intentionally.
-func sweeperGetList(ctx context.Context, c *wsclient.Client, path string, out interface{}) error {
-	return sweep.GetList(ctx, c, path, out)
+// It lists a resource collection over the same JSON-RPC WebSocket
+// production code uses. Callers pass the whole method name so
+// scripts/api-drift.sh can recognise it as an auto-generated CRUD verb
+// rather than reporting the bare namespace as a method upstream removed.
+func sweeperQueryList(ctx context.Context, c *wsclient.Client, method string, out interface{}) error {
+	return sweep.QueryList(ctx, c, method, out)
 }
 
 // init registers every sweeper defined in this file. Dependency ordering is
@@ -539,7 +535,7 @@ func sweepSMBShares(_ string) error {
 }
 
 // iscsi resources: none have ListXxx methods on the client, so we call
-// the collection GET endpoint directly via sweeperGetList.
+// the collection query endpoint directly via sweeperQueryList.
 
 func sweepISCSIPortals(_ string) error {
 	ctx, cancel := sweepCtx()
@@ -547,7 +543,7 @@ func sweepISCSIPortals(_ string) error {
 	c := testAccSweeperClient()
 
 	var portals []truenas.ISCSIPortal
-	if err := sweeperGetList(ctx, c, "/iscsi/portal", &portals); err != nil {
+	if err := sweeperQueryList(ctx, c, "iscsi.portal.query", &portals); err != nil {
 		return fmt.Errorf("sweeping truenas_iscsi_portal: listing: %w", err)
 	}
 	for _, p := range portals {
@@ -566,7 +562,7 @@ func sweepISCSITargets(_ string) error {
 	c := testAccSweeperClient()
 
 	var targets []truenas.ISCSITarget
-	if err := sweeperGetList(ctx, c, "/iscsi/target", &targets); err != nil {
+	if err := sweeperQueryList(ctx, c, "iscsi.target.query", &targets); err != nil {
 		return fmt.Errorf("sweeping truenas_iscsi_target: listing: %w", err)
 	}
 	for _, t := range targets {
@@ -585,7 +581,7 @@ func sweepISCSIExtents(_ string) error {
 	c := testAccSweeperClient()
 
 	var extents []truenas.ISCSIExtent
-	if err := sweeperGetList(ctx, c, "/iscsi/extent", &extents); err != nil {
+	if err := sweeperQueryList(ctx, c, "iscsi.extent.query", &extents); err != nil {
 		return fmt.Errorf("sweeping truenas_iscsi_extent: listing: %w", err)
 	}
 	for _, e := range extents {
@@ -604,7 +600,7 @@ func sweepISCSIInitiators(_ string) error {
 	c := testAccSweeperClient()
 
 	var inits []truenas.ISCSIInitiator
-	if err := sweeperGetList(ctx, c, "/iscsi/initiator", &inits); err != nil {
+	if err := sweeperQueryList(ctx, c, "iscsi.initiator.query", &inits); err != nil {
 		return fmt.Errorf("sweeping truenas_iscsi_initiator: listing: %w", err)
 	}
 	for _, i := range inits {
@@ -626,7 +622,7 @@ func sweepISCSIAuths(_ string) error {
 	c := testAccSweeperClient()
 
 	var auths []truenas.ISCSIAuth
-	if err := sweeperGetList(ctx, c, "/iscsi/auth", &auths); err != nil {
+	if err := sweeperQueryList(ctx, c, "iscsi.auth.query", &auths); err != nil {
 		return fmt.Errorf("sweeping truenas_iscsi_auth: listing: %w", err)
 	}
 	for _, a := range auths {
@@ -649,7 +645,7 @@ func sweepISCSITargetExtents(_ string) error {
 	c := testAccSweeperClient()
 
 	var targets []truenas.ISCSITarget
-	if err := sweeperGetList(ctx, c, "/iscsi/target", &targets); err != nil {
+	if err := sweeperQueryList(ctx, c, "iscsi.target.query", &targets); err != nil {
 		return fmt.Errorf("sweeping truenas_iscsi_targetextent: listing targets: %w", err)
 	}
 	acctestTargets := make(map[int]string, len(targets))
@@ -660,7 +656,7 @@ func sweepISCSITargetExtents(_ string) error {
 	}
 
 	var extents []truenas.ISCSIExtent
-	if err := sweeperGetList(ctx, c, "/iscsi/extent", &extents); err != nil {
+	if err := sweeperQueryList(ctx, c, "iscsi.extent.query", &extents); err != nil {
 		return fmt.Errorf("sweeping truenas_iscsi_targetextent: listing extents: %w", err)
 	}
 	acctestExtents := make(map[int]string, len(extents))
@@ -671,7 +667,7 @@ func sweepISCSITargetExtents(_ string) error {
 	}
 
 	var tes []truenas.ISCSITargetExtent
-	if err := sweeperGetList(ctx, c, "/iscsi/targetextent", &tes); err != nil {
+	if err := sweeperQueryList(ctx, c, "iscsi.targetextent.query", &tes); err != nil {
 		return fmt.Errorf("sweeping truenas_iscsi_targetextent: listing: %w", err)
 	}
 	for _, te := range tes {
@@ -695,7 +691,7 @@ func sweepSnapshotTasks(_ string) error {
 	c := testAccSweeperClient()
 
 	var tasks []truenas.SnapshotTask
-	if err := sweeperGetList(ctx, c, "/pool/snapshottask", &tasks); err != nil {
+	if err := sweeperQueryList(ctx, c, "pool.snapshottask.query", &tasks); err != nil {
 		return fmt.Errorf("sweeping truenas_snapshot_task: listing: %w", err)
 	}
 	for _, t := range tasks {
@@ -733,7 +729,7 @@ func sweepInitScripts(_ string) error {
 	c := testAccSweeperClient()
 
 	var scripts []truenas.InitScript
-	if err := sweeperGetList(ctx, c, "/initshutdownscript", &scripts); err != nil {
+	if err := sweeperQueryList(ctx, c, "initshutdownscript.query", &scripts); err != nil {
 		return fmt.Errorf("sweeping truenas_init_script: listing: %w", err)
 	}
 	for _, s := range scripts {
@@ -752,7 +748,7 @@ func sweepRsyncTasks(_ string) error {
 	c := testAccSweeperClient()
 
 	var tasks []truenas.RsyncTask
-	if err := sweeperGetList(ctx, c, "/rsynctask", &tasks); err != nil {
+	if err := sweeperQueryList(ctx, c, "rsynctask.query", &tasks); err != nil {
 		return fmt.Errorf("sweeping truenas_rsync_task: listing: %w", err)
 	}
 	for _, t := range tasks {
@@ -771,7 +767,7 @@ func sweepScrubTasks(_ string) error {
 	c := testAccSweeperClient()
 
 	var tasks []truenas.ScrubTask
-	if err := sweeperGetList(ctx, c, "/pool/scrub", &tasks); err != nil {
+	if err := sweeperQueryList(ctx, c, "pool.scrub.query", &tasks); err != nil {
 		return fmt.Errorf("sweeping truenas_scrub_task: listing: %w", err)
 	}
 	for _, t := range tasks {
@@ -790,7 +786,7 @@ func sweepReplications(_ string) error {
 	c := testAccSweeperClient()
 
 	var reps []truenas.Replication
-	if err := sweeperGetList(ctx, c, "/replication", &reps); err != nil {
+	if err := sweeperQueryList(ctx, c, "replication.query", &reps); err != nil {
 		return fmt.Errorf("sweeping truenas_replication: listing: %w", err)
 	}
 	for _, r := range reps {
@@ -811,7 +807,7 @@ func sweepStaticRoutes(_ string) error {
 	c := testAccSweeperClient()
 
 	var routes []truenas.StaticRoute
-	if err := sweeperGetList(ctx, c, "/staticroute", &routes); err != nil {
+	if err := sweeperQueryList(ctx, c, "staticroute.query", &routes); err != nil {
 		return fmt.Errorf("sweeping truenas_static_route: listing: %w", err)
 	}
 	for _, r := range routes {
@@ -830,7 +826,7 @@ func sweepAlertServices(_ string) error {
 	c := testAccSweeperClient()
 
 	var svcs []truenas.AlertService
-	if err := sweeperGetList(ctx, c, "/alertservice", &svcs); err != nil {
+	if err := sweeperQueryList(ctx, c, "alertservice.query", &svcs); err != nil {
 		return fmt.Errorf("sweeping truenas_alert_service: listing: %w", err)
 	}
 	for _, s := range svcs {
@@ -870,7 +866,7 @@ func sweepReportingExporters(_ string) error {
 	c := testAccSweeperClient()
 
 	var exps []truenas.ReportingExporter
-	if err := sweeperGetList(ctx, c, "/reporting/exporters", &exps); err != nil {
+	if err := sweeperQueryList(ctx, c, "reporting.exporters.query", &exps); err != nil {
 		return fmt.Errorf("sweeping truenas_reporting_exporter: listing: %w", err)
 	}
 	for _, e := range exps {
@@ -929,12 +925,29 @@ func sweepAPIKeys(_ string) error {
 	defer cancel()
 	c := testAccSweeperClient()
 
+	// Never destroy the key we are authenticated with. A test key is
+	// conventionally named "tf-acc-..." and so matches the same prefix
+	// every other fixture does; deleting it revokes this session's own
+	// credential and every sweeper scheduled afterwards dies
+	// unauthenticated. Refusing outright when the id cannot be read is
+	// the safe direction: an unswept key is litter, a revoked one is an
+	// outage of the test box.
+	liveID, ok := sweep.LiveAPIKeyID()
+	if !ok {
+		return fmt.Errorf(`sweeping truenas_api_key: cannot tell which key TRUENAS_API_KEY is ` +
+			`(want "<id>-<secret>"), refusing to delete any key`)
+	}
+
 	var keys []truenas.APIKey
-	if err := sweeperGetList(ctx, c, "/api_key", &keys); err != nil {
+	if err := sweeperQueryList(ctx, c, "api_key.query", &keys); err != nil {
 		return fmt.Errorf("sweeping truenas_api_key: listing: %w", err)
 	}
 	for _, k := range keys {
 		if !sweeperHasAcctestPrefix(k.Name) {
+			continue
+		}
+		if k.ID == liveID {
+			sweepLog("truenas_api_key", "skip (in use by this sweep run)", k.Name, nil)
 			continue
 		}
 		err := c.DeleteAPIKey(ctx, k.ID)
@@ -949,7 +962,7 @@ func sweepKeychainCredentials(_ string) error {
 	c := testAccSweeperClient()
 
 	var creds []truenas.KeychainCredential
-	if err := sweeperGetList(ctx, c, "/keychaincredential", &creds); err != nil {
+	if err := sweeperQueryList(ctx, c, "keychaincredential.query", &creds); err != nil {
 		return fmt.Errorf("sweeping truenas_keychain_credential: listing: %w", err)
 	}
 	for _, cr := range creds {
@@ -1006,7 +1019,7 @@ func sweepKerberosKeytabs(_ string) error {
 	c := testAccSweeperClient()
 
 	var keytabs []truenas.KerberosKeytab
-	if err := sweeperGetList(ctx, c, "/kerberos/keytab", &keytabs); err != nil {
+	if err := sweeperQueryList(ctx, c, "kerberos.keytab.query", &keytabs); err != nil {
 		return fmt.Errorf("sweeping truenas_kerberos_keytab: listing: %w", err)
 	}
 	for _, k := range keytabs {
@@ -1025,7 +1038,7 @@ func sweepFilesystemACLTemplates(_ string) error {
 	c := testAccSweeperClient()
 
 	var tpls []truenas.FilesystemACLTemplate
-	if err := sweeperGetList(ctx, c, "/filesystem/acltemplate", &tpls); err != nil {
+	if err := sweeperQueryList(ctx, c, "filesystem.acltemplate.query", &tpls); err != nil {
 		return fmt.Errorf("sweeping truenas_filesystem_acl_template: listing: %w", err)
 	}
 	for _, t := range tpls {
@@ -1049,7 +1062,7 @@ func sweepNVMetHostSubsys(_ string) error {
 	c := testAccSweeperClient()
 
 	var hosts []truenas.NVMetHost
-	if err := sweeperGetList(ctx, c, "/nvmet/host", &hosts); err != nil {
+	if err := sweeperQueryList(ctx, c, "nvmet.host.query", &hosts); err != nil {
 		return fmt.Errorf("sweeping truenas_nvmet_host_subsys: listing hosts: %w", err)
 	}
 	acctHosts := make(map[int]bool, len(hosts))
@@ -1061,7 +1074,7 @@ func sweepNVMetHostSubsys(_ string) error {
 	}
 
 	var subs []truenas.NVMetSubsys
-	if err := sweeperGetList(ctx, c, "/nvmet/subsys", &subs); err != nil {
+	if err := sweeperQueryList(ctx, c, "nvmet.subsys.query", &subs); err != nil {
 		return fmt.Errorf("sweeping truenas_nvmet_host_subsys: listing subsys: %w", err)
 	}
 	acctSubs := make(map[int]bool, len(subs))
@@ -1077,7 +1090,7 @@ func sweepNVMetHostSubsys(_ string) error {
 		Subsys int `json:"subsys"`
 	}
 	var rows []hostSubsysRow
-	if err := sweeperGetList(ctx, c, "/nvmet/host_subsys", &rows); err != nil {
+	if err := sweeperQueryList(ctx, c, "nvmet.host_subsys.query", &rows); err != nil {
 		return fmt.Errorf("sweeping truenas_nvmet_host_subsys: listing: %w", err)
 	}
 	for _, r := range rows {
@@ -1097,7 +1110,7 @@ func sweepNVMetPortSubsys(_ string) error {
 	c := testAccSweeperClient()
 
 	var ports []truenas.NVMetPort
-	if err := sweeperGetList(ctx, c, "/nvmet/port", &ports); err != nil {
+	if err := sweeperQueryList(ctx, c, "nvmet.port.query", &ports); err != nil {
 		return fmt.Errorf("sweeping truenas_nvmet_port_subsys: listing ports: %w", err)
 	}
 	acctPorts := make(map[int]bool, len(ports))
@@ -1108,7 +1121,7 @@ func sweepNVMetPortSubsys(_ string) error {
 	}
 
 	var subs []truenas.NVMetSubsys
-	if err := sweeperGetList(ctx, c, "/nvmet/subsys", &subs); err != nil {
+	if err := sweeperQueryList(ctx, c, "nvmet.subsys.query", &subs); err != nil {
 		return fmt.Errorf("sweeping truenas_nvmet_port_subsys: listing subsys: %w", err)
 	}
 	acctSubs := make(map[int]bool, len(subs))
@@ -1124,7 +1137,7 @@ func sweepNVMetPortSubsys(_ string) error {
 		Subsys int `json:"subsys"`
 	}
 	var rows []portSubsysRow
-	if err := sweeperGetList(ctx, c, "/nvmet/port_subsys", &rows); err != nil {
+	if err := sweeperQueryList(ctx, c, "nvmet.port_subsys.query", &rows); err != nil {
 		return fmt.Errorf("sweeping truenas_nvmet_port_subsys: listing: %w", err)
 	}
 	for _, r := range rows {
@@ -1145,7 +1158,7 @@ func sweepNVMetNamespaces(_ string) error {
 
 	// Build the acctest subsys set first so we can match namespaces.
 	var subs []truenas.NVMetSubsys
-	if err := sweeperGetList(ctx, c, "/nvmet/subsys", &subs); err != nil {
+	if err := sweeperQueryList(ctx, c, "nvmet.subsys.query", &subs); err != nil {
 		return fmt.Errorf("sweeping truenas_nvmet_namespace: listing subsys: %w", err)
 	}
 	acctSubs := make(map[int]bool, len(subs))
@@ -1156,7 +1169,7 @@ func sweepNVMetNamespaces(_ string) error {
 	}
 
 	var namespaces []truenas.NVMetNamespace
-	if err := sweeperGetList(ctx, c, "/nvmet/namespace", &namespaces); err != nil {
+	if err := sweeperQueryList(ctx, c, "nvmet.namespace.query", &namespaces); err != nil {
 		return fmt.Errorf("sweeping truenas_nvmet_namespace: listing: %w", err)
 	}
 	for _, n := range namespaces {
@@ -1179,7 +1192,7 @@ func sweepNVMetPorts(_ string) error {
 	c := testAccSweeperClient()
 
 	var ports []truenas.NVMetPort
-	if err := sweeperGetList(ctx, c, "/nvmet/port", &ports); err != nil {
+	if err := sweeperQueryList(ctx, c, "nvmet.port.query", &ports); err != nil {
 		return fmt.Errorf("sweeping truenas_nvmet_port: listing: %w", err)
 	}
 	for _, p := range ports {
@@ -1198,7 +1211,7 @@ func sweepNVMetSubsys(_ string) error {
 	c := testAccSweeperClient()
 
 	var subs []truenas.NVMetSubsys
-	if err := sweeperGetList(ctx, c, "/nvmet/subsys", &subs); err != nil {
+	if err := sweeperQueryList(ctx, c, "nvmet.subsys.query", &subs); err != nil {
 		return fmt.Errorf("sweeping truenas_nvmet_subsys: listing: %w", err)
 	}
 	for _, s := range subs {
@@ -1217,7 +1230,7 @@ func sweepNVMetHosts(_ string) error {
 	c := testAccSweeperClient()
 
 	var hosts []truenas.NVMetHost
-	if err := sweeperGetList(ctx, c, "/nvmet/host", &hosts); err != nil {
+	if err := sweeperQueryList(ctx, c, "nvmet.host.query", &hosts); err != nil {
 		return fmt.Errorf("sweeping truenas_nvmet_host: listing: %w", err)
 	}
 	for _, h := range hosts {
@@ -1275,7 +1288,7 @@ func sweepVMDevices(_ string) error {
 	}
 
 	var devs []truenas.VMDevice
-	if err := sweeperGetList(ctx, c, "/vm/device", &devs); err != nil {
+	if err := sweeperQueryList(ctx, c, "vm.device.query", &devs); err != nil {
 		return fmt.Errorf("sweeping truenas_vm_device: listing: %w", err)
 	}
 	for _, d := range devs {
@@ -1293,7 +1306,7 @@ func sweepVMDevices(_ string) error {
 // ---- Pending-resource sweepers (Phase B) --------------------------------
 //
 // These five sweepers were the "pending" entries in resourceSweeperExclusions
-// before Phase B. Each uses sweeperGetList because the client does not
+// before Phase B. Each uses sweeperQueryList because the client does not
 // expose a typed ListXxx method, the collection GET is fine because every
 // resource type here returns a JSON array at its collection URL.
 
@@ -1303,7 +1316,7 @@ func sweepACMEDNSAuthenticators(_ string) error {
 	c := testAccSweeperClient()
 
 	var auths []truenas.ACMEDNSAuthenticator
-	if err := sweeperGetList(ctx, c, "/acme/dns/authenticator", &auths); err != nil {
+	if err := sweeperQueryList(ctx, c, "acme.dns.authenticator.query", &auths); err != nil {
 		return fmt.Errorf("sweeping truenas_acme_dns_authenticator: listing: %w", err)
 	}
 	for _, a := range auths {
@@ -1347,7 +1360,7 @@ func sweepCloudBackups(_ string) error {
 	c := testAccSweeperClient()
 
 	var backups []truenas.CloudBackup
-	if err := sweeperGetList(ctx, c, "/cloud_backup", &backups); err != nil {
+	if err := sweeperQueryList(ctx, c, "cloud_backup.query", &backups); err != nil {
 		return fmt.Errorf("sweeping truenas_cloud_backup: listing: %w", err)
 	}
 	for _, b := range backups {
@@ -1366,7 +1379,7 @@ func sweepCloudSyncs(_ string) error {
 	c := testAccSweeperClient()
 
 	var syncs []truenas.CloudSync
-	if err := sweeperGetList(ctx, c, "/cloudsync", &syncs); err != nil {
+	if err := sweeperQueryList(ctx, c, "cloudsync.query", &syncs); err != nil {
 		return fmt.Errorf("sweeping truenas_cloud_sync: listing: %w", err)
 	}
 	for _, s := range syncs {
@@ -1385,7 +1398,7 @@ func sweepVMwareIntegrations(_ string) error {
 	c := testAccSweeperClient()
 
 	var vms []truenas.VMware
-	if err := sweeperGetList(ctx, c, "/vmware", &vms); err != nil {
+	if err := sweeperQueryList(ctx, c, "vmware.query", &vms); err != nil {
 		return fmt.Errorf("sweeping truenas_vmware: listing: %w", err)
 	}
 	for _, v := range vms {
