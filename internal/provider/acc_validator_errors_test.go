@@ -328,7 +328,7 @@ resource "truenas_certificate" "bad_key_length" {
 }
 
 // TestAccValidator_DNSNameserver_rejectsGarbage exercises the regex
-// validator on dns_nameserver.address. Anything that isn't a valid
+// validator on dns_nameserver.nameserver1. Anything that isn't a valid
 // IPv4 / IPv6 literal must fail at plan time.
 func TestAccValidator_DNSNameserver_rejectsGarbage(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {
@@ -341,10 +341,10 @@ func TestAccValidator_DNSNameserver_rejectsGarbage(t *testing.T) {
 			{
 				Config: `
 resource "truenas_dns_nameserver" "bad_ns" {
-  address = "not-an-ip"
+  nameserver1 = "not-an-ip"
 }
 `,
-				ExpectError: regexp.MustCompile(`(?i)valid ipv4 or ipv6 address`),
+				ExpectError: regexp.MustCompile(`(?i)must be a valid IPv4 or IPv6 address`),
 				PlanOnly:    true,
 			},
 		},
@@ -380,8 +380,10 @@ resource "truenas_iscsi_target" "bad_iqn" {
 }
 
 // TestAccValidator_ISCSITargetExtent_lunidAtLeast verifies the
-// iscsi_targetextent.lunid AtLeast(0) lower bound. (LUNID may be 0
-// upward; negative values are nonsensical and the validator catches it.)
+// iscsi_targetextent.lunid lower bound. The validator is
+// int64validator.Between(0, 1023), so -1 is rejected at plan time.
+// (The test name says AtLeast; the bound is a Between. Renaming is
+// cosmetic and would churn the test id, so it is left alone.)
 // terraform-plugin-framework actually treats Int64Attribute as a signed
 // 64-bit integer, so writing -1 is syntactically valid and reaches the
 // validator. (The framework converts a negative literal into Int64 cleanly.)
@@ -401,7 +403,10 @@ resource "truenas_iscsi_targetextent" "bad_lunid" {
   lunid  = -1
 }
 `,
-				ExpectError: regexp.MustCompile(`(?i)attribute lunid value must be at least`),
+				// Deliberately loose: not pinned to "0 and 1023", so moving the
+				// bound does not re-break this for a reason unrelated to the
+				// behaviour under test.
+				ExpectError: regexp.MustCompile(`(?i)attribute lunid value must be between`),
 				PlanOnly:    true,
 			},
 		},
