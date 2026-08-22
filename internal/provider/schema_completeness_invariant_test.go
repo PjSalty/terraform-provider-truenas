@@ -283,9 +283,7 @@ var allowedRequiredAttributesWithoutValidator = map[string]string{
 	// shallow length check.
 	"resources/cloud_backup.go::attributes_json":     "json-blob: server-authoritative shape",
 	"resources/filesystem_acl_template.go::acl_json": "json-blob: server-authoritative shape",
-	"resources/cloud_backup.go::password":            "polish-backlog: add LengthAtLeast(1)",
 	"resources/keychain_credential.go::attributes":   "map-attr: per-element validation not composed",
-	"resources/replication.go::source_datasets":      "polish-backlog: add SizeAtLeast(1)",
 	"resources/vm_device.go::attributes":             "map-attr: per-element validation not composed",
 }
 

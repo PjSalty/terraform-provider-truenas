@@ -245,6 +245,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `truenas_replication.source_datasets` rejects an empty list. The API accepts
+  one on update, so a replication task could be left with no sources: it then
+  replicates nothing while the apply still reports success and the plan is
+  clean afterwards.
+- `truenas_cloud_backup.password` rejects the empty string, which reached the
+  API and came back as a generic middleware validation error naming nothing
+  useful.
+
 - Two acceptance tests asserted things that could never happen, so they failed
   on every `TF_ACC` run. `TestAccValidator_DNSNameserver_rejectsGarbage` set an
   `address` argument that `truenas_dns_nameserver` has never had (the attribute
