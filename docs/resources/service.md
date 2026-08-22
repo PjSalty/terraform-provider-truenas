@@ -21,7 +21,6 @@ represented in-place force a resource replacement as noted below.
 resource "truenas_service" "ssh" {
   service = "ssh"
   enable  = true
-  state   = "RUNNING"
 }
 ```
 

@@ -23,9 +23,6 @@ resource "truenas_snmp_config" "this" {
   contact   = "ops@example.com"
   community = "public"
   v3        = false
-  traps     = false
-  zilstat   = false
-  loglevel  = 3
 }
 ```
 
