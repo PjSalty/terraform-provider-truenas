@@ -6,12 +6,20 @@
 # final.
 #
 # Looks for these .envrc.local-<version> files (any subset works):
-#   .envrc.local          , primary target (currently 25.10.0)
+#   .envrc.local          , primary test box
 #   .envrc.local-25-04    , TrueNAS SCALE 25.04 (last REST-only)
 #   .envrc.local-26-beta  , TrueNAS 26.0.0-BETA.1 (REST removed)
 #
+# A version whose env file is absent is SKIPPED, and the summary says so
+# by name. That matters: the point of this script is cross-version
+# coverage, and a run that found one env file still prints per-version
+# PASS lines. Without the skip list, "acc matrix summary: PASS" reads as
+# "the matrix passed" when it may mean "one of three versions passed".
+#
 # Per-version reports go to logs/acc-matrix-<version>-<timestamp>.log.
-# Exit code is non-zero if any version reports acc failures.
+# Exit code is non-zero if any version reports acc failures. A skipped
+# version is not a failure, it is missing coverage, and the two are
+# reported separately rather than collapsed.
 
 set -euo pipefail
 
@@ -20,10 +28,24 @@ cd "$ROOT"
 
 mkdir -p logs
 
+# Every version this matrix is meant to cover. Keep the labels and the
+# skip reporting in step: a version added here but never given an env
+# file shows up as SKIPPED rather than quietly not existing.
+KNOWN=(
+  "primary:.envrc.local"
+  "25-04:.envrc.local-25-04"
+  "26-beta:.envrc.local-26-beta"
+)
+
 VERSIONS=()
-[ -f .envrc.local ]         && VERSIONS+=("primary:.envrc.local")
-[ -f .envrc.local-25-04 ]   && VERSIONS+=("25-04:.envrc.local-25-04")
-[ -f .envrc.local-26-beta ] && VERSIONS+=("26-beta:.envrc.local-26-beta")
+SKIPPED=()
+for known in "${KNOWN[@]}"; do
+  if [ -f "${known#*:}" ]; then
+    VERSIONS+=("$known")
+  else
+    SKIPPED+=("${known%%:*}")
+  fi
+done
 
 if [ ${#VERSIONS[@]} -eq 0 ]; then
   echo "No .envrc.local-* files found, populate at least one before running."
@@ -32,7 +54,10 @@ if [ ${#VERSIONS[@]} -eq 0 ]; then
 fi
 
 echo "==> multi-version acc matrix"
-echo "    found ${#VERSIONS[@]} version(s): ${VERSIONS[*]}"
+echo "    running ${#VERSIONS[@]} of ${#KNOWN[@]} known version(s): ${VERSIONS[*]}"
+if [ ${#SKIPPED[@]} -gt 0 ]; then
+  echo "    SKIPPED (no env file, NOT covered by this run): ${SKIPPED[*]}"
+fi
 echo ""
 
 PASS=0
@@ -77,6 +102,13 @@ echo "===================================="
 echo "  acc matrix summary"
 echo "===================================="
 echo -e "${SUMMARY}"
+if [ ${#SKIPPED[@]} -gt 0 ]; then
+  for label in "${SKIPPED[@]}"; do
+    echo "  ${label}: SKIPPED (no env file, this version was NOT tested)"
+  done
+fi
+echo ""
+echo "  coverage: ${#VERSIONS[@]} of ${#KNOWN[@]} known versions actually ran"
 echo ""
 echo "  passed: ${PASS}"
 echo "  failed: ${FAIL}"
