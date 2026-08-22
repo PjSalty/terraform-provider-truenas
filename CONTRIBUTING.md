@@ -75,7 +75,6 @@ terraform-provider-truenas/
 │   └── fuzz/                      # Go native fuzz corpus
 ├── tools/
 │   └── tools.go                   # Dev-only tooling pins (build tag: tools)
-├── .changelog/                    # changie per-PR changelog entries
 ├── .github/                       # GitHub workflows, issue/PR templates
 ├── .goreleaser.yml                # Multi-platform release config
 ├── .golangci.yml                  # 13-linter config
@@ -94,7 +93,7 @@ terraform-provider-truenas/
    - `fix(certificate): normalize ENOENT job error to 404`
    - `test(vm): cover bootloader UEFI cross-attribute constraint`
 4. **Run all gates locally** before pushing (see below).
-5. **Add a `.changelog/unreleased/` entry** via `changie new`.
+5. **Add a `CHANGELOG.md` entry** under `## [Unreleased]`.
 6. **Open a pull request** against `main`, fill out the PR template.
 7. CI must be green before review. **No exceptions, no `allow_failure: true`
    shortcuts.**
@@ -214,7 +213,7 @@ checklist below.
    - `docs/data-sources/<name>.md` if applicable.
 9. **Add example**: `examples/resources/truenas_<name>/resource.tf` +
    `examples/resources/truenas_<name>/import.sh`.
-10. **Add changelog entry** via `changie new`.
+10. **Add changelog entry** to `CHANGELOG.md` under `## [Unreleased]`.
 11. **Run all gates** (see below) until everything is green.
 
 ## Adding a new data source
@@ -257,16 +256,23 @@ reverts it. CI diffs the two and fails on drift.
 
 ## Changelog entries
 
-We use [changie](https://changie.dev/) for per-PR changelog entries:
+`CHANGELOG.md` is hand-maintained. Add your entry to the `## [Unreleased]`
+section, under the Keep a Changelog heading that fits (Added / Changed /
+Deprecated / Removed / Fixed / Security), as part of your PR.
 
-```sh
-go install github.com/miniscruff/changie@latest
-changie new                        # interactive prompt, writes .changelog/unreleased/*.yaml
-```
+This repo used to document [changie](https://changie.dev/) for per-PR entry
+files. That flow was never completed and is **not** used: no
+`.changelog/unreleased/` entry exists on `main`, the `header.tpl.md` that
+`.changie.yaml` referenced was never added, and there are no batched version
+files for any past release. Running `changie merge` against that state does
+not fail safe, it truncates `CHANGELOG.md` to nothing. Measured: 227 bullets
+to 0, while also printing an error about the missing template.
 
-Commit the resulting file as part of your PR. At release time, a maintainer
-runs `changie batch vX.Y.Z && changie merge` to fold entries into
-`CHANGELOG.md`.
+The tooling and its config were removed rather than repaired, because
+repairing it would mean back-filling a version file for every historical
+release before it could reproduce the file it is supposed to own. If per-PR
+entry files are wanted again, that back-fill is the first step, not
+`changie new`.
 
 ## Sensitive attribute policy
 
@@ -305,13 +311,16 @@ CI enforces all of these. Pre-commit hooks catch most issues locally.
 Releases are cut by tagging `vX.Y.Z` on `main`:
 
 ```sh
-changie batch vX.Y.Z
-changie merge
-git add CHANGELOG.md .changelog/
+# Rename the [Unreleased] heading in CHANGELOG.md to [vX.Y.Z] - YYYY-MM-DD
+# and open a fresh empty [Unreleased] above it.
+git add CHANGELOG.md
 git commit -m "chore(release): vX.Y.Z"
 git tag vX.Y.Z
 git push origin main vX.Y.Z
 ```
+
+Do not run `changie batch` or `changie merge`. See the changelog section
+above: they destroy `CHANGELOG.md` in this repo's current state.
 
 CI picks up the tag and runs `goreleaser release`, which builds for 14
 platform targets (linux/darwin/windows/freebsd × amd64/arm64/arm6/arm7/386),
