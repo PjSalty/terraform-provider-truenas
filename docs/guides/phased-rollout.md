@@ -163,9 +163,12 @@ Verify the change landed:
 # Example: confirm the description update via the TrueNAS UI or
 # a direct API call. The provider is NOT the source of truth here -
 # check reality via a second path.
-curl -H "Authorization: Bearer $TRUENAS_API_KEY" \
-  https://truenas.example.com/api/v2.0/pool/dataset/id/tank%2Fdata \
-  | jq -r .comments
+#
+# Run this on the NAS. Deliberately not one of this provider's data
+# sources: the point of this step is to look at reality through
+# something that is not the thing under test.
+midclt call pool.dataset.query '[["id","=","tank/data"]]' \
+  | jq -r '.[0].comments'
 ```
 
 **Success criterion**: the change applied cleanly, `terraform plan`
