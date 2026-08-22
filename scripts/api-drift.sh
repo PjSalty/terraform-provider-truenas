@@ -237,13 +237,99 @@ while IFS= read -r m; do
   FINDINGS=$((FINDINGS + 1))
 done < "$WORK/methods.txt"
 
+# ---------------------------------------------------------------------------
+# Value sets.
+#
+# The checks above catch a METHOD upstream removed. They say nothing about a
+# VALUE upstream accepts that the provider's OneOf refuses, which is how six
+# attributes drifted: truenas_dataset rejected every ZSTD compression level and
+# every recordsize above 1M, and truenas_service rejected two services that
+# exist on the box. Those are invisible to a method diff because the method is
+# still there.
+#
+# Only the model-derived entries are checked here, the ones whose accepted set
+# is a Literal in the upstream models this script already has on disk. Entries
+# sourced from a live choices endpoint carry that in their "source" field and
+# are refreshed against a box instead.
+say "==> checking recorded value sets against the upstream models"
+VALUE_SETS="${REPO_ROOT}/internal/provider/testdata/value_sets.json"
+if [ ! -f "$VALUE_SETS" ]; then
+  die "value_sets.json not found at $VALUE_SETS"
+fi
+if command -v python3 >/dev/null 2>&1; then
+  VS_OUT="$(python3 - "$VALUE_SETS" "$API_DIR" "$NEWEST" <<'PYEOF'
+import json, os, re, sys
+
+recorded_path, api_dir, newest = sys.argv[1], sys.argv[2], sys.argv[3]
+recorded = json.load(open(recorded_path))
+
+def literal(path, field):
+    if not os.path.exists(path):
+        return None
+    src = open(path).read()
+    m = re.search(rf'{field}: Literal\[(.*?)\]\s*=\s*Field', src, re.S)
+    if not m:
+        return None
+    return set(re.findall(r'"([^"]+)"', m.group(1)))
+
+def discriminators(path):
+    if not os.path.exists(path):
+        return None
+    src = open(path).read()
+    vals = set(re.findall(r'type: Literal\["([A-Z_0-9]+)"\]', src))
+    return vals or None
+
+# attribute -> how to derive its set from the models
+DERIVE = {
+    ("truenas_dataset", "compression"):
+        lambda d: literal(os.path.join(d, "pool_dataset.py"), "compression"),
+    ("truenas_zvol", "compression"):
+        lambda d: literal(os.path.join(d, "pool_dataset.py"), "compression"),
+    ("truenas_cloudsync_credential", "provider_type"):
+        lambda d: discriminators(os.path.join(d, "cloud_sync_providers.py")),
+}
+
+findings = 0
+for vs in recorded:
+    key = (vs["resource"], vs["attribute"])
+    if key not in DERIVE:
+        continue
+    upstream = DERIVE[key](os.path.join(api_dir, newest))
+    if upstream is None:
+        print(f"FINDING: {vs['resource']}.{vs['attribute']} could not be derived from {newest}; "
+              f"the upstream model layout changed")
+        findings += 1
+        continue
+    rec = set(vs["values"])
+    added = sorted(upstream - rec)
+    gone = sorted(rec - upstream)
+    if added:
+        print(f"FINDING: {newest} accepts {len(added)} new value(s) for "
+              f"{vs['resource']}.{vs['attribute']} that the provider does not: {added}")
+        findings += 1
+    if gone:
+        print(f"FINDING: {newest} no longer accepts {len(gone)} value(s) the provider "
+              f"offers for {vs['resource']}.{vs['attribute']}: {gone}")
+        findings += 1
+print(f"__FINDINGS__={findings}")
+PYEOF
+)" || die "value-set check failed to run"
+  echo "$VS_OUT" | grep -v '^__FINDINGS__=' || true
+  VS_FINDINGS="$(echo "$VS_OUT" | sed -n 's/^__FINDINGS__=//p')"
+  FINDINGS=$((FINDINGS + ${VS_FINDINGS:-0}))
+  [ "${VS_FINDINGS:-0}" -eq 0 ] && say "    OK: model-derived value sets match"
+else
+  say "    SKIPPED: python3 not available"
+fi
+
 if [ "$FINDINGS" -eq 0 ]; then
-  say "==> OK: every referenced method exists, and none is removed or scheduled for removal"
+  say "==> OK: every referenced method exists, none is removed or scheduled for removal, and the recorded value sets match"
   exit 0
 fi
 
 echo ""
-echo "$FINDINGS method(s) the provider calls are removed, or scheduled for removal, upstream."
+echo "$FINDINGS finding(s): a method the provider calls is removed or scheduled for removal,"
+echo "or a recorded value set no longer matches the upstream models."
 echo "Migrate to the replacement, or add the method to ${ALLOW_FILE} with a reason"
 echo "if the call is already version-guarded or the migration is tracked in an issue."
 exit 1

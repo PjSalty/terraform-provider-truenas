@@ -138,9 +138,18 @@ func (r *DatasetResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				Computed:    true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(
-						"OFF", "ON", "LZ4", "GZIP", "GZIP-1", "GZIP-2", "GZIP-3",
-						"GZIP-4", "GZIP-5", "GZIP-6", "GZIP-7", "GZIP-8", "GZIP-9",
-						"ZSTD", "ZSTD-FAST", "ZLE", "LZJB", "INHERIT",
+						// The full ZFS set the API accepts. Verified against the compression Literal in
+						// the upstream pool_dataset model for every supported version, 25.10.0 through
+						// 27.0, where it is identical. GZIP-2 through GZIP-8 are deliberately absent:
+						// the provider used to offer them and no supported version has ever accepted
+						// them, so they could only ever fail at apply.
+						"OFF", "ON", "INHERIT", "LZ4", "LZJB", "ZLE", "GZIP", "GZIP-1", "GZIP-9", "ZSTD", "ZSTD-FAST",
+						"ZSTD-1", "ZSTD-2", "ZSTD-3", "ZSTD-4", "ZSTD-5", "ZSTD-6", "ZSTD-7", "ZSTD-8", "ZSTD-9",
+						"ZSTD-10", "ZSTD-11", "ZSTD-12", "ZSTD-13", "ZSTD-14", "ZSTD-15", "ZSTD-16", "ZSTD-17",
+						"ZSTD-18", "ZSTD-19", "ZSTD-FAST-1", "ZSTD-FAST-2", "ZSTD-FAST-3", "ZSTD-FAST-4", "ZSTD-FAST-5",
+						"ZSTD-FAST-6", "ZSTD-FAST-7", "ZSTD-FAST-8", "ZSTD-FAST-9", "ZSTD-FAST-10", "ZSTD-FAST-20",
+						"ZSTD-FAST-30", "ZSTD-FAST-40", "ZSTD-FAST-50", "ZSTD-FAST-60", "ZSTD-FAST-70", "ZSTD-FAST-80",
+						"ZSTD-FAST-90", "ZSTD-FAST-100", "ZSTD-FAST-500", "ZSTD-FAST-1000",
 					),
 				},
 				PlanModifiers: []planmodifier.String{
@@ -252,7 +261,13 @@ func (r *DatasetResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("512", "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K", "256K", "512K", "1M", "INHERIT"),
+					stringvalidator.OneOf(
+						// recordsize is a plain string upstream, so this list is the server's own
+						// answer from pool.dataset.recordsize_choices, read off a live 26.0 box.
+						// INHERIT is kept because the provider has always accepted it.
+						"INHERIT", "512", "512B", "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K", "256K", "512K",
+						"1M", "2M", "4M", "8M", "16M",
+					),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

@@ -161,7 +161,23 @@ func (r *SMBConfigResource) Schema(ctx context.Context, _ resource.SchemaRequest
 				Computed:    true,
 				Default:     stringdefault.StaticString("UTF-8"),
 				Validators: []validator.String{
-					stringvalidator.OneOf("UTF-8", "ISO-8859-1", "ISO-8859-15", "GB2312", "EUC-JP", "ASCII"),
+					stringvalidator.OneOf(
+						// The full SMBCharsetType set. The six values this used to allow were not just
+						// a subset: four of them were spelled the way Samba writes them rather than the
+						// way the API does (ISO-8859-1 for ISO8859_1, EUC-JP for EUC_JP), so they were
+						// advertised at plan time and rejected at apply.
+						"UTF-8", "BIG5", "BIG5HKSCS", "CP037", "CP1026", "CP1125", "CP1140", "CP1250", "CP1251",
+						"CP1252", "CP1253", "CP1254", "CP1255", "CP1256", "CP1257", "CP1258", "CP1361", "CP273", "CP424",
+						"CP437", "CP500", "CP775", "CP850", "CP852", "CP855", "CP857", "CP858", "CP860", "CP861",
+						"CP862", "CP863", "CP864", "CP865", "CP866", "CP869", "CP932", "CP949", "CP950", "EUC_JISX0213",
+						"EUC_JIS_2004", "EUC_JP", "EUC_KR", "GB18030", "GB2312", "GBK", "HZ", "HZ-GB-2312", "ISO2022_JP",
+						"ISO2022_JP_1", "ISO2022_JP_2", "ISO2022_JP_2004", "ISO2022_JP_3", "ISO2022_JP_EXT",
+						"ISO2022_KR", "ISO8859_1", "ISO8859_10", "ISO8859_11", "ISO8859_13", "ISO8859_14", "ISO8859_15",
+						"ISO8859_16", "ISO8859_2", "ISO8859_3", "ISO8859_4", "ISO8859_5", "ISO8859_6", "ISO8859_7",
+						"ISO8859_8", "ISO8859_9", "JOHAB", "KOI8_R", "KZ1048", "LATIN_1", "MAC_CYRILLIC", "MAC_GREEK",
+						"MAC_ICELAND", "MAC_LATIN2", "MAC_ROMAN", "MAC_TURKISH", "PTCP154", "SHIFT_JIS",
+						"SHIFT_JISX0213", "SHIFT_JIS_2004", "TIS_620", "UTF_16", "UTF_16_BE", "UTF_16_LE",
+					),
 				},
 			},
 			"aapl_extensions": schema.BoolAttribute{

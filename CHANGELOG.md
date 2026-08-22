@@ -255,6 +255,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Six attributes rejected values the TrueNAS API accepts**, so they could not
+  be configured at all. Each `OneOf` had been written once and never checked
+  against upstream again.
+
+  - `truenas_dataset.compression` and `truenas_zvol.compression` refused every
+    graded ZSTD level. `ZSTD-1` through `ZSTD-19` and the whole `ZSTD-FAST-N`
+    family are valid on every supported release; the provider offered 18 of the
+    51 values, and 8 of those (`GZIP-2` through `GZIP-8`) have never been valid
+    on any of them, so they passed plan and failed at apply.
+  - `truenas_dataset.record_size` stopped at `1M`, rejecting `2M`, `4M`, `8M`,
+    `16M` and `512B`.
+  - `truenas_smb_config.unixcharset` allowed six of 87 charsets, and four of
+    the six were spelled the way Samba writes them rather than the way the API
+    does (`ISO-8859-1` for `ISO8859_1`, `EUC-JP` for `EUC_JP`), so two thirds
+    of what it advertised was rejected on apply.
+  - `truenas_cloudsync_credential.provider_type` was missing `BOX`,
+    `GOOGLE_PHOTOS`, `HUBIC` and `STORJ_IX`, and offered `BACKBLAZE_B2`, which
+    no version has ever accepted; the provider is called `B2`.
+  - `truenas_service.service` rejected `nvmet` and `webshare`, both of which
+    exist on a 26.0 box. Nothing was removed from that list: upstream types the
+    field as a plain string rather than a Literal, so it is a convenience list,
+    and dropping names that still exist on 25.10 would break those users.
+
+  `ZSTD-19`, `ZSTD-FAST-10` and a `4M` record size were applied against a live
+  26.0.0-BETA.1 to confirm the widening is real rather than inferred.
+
+- The API drift check now covers value sets, not just methods. `scripts/api-drift.sh`
+  caught a method upstream removed and said nothing about a value upstream
+  accepts that the provider refuses, which is exactly how the six above drifted:
+  the method was still there the whole time. The sets are recorded in
+  `internal/provider/testdata/value_sets.json` with the source of each, a unit
+  test compares them to the `OneOf` validators with no TrueNAS and no network,
+  and the drift script re-derives the model-backed ones from upstream so a new
+  release surfaces the difference.
+
 - All 40 unit tests disabled by the v2.0 WebSocket cutover run again (issue #2).
   They were httptest fixtures against the REST API, skipped rather than
   rewritten when the transport changed, so the branches they covered had been
