@@ -22,7 +22,6 @@ resource "truenas_zvol" "nvme_ns" {
   pool    = "tank"
   name    = "vols/nvme-ns0"
   volsize = 10737418240
-  sparse  = true
 }
 
 resource "truenas_nvmet_subsys" "ns" {
