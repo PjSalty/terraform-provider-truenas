@@ -2,12 +2,12 @@ package datasources
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestNewISCSITargetDataSource(t *testing.T) {
@@ -63,10 +63,7 @@ func TestISCSITargetDataSource_Read_Success(t *testing.T) {
 }
 
 func TestISCSITargetDataSource_Read_EmptyGroups(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, truenas.ISCSITarget{ID: 1, Name: "x", Mode: "ISCSI"})
-	}))
+	c := newWSServer(t.Context(), t, wsReturn(truenas.ISCSITarget{ID: 1, Name: "x", Mode: "ISCSI"}))
 
 	ds := NewISCSITargetDataSource().(*ISCSITargetDataSource)
 	ds.client = c
@@ -79,10 +76,7 @@ func TestISCSITargetDataSource_Read_EmptyGroups(t *testing.T) {
 }
 
 func TestISCSITargetDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "missing"})
-	}))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] missing"))
 
 	ds := NewISCSITargetDataSource().(*ISCSITargetDataSource)
 	ds.client = c
