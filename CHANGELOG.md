@@ -230,6 +230,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- Removed the `changie` configuration and its `.changelog/` directory, and
+  corrected the release process that told maintainers to run it. `CHANGELOG.md`
+  is hand-maintained and always has been: no per-PR entry file ever reached
+  `main`, the `header.tpl.md` that `.changie.yaml` referenced was never added,
+  and no release was ever batched into a version file. Running the documented
+  `changie merge` against that state does not fail safe. Measured on the real
+  repository, it truncated `CHANGELOG.md` from 227 entries to 0 while printing
+  an error about the missing template. A test now fails if the file loses its
+  `[Unreleased]` section or drops below an entry floor.
+
 - Removed `internal/recordreplay/`. It was a record/replay proxy for the REST
   API, orphaned by the v2.0 WebSocket cutover: nothing in the module ever
   imported it, and it could not be adapted. It forwards with a plain
