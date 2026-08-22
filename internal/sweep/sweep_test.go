@@ -2,13 +2,13 @@ package sweep_test
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/sweep"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestCtx(t *testing.T) {
@@ -56,60 +56,6 @@ func TestDatasetIsAcctest(t *testing.T) {
 	}
 }
 
-func TestGetList_OK(t *testing.T) {
-	type item struct {
-		ID int `json:"id"`
-	}
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasSuffix(r.URL.Path, "/iscsi/portal") {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		if r.Header.Get("Authorization") != "Bearer test-key" {
-			t.Errorf("missing or wrong auth header: %q", r.Header.Get("Authorization"))
-		}
-		w.WriteHeader(200)
-		_ = json.NewEncoder(w).Encode([]item{{ID: 1}, {ID: 2}})
-	}))
-	defer srv.Close()
-
-	t.Setenv("TRUENAS_URL", srv.URL)
-	t.Setenv("TRUENAS_API_KEY", "test-key")
-	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
-
-	var out []item
-	if err := sweep.GetList(context.Background(), nil, "/iscsi/portal", &out); err != nil {
-		t.Fatalf("GetList: %v", err)
-	}
-	if len(out) != 2 {
-		t.Errorf("got %d items, want 2", len(out))
-	}
-}
-
-func TestGetList_MissingCreds(t *testing.T) {
-	t.Setenv("TRUENAS_URL", "")
-	t.Setenv("TRUENAS_API_KEY", "")
-	err := sweep.GetList(context.Background(), nil, "/anything", &struct{}{})
-	if err == nil || !strings.Contains(err.Error(), "TRUENAS_URL") {
-		t.Errorf("want error about TRUENAS_URL, got: %v", err)
-	}
-}
-
-func TestGetList_HTTPError(t *testing.T) {
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(404)
-		_, _ = w.Write([]byte(`{"message":"not found"}`))
-	}))
-	defer srv.Close()
-	t.Setenv("TRUENAS_URL", srv.URL)
-	t.Setenv("TRUENAS_API_KEY", "k")
-	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
-
-	err := sweep.GetList(context.Background(), nil, "/missing", &struct{}{})
-	if err == nil || !strings.Contains(err.Error(), "HTTP 404") {
-		t.Errorf("want HTTP 404 error, got: %v", err)
-	}
-}
-
 func TestLog_OK(t *testing.T) {
 	// Smoke that Log doesn't panic; capture is tricky in a parallel
 	// test so we just exercise both branches.
@@ -117,71 +63,147 @@ func TestLog_OK(t *testing.T) {
 	sweep.Log("cronjob", "destroy", "tf-acc-bar", context.Canceled)
 }
 
-func TestGetList_BadURL(t *testing.T) {
-	// A control character forces http.NewRequest to error before
-	// any HTTP call. Exercises the build-request error path.
-	t.Setenv("TRUENAS_URL", "http://example.com")
-	t.Setenv("TRUENAS_API_KEY", "k")
-	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
+// QueryList calls "<namespace>.query" over the JSON-RPC WebSocket. It
+// replaced an HTTP GET against /api/v2.0, which TrueNAS 26.0 removed:
+// those GETs answer 404, the sweeper returned an error, and the
+// plugin-testing framework aborts the whole run on the first sweeper
+// error, so one dead call stopped every later sweeper.
+func TestQueryList_OK(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// Embedded newline character in the path triggers
-	// "net/http: invalid path" from http.NewRequestWithContext.
-	err := sweep.GetList(context.Background(), nil, "/bad\npath", &struct{}{})
-	if err == nil || !strings.Contains(err.Error(), "build request") {
-		t.Errorf("want build-request error, got: %v", err)
+	var gotMethod string
+	ts := wsclient.NewTestServer(t, func(_ context.Context, method string, _ []interface{}) (interface{}, *wsclient.RPCError) {
+		gotMethod = method
+		return []interface{}{
+			map[string]interface{}{"id": 1, "name": "tf-acc-one"},
+			map[string]interface{}{"id": 2, "name": "keep-me"},
+		}, nil
+	})
+	c, err := ts.NewClient(ctx)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	var out []struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	}
+	if err := sweep.QueryList(ctx, c, "iscsi.portal.query", &out); err != nil {
+		t.Fatalf("QueryList: %v", err)
+	}
+	// The namespace must become "<ns>.query", or the sweeper silently
+	// lists nothing and reports a clean run having reclaimed nothing.
+	if gotMethod != "iscsi.portal.query" {
+		t.Errorf("called %q, want %q", gotMethod, "iscsi.portal.query")
+	}
+	if len(out) != 2 || out[0].Name != "tf-acc-one" {
+		t.Errorf("decoded %+v", out)
 	}
 }
 
-func TestGetList_BadJSON(t *testing.T) {
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(200)
-		_, _ = w.Write([]byte(`not valid json`))
-	}))
-	defer srv.Close()
-	t.Setenv("TRUENAS_URL", srv.URL)
-	t.Setenv("TRUENAS_API_KEY", "k")
-	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
-
-	err := sweep.GetList(context.Background(), nil, "/anything", &struct{}{})
-	if err == nil || !strings.Contains(err.Error(), "decode") {
-		t.Errorf("want decode error, got: %v", err)
-	}
-}
-
-func TestGetList_DialFail(t *testing.T) {
-	// Point at an unreachable address, the http.Client's Do call
-	// will return a dial error which exercises the GET-failure branch.
-	t.Setenv("TRUENAS_URL", "https://127.0.0.1:1")
-	t.Setenv("TRUENAS_API_KEY", "k")
-	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
-
-	err := sweep.GetList(context.Background(), nil, "/anything", &struct{}{})
-	if err == nil || !strings.Contains(err.Error(), "GET /anything") {
-		t.Errorf("want GET path error, got: %v", err)
-	}
-}
-
-func TestGetList_BodyReadFails(t *testing.T) {
-	// Lie about Content-Length then close the connection mid-body so
-	// io.ReadAll fails after a successful header exchange. Covers the
-	// read-body error branch.
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Length", "1000000")
-		w.WriteHeader(200)
-		_, _ = w.Write([]byte("partial"))
-		// Hijack + close to cut the stream short.
-		if hj, ok := w.(http.Hijacker); ok {
-			conn, _, _ := hj.Hijack()
-			_ = conn.Close()
-		}
-	}))
-	defer srv.Close()
-	t.Setenv("TRUENAS_URL", srv.URL)
-	t.Setenv("TRUENAS_API_KEY", "k")
-	t.Setenv("TRUENAS_INSECURE_SKIP_VERIFY", "true")
-
-	err := sweep.GetList(context.Background(), nil, "/anything", &struct{}{})
+func TestQueryList_NilClient(t *testing.T) {
+	t.Parallel()
+	var out []struct{}
+	err := sweep.QueryList(context.Background(), nil, "iscsi.portal.query", &out)
 	if err == nil {
-		t.Error("expected error from truncated body")
+		t.Fatal("a nil client was accepted")
+	}
+	// Assert the specific message: without the guard the call still fails,
+	// but with something that does not say what actually went wrong.
+	if !strings.Contains(err.Error(), "nil client") {
+		t.Errorf("error should name the nil client, got: %v", err)
+	}
+}
+
+// A failing query must surface. Swallowing it would report a clean sweep
+// that reclaimed nothing, and the litter only shows up as an EEXIST
+// collision on some later run.
+func TestQueryList_CallError(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	ts := wsclient.NewTestServer(t, func(_ context.Context, method string, _ []interface{}) (interface{}, *wsclient.RPCError) {
+		return nil, &wsclient.RPCError{Code: wsclient.CodeMethodNotFound, Message: method}
+	})
+	c, err := ts.NewClient(ctx)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	var out []struct{}
+	err = sweep.QueryList(ctx, c, "nope.gone.query", &out)
+	if err == nil {
+		t.Fatal("a failed query was treated as success")
+	}
+	if !strings.Contains(err.Error(), "nope.gone.query") {
+		t.Errorf("error should name the method, got: %v", err)
+	}
+	// It must be reported as the QUERY failing. Falling through to the
+	// decode step turns a dead endpoint into "malformed response", which
+	// sends the next person looking at the wrong layer entirely.
+	if !strings.HasPrefix(err.Error(), "query ") {
+		t.Errorf("a failed call must be reported as a query failure, got: %v", err)
+	}
+	if strings.Contains(err.Error(), "decode") {
+		t.Errorf("a failed call was misreported as a decode failure: %v", err)
+	}
+}
+
+func TestQueryList_BadJSON(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	ts := wsclient.NewTestServer(t, func(_ context.Context, _ string, _ []interface{}) (interface{}, *wsclient.RPCError) {
+		return "not-a-list", nil
+	})
+	c, err := ts.NewClient(ctx)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	var out []struct{}
+	err = sweep.QueryList(ctx, c, "iscsi.portal.query", &out)
+	if err == nil || !strings.Contains(err.Error(), "decode") {
+		t.Errorf("err = %v", err)
+	}
+}
+
+// LiveAPIKeyID tells the api_key sweeper which key it is authenticated
+// with, so it does not revoke its own credential mid-run and leave every
+// later sweeper unauthenticated.
+func TestLiveAPIKeyID(t *testing.T) {
+	cases := []struct {
+		name   string
+		value  string
+		set    bool
+		wantID int
+		wantOK bool
+	}{
+		{"well-formed key", "17-abcdefghijklmnop", true, 17, true},
+		{"unset", "", false, 0, false},
+		{"empty", "", true, 0, false},
+		{"no separator", "abcdefghijklmnop", true, 0, false},
+		{"non-numeric id", "notanid-secret", true, 0, false},
+		{"leading separator", "-secret", true, 0, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.set {
+				t.Setenv("TRUENAS_API_KEY", tc.value)
+			} else {
+				t.Setenv("TRUENAS_API_KEY", "")
+				os.Unsetenv("TRUENAS_API_KEY")
+			}
+			id, ok := sweep.LiveAPIKeyID()
+			if ok != tc.wantOK || id != tc.wantID {
+				t.Errorf("LiveAPIKeyID() = (%d, %v), want (%d, %v)", id, ok, tc.wantID, tc.wantOK)
+			}
+		})
+	}
+}
+
+// The secret half must never be returned, whatever it contains.
+func TestLiveAPIKeyID_ReturnsOnlyTheID(t *testing.T) {
+	t.Setenv("TRUENAS_API_KEY", "42-thisisthesecretpart-with-dashes")
+	id, ok := sweep.LiveAPIKeyID()
+	if !ok || id != 42 {
+		t.Fatalf("LiveAPIKeyID() = (%d, %v), want (42, true)", id, ok)
 	}
 }
