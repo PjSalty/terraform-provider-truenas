@@ -6,8 +6,6 @@ package resources
 // endpoint patterns.
 
 import (
-	"encoding/json"
-	"net/http"
 	"strings"
 	"testing"
 
@@ -76,7 +74,6 @@ func TestZvolResource_CRUD(t *testing.T) {
 // --- Certificate ---
 
 func TestCertificateResource_CRUD(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":                  1,
 		"name":                "c1",
@@ -104,21 +101,7 @@ func TestCertificateResource_CRUD(t *testing.T) {
 	// Certificate Create/Update/Delete are job-based. Wire a handler that
 	// returns a job id on POST/PUT/DELETE, responds to /core/get_jobs, and
 	// returns the body on GET.
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if strings.Contains(req.URL.Path, "core/get_jobs") {
-			_ = json.NewEncoder(w).Encode([]interface{}{
-				map[string]interface{}{"id": 1, "state": "SUCCESS", "result": body},
-			})
-			return
-		}
-		if req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete {
-			_, _ = w.Write([]byte("1"))
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CertificateResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":             str("c1"),
@@ -216,7 +199,6 @@ func TestVMDeviceResource_CRUD(t *testing.T) {
 // handler that honors both the pool-create job and the get_jobs path.
 
 func TestPoolResource_CRUD(t *testing.T) {
-	skipWSCutover(t)
 	poolBody := map[string]interface{}{
 		"id":       1,
 		"name":     "tank",
@@ -225,25 +207,7 @@ func TestPoolResource_CRUD(t *testing.T) {
 		"healthy":  true,
 		"topology": map[string]interface{}{"data": []interface{}{}},
 	}
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if strings.Contains(req.URL.Path, "core/get_jobs") {
-			_ = json.NewEncoder(w).Encode([]interface{}{
-				map[string]interface{}{"id": 1, "state": "SUCCESS", "result": poolBody},
-			})
-			return
-		}
-		if req.Method == http.MethodPost && strings.HasSuffix(req.URL.Path, "/pool") {
-			_, _ = w.Write([]byte("1"))
-			return
-		}
-		if req.Method == http.MethodDelete {
-			_, _ = w.Write([]byte("true"))
-			return
-		}
-		_ = json.NewEncoder(w).Encode(poolBody)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, poolBody)
 	r := &PoolResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"name":                    str("tank"),
@@ -259,7 +223,6 @@ func TestPoolResource_CRUD(t *testing.T) {
 // --- App (async, string id) ---
 
 func TestAppResource_CRUD(t *testing.T) {
-	skipWSCutover(t)
 	appBody := map[string]interface{}{
 		"id":                "minio",
 		"name":              "minio",
@@ -271,30 +234,7 @@ func TestAppResource_CRUD(t *testing.T) {
 		"human_version":     "1.0.0",
 		"config":            map[string]interface{}{},
 	}
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if strings.Contains(req.URL.Path, "core/get_jobs") {
-			_ = json.NewEncoder(w).Encode([]interface{}{
-				map[string]interface{}{"id": 1, "state": "SUCCESS", "result": appBody},
-			})
-			return
-		}
-		// Any POST/PUT/DELETE that returns a job id.
-		if req.Method == http.MethodPost || req.Method == http.MethodDelete {
-			if req.Method == http.MethodDelete {
-				_, _ = w.Write([]byte("1"))
-				return
-			}
-			_, _ = w.Write([]byte("1"))
-			return
-		}
-		if req.Method == http.MethodPut {
-			_, _ = w.Write([]byte("1"))
-			return
-		}
-		_ = json.NewEncoder(w).Encode(appBody)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, appBody)
 	r := &AppResource{client: c}
 	crudDrive(t, r, c, "minio", map[string]tftypes.Value{
 		"app_name":    str("minio"),
@@ -465,26 +405,13 @@ func TestDirectoryServicesResource_CRUD(t *testing.T) {
 // --- Service (by name, not numeric id) ---
 
 func TestServiceResource_CRUD(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":      1,
 		"service": "ssh",
 		"enable":  true,
 		"state":   "RUNNING",
 	}
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if strings.Contains(req.URL.Path, "start") || strings.Contains(req.URL.Path, "stop") || strings.Contains(req.URL.Path, "reload") {
-			_, _ = w.Write([]byte("true"))
-			return
-		}
-		if req.Method == http.MethodGet && (strings.HasSuffix(req.URL.Path, "/service") || strings.Contains(req.URL.Path, "service?")) {
-			_ = json.NewEncoder(w).Encode([]interface{}{body})
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ServiceResource{client: c}
 	crudDrive(t, r, c, "ssh", map[string]tftypes.Value{
 		"service": str("ssh"),
@@ -496,7 +423,6 @@ func TestServiceResource_CRUD(t *testing.T) {
 // --- FilesystemACL ---
 
 func TestFilesystemACLResource_CRUD(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"path":    "/mnt/tank/share",
 		"uid":     1000,
@@ -514,15 +440,7 @@ func TestFilesystemACLResource_CRUD(t *testing.T) {
 	}
 	// GetFilesystemACL POSTs to /filesystem/getacl and expects a single object.
 	// SetFilesystemACL POSTs to /filesystem/setacl and ignores response.
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method == http.MethodPost && strings.Contains(req.URL.Path, "setacl") {
-			_, _ = w.Write([]byte("null"))
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &FilesystemACLResource{client: c}
 
 	// Build a dacl entry

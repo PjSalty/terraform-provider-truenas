@@ -2,8 +2,6 @@ package resources
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -11,22 +9,13 @@ import (
 )
 
 func TestACMEDNSAuthenticatorResource_CRUD(t *testing.T) {
-	skipWSCutover(t)
 	ctx := context.Background()
 	body := map[string]interface{}{
 		"id":         7,
 		"name":       "example",
 		"attributes": map[string]interface{}{"authenticator": "cloudflare", "api_token": "tok"},
 	}
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method == http.MethodDelete {
-			_, _ = w.Write([]byte("true"))
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ACMEDNSAuthenticatorResource{client: c}
 	sch := schemaOf(t, ctx, r)
 

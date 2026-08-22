@@ -4,9 +4,6 @@ package resources
 // and remaining singletons.
 
 import (
-	"encoding/json"
-	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -359,7 +356,6 @@ func TestUserResource_CRUD(t *testing.T) {
 }
 
 func TestGroupResource_CRUD(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "gid": 1000, "group": "users", "name": "users",
 		"builtin": false, "smb": false, "sudo_commands": []interface{}{},
@@ -367,19 +363,7 @@ func TestGroupResource_CRUD(t *testing.T) {
 		"users":                  []interface{}{},
 	}
 	// CreateGroup POST returns a bare int ID; GetGroup returns the full object.
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method == http.MethodPost && strings.HasSuffix(req.URL.Path, "/group") {
-			_, _ = w.Write([]byte("1"))
-			return
-		}
-		if req.Method == http.MethodDelete {
-			_, _ = w.Write([]byte("true"))
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &GroupResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"gid":  num(1000),

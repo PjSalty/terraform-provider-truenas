@@ -2,13 +2,13 @@ package resources
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestReplicationResource_ImportState(t *testing.T) {
@@ -30,7 +30,6 @@ func TestReplicationResource_ImportState(t *testing.T) {
 }
 
 func TestServiceResource_ImportState(t *testing.T) {
-	skipWSCutover(t)
 	ctx := context.Background()
 	// Numeric: success (no API call)
 	r := &ServiceResource{}
@@ -42,13 +41,13 @@ func TestServiceResource_ImportState(t *testing.T) {
 	}
 
 	// Non-numeric: looks up service by name via client
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		_ = json.NewEncoder(w).Encode([]interface{}{
+	// The by-name path queries services and picks the match, so the
+	// handler answers with a LIST rather than a single entity.
+	c := newWSTestClient(ctx, t, func(_ context.Context, _ string, _ []interface{}) (interface{}, *wsclient.RPCError) {
+		return []interface{}{
 			map[string]interface{}{"id": 7, "service": "ssh", "enable": true, "state": "RUNNING"},
-		})
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+		}, nil
+	})
 	r2 := &ServiceResource{client: c}
 	sch2 := schemaOf(t, ctx, r2)
 	reqResp2 := &resource.ImportStateResponse{State: tfsdk.State{Schema: sch2.Schema, Raw: rawFromValues(t, ctx, sch2, nil)}}
@@ -56,11 +55,7 @@ func TestServiceResource_ImportState(t *testing.T) {
 	_ = reqResp2.Diagnostics
 
 	// Non-numeric with lookup failure
-	failHandler := func(w http.ResponseWriter, req *http.Request) {
-		http.Error(w, "nope", http.StatusNotFound)
-	}
-	c2, srv2 := newTestServerClient(t, failHandler)
-	defer srv2.Close()
+	c2 := newWSNotFoundClient(ctx, t)
 	r3 := &ServiceResource{client: c2}
 	sch3 := schemaOf(t, ctx, r3)
 	reqResp3 := &resource.ImportStateResponse{State: tfsdk.State{Schema: sch3.Schema, Raw: rawFromValues(t, ctx, sch3, nil)}}

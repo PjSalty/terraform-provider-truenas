@@ -3,12 +3,12 @@ package datasources
 import (
 	"context"
 	"encoding/json"
-	"net/http"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 func TestNewISCSIExtentDataSource(t *testing.T) {
@@ -65,10 +65,7 @@ func TestISCSIExtentDataSource_Read_Success(t *testing.T) {
 }
 
 func TestISCSIExtentDataSource_Read_NotFound(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"message": "nope"})
-	}))
+	c := newWSServer(t.Context(), t, wsError(wsclient.CodeMethodCallError, "[ENOENT] nope"))
 	ds := NewISCSIExtentDataSource().(*ISCSIExtentDataSource)
 	ds.client = c
 	cfg := buildConfig(t.Context(), t, ds, map[string]tftypes.Value{"id": int64Val(99)})

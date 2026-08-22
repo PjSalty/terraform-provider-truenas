@@ -2,9 +2,6 @@ package datasources
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -13,26 +10,6 @@ import (
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
-
-// newTestServer returns an httptest server and a Client pointed at it.
-func newTestServer(t *testing.T, handler http.Handler) (*httptest.Server, *wsclient.Client) {
-	t.Helper()
-	srv := httptest.NewServer(handler)
-	t.Cleanup(srv.Close)
-
-	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
-	if err != nil {
-		t.Fatalf("wsclient.New: %v", err)
-	}
-	return srv, c
-}
-
-// writeJSON writes v as JSON with the given status.
-func writeJSON(w http.ResponseWriter, status int, v interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
 
 // getDataSourceSchema fetches the Schema from a datasource.
 func getDataSourceSchema(ctx context.Context, t *testing.T, ds datasource.DataSource) datasource.SchemaResponse {
@@ -85,15 +62,6 @@ func strVal(s string) tftypes.Value {
 // int64Val is a helper for constructing a tftypes.Value of type Number.
 func int64Val(n int64) tftypes.Value {
 	return tftypes.NewValue(tftypes.Number, n)
-}
-
-// skipWSCutover skips datasource unit tests that historically mocked
-// the REST transport via httptest. The v2.0 cutover to JSON-RPC over
-// WebSocket retired the REST path that these tests bind against;
-// equivalent typed-call coverage now lives in internal/wsclient/*_test.go.
-func skipWSCutover(t *testing.T) {
-	t.Helper()
-	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go; wsclient testserver rewrite tracked in issue #2")
 }
 
 // newWSServer returns a *wsclient.Client connected to an in-process

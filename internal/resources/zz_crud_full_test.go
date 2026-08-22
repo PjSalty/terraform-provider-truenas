@@ -5,9 +5,6 @@ package resources
 // fields, raising coverage on the heavier Create functions.
 
 import (
-	"encoding/json"
-	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -394,7 +391,6 @@ func TestISCSIInitiatorResource_CRUD_Full(t *testing.T) {
 // --- Certificate with create-imported and CSR variants ---
 
 func TestCertificateResource_CRUD_CSR(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 2, "name": "csr1", "type": 2,
 		"create_type":      "CERTIFICATE_CREATE_CSR",
@@ -412,21 +408,7 @@ func TestCertificateResource_CRUD_CSR(t *testing.T) {
 		"common":           "example.com",
 		"san":              []interface{}{"example.com", "www.example.com"},
 	}
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if strings.Contains(req.URL.Path, "core/get_jobs") {
-			_ = json.NewEncoder(w).Encode([]interface{}{
-				map[string]interface{}{"id": 1, "state": "SUCCESS", "result": body},
-			})
-			return
-		}
-		if req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete {
-			_, _ = w.Write([]byte("1"))
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CertificateResource{client: c}
 	crudDrive(t, r, c, "2", map[string]tftypes.Value{
 		"name":                str("csr1"),
@@ -598,24 +580,10 @@ func TestNetworkInterfaceResource_CRUD_Full(t *testing.T) {
 // --- Service with start failure ---
 
 func TestServiceResource_CRUD_StartFail(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 1, "service": "ssh", "enable": true, "state": "RUNNING",
 	}
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		// Return 400 on /service/start to hit the Start error branch.
-		if strings.Contains(req.URL.Path, "service/start") {
-			http.Error(w, "no", http.StatusBadRequest)
-			return
-		}
-		if strings.HasSuffix(req.URL.Path, "/service") && req.Method == http.MethodGet {
-			_ = json.NewEncoder(w).Encode([]interface{}{body})
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &ServiceResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"service": str("ssh"),
@@ -798,7 +766,6 @@ func TestPrivilegeResource_CRUD_Full(t *testing.T) {
 // --- Certificate with CSR create + imported-signed ---
 
 func TestCertificateResource_CRUD_Signed(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id": 3, "name": "signed", "type": 1,
 		"create_type":         "CERTIFICATE_CREATE_IMPORTED",
@@ -821,21 +788,7 @@ func TestCertificateResource_CRUD_Signed(t *testing.T) {
 		"until":               "2026-01-01",
 		"expired":             false,
 	}
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if strings.Contains(req.URL.Path, "core/get_jobs") {
-			_ = json.NewEncoder(w).Encode([]interface{}{
-				map[string]interface{}{"id": 1, "state": "SUCCESS", "result": body},
-			})
-			return
-		}
-		if req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete {
-			_, _ = w.Write([]byte("1"))
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &CertificateResource{client: c}
 	crudDrive(t, r, c, "3", map[string]tftypes.Value{
 		"name":             str("signed"),
@@ -910,7 +863,6 @@ func TestCatalogResource_CRUD_Full(t *testing.T) {
 // --- Filesystem ACL full ---
 
 func TestFilesystemACLResource_CRUD_Full(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"path":        "/mnt/tank/share",
 		"uid":         1000,
@@ -921,21 +873,7 @@ func TestFilesystemACLResource_CRUD_Full(t *testing.T) {
 		"flags":       map[string]interface{}{"setuid": true, "setgid": true, "sticky": true},
 		"trivial":     false,
 	}
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if strings.Contains(req.URL.Path, "core/get_jobs") {
-			_ = json.NewEncoder(w).Encode([]interface{}{
-				map[string]interface{}{"id": 1, "state": "SUCCESS", "result": body},
-			})
-			return
-		}
-		if req.Method == http.MethodPost {
-			_, _ = w.Write([]byte("1"))
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &FilesystemACLResource{client: c}
 	crudDrive(t, r, c, "/mnt/tank/share", map[string]tftypes.Value{
 		"path":     str("/mnt/tank/share"),

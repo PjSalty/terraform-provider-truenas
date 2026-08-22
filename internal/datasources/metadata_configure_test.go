@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-
-	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // dataSourceCase describes a data source under test.
@@ -126,11 +124,11 @@ func TestAllDataSources_Configure_WrongType(t *testing.T) {
 // stored without error. We cannot inspect the private client field in a
 // generic way, but exercising the happy path still counts toward coverage.
 func TestAllDataSources_Configure_Client(t *testing.T) {
-	skipWSCutover(t)
-	c, err := wsclient.NewWithOptions("http://example.invalid", "test-api-key", true)
-	if err != nil {
-		t.Fatalf("wsclient.New: %v", err)
-	}
+	// Needs a genuinely connected client. wsclient dials on construction,
+	// where the REST client this test was written against was lazy, so
+	// pointing it at an unresolvable host no longer builds a client at
+	// all. The test server gives a real connected one.
+	c := newWSServer(t.Context(), t, wsReturn(nil))
 	for _, tc := range allDataSources() {
 		t.Run(tc.name, func(t *testing.T) {
 			ds := tc.newFn()

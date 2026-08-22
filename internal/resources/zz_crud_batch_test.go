@@ -1,9 +1,9 @@
 package resources
 
-// Batch CRUD coverage tests. Each test drives Create/Read/Update/Delete against
-// an httptest mock server. The mock answers every request with a canned JSON
-// body, the goal is to exercise the resource code paths rather than verify
-// wire-format correctness.
+// Batch CRUD coverage tests. Each test drives Create/Read/Update/Delete
+// against an in-process JSON-RPC WebSocket mock (wsclient.NewTestServer). The
+// mock answers every method with a canned body; the goal is to exercise the
+// resource code paths rather than verify wire-format correctness.
 
 import (
 	"context"

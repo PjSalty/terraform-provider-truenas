@@ -4,9 +4,6 @@ package resources
 // approach. This file covers the cloud/task/replication families.
 
 import (
-	"encoding/json"
-	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -344,7 +341,6 @@ func TestStaticRouteResource_CRUD(t *testing.T) {
 // --- Tunable ---
 
 func TestTunableResource_CRUD(t *testing.T) {
-	skipWSCutover(t)
 	body := map[string]interface{}{
 		"id":      1,
 		"var":     "net.core.somaxconn",
@@ -354,19 +350,7 @@ func TestTunableResource_CRUD(t *testing.T) {
 		"enabled": true,
 	}
 	// Tunable has both /tunable (list) and /tunable/id/1 (single) GET endpoints.
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method == http.MethodDelete {
-			_, _ = w.Write([]byte("true"))
-			return
-		}
-		if req.Method == http.MethodGet && strings.HasSuffix(req.URL.Path, "/tunable") {
-			_ = json.NewEncoder(w).Encode([]interface{}{body})
-			return
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, body)
 	r := &TunableResource{client: c}
 	crudDrive(t, r, c, "1", map[string]tftypes.Value{
 		"var":     str("net.core.somaxconn"),
