@@ -104,9 +104,16 @@ func (r *UserResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 				},
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(1, 32),
+					// Upstream validate_local_username allows any ASCII letter,
+					// digit, underscore, dash or DOT, starting with a letter or
+					// underscore. The old pattern was lowercase-only and had no
+					// dot, so John and john.doe were both impossible. It also
+					// permitted a trailing $, which upstream does not accept, so
+					// a Samba-style machine account name passed plan and failed
+					// at apply.
 					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^[a-z_][a-z0-9_-]*\$?$`),
-						"must be a valid POSIX username (lowercase letters, digits, underscore, dash; must start with letter or underscore)",
+						regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.-]*$`),
+						"must be a valid username: letters, digits, underscore, dash or dot, starting with a letter or underscore",
 					),
 				},
 			},

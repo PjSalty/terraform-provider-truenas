@@ -255,6 +255,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Six name rules rejected values TrueNAS accepts.** Same shape as the value
+  sets above: a regex written once and never checked against upstream again.
+
+  - `truenas_user.username` was lowercase-only with no dot, so `John` and
+    `john.doe` were both impossible. Upstream allows any ASCII letter, digit,
+    underscore, dash or dot, starting with a letter or underscore.
+  - `truenas_group.name` had the same pattern, and upstream is wider still: a
+    group may start with a digit or a dot and has no length cap at all.
+  - `truenas_vm.name` was alphanumeric-only, so `web_server` was impossible.
+    Upstream types it as `NonEmptyString` with no character rule.
+  - `truenas_iscsi_target.name` required the first character to be
+    alphanumeric. Upstream is `^[-a-z0-9.:]+$`, which does not.
+  - `truenas_ftp_config.filemask` and `dirmask` required 3 or 4 octal digits.
+    Upstream parses the value and requires `mode & 0o777 == mode`, so `1777`
+    passed plan and failed at apply while `77` was refused despite being valid.
+
+  Two of them were also too permissive: `username` and `name` accepted a
+  trailing `$`, which upstream rejects, so a Samba-style machine account name
+  planned cleanly and failed on apply.
+
+  A group and a user with dots and mixed case were created against a live
+  26.0.0-BETA.1 to confirm the relaxation is real rather than inferred.
+
 - **Six attributes rejected values the TrueNAS API accepts**, so they could not
   be configured at all. Each `OneOf` had been written once and never checked
   against upstream again.
