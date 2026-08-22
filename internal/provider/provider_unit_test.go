@@ -304,5 +304,5 @@ func TestProvider_Configure_ClientError(t *testing.T) {
 // for the full rationale.
 func skipWSCutover(t *testing.T) {
 	t.Helper()
-	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go")
+	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go; rewrite tracked in issue #2")
 }
