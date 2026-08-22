@@ -7,27 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Acceptance-test sweepers work again on TrueNAS 26.0. They listed fixtures with
-  HTTP GETs against `/api/v2.0`, and 26.0 removed the REST API: every one of
-  those 29 calls answers **404**. Because the plugin-testing framework aborts a
-  sweep run on the first sweeper error, one dead call stopped every later
-  sweeper from running, so test litter accumulated silently until a rerun
-  collided with it. Listing now goes over the same JSON-RPC WebSocket as
-  production resource I/O. Verified on a live 26.0 box: all 46 sweepers run, 0
-  errors, where previously the run aborted after 1.
-
-- The `truenas_api_key` sweeper no longer revokes the credential it is
-  authenticated with. A test key is conventionally named `tf-acc-...` and so
-  matched the same prefix every other fixture does; deleting it left every
-  sweeper scheduled afterwards failing unauthenticated. The sweeper now derives
-  the live key's row id from `TRUENAS_API_KEY` the same way middleware does
-  (`int(key.split('-', 1)[0])`, reading only the id half, never the secret) and
-  skips that row. When the id cannot be read it refuses to delete any key
-  rather than guessing: an unswept key is litter, a revoked one takes out the
-  test box.
-
 ### Added
 
 - New `truenas_container_images` data source listing the images an LXC
@@ -250,6 +229,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `password_disabled` is also exposed on the `truenas_user` data source.
 
 ### Fixed
+
+- Acceptance-test sweepers work again on TrueNAS 26.0. They listed fixtures with
+  HTTP GETs against `/api/v2.0`, and 26.0 removed the REST API: every one of
+  those 29 calls answers **404**. Because the plugin-testing framework aborts a
+  sweep run on the first sweeper error, one dead call stopped every later
+  sweeper from running, so test litter accumulated silently until a rerun
+  collided with it. Listing now goes over the same JSON-RPC WebSocket as
+  production resource I/O. Verified on a live 26.0 box: all 46 sweepers run, 0
+  errors, where previously the run aborted after 1.
+
+- The `truenas_api_key` sweeper no longer revokes the credential it is
+  authenticated with. A test key is conventionally named `tf-acc-...` and so
+  matched the same prefix every other fixture does; deleting it left every
+  sweeper scheduled afterwards failing unauthenticated. The sweeper now derives
+  the live key's row id from `TRUENAS_API_KEY` the same way middleware does
+  (`int(key.split('-', 1)[0])`, reading only the id half, never the secret) and
+  skips that row. When the id cannot be read it refuses to delete any key
+  rather than guessing: an unswept key is litter, a revoked one takes out the
+  test box.
+
 
 - `truenas_pool` now validates `encryption_options_json` against the connected
   server before creating the pool. The map is forwarded verbatim into a strict
