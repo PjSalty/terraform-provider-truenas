@@ -93,7 +93,7 @@ func int64Val(n int64) tftypes.Value {
 // equivalent typed-call coverage now lives in internal/wsclient/*_test.go.
 func skipWSCutover(t *testing.T) {
 	t.Helper()
-	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go; resource-layer wsclient testserver rewrite tracked as v2.x polish")
+	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go; wsclient testserver rewrite tracked in issue #2")
 }
 
 // newWSServer returns a *wsclient.Client connected to an in-process
