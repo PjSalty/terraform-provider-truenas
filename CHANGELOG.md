@@ -245,6 +245,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Corrected the package and code comments that still described the REST client
+  deleted in v2.0. `internal/types` documented a migration policy for moving
+  types out of `internal/client` "after v2.0 (Phase 5) deletes" it, which had
+  already happened; `internal/wsclient` said the REST client "is being migrated
+  method-by-method". Worse, `provider.go` pointed readers at
+  `internal/client/readonly.go` and `internal/client/destroy_protection.go` for
+  the read-only and destroy-protection gates. Those files do not exist; both
+  gates live in `internal/wsclient/`. The feature-request issue template also
+  asked contributors for a REST endpoint (`POST /api/v2.0/...`) rather than a
+  JSON-RPC method name.
+
 - The acceptance-test precheck invariant was blind to an entire package. Its
   function regex matched only the `TestAcc` prefix, but `internal/datasources`
   names its acceptance tests `Test<X>DataSourceAcc`, so the guard walked 42

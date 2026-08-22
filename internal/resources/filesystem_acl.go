@@ -2,7 +2,7 @@ package resources
 
 // Filesystem ACL resource, manages NFS4/POSIX1E ACLs on TrueNAS SCALE
 // datasets. ACLs are applied via POST /filesystem/setacl and read via
-// POST /filesystem/getacl. See internal/client/filesystem_acl.go.
+// the filesystem.getacl JSON-RPC method. See internal/wsclient/filesystem_acl.go.
 
 import (
 	"context"
