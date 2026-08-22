@@ -240,12 +240,20 @@ Data sources are read-only, no Create/Update/Delete.
 Documentation is regenerated from schema via `tfplugindocs`:
 
 ```sh
-make docs                          # regenerate all resource/data-source docs
-tfplugindocs validate              # verify registry format is correct
+make docs                          # validate registry format (does NOT regenerate)
+make docs-regen                    # regenerate from schema, strips custom prose
+tfplugindocs validate              # what `make docs` runs
 ```
 
-Hand-written guides live under `docs/guides/`. Do not commit generated docs
-that conflict with your changes, always regenerate after schema edits.
+`make docs` only validates. Regenerating is `make docs-regen`, kept separate
+because it rewrites every resource page from the schema and strips the
+hand-written subcategory and prose.
+
+Guides are hand-written, and they live in **two** places that must change
+together: `docs/guides/` is what ships to the Registry, and
+`templates/guides/` is what `tfplugindocs generate` repopulates `docs/guides/`
+from. Editing only the `docs/` copy means the next regeneration silently
+reverts it. CI diffs the two and fails on drift.
 
 ## Changelog entries
 

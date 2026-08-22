@@ -31,17 +31,21 @@ You can also use the TrueNAS API directly to list resources and find their IDs:
 
 ```bash
 # List all NFS shares with their IDs
-curl -s -H "Authorization: Bearer $TRUENAS_API_KEY" \
-  "$TRUENAS_URL/api/v2.0/sharing/nfs" | jq '.[] | {id, path}'
+midclt call sharing.nfs.query | jq '.[] | {id, path}'
 
 # List all datasets
-curl -s -H "Authorization: Bearer $TRUENAS_API_KEY" \
-  "$TRUENAS_URL/api/v2.0/pool/dataset" | jq '.[] | .id'
+midclt call pool.dataset.query | jq '.[] | .id'
 
 # List snapshot tasks
-curl -s -H "Authorization: Bearer $TRUENAS_API_KEY" \
-  "$TRUENAS_URL/api/v2.0/pool/snapshottask" | jq '.[] | {id, dataset}'
+midclt call pool.snapshottask.query | jq '.[] | {id, dataset}'
 ```
+
+~> These run on the NAS itself, where `midclt` speaks the same JSON-RPC
+API the provider uses. They need a shell on the box, which the previous
+REST recipes did not. Those were removed rather than updated: TrueNAS
+26.0 deletes the `/api/v2.0` REST API, so they now return 404. With only
+API-key access, use this provider's own data sources (`truenas_datasets`,
+`truenas_share_nfs`, and friends) from a scratch workspace instead.
 
 ## Method 1: CLI Import (Terraform < 1.5)
 
@@ -112,17 +116,14 @@ Here is a realistic workflow for importing an existing TrueNAS configuration:
 
 ```bash
 # List all datasets under 'tank'
-curl -s -H "Authorization: Bearer $TRUENAS_API_KEY" \
-  "$TRUENAS_URL/api/v2.0/pool/dataset" | \
+midclt call pool.dataset.query | \
   jq '.[] | select(.id | startswith("tank")) | .id'
 
 # List NFS shares
-curl -s -H "Authorization: Bearer $TRUENAS_API_KEY" \
-  "$TRUENAS_URL/api/v2.0/sharing/nfs" | jq '.[] | {id, path, comment}'
+midclt call sharing.nfs.query | jq '.[] | {id, path, comment}'
 
 # List snapshot tasks
-curl -s -H "Authorization: Bearer $TRUENAS_API_KEY" \
-  "$TRUENAS_URL/api/v2.0/pool/snapshottask" | jq '.[] | {id, dataset, enabled}'
+midclt call pool.snapshottask.query | jq '.[] | {id, dataset, enabled}'
 ```
 
 ### Step 2: Write Placeholder Resources
