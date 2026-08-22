@@ -128,10 +128,11 @@ func TestContainerResource_nullIdmapIsNotReportedAsDefault(t *testing.T) {
 	}
 
 	slice := 7
+	slicePtr := &slice
 	var m2 ContainerResourceModel
 	r.mapResponseToModel(ctx, &truenas.Container{
 		ID: 3, Name: "web",
-		Idmap: &truenas.ContainerIdmap{Type: containerIdmapIsolated, Slice: &slice},
+		Idmap: &truenas.ContainerIdmap{Type: containerIdmapIsolated, Slice: &slicePtr},
 	}, &m2)
 	attrs := m2.Idmap.Attributes()
 	if got, _ := attrs["type"].(types.String); got.ValueString() != containerIdmapIsolated {
@@ -204,7 +205,7 @@ func TestContainerResource_buildCreateRequest(t *testing.T) {
 		if req.CapabilitiesState == nil || !(*req.CapabilitiesState)["sys_time"] {
 			t.Errorf("capabilities_state = %v", req.CapabilitiesState)
 		}
-		if req.Idmap == nil || req.Idmap.Slice == nil || *req.Idmap.Slice != 4 {
+		if req.Idmap == nil || req.Idmap.Slice == nil || *req.Idmap.Slice == nil || **req.Idmap.Slice != 4 {
 			t.Errorf("idmap = %+v", req.Idmap)
 		}
 	})

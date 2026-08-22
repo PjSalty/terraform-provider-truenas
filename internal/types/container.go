@@ -37,8 +37,19 @@ type Container struct {
 // the container applies no user-namespace mapping at all, so container
 // root is host root. That is why Container.Idmap is a pointer.
 type ContainerIdmap struct {
-	Type  string `json:"type"`
-	Slice *int   `json:"slice,omitempty"`
+	Type string `json:"type"`
+	// Slice is a double pointer because the wire has three states and
+	// omitempty can only express two. Upstream IsolatedIdmapConfiguration
+	// declares `slice: PositiveInt | None` with NO default, so under pydantic
+	// the KEY is required for ISOLATED even though its VALUE may be null, and
+	// null is what asks the backend to pick an unused one.
+	// DefaultIdmapConfiguration has only `type` and forbids extras, so the key
+	// must be absent entirely for DEFAULT.
+	//
+	//	nil    -> omit the key            (DEFAULT)
+	//	&nil   -> "slice": null           (ISOLATED, let the backend choose)
+	//	&&n    -> "slice": n              (ISOLATED, explicit)
+	Slice **int `json:"slice,omitempty"`
 }
 
 // ContainerStatus is derived, read-only runtime state.

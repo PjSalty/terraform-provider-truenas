@@ -600,7 +600,13 @@ func containerBoolMap(ctx context.Context, m types.Map) (*map[string]bool, error
 }
 
 // containerIdmapFromObject reads the idmap block into the wire union.
-// A null slice is left out so the backend picks an unused one.
+//
+// The slice key is discriminator-sensitive. ISOLATED must always carry it,
+// null meaning "pick an unused one", because upstream declares it with no
+// default and pydantic then requires the key. DEFAULT must never carry it,
+// because that member forbids extras. Leaving it out of ISOLATED is what made
+// `idmap = { type = "ISOLATED" }`, the provider's own published example,
+// fail with `container_create.idmap.ISOLATED.slice: Field required`.
 func containerIdmapFromObject(o types.Object) *truenas.ContainerIdmap {
 	if o.IsNull() || o.IsUnknown() {
 		return nil
@@ -611,10 +617,15 @@ func containerIdmapFromObject(o types.Object) *truenas.ContainerIdmap {
 		return nil
 	}
 	out := &truenas.ContainerIdmap{Type: t.ValueString()}
+	if out.Type != containerIdmapIsolated {
+		return out
+	}
+	var slice *int
 	if s, ok := attrs["slice"].(types.Int64); ok && !s.IsNull() && !s.IsUnknown() {
 		v := int(s.ValueInt64())
-		out.Slice = &v
+		slice = &v
 	}
+	out.Slice = &slice
 	return out
 }
 
@@ -664,9 +675,12 @@ func (r *ContainerResource) mapResponseToModel(ctx context.Context, c *truenas.C
 	if c.Idmap == nil {
 		model.Idmap = types.ObjectNull(containerIdmapAttrTypes)
 	} else {
+		// Slice is a double pointer: absent, present-and-null, or a number.
+		// The first two both read back as a null Int64, which is right,
+		// because the server assigning a slice is what fills it in.
 		slice := types.Int64Null()
-		if c.Idmap.Slice != nil {
-			slice = types.Int64Value(int64(*c.Idmap.Slice))
+		if c.Idmap.Slice != nil && *c.Idmap.Slice != nil {
+			slice = types.Int64Value(int64(**c.Idmap.Slice))
 		}
 		obj, diags := types.ObjectValue(containerIdmapAttrTypes, map[string]attr.Value{
 			"type":  types.StringValue(c.Idmap.Type),
