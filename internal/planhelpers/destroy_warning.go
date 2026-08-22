@@ -1,6 +1,6 @@
 // Package planhelpers contains reusable resource.ModifyPlan helpers
 // that surface operator-facing warnings at plan time. Unlike the
-// client-layer destroy-protection rail (internal/client/destroy_protection.go),
+// client-layer destroy-protection rail (internal/wsclient/destroy_protection.go),
 // these helpers run inside `terraform plan`, so the operator SEES
 // the warning before they run `terraform apply`, not only after a
 // wire request is refused. The two layers are complementary:

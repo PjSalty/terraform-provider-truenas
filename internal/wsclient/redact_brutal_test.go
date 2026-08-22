@@ -76,7 +76,7 @@ func TestRedact_ExhaustivelyEnumerateSensitiveKeys(t *testing.T) {
 			if !isSensitiveKey(k) {
 				t.Errorf("isSensitiveKey(%q) = false; the schema marks this attribute "+
 					"Sensitive: true but the redactor would miss it. add a matching "+
-					"fragment to sensitiveKeyFragments in internal/client/redact.go.", k)
+					"fragment to sensitiveKeyFragments in internal/wsclient/redact.go.", k)
 			}
 		})
 	}

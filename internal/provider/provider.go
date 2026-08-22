@@ -250,7 +250,7 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 	// physically unable to mutate anything. A surprised or buggy plan
 	// surfaces as a normal Terraform error instead of a partial write.
 	// HCL takes precedence over env var when both are set. See
-	// internal/client/readonly.go for the gate implementation.
+	// internal/wsclient/readonly.go for the gate implementation.
 	readOnly := false
 	if v := os.Getenv("TRUENAS_READONLY"); v == "true" || v == "1" {
 		readOnly = true
@@ -267,11 +267,12 @@ func (p *TrueNASProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 	// Destroy-protection safety rail: destroy_protection=true (HCL) or
 	// TRUENAS_DESTROY_PROTECTION={1,true} (env) makes the provider refuse
-	// DELETE requests at the client layer while allowing GET/POST/PUT
-	// through. This is the "first production apply" profile: creates and
-	// updates work freely but nothing can be destroyed until the operator
-	// explicitly clears the flag. HCL takes precedence over env var.
-	// See internal/client/destroy_protection.go for the gate.
+	// destructive JSON-RPC methods at the client layer while letting
+	// creates and updates through. This is the "first production apply"
+	// profile: creates and updates work freely but nothing can be
+	// destroyed until the operator explicitly clears the flag. HCL takes
+	// precedence over env var.
+	// See internal/wsclient/destroy_protection.go for the gate.
 	destroyProtection := false
 	if v := os.Getenv("TRUENAS_DESTROY_PROTECTION"); v == "true" || v == "1" {
 		destroyProtection = true

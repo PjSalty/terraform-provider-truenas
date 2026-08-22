@@ -579,9 +579,9 @@ resource "truenas_dataset" "readonly" {
 // though the rail is working exactly as designed. Coverage is
 // provided instead by:
 //
-//   - internal/client/destroy_protection_test.go, 6 unit tests
+//   - internal/wsclient/destroy_protection_test.go, unit tests
 //     covering the client-layer gate, layered flags, nil receiver,
-//     error wrapping, and the allow-through paths (GET/POST/PUT).
+//     error wrapping, and the allow-through paths.
 //   - internal/provider/provider_destroy_protection_test.go, 4
 //     provider Configure tests (env var, HCL, HCL-overrides-env,
 //     safe-apply profile) that exercise the full Configure path.

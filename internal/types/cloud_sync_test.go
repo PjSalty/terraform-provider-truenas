@@ -7,7 +7,7 @@ import (
 )
 
 // TestCloudSync_UnmarshalJSON_NestedCredentialsObject mirrors the
-// internal/client test from PR #12 against the shared types.CloudSync.
+// since-deleted internal/client test from PR #12, against the shared types.CloudSync.
 // TrueNAS returns credentials as a nested object on GET / list and as a
 // plain integer on create / update, the unmarshaler must accept both.
 func TestCloudSync_UnmarshalJSON_NestedCredentialsObject(t *testing.T) {
