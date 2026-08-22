@@ -34,9 +34,9 @@ body:
   - type: input
     id: api_endpoint
     attributes:
-      label: TrueNAS SCALE API endpoint
-      description: Link to https://www.truenas.com/docs/scale/scaleapireference/ or specify the endpoint.
-      placeholder: "POST /api/v2.0/..."
+      label: TrueNAS SCALE API method
+      description: The JSON-RPC method name, or a link to https://www.truenas.com/docs/scale/scaleapireference/. The provider speaks JSON-RPC over WebSocket; the REST API it used to call was removed in TrueNAS 26.0.
+      placeholder: "pool.dataset.create"
 
   - type: textarea
     id: alternatives

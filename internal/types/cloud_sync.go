@@ -23,7 +23,7 @@ type CloudSync struct {
 // (get/list responses, both REST and JSON-RPC paths). The struct field
 // is always stored as the integer ID.
 //
-// Mirrors the same fix on internal/client/cloud_sync.go's CloudSync
+// Mirrored the same fix made on the since-deleted internal/client's CloudSync
 // (originally PR #12, Max Poelman). The shape difference is in the
 // TrueNAS API itself, not the transport, JSON-RPC over WebSocket
 // carries the same payload.
