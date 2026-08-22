@@ -174,6 +174,12 @@ func (r *CloudBackupResource) Schema(ctx context.Context, _ resource.SchemaReque
 				Description: "Password for the remote restic repository.",
 				Required:    true,
 				Sensitive:   true,
+				// An empty password is not a password. Without this the
+				// empty string reaches the API and comes back as a generic
+				// middleware validation error naming nothing useful.
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+				},
 			},
 			"keep_last": schema.Int64Attribute{
 				Description: "How many of the most recent backup snapshots to keep after each backup (1-9999).",
