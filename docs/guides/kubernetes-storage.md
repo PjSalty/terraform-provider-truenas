@@ -132,7 +132,7 @@ resource "truenas_iscsi_target" "postgres" {
   alias = "postgres-data"
 
   groups {
-    portal    = truenas_iscsi_portal.k8s.tag
+    portal    = tonumber(truenas_iscsi_portal.k8s.id)
     initiator = tonumber(truenas_iscsi_initiator.k8s_nodes.id)
   }
 }
