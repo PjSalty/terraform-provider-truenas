@@ -2,7 +2,6 @@ package datasources
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
@@ -72,11 +71,11 @@ func TestNetworkConfigDataSource_Read_ServerError(t *testing.T) {
 }
 
 func TestNetworkConfigDataSource_Read_InvalidJSON(t *testing.T) {
-	skipWSCutover(t)
-	_, c := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte("not-json"))
-	}))
+	// Over JSON-RPC the frame itself is always well-formed JSON, so the
+	// decode failure this test is about is a RESULT of the wrong shape
+	// rather than a malformed body: a bare string where the network
+	// config object is expected.
+	c := newWSServer(t.Context(), t, wsReturn("not-an-object"))
 
 	ds := NewNetworkConfigDataSource().(*NetworkConfigDataSource)
 	ds.client = c

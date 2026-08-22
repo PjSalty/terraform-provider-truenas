@@ -7,11 +7,12 @@ package resources
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // readDeleteWithBadID drives Read+Update+Delete on the resource with an
@@ -53,29 +54,30 @@ func readDeleteWithBadID(t *testing.T, r resource.Resource) {
 	}()
 }
 
-// notFoundHandler returns an http.HandlerFunc that always responds with 404.
-func notFoundHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		http.Error(w, "not found", http.StatusNotFound)
+// newWSGenericErrorClient fails every method with an error that is NOT
+// classified as NotFound, so the resources under test take their generic
+// "Error Reading / Updating / Deleting" branch rather than the
+// remove-from-state branch. This is the WebSocket equivalent of the HTTP 400
+// server these tests were built on; 400 had exactly that property.
+func newWSGenericErrorClient(ctx context.Context, t *testing.T) *wsclient.Client {
+	t.Helper()
+	ts := wsclient.NewTestServer(t, func(ctx context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		return nil, &wsclient.RPCError{
+			Code:    wsclient.CodeMethodCallError,
+			Message: "Method call error: [EINVAL] bad request",
+		}
+	})
+	c, err := ts.NewClient(ctx)
+	if err != nil {
+		t.Fatalf("testserver NewClient: %v", err)
 	}
-}
-
-// badRequestHandler returns an http.HandlerFunc that always responds with 400.
-// 400 is not retried by the client and is also not classified as NotFound,
-// so it hits the generic "Error Reading / Error Updating / Error Deleting"
-// branches in the resource handlers.
-func badRequestHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		http.Error(w, "bad request", http.StatusBadRequest)
-	}
+	return c
 }
 
 // TestCRUD_400_AllResources drives all resources through a 400 server
 // to exercise generic-error branches (non-NotFound error paths).
 func TestCRUD_400_AllResources(t *testing.T) {
-	skipWSCutover(t)
-	c, srv := newTestServerClient(t, badRequestHandler())
-	defer srv.Close()
+	c := newWSGenericErrorClient(context.Background(), t)
 	resources := []resource.Resource{
 		&ACMEDNSAuthenticatorResource{client: c},
 		&AlertServiceResource{client: c},
@@ -182,9 +184,7 @@ func crud404(t *testing.T, r resource.Resource, id string) {
 // TestCRUD_404_AllResources drives all resources through a 404 server
 // to exercise NotFound and generic-error branches in Read/Delete.
 func TestCRUD_404_AllResources(t *testing.T) {
-	skipWSCutover(t)
-	c, srv := newTestServerClient(t, notFoundHandler())
-	defer srv.Close()
+	c := newWSNotFoundClient(context.Background(), t)
 	// Wire c into every resource; per-resource field is `client`.
 	resources := []resource.Resource{
 		&ACMEDNSAuthenticatorResource{client: c},

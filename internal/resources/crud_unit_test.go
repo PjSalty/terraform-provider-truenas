@@ -2,9 +2,6 @@ package resources
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -13,20 +10,6 @@ import (
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
-
-// newTestServerClient creates an httptest server with the given handler
-// and a *wsclient.Client pointing at it. Returns the server so tests can
-// close it.
-func newTestServerClient(t *testing.T, handler http.HandlerFunc) (*wsclient.Client, *httptest.Server) {
-	t.Helper()
-	srv := httptest.NewServer(handler)
-	c, err := wsclient.NewWithOptions(srv.URL, "test-api-key", true)
-	if err != nil {
-		srv.Close()
-		t.Fatalf("wsclient.New: %v", err)
-	}
-	return c, srv
-}
 
 // newWSConfigServerClient builds a wsclient.TestServer that serves the
 // canonical config-singleton method pair, "<svc>.config" returns the
@@ -547,17 +530,12 @@ func TestNFSConfigResource_UpdateDelete(t *testing.T) {
 }
 
 func TestNVMetGlobalResource_UpdateDelete(t *testing.T) {
-	skipWSCutover(t)
 	ctx := context.Background()
 	resp := map[string]interface{}{
 		"id": 1, "basenqn": "nqn.x", "kernel": true, "ana": false,
 		"rdma": false, "xport_referral": true,
 	}
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		_ = json.NewEncoder(w).Encode(resp)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, resp)
 
 	r := &NVMetGlobalResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -809,7 +787,6 @@ func TestNVMetSubsysResource_ReadDelete(t *testing.T) {
 // --- NVMetGlobal CRUD roundtrip ---
 
 func TestNVMetGlobalResource_CRUD(t *testing.T) {
-	skipWSCutover(t)
 	ctx := context.Background()
 	resp := map[string]interface{}{
 		"id":             1,
@@ -819,11 +796,7 @@ func TestNVMetGlobalResource_CRUD(t *testing.T) {
 		"rdma":           false,
 		"xport_referral": true,
 	}
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		_ = json.NewEncoder(w).Encode(resp)
-	}
-	c, srv := newTestServerClient(t, handler)
-	defer srv.Close()
+	c := newWSJSONServerClient(t, resp)
 
 	r := &NVMetGlobalResource{client: c}
 	sch := &resource.SchemaResponse{}
@@ -835,17 +808,4 @@ func TestNVMetGlobalResource_CRUD(t *testing.T) {
 	if readResp.Diagnostics.HasError() {
 		t.Fatalf("Read: %v", readResp.Diagnostics)
 	}
-}
-
-// skipWSCutover skips unit tests that historically mocked the REST
-// transport via httptest. The v2.0 cutover to JSON-RPC over WebSocket
-// retired the REST path that these tests bind against; equivalent
-// typed-call coverage now lives in internal/wsclient/*_test.go (which
-// uses internal/wsclient/testserver.go for the WS fixture). Rewriting
-// the resource-layer mocks to bind against wsclient's testserver is
-// tracked as v2.x polish, the acc suite already exercises the WS
-// path end-to-end against a live TrueNAS for every resource.
-func skipWSCutover(t *testing.T) {
-	t.Helper()
-	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go; wsclient testserver rewrite tracked in issue #2")
 }
