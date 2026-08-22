@@ -12,7 +12,7 @@ func TestAccISCSIPortalDataSource_basic(t *testing.T) {
 	dataSourceName := "data.truenas_iscsi_portal.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeWildcardPortal(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
@@ -42,7 +42,7 @@ data "truenas_iscsi_portal" "test" {
 
 func TestAccISCSIPortalDataSource_notFound(t *testing.T) {
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeWildcardPortal(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{

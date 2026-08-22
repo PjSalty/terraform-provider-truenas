@@ -27,7 +27,7 @@ func TestAccScrubTaskResource_basic(t *testing.T) {
 		t.Skip(skipMsg)
 	}
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeScrubTask(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
@@ -69,7 +69,7 @@ func TestAccScrubTaskResource_disappears(t *testing.T) {
 		t.Skip(skipMsg)
 	}
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeScrubTask(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
@@ -113,7 +113,7 @@ func TestAccScrubTaskResource_update(t *testing.T) {
 		t.Skip(skipMsg)
 	}
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeScrubTask(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{

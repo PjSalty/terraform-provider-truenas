@@ -16,7 +16,7 @@ func TestAccISCSITarget_basic(t *testing.T) {
 	resourceName := "truenas_iscsi_target.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeWildcardPortal(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckISCSITargetDestroy(resourceName),
 		Steps: []resource.TestStep{
@@ -118,7 +118,7 @@ func TestAccISCSITarget_disappears(t *testing.T) {
 	resourceName := "truenas_iscsi_target.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeWildcardPortal(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckISCSITargetDestroy(resourceName),
 		Steps: []resource.TestStep{
