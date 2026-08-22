@@ -245,6 +245,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The acceptance-test precheck invariant was blind to an entire package. Its
+  function regex matched only the `TestAcc` prefix, but `internal/datasources`
+  names its acceptance tests `Test<X>DataSourceAcc`, so the guard walked 42
+  files there and checked nothing while reporting PASS. It now matches both
+  conventions. Removed the 23 unconditional `t.Skip` acceptance stubs in that
+  package at the same time: they could never run, every one of those files
+  already has real unit tests, and they were the only thing the widened guard
+  would have had to excuse.
+
 - `truenas_replication.source_datasets` rejects an empty list. The API accepts
   one on update, so a replication task could be left with no sources: it then
   replicates nothing while the apply still reports success and the plan is

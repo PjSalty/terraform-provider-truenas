@@ -117,7 +117,3 @@ func TestAppDataSource_Read_EmptyList(t *testing.T) {
 		t.Fatal("expected 404 error")
 	}
 }
-
-func TestAppDataSourceAcc(t *testing.T) {
-	t.Skip("acceptance test: requires live TrueNAS endpoint")
-}

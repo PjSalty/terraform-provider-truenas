@@ -125,7 +125,3 @@ func TestVMDataSource_Read_NotFound(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
-
-func TestVMDataSourceAcc(t *testing.T) {
-	t.Skip("acceptance test: requires live TrueNAS endpoint")
-}

@@ -82,7 +82,3 @@ func TestISCSIPortalDataSource_Read_NotFound(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
-
-func TestISCSIPortalDataSourceAcc(t *testing.T) {
-	t.Skip("acceptance test: requires live TrueNAS endpoint")
-}
