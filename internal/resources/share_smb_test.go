@@ -224,30 +224,37 @@ func TestAccSMBShare_purposePreset_25_10(t *testing.T) {
 	// 25.10 preset registry verified via `sharing.smb.presets`
 	// against a live 25.10.0 instance on 2026-06-08. Per-preset
 	// requirements documented inline; the first acc run surfaced:
-	//   - TIMEMACHINE_SHARE: requires `aapl_extensions: true` on
-	//     the global `smb.config` (Apple SMB2/3 extensions). The
-	//     provider doesn't currently manage that toggle on global
-	//     SMB config, so we env-gate this preset behind
-	//     TRUENAS_TEST_SMB_AAPL=1 which means "operator has flipped
-	//     the global toggle manually". Real provider gap to track:
-	//     either expose aapl_extensions on a smb_config resource or
-	//     auto-enable when a TIMEMACHINE preset share is created.
+	//   - TIMEMACHINE_SHARE: requires `aapl_extensions: true` on the
+	//     global `smb.config` (Apple SMB2/3 extensions). The provider
+	//     DOES manage that, on truenas_smb_config, so the test composes
+	//     one and depends on it rather than skipping.
+	//
+	//     This comment previously said the provider could not manage the
+	//     toggle, and that the preset was gated behind
+	//     TRUENAS_TEST_SMB_AAPL=1. Both halves were false: smb_config
+	//     exposes aapl_extensions, and no such env gate was ever
+	//     implemented, so setting that variable did nothing at all.
 	//   - EXTERNAL_SHARE: requires `options.EXTERNAL_SHARE.remote_path`
 	//     in the create request. The provider doesn't expose the
 	//     preset-options map. Tracked as a known v2.x gap.
 	//   - VEEAM_REPOSITORY_SHARE: requires a TrueNAS enterprise
 	//     license. Always skipped on community edition.
 	type presetCase struct {
-		name string
-		skip string // non-empty => skip with reason
+		name      string
+		skip      string // non-empty => skip with reason
+		needsAAPL bool   // preset needs aapl_extensions on the global SMB config
 	}
 	presets := []presetCase{
 		{name: "DEFAULT_SHARE"},
 		{name: "LEGACY_SHARE"},
-		{name: "TIMEMACHINE_SHARE", skip: "requires aapl_extensions=true on global SMB config; provider does not manage that yet"},
+		{name: "TIMEMACHINE_SHARE", needsAAPL: true},
 		{name: "MULTIPROTOCOL_SHARE"},
 		{name: "PRIVATE_DATASETS_SHARE"},
-		{name: "EXTERNAL_SHARE", skip: "requires preset-options map (remote_path); provider gap tracked for v2.x"},
+		// Genuinely unsupported, unlike the TIMEMACHINE case above: the
+		// create request needs options.EXTERNAL_SHARE.remote_path and
+		// truenas_share_smb exposes no preset-options map. A real gap,
+		// not a stale comment.
+		{name: "EXTERNAL_SHARE", skip: "truenas_share_smb exposes no preset-options map, so remote_path cannot be set"},
 		{name: "TIME_LOCKED_SHARE"},
 		{name: "VEEAM_REPOSITORY_SHARE", skip: "requires TrueNAS enterprise license"},
 	}
@@ -271,7 +278,7 @@ func TestAccSMBShare_purposePreset_25_10(t *testing.T) {
 				CheckDestroy:             testAccCheckSMBShareDestroy(resourceName),
 				Steps: []resource.TestStep{
 					{
-						Config: testAccSMBShareConfigPreset(pool, ds, preset),
+						Config: testAccSMBShareConfigPreset(pool, ds, preset, pc.needsAAPL),
 						Check: resource.ComposeAggregateTestCheckFunc(
 							resource.TestCheckResourceAttrSet(resourceName, "id"),
 							resource.TestCheckResourceAttr(resourceName, "purpose", preset),
@@ -283,9 +290,23 @@ func TestAccSMBShare_purposePreset_25_10(t *testing.T) {
 	}
 }
 
-func testAccSMBShareConfigPreset(pool, datasetName, preset string) string {
+func testAccSMBShareConfigPreset(pool, datasetName, preset string, needsAAPL bool) string {
+	// TIMEMACHINE_SHARE is rejected outright unless Apple SMB2/3
+	// extensions are enabled globally. smb_config is a singleton, so this
+	// flips a box-wide setting for the duration of the test; the
+	// framework resets it on destroy.
+	aapl, dependsOn := "", ""
+	if needsAAPL {
+		aapl = `
+resource "truenas_smb_config" "aapl" {
+  aapl_extensions = true
+}
+`
+		dependsOn = "\n  depends_on = [truenas_smb_config.aapl]"
+	}
 	return fmt.Sprintf(`
 provider "truenas" {}
+%s
 
 resource "truenas_dataset" "smb_parent" {
   pool = %q
@@ -296,7 +317,7 @@ resource "truenas_share_smb" "test" {
   path    = truenas_dataset.smb_parent.mount_point
   name    = %q
   purpose = %q
-  comment = "preset compat test"
+  comment = "preset compat test"%s
 }
-`, pool, datasetName, datasetName, preset)
+`, aapl, pool, datasetName, datasetName, preset, dependsOn)
 }
