@@ -9,5 +9,5 @@ import (
 // knowing a valid parent interface name on the target TrueNAS system.
 // Run with TF_ACC=1 and TRUENAS_TEST_PARENT_INTERFACE set.
 func TestAccNetworkInterface_vlan(t *testing.T) {
-	t.Skip("network interface tests require a known physical parent; enable with TF_ACC=1 and TRUENAS_TEST_PARENT_INTERFACE")
+	t.Skip("no acceptance test yet: needs a known physical parent interface on the target box. There is no body here to enable, so setting TF_ACC changes nothing; writing the test is the work.")
 }

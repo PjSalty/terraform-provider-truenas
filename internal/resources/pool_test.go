@@ -10,5 +10,5 @@ import (
 // every CI environment. Run with TF_ACC=1 and TRUENAS_TEST_POOL_DISKS set
 // to a comma-separated list of disk device names (e.g. "sdb,sdc").
 func TestAccPool_basic(t *testing.T) {
-	t.Skip("pool creation requires dedicated test disks; enable with TF_ACC=1 and TRUENAS_TEST_POOL_DISKS")
+	t.Skip("no acceptance test yet: needs dedicated test disks on the target box. There is no body here to enable, so setting TF_ACC changes nothing; writing the test is the work.")
 }

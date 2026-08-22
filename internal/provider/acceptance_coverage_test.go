@@ -44,7 +44,7 @@ const acceptanceCoverageFloor = 64
 // can gate on it with no live infra.
 func TestAcceptanceTestCoverage(t *testing.T) {
 	resourceFiles := resourceGoFiles(t)
-	var missingTestFile, missingTestAccFunc []string
+	var missingTestFile, missingTestAccFunc, stubOnly []string
 	covered := 0
 
 	for _, rf := range resourceFiles {
@@ -60,13 +60,23 @@ func TestAcceptanceTestCoverage(t *testing.T) {
 			continue
 		}
 		if !hasTestAccFunc(src) {
-			missingTestAccFunc = append(missingTestAccFunc, base)
+			// A file whose only TestAcc functions are bare t.Skip stubs is
+			// reported separately from one with no TestAcc at all. Both are
+			// uncovered, but the stub carries a documented prerequisite
+			// (dedicated disks, a physical parent interface) and is a
+			// deliberate placeholder rather than an oversight.
+			if len(testAccFuncBodies(src)) > 0 {
+				stubOnly = append(stubOnly, base)
+			} else {
+				missingTestAccFunc = append(missingTestAccFunc, base)
+			}
 			continue
 		}
 		covered++
 	}
 	sort.Strings(missingTestFile)
 	sort.Strings(missingTestAccFunc)
+	sort.Strings(stubOnly)
 
 	if len(missingTestFile) > 0 {
 		t.Errorf("resources without a *_test.go sibling file:\n  %s",
@@ -84,8 +94,15 @@ func TestAcceptanceTestCoverage(t *testing.T) {
 			"justification.",
 			covered, acceptanceCoverageFloor)
 	}
-	t.Logf("Acceptance test coverage: %d resources with at least one TestAcc (floor %d)",
-		covered, acceptanceCoverageFloor)
+	// Reported, not failed. These are acknowledged gaps with a stated
+	// prerequisite, and the point of surfacing them is that the coverage
+	// number above no longer silently includes them.
+	if len(stubOnly) > 0 {
+		t.Logf("resources whose only TestAcc is an unconditional t.Skip, NOT counted as covered:\n  %s",
+			strings.Join(stubOnly, "\n  "))
+	}
+	t.Logf("Acceptance test coverage: %d resources with a real TestAcc (floor %d, %d stub-only)",
+		covered, acceptanceCoverageFloor, len(stubOnly))
 }
 
 // resourceGoFiles returns the paths of every non-test .go file under
@@ -118,9 +135,67 @@ func resourceGoFiles(t *testing.T) []string {
 	return out
 }
 
-// hasTestAccFunc reports whether the given test file source contains
-// at least one `func TestAcc...` top-level declaration. Matches
-// TestAccCloudSync_schemaValidation, TestAccDataset_basic, etc.
+// hasTestAccFunc reports whether the given test file source contains at
+// least one `func TestAcc...` whose body is more than a bare t.Skip.
+//
+// A function whose entire body is t.Skip("...") exercises nothing: not
+// Create/Read/Update/Delete, not the plan phase, not the schema. Counting
+// it as coverage is how a ratchet ends up reporting a number nobody can
+// act on. The PlanOnly rationale above does not cover these, because a
+// PlanOnly test really does run the Framework's plan phase and really
+// does fail when a validator or plan modifier regresses.
 func hasTestAccFunc(src []byte) bool {
-	return regexp.MustCompile(`(?m)^func TestAcc\w*\(`).Match(src)
+	for _, body := range testAccFuncBodies(src) {
+		if !isBareSkip(body) {
+			return true
+		}
+	}
+	return false
+}
+
+// testAccFuncBodies returns the body of every top-level TestAcc function,
+// brace-matched rather than regexed, so a nested block does not truncate
+// the body and make a real test look like a stub.
+func testAccFuncBodies(src []byte) []string {
+	var out []string
+	decl := regexp.MustCompile(`(?m)^func TestAcc\w*\(`)
+	text := string(src)
+	for _, loc := range decl.FindAllStringIndex(text, -1) {
+		open := strings.Index(text[loc[1]:], "{")
+		if open < 0 {
+			continue
+		}
+		i := loc[1] + open + 1
+		depth := 1
+		start := i
+		for i < len(text) && depth > 0 {
+			switch text[i] {
+			case '{':
+				depth++
+			case '}':
+				depth--
+			}
+			i++
+		}
+		if depth == 0 {
+			out = append(out, text[start:i-1])
+		}
+	}
+	return out
+}
+
+// isBareSkip reports whether a function body is nothing but a t.Skip
+// call. An UNCONDITIONAL skip is the case that matters; a conditional
+// one (if os.Getenv(...) == "" { t.Skip(...) }) has other statements and
+// so is not bare.
+func isBareSkip(body string) bool {
+	var stmts []string
+	for _, line := range strings.Split(body, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "//") {
+			continue
+		}
+		stmts = append(stmts, line)
+	}
+	return len(stmts) == 1 && strings.HasPrefix(stmts[0], "t.Skip(")
 }
