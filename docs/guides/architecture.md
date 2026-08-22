@@ -48,7 +48,6 @@ internal/
 ├── flex/            Framework <-> Go type conversion helpers
 ├── fwresource/      Framework resource base helpers (Configure boilerplate)
 ├── acctest/         Shared acceptance test helpers
-├── recordreplay/    HTTP record/replay proxy for live-API-free CI
 └── sweep/           Acceptance test sweeper infrastructure
 ```
 
