@@ -71,7 +71,11 @@ func (r *APIKeyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 				Description: "The username this API key is associated with.",
 				Required:    true,
 				Validators: []validator.String{
-					stringvalidator.LengthBetween(1, 32),
+					// Upstream is LocalUsername | RemoteUsername. Only the local
+					// arm caps at 32; the remote arm is MinLen(1) with no
+					// maximum, so an ordinary Active Directory UPN such as
+					// svc-backup@corp.example.com was rejected outright.
+					stringvalidator.LengthAtLeast(1),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),

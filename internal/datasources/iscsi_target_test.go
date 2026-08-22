@@ -10,6 +10,10 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
+// intPtr is a local helper: the wire type uses *int so a null
+// initiator or auth group is expressible.
+func intPtr(v int) *int { return &v }
+
 func TestNewISCSITargetDataSource(t *testing.T) {
 	if NewISCSITargetDataSource() == nil {
 		t.Fatal("NewISCSITargetDataSource returned nil")
@@ -33,7 +37,11 @@ func TestISCSITargetDataSource_Read_Success(t *testing.T) {
 		Alias: "prod",
 		Mode:  "ISCSI",
 		Groups: []truenas.ISCSITargetGroup{
-			{Portal: 1, Initiator: 2, AuthMethod: "CHAP", Auth: 3},
+			{Portal: 1, Initiator: intPtr(2), AuthMethod: "CHAP", Auth: intPtr(3)},
+			// A group with no initiator and no auth: upstream defaults both to
+			// null, and null initiator means "allow any initiator". Reporting
+			// either as 0 would read as a group id.
+			{Portal: 2, AuthMethod: "NONE"},
 		},
 	}))
 

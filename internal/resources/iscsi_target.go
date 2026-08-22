@@ -52,6 +52,42 @@ type ISCSITargetResourceModel struct {
 		Value `tfsdk:"timeouts"`
 }
 
+const iscsiAuthMethodNone = "NONE"
+
+// int64OrNull reads a nullable API integer back into state. A null initiator
+// or auth group means "none", and reporting it as 0 would read as a group id.
+func int64OrNull(p *int) types.Int64 {
+	if p == nil {
+		return types.Int64Null()
+	}
+	return types.Int64Value(int64(*p))
+}
+
+// iscsiGroupToWire builds one target group for the API.
+//
+// A null initiator or auth is sent as null, not as 0. Upstream defaults both
+// to null, and null initiator is how a target allows any initiator; 0 is not a
+// group id, so sending it failed on a foreign key deep inside middleware.
+// authmethod falls back to the upstream default rather than an empty string.
+func iscsiGroupToWire(g ISCSITargetGroupModel) truenas.ISCSITargetGroup {
+	out := truenas.ISCSITargetGroup{
+		Portal:     int(g.Portal.ValueInt64()),
+		AuthMethod: g.AuthMethod.ValueString(),
+	}
+	if out.AuthMethod == "" {
+		out.AuthMethod = iscsiAuthMethodNone
+	}
+	if !g.Initiator.IsNull() && !g.Initiator.IsUnknown() {
+		v := int(g.Initiator.ValueInt64())
+		out.Initiator = &v
+	}
+	if !g.Auth.IsNull() && !g.Auth.IsUnknown() {
+		v := int(g.Auth.ValueInt64())
+		out.Auth = &v
+	}
+	return out
+}
+
 type ISCSITargetGroupModel struct {
 	Portal     types.Int64  `tfsdk:"portal"`
 	Initiator  types.Int64  `tfsdk:"initiator"`
@@ -132,8 +168,9 @@ func (r *ISCSITargetResource) Schema(ctx context.Context, _ resource.SchemaReque
 							},
 						},
 						"initiator": schema.Int64Attribute{
-							Description: "Initiator group ID.",
-							Required:    true,
+							Description: "Initiator group ID. Omit to allow any initiator, " +
+								"which is what TrueNAS does when the field is null.",
+							Optional: true,
 							Validators: []validator.Int64{
 								int64validator.AtLeast(1),
 							},
@@ -203,12 +240,7 @@ func (r *ISCSITargetResource) Create(ctx context.Context, req resource.CreateReq
 		var groups []ISCSITargetGroupModel
 		resp.Diagnostics.Append(plan.Groups.ElementsAs(ctx, &groups, false)...)
 		for _, g := range groups {
-			createReq.Groups = append(createReq.Groups, truenas.ISCSITargetGroup{
-				Portal:     int(g.Portal.ValueInt64()),
-				Initiator:  int(g.Initiator.ValueInt64()),
-				AuthMethod: g.AuthMethod.ValueString(),
-				Auth:       int(g.Auth.ValueInt64()),
-			})
+			createReq.Groups = append(createReq.Groups, iscsiGroupToWire(g))
 		}
 	}
 
@@ -302,12 +334,7 @@ func (r *ISCSITargetResource) Update(ctx context.Context, req resource.UpdateReq
 		var groups []ISCSITargetGroupModel
 		resp.Diagnostics.Append(plan.Groups.ElementsAs(ctx, &groups, false)...)
 		for _, g := range groups {
-			updateReq.Groups = append(updateReq.Groups, truenas.ISCSITargetGroup{
-				Portal:     int(g.Portal.ValueInt64()),
-				Initiator:  int(g.Initiator.ValueInt64()),
-				AuthMethod: g.AuthMethod.ValueString(),
-				Auth:       int(g.Auth.ValueInt64()),
-			})
+			updateReq.Groups = append(updateReq.Groups, iscsiGroupToWire(g))
 		}
 	}
 
@@ -417,9 +444,9 @@ func (r *ISCSITargetResource) mapResponseToModel(_ context.Context, target *true
 		for _, g := range target.Groups {
 			obj, diags := types.ObjectValue(iscsiTargetGroupAttrTypes, map[string]attr.Value{
 				"portal":      types.Int64Value(int64(g.Portal)),
-				"initiator":   types.Int64Value(int64(g.Initiator)),
+				"initiator":   int64OrNull(g.Initiator),
 				"auth_method": types.StringValue(g.AuthMethod),
-				"auth":        types.Int64Value(int64(g.Auth)),
+				"auth":        int64OrNull(g.Auth),
 			})
 			if !diags.HasError() {
 				groupObjects = append(groupObjects, obj)

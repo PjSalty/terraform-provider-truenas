@@ -36,6 +36,15 @@ var iscsiTargetGroupDSAttrTypes = map[string]attr.Type{
 	"auth":        types.Int64Type,
 }
 
+// int64OrNull reads a nullable API integer back into state. A null initiator
+// or auth group means "none", and reporting it as 0 would read as a group id.
+func int64OrNull(p *int) types.Int64 {
+	if p == nil {
+		return types.Int64Null()
+	}
+	return types.Int64Value(int64(*p))
+}
+
 func NewISCSITargetDataSource() datasource.DataSource {
 	return &ISCSITargetDataSource{}
 }
@@ -118,9 +127,9 @@ func (d *ISCSITargetDataSource) Read(ctx context.Context, req datasource.ReadReq
 	for _, g := range target.Groups {
 		obj, _ := types.ObjectValue(iscsiTargetGroupDSAttrTypes, map[string]attr.Value{
 			"portal":      types.Int64Value(int64(g.Portal)),
-			"initiator":   types.Int64Value(int64(g.Initiator)),
+			"initiator":   int64OrNull(g.Initiator),
 			"auth_method": types.StringValue(g.AuthMethod),
-			"auth":        types.Int64Value(int64(g.Auth)),
+			"auth":        int64OrNull(g.Auth),
 		})
 		groupObjects = append(groupObjects, obj)
 	}

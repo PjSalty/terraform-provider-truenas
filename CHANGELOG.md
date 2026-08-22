@@ -255,6 +255,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`idmap = { type = "ISOLATED" }` could not create a container**, which is
+  verbatim the snippet in the provider's own published example and what the
+  docs tell you to write to let TrueNAS pick a slice.
+
+  Upstream declares `slice: PositiveInt | None` with no default, so pydantic
+  requires the KEY for `ISOLATED` even though its VALUE may be null, and null
+  is what asks the backend to choose. The wire struct tagged it `omitempty`, so
+  an unset slice dropped the key entirely and middleware answered
+  `container_create.idmap.ISOLATED.slice: Field required`. The fix is
+  discriminator-aware rather than a blanket tag change: `DEFAULT` forbids
+  extras, so it must not carry the key at all.
+
+- **An iSCSI target group could not omit its initiator group**, which is
+  upstream's default and means "allow any initiator". Two separate faults
+  stacked: the schema marked `initiator` Required, and the wire struct typed it
+  as a plain `int`, so an omitted value serialized as `0`. There is no group
+  with id 0, so the create failed on a foreign key rather than on anything a
+  practitioner could act on:
+
+  ```
+  (sqlite3.IntegrityError) FOREIGN KEY constraint failed
+  ```
+
+  `auth` had the same shape and is now nullable too, and `authmethod` falls
+  back to the upstream default rather than an empty string.
+
+  The published example also passed the portal's **tag** where the API wants
+  its **id**, so it could not have worked either. Nothing caught that because
+  no acceptance test set `groups` at all; the target tests all create bare
+  targets.
+
+- `truenas_dns_nameserver` rejected the empty string, so a nameserver could not
+  be cleared. Upstream types these as `Literal[''] | <an IP>`, and this
+  resource's own Delete already clears them that way internally. The regex was
+  also wrong in the other direction: it accepted `999.999.999.999` and rejected
+  `::ffff:1.2.3.4`, because it only counted digits and colons. It parses the
+  address now.
+
+- `truenas_api_key.username` was capped at 32 characters. Upstream is
+  `LocalUsername | RemoteUsername` and only the local arm has that cap, so an
+  ordinary Active Directory UPN was rejected.
+
+- `truenas_snmp_config.v3_privproto` offered an empty string that no supported
+  version accepts. Leave the attribute unset for no encryption.
+
 - **Six name rules rejected values TrueNAS accepts.** Same shape as the value
   sets above: a regex written once and never checked against upstream again.
 
