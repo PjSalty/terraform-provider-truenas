@@ -62,6 +62,11 @@ resource "truenas_dns_nameserver" "test" {
   nameserver1 = "1.1.1.1"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_dns_nameserver.test", "nameserver1", "1.1.1.1"),
 			},
 			{

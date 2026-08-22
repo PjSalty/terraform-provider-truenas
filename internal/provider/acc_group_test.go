@@ -72,6 +72,11 @@ resource "truenas_group" "test" {
   smb  = false
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_group.test", "smb", "false"),
 			},
 			{

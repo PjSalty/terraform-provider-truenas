@@ -71,6 +71,11 @@ resource "truenas_alertclasses" "test" {
   }
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_alertclasses.test", "classes.ZpoolCapacityNotice.policy", "IMMEDIATELY"),
 			},
 			{
