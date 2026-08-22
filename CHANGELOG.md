@@ -255,6 +255,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Renovate no longer targets a dead branch. `renovate.json` pinned
+  `baseBranches` to `dev`, which last moved on 2026-06-12 and is 82 commits
+  behind `main` with nothing of its own, so dependency and security updates
+  were being raised against two-month-old code and then closed by hand. The
+  pin is removed rather than repointed, so it follows the repository's default
+  branch and cannot go stale the same way again.
+
 - iSCSI portal and scrub-task acceptance tests now skip, naming the cause, when
   the target TrueNAS already has the one object middleware allows. A box with a
   pre-existing wildcard portal (a CSI driver's, or litter from an aborted run)
