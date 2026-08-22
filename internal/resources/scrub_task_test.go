@@ -39,7 +39,7 @@ func TestAccScrubTask_basic(t *testing.T) {
 	testAccScrubTaskCleanup(t)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeScrubTask(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckScrubTaskDestroy(resourceName),
 		Steps: []resource.TestStep{
@@ -143,7 +143,7 @@ func TestAccScrubTask_disappears(t *testing.T) {
 	resourceName := "truenas_scrub_task.test"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t); testAccRequireFreeScrubTask(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckScrubTaskDestroy(resourceName),
 		Steps: []resource.TestStep{
