@@ -847,5 +847,5 @@ func TestNVMetGlobalResource_CRUD(t *testing.T) {
 // path end-to-end against a live TrueNAS for every resource.
 func skipWSCutover(t *testing.T) {
 	t.Helper()
-	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go; resource-layer wsclient testserver rewrite tracked as v2.x polish")
+	t.Skip("v2.0 WS cutover: REST httptest fixtures no longer valid; equivalent typed-call coverage at internal/wsclient/*_test.go; wsclient testserver rewrite tracked in issue #2")
 }
