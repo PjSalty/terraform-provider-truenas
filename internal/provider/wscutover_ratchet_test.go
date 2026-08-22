@@ -20,7 +20,7 @@ import (
 // This is deliberately a ceiling and not an exact match. An exact match
 // fails on the rewrite commit itself, which trains people to edit the
 // number reflexively, and a ratchet nobody reads is not a ratchet.
-const wsCutoverSkipCeiling = 45
+const wsCutoverSkipCeiling = 40
 
 // wsCutoverSkipCallRE matches a call site, not the helper definition.
 var wsCutoverSkipCallRE = regexp.MustCompile(`(?m)^\s*skipWSCutover\(t\)`)
