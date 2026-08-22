@@ -10,5 +10,5 @@ import (
 // acceptance environment. The resource is exercised by the NVMet integration
 // suite when run by hand against a well-known pool.
 func TestAccNVMetNamespace_basic(t *testing.T) {
-	t.Skip("nvmet_namespace requires a pre-existing zvol or file; exercise manually or in an integration env")
+	t.Skip("no acceptance test yet: needs a pre-existing zvol or file. There is no body here to enable; writing the test is the work.")
 }
