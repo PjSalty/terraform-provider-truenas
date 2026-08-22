@@ -1,6 +1,6 @@
+# label, location and repository are set by the server. Only the train
+# selection and the initial sync are configurable.
 resource "truenas_catalog" "example" {
-  label            = "custom"
-  repository       = "https://github.com/example/catalog.git"
-  branch           = "main"
   preferred_trains = ["stable"]
+  sync_on_create   = true
 }

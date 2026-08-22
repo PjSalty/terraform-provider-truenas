@@ -26,11 +26,10 @@ resource "truenas_cronjob" "example" {
   stdout      = true
   stderr      = true
 
-  schedule {
-    minute = "0"
-    hour   = "3"
-    dow    = "0"
-  }
+  # 3am every Sunday
+  schedule_minute = "0"
+  schedule_hour   = "3"
+  schedule_dow    = "0"
 }
 ```
 

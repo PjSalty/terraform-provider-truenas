@@ -19,10 +19,12 @@ represented in-place force a resource replacement as noted below.
 
 ```terraform
 resource "truenas_iscsi_portal" "t" {
-  listen {
-    ip   = "0.0.0.0"
-    port = 3260
-  }
+  listen = [
+    {
+      ip   = "0.0.0.0"
+      port = 3260
+    },
+  ]
 }
 
 resource "truenas_iscsi_initiator" "t" {
@@ -34,10 +36,12 @@ resource "truenas_iscsi_target" "example" {
   alias = "example-target"
   mode  = "ISCSI"
 
-  groups {
-    portal    = truenas_iscsi_portal.t.tag
-    initiator = tonumber(truenas_iscsi_initiator.t.id)
-  }
+  groups = [
+    {
+      portal    = truenas_iscsi_portal.t.tag
+      initiator = tonumber(truenas_iscsi_initiator.t.id)
+    },
+  ]
 }
 ```
 

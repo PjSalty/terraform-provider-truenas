@@ -9,8 +9,6 @@ resource "truenas_cloud_sync" "example" {
     bucket = "example-backup"
     folder = "truenas"
   })
-  schedule {
-    minute = "0"
-    hour   = "4"
-  }
+  schedule_minute = "0"
+  schedule_hour   = "4"
 }

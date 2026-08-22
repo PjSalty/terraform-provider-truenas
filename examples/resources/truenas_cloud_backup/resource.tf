@@ -8,8 +8,6 @@ resource "truenas_cloud_backup" "example" {
     bucket = "example-restic"
     folder = "truenas"
   })
-  schedule {
-    minute = "0"
-    hour   = "5"
-  }
+  schedule_minute = "0"
+  schedule_hour   = "5"
 }

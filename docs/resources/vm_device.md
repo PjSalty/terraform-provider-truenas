@@ -28,7 +28,6 @@ resource "truenas_zvol" "example_disk" {
   pool    = "tank"
   name    = "vols/examplevm-disk0"
   volsize = 21474836480 # 20 GiB
-  sparse  = true
 }
 
 resource "truenas_vm_device" "disk" {

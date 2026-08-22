@@ -1,11 +1,10 @@
 resource "truenas_system_update" "prod" {
-  # Leave TrueNAS's automatic daily check enabled so the UI still shows
-  # "update available" banners, but refuse to auto-download updates.
-  # Disabling auto_download is the primary "pin" lever, TrueNAS will
-  # never stage an update without a conscious action.
-  auto_download = false
+  # With autocheck off, TrueNAS never downloads or stages an update on its
+  # own. This is the pin: an upgrade needs a deliberate action.
+  autocheck = false
 
-  # Pin the active release train. Change this attribute to migrate to a
-  # newer release train; a plan+apply is required to reconcile.
-  train = "TrueNAS-SCALE-Fangtooth"
+  # The update profile this system tracks. Validated against
+  # update.profile_choices at apply time, so an unselectable profile is
+  # rejected with the valid choices listed rather than failing server-side.
+  profile = "MISSION_CRITICAL"
 }
