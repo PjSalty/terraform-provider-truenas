@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	fwschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -278,6 +280,16 @@ func TestSMBShareResource_ValidateConfigOptions(t *testing.T) {
 			"purpose": str("TIME_LOCKED_SHARE"), "path": str("/mnt/tank"),
 			"options": opts(map[string]tftypes.Value{
 				"grace_period": tftypes.NewValue(tftypes.Number, 15552001)})}, "between 60 and"},
+		// The path validator has to admit EXTERNAL for the purpose that needs
+		// it, and ValidateConfig has to keep every other purpose off it.
+		{"external path on a default share", map[string]tftypes.Value{
+			"purpose": str("DEFAULT_SHARE"), "path": str("EXTERNAL"),
+			"options": tftypes.NewValue(optsType, nil)},
+			`only valid for purpose EXTERNAL_SHARE`},
+		{"external path with no purpose set", map[string]tftypes.Value{
+			"path":    str("EXTERNAL"),
+			"options": tftypes.NewValue(optsType, nil)},
+			`only valid for purpose EXTERNAL_SHARE`},
 		// FCP_SHARE reached the provider in 25.10.1 and takes the same three
 		// options as DEFAULT_SHARE.
 		{"fcp with aapl_name_mangling", map[string]tftypes.Value{
@@ -532,5 +544,47 @@ func TestSMBPurposeValidatorUsesTheVocabulary(t *testing.T) {
 	}
 	if strings.Contains(desc, "TIMEMACHINE\"") || strings.Contains(desc, "NO_PRESET") {
 		t.Errorf("purpose validator still carries retired vocabulary: %s", desc)
+	}
+}
+
+// The path validators run at the schema layer, before ValidateConfig, so a
+// ValidateConfig test cannot see them. That gap is what let the EXTERNAL_SHARE
+// support ship broken: the cross-field check required path = "EXTERNAL" while
+// the attribute's own regex still demanded /mnt/, so the purpose remained
+// impossible to create and only a live apply revealed it.
+func TestSMBSharePathValidator(t *testing.T) {
+	ctx := context.Background()
+	sch := schemaOf(t, ctx, &SMBShareResource{})
+	attrDef, ok := sch.Schema.Attributes["path"].(fwschema.StringAttribute)
+	if !ok {
+		t.Fatal("path is not a StringAttribute")
+	}
+
+	for _, tc := range []struct {
+		name, in string
+		wantErr  bool
+	}{
+		{"a normal share path", "/mnt/tank/data", false},
+		{"the external sentinel", "EXTERNAL", false},
+		{"a relative path", "tank/data", true},
+		{"an absolute path outside /mnt", "/srv/data", true},
+		{"external as a prefix only", "EXTERNALISH", true},
+		{"external nested under a path", "/mnt/EXTERNAL", false},
+		{"too short", "/mnt", true},
+		{"at the length ceiling", "/mnt/" + strings.Repeat("a", 1018), false},
+		{"over the length ceiling", "/mnt/" + strings.Repeat("a", 1019), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := &validator.StringResponse{}
+			for _, v := range attrDef.Validators {
+				v.ValidateString(ctx, validator.StringRequest{
+					Path:        path.Root("path"),
+					ConfigValue: types.StringValue(tc.in),
+				}, resp)
+			}
+			if got := resp.Diagnostics.HasError(); got != tc.wantErr {
+				t.Errorf("path %q: error = %v, want %v (%v)", tc.in, got, tc.wantErr, resp.Diagnostics)
+			}
+		})
 	}
 }
