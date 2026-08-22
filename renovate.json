@@ -15,7 +15,6 @@
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "rangeStrategy": "pin",
-  "baseBranches": ["dev"],
   "platformAutomerge": true,
   "postUpdateOptions": [
     "gomodTidy",
