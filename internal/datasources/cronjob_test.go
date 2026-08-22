@@ -114,7 +114,3 @@ func TestCronJobDataSource_Read_DisabledJob(t *testing.T) {
 		t.Errorf("ScheduleMinute: got %q", state.ScheduleMinute.ValueString())
 	}
 }
-
-func TestCronJobDataSourceAcc(t *testing.T) {
-	t.Skip("acceptance test: requires live TrueNAS endpoint")
-}

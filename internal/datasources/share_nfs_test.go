@@ -118,7 +118,3 @@ func TestShareNFSDataSource_Read_ServerError(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
-
-func TestShareNFSDataSourceAcc(t *testing.T) {
-	t.Skip("acceptance test: requires live TrueNAS endpoint")
-}

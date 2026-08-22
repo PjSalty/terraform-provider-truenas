@@ -9,12 +9,22 @@ import (
 )
 
 // testAccFuncRE matches every acceptance test function in the resources
-// and datasources packages. The convention is fixed across the tree:
+// and datasources packages. There are TWO naming conventions in the
+// tree, not one, and both must be matched or a whole package is walked
+// to no effect:
 //
-//	func TestAccDataset_basic(t *testing.T) {
+//	internal/resources:   func TestAccDataset_basic(t *testing.T) {
+//	internal/datasources: func TestDatasetDataSourceAcc(t *testing.T) {
+//
+// This regex previously matched only the TestAcc prefix, so every
+// function in internal/datasources went unscanned: the invariant walked
+// 42 files there and checked nothing, while reporting PASS.
+//
+// The two alternatives cannot double-match: a TestAcc-prefixed name does
+// not also end in Acc.
 //
 // We capture the name so error messages can report the offending test.
-var testAccFuncRE = regexp.MustCompile(`(?m)^func (TestAcc\w+)\(t \*testing\.T\) \{`)
+var testAccFuncRE = regexp.MustCompile(`(?m)^func (TestAcc\w+|Test\w+Acc)\(t \*testing\.T\) \{`)
 
 // precheckOrSkipRE matches the two valid prologues for an acceptance
 // test: either it wires the standard PreCheck callback (which guards

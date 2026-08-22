@@ -76,7 +76,3 @@ func TestSystemDatasetDataSource_Read_ServerError(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
-
-func TestSystemDatasetDataSourceAcc(t *testing.T) {
-	t.Skip("acceptance test: requires live TrueNAS endpoint")
-}
