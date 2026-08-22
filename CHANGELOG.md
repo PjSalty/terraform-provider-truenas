@@ -255,6 +255,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The `TIMEMACHINE_SHARE` SMB preset is covered by an acceptance test again. It
+  was skipped with "provider does not manage that yet", referring to the
+  `aapl_extensions` toggle on the global SMB config. The provider does manage
+  it, on `truenas_smb_config`, so the test now composes one and depends on it.
+  The same comment claimed the preset was gated behind `TRUENAS_TEST_SMB_AAPL`;
+  no such gate was ever implemented, so setting that variable did nothing.
+
 - The acceptance-coverage ratchet counted resources whose only `TestAcc`
   function is an unconditional `t.Skip` as covered, so it reported 68 when 64
   resources actually have a test that runs anything. Those four are now
