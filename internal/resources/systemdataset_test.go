@@ -10,5 +10,5 @@ import (
 // should only be run against a dedicated test TrueNAS VM. Enable with
 // TF_ACC=1 and TRUENAS_TEST_SYSTEMDATASET_POOL set.
 func TestAccSystemDataset_basic(t *testing.T) {
-	t.Skip("system dataset tests mutate global config; enable with TF_ACC=1 and TRUENAS_TEST_SYSTEMDATASET_POOL")
+	t.Skip("no acceptance test yet: mutating the system dataset changes global config on a shared box. There is no body here to enable, so setting TF_ACC changes nothing; writing the test is the work.")
 }

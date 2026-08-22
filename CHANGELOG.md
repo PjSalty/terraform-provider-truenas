@@ -255,6 +255,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The acceptance-coverage ratchet counted resources whose only `TestAcc`
+  function is an unconditional `t.Skip` as covered, so it reported 68 when 64
+  resources actually have a test that runs anything. Those four are now
+  reported as a separate, named "stub-only" list instead of inflating the
+  number. Their skip messages also told operators to "enable with TF_ACC=1 and
+  TRUENAS_TEST_...", which does nothing: the functions have no body to enable,
+  and no such gate was ever implemented.
+
 - Renovate no longer targets a dead branch. `renovate.json` pinned
   `baseBranches` to `dev`, which last moved on 2026-06-12 and is 82 commits
   behind `main` with nothing of its own, so dependency and security updates
