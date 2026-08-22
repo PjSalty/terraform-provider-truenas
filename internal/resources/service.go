@@ -66,11 +66,18 @@ func (r *ServiceResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					stringplanmodifier.RequiresReplace(),
 				},
 				Validators: []validator.String{
+					// nvmet and webshare are real services on 26.0: service.query returns them
+					// with ids 27 and 28 on a live box, and the provider rejected both.
+					//
+					// Nothing is removed here even though a 26.0 box no longer lists afp, s3,
+					// webdav and others. Upstream types this field as a plain str with no
+					// Literal, so this set is a convenience list rather than a contract, and
+					// dropping names that still exist on 25.10 would break those users.
 					stringvalidator.OneOf(
 						"afp", "cifs", "dynamicdns", "ftp", "iscsitarget",
-						"lldp", "nfs", "openvpn_client", "openvpn_server",
+						"lldp", "nfs", "nvmet", "openvpn_client", "openvpn_server",
 						"rsync", "s3", "smartd", "snmp", "ssh", "tftp",
-						"ups", "webdav", "keepalived", "netdata",
+						"ups", "webshare", "webdav", "keepalived", "netdata",
 						"openipmi", "glusterd", "ctdb", "idmap", "cron",
 						"smb",
 					),

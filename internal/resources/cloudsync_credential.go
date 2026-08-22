@@ -105,22 +105,12 @@ func (r *CloudSyncCredentialResource) Schema(ctx context.Context, _ resource.Sch
 				},
 				Validators: []validator.String{
 					stringvalidator.OneOf(
-						"S3",
-						"B2",
-						"AZUREBLOB",
-						"GOOGLE_CLOUD_STORAGE",
-						"DROPBOX",
-						"FTP",
-						"SFTP",
-						"HTTP",
-						"MEGA",
-						"OPENSTACK_SWIFT",
-						"PCLOUD",
-						"WEBDAV",
-						"YANDEX",
-						"ONEDRIVE",
-						"GOOGLE_DRIVE",
-						"BACKBLAZE_B2",
+						// The discriminator values from the upstream cloud_sync_providers union,
+						// identical across 25.10.0 through 27.0. BACKBLAZE_B2 is gone because no
+						// version has ever accepted it; the provider is called B2.
+						"AZUREBLOB", "B2", "BOX", "DROPBOX", "FTP", "GOOGLE_CLOUD_STORAGE", "GOOGLE_DRIVE",
+						"GOOGLE_PHOTOS", "HTTP", "HUBIC", "MEGA", "ONEDRIVE", "OPENSTACK_SWIFT", "PCLOUD", "S3", "SFTP",
+						"STORJ_IX", "WEBDAV", "YANDEX",
 					),
 				},
 			},
