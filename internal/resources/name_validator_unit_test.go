@@ -2,9 +2,11 @@ package resources
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	fwschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -63,6 +65,12 @@ func TestNameValidatorsMatchUpstream(t *testing.T) {
 			invalid:  []string{"", "778", "1777", "7777", "abc"},
 		},
 		{
+			what: "snmp_config.v3_privproto", res: &SNMPConfigResource{}, attr: "v3_privproto",
+			upstream: "Literal[None, 'AES', 'DES']: null or one of the two, never an empty string",
+			valid:    []string{"AES", "DES"},
+			invalid:  []string{"", "aes", "3DES"},
+		},
+		{
 			what: "ftp_config.dirmask", res: &FTPConfigResource{}, attr: "dirmask",
 			upstream: "UnixPerm: parses as octal and mode & 0o777 == mode",
 			valid:    []string{"22", "022", "755"},
@@ -101,5 +109,112 @@ func TestNameValidatorsMatchUpstream(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestNameserverValidatorAcceptsEmpty pins the clear-a-nameserver case and the
+// two shapes the old regex got wrong in opposite directions.
+func TestNameserverValidatorAcceptsEmpty(t *testing.T) {
+	ctx := context.Background()
+	v := nameserverValidator{}
+	check := func(in string) bool {
+		resp := &validator.StringResponse{}
+		v.ValidateString(ctx, validator.StringRequest{
+			Path: path.Root("nameserver1"), ConfigValue: types.StringValue(in),
+		}, resp)
+		return resp.Diagnostics.HasError()
+	}
+	for _, in := range []string{"", "1.1.1.1", "2606:4700:4700::1111", "::ffff:1.2.3.4"} {
+		if check(in) {
+			t.Errorf("%q rejected; upstream IPvAnyAddress is Literal[''] plus a real IP parse", in)
+		}
+	}
+	for _, in := range []string{"999.999.999.999", "not-an-ip", "1.1.1", "deadbeef"} {
+		if !check(in) {
+			t.Errorf("%q accepted; it is not an IP address", in)
+		}
+	}
+	if v.Description(ctx) == "" || v.MarkdownDescription(ctx) == "" {
+		t.Error("validator has no description")
+	}
+}
+
+// TestContainerIdmapWireShape pins the discriminator-sensitive slice key.
+// ISOLATED must carry it, null meaning "pick one"; DEFAULT must not carry it
+// at all, because that union member forbids extras.
+func TestContainerIdmapWireShape(t *testing.T) {
+	obj := func(typ string, slice types.Int64) types.Object {
+		return types.ObjectValueMust(containerIdmapAttrTypes, map[string]attr.Value{
+			"type": types.StringValue(typ), "slice": slice,
+		})
+	}
+
+	got := containerIdmapFromObject(obj(containerIdmapIsolated, types.Int64Null()))
+	if got == nil || got.Slice == nil {
+		t.Fatalf("ISOLATED with no slice must still send the key, got %+v", got)
+	}
+	if *got.Slice != nil {
+		t.Errorf("ISOLATED with no slice must send null, got %v", **got.Slice)
+	}
+	body, err := json.Marshal(got)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(body), `"slice":null`) {
+		t.Errorf("ISOLATED body must contain a null slice, got %s", body)
+	}
+
+	got = containerIdmapFromObject(obj(containerIdmapIsolated, types.Int64Value(7)))
+	if got == nil || got.Slice == nil || *got.Slice == nil || **got.Slice != 7 {
+		t.Fatalf("explicit slice lost, got %+v", got)
+	}
+
+	got = containerIdmapFromObject(obj(containerIdmapDefault, types.Int64Null()))
+	if got == nil {
+		t.Fatal("DEFAULT produced no idmap")
+	}
+	if got.Slice != nil {
+		t.Errorf("DEFAULT must not carry a slice key, got %v", got.Slice)
+	}
+	body, err = json.Marshal(got)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(body), "slice") {
+		t.Errorf("DEFAULT body must omit slice entirely, got %s", body)
+	}
+}
+
+// TestOptionalAttributesMatchUpstream pins attributes upstream defaults but the
+// provider used to force the practitioner to supply.
+func TestOptionalAttributesMatchUpstream(t *testing.T) {
+	ctx := context.Background()
+
+	tgt := schemaOf(t, ctx, &ISCSITargetResource{})
+	groups, ok := tgt.Schema.Attributes["groups"].(fwschema.ListNestedAttribute)
+	if !ok {
+		t.Fatal("groups is not a ListNestedAttribute")
+	}
+	init := groups.NestedObject.Attributes["initiator"]
+	if init.IsRequired() {
+		t.Error("groups.initiator is Required, but upstream defaults it to null, " +
+			"which means allow any initiator")
+	}
+
+	key := schemaOf(t, ctx, &APIKeyResource{})
+	user, ok := key.Schema.Attributes["username"].(fwschema.StringAttribute)
+	if !ok {
+		t.Fatal("api_key.username is not a StringAttribute")
+	}
+	long := strings.Repeat("a", 40) + "@corp.example.com"
+	resp := &validator.StringResponse{}
+	for _, v := range user.Validators {
+		v.ValidateString(ctx, validator.StringRequest{
+			Path: path.Root("username"), ConfigValue: types.StringValue(long),
+		}, resp)
+	}
+	if resp.Diagnostics.HasError() {
+		t.Errorf("a %d-character username is rejected, but upstream accepts "+
+			"LocalUsername | RemoteUsername and the remote arm has no maximum", len(long))
 	}
 }

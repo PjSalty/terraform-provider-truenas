@@ -135,7 +135,10 @@ func (r *SNMPConfigResource) Schema(ctx context.Context, _ resource.SchemaReques
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("AES", "DES", ""),
+					// Upstream is Literal[None, 'AES', 'DES'], so the empty
+					// string this used to advertise was rejected on apply.
+					// Leave the attribute unset for no encryption.
+					stringvalidator.OneOf("AES", "DES"),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

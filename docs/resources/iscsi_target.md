@@ -38,7 +38,7 @@ resource "truenas_iscsi_target" "example" {
 
   groups = [
     {
-      portal    = truenas_iscsi_portal.t.tag
+      portal    = tonumber(truenas_iscsi_portal.t.id)
       initiator = tonumber(truenas_iscsi_initiator.t.id)
     },
   ]

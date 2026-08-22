@@ -3,9 +3,8 @@ package resources
 import (
 	"context"
 	"fmt"
-	"regexp"
+	"net"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -21,9 +20,37 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
-// ipRegex matches IPv4 or simple IPv6 addresses. Intentionally permissive -
-// server-side validation is authoritative; we only reject obvious garbage.
-var ipRegex = regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}$|^[0-9a-fA-F:]+$`)
+// nameserverValidator accepts what upstream accepts for a nameserver field:
+// an IP address, or the empty string.
+//
+// Upstream types these as `IPvAnyAddress = Literal[”] | <a real IP parse>`,
+// so the empty string is how a nameserver is cleared. The regex that used to
+// be here rejected it, which meant a practitioner could not clear one, while
+// this resource's own Delete does exactly that internally and works. The regex
+// was also wrong in the other direction: it accepted 999.999.999.999 and
+// rejected an IPv4-mapped IPv6 address like ::ffff:1.2.3.4, because it only
+// counted digits and colons.
+type nameserverValidator struct{}
+
+func (nameserverValidator) Description(context.Context) string {
+	return "must be an IPv4 or IPv6 address, or empty to clear the nameserver"
+}
+
+func (v nameserverValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v nameserverValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	val := req.ConfigValue.ValueString()
+	if val == "" || net.ParseIP(val) != nil {
+		return
+	}
+	resp.Diagnostics.AddAttributeError(req.Path, "Invalid Nameserver",
+		fmt.Sprintf("%q is not an IPv4 or IPv6 address. Use an empty string to clear the nameserver.", val))
+}
 
 var (
 	_ resource.Resource                = &DNSNameserverResource{}
@@ -68,7 +95,7 @@ func (r *DNSNameserverResource) Schema(ctx context.Context, _ resource.SchemaReq
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(ipRegex, "must be a valid IPv4 or IPv6 address"),
+					nameserverValidator{},
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -79,7 +106,7 @@ func (r *DNSNameserverResource) Schema(ctx context.Context, _ resource.SchemaReq
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(ipRegex, "must be a valid IPv4 or IPv6 address"),
+					nameserverValidator{},
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -90,7 +117,7 @@ func (r *DNSNameserverResource) Schema(ctx context.Context, _ resource.SchemaReq
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(ipRegex, "must be a valid IPv4 or IPv6 address"),
+					nameserverValidator{},
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

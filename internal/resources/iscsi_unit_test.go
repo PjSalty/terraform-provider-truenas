@@ -143,8 +143,8 @@ func TestISCSITargetResource_MapResponseToModel_Cases(t *testing.T) {
 			target: &truenas.ISCSITarget{
 				ID: 2, Name: "tgt2", Alias: "Alias", Mode: "ISCSI",
 				Groups: []truenas.ISCSITargetGroup{
-					{Portal: 1, Initiator: 1, AuthMethod: "NONE", Auth: 0},
-					{Portal: 2, Initiator: 2, AuthMethod: "CHAP", Auth: 1},
+					{Portal: 1, Initiator: intPtr(1), AuthMethod: "NONE", Auth: intPtr(0)},
+					{Portal: 2, Initiator: intPtr(2), AuthMethod: "CHAP", Auth: intPtr(1)},
 				},
 			},
 			wantID: "2", wantName: "tgt2", wantAlias: "Alias", wantMode: "ISCSI", wantGroups: 2,
@@ -164,9 +164,9 @@ func TestISCSITargetResource_MapResponseToModel_Cases(t *testing.T) {
 			target: &truenas.ISCSITarget{
 				ID: 5, Name: "tgt5", Mode: "ISCSI",
 				Groups: []truenas.ISCSITargetGroup{
-					{Portal: 1, Initiator: 1, AuthMethod: "NONE"},
-					{Portal: 2, Initiator: 2, AuthMethod: "CHAP", Auth: 1},
-					{Portal: 3, Initiator: 3, AuthMethod: "CHAP_MUTUAL", Auth: 2},
+					{Portal: 1, Initiator: intPtr(1), AuthMethod: "NONE"},
+					{Portal: 2, Initiator: intPtr(2), AuthMethod: "CHAP", Auth: intPtr(1)},
+					{Portal: 3, Initiator: intPtr(3), AuthMethod: "CHAP_MUTUAL", Auth: intPtr(2)},
 				},
 			},
 			wantID: "5", wantName: "tgt5", wantMode: "ISCSI", wantGroups: 3,
