@@ -344,7 +344,12 @@ resource "truenas_dns_nameserver" "bad_ns" {
   nameserver1 = "not-an-ip"
 }
 `,
-				ExpectError: regexp.MustCompile(`(?i)must be a valid IPv4 or IPv6 address`),
+				// Asserts the current message, including the empty-string hint,
+				// which is stricter than the wording this replaced. !96 swapped
+				// the sloppy regex for a real parse and improved the message
+				// without updating the test that pinned the old text, so this
+				// failed on wording while the validator was behaving correctly.
+				ExpectError: regexp.MustCompile(`(?is)is not an IPv4 or IPv6 address.*empty string to clear`),
 				PlanOnly:    true,
 			},
 		},
