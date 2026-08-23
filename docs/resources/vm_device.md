@@ -2,12 +2,12 @@
 page_title: "truenas_vm_device Resource - terraform-provider-truenas"
 subcategory: "Virtualization"
 description: |-
-  Manages a device attached to a TrueNAS SCALE virtual machine. The dtype field selects the device type (DISK, NIC, CDROM, DISPLAY, RAW, PCI, USB) and the attributes map carries the type-specific fields.
+  Manages a device attached to a TrueNAS SCALE virtual machine. The dtype field selects the device type (DISK, NIC, CDROM, DISPLAY, RAW, PCI, USB, ISCSI_DISK) and the attributes map carries the type-specific fields.
 ---
 
 # truenas_vm_device (Resource)
 
-Manages a device attached to a TrueNAS SCALE virtual machine. The dtype field selects the device type (DISK, NIC, CDROM, DISPLAY, RAW, PCI, USB) and the attributes map carries the type-specific fields.
+Manages a device attached to a TrueNAS SCALE virtual machine. The dtype field selects the device type (DISK, NIC, CDROM, DISPLAY, RAW, PCI, USB, ISCSI_DISK) and the attributes map carries the type-specific fields.
 
 Managed attributes map directly to the TrueNAS SCALE API. Changes are applied
 via the JSON-RPC endpoint on the target system; mutations that cannot be
@@ -55,7 +55,7 @@ resource "truenas_vm_device" "nic" {
 The following arguments are supported:
 
 * `vm` - (Required) The ID of the VM this device is attached to.
-* `dtype` - (Required) The device type: DISK, NIC, CDROM, DISPLAY, RAW, PCI, or USB. Changing this forces replacement. Valid values: `DISK`, `NIC`, `CDROM`, `DISPLAY`, `RAW`, `PCI`, `USB`. Changing this attribute forces a new resource to be created.
+* `dtype` - (Required) The device type. Changing this forces replacement. Valid values: `DISK`, `NIC`, `CDROM`, `DISPLAY`, `RAW`, `PCI`, `USB`, `ISCSI_DISK`.
 * `attributes` - (Required) Type-specific device attributes as string values. For example DISK uses path, type (AHCI/VIRTIO), iotype; NIC uses type, mac, nic_attach; DISPLAY uses resolution, bind, port, password, web; CDROM uses path; RAW uses path, type, size; PCI uses pptdev; USB uses controller_type, usb.
 * `order` - (Optional) Device order on the VM's bus. Optional.
 * `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
