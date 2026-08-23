@@ -262,6 +262,13 @@ func nearestField(used string, known map[string]field) string {
 	return fmt.Sprintf(" (did you mean %q?)", candidates[0])
 }
 
+// docFile is one documentation file and the directory it came from, so a
+// guide and a resource page of the same name stay distinguishable.
+type docFile struct {
+	dir  string
+	name string
+}
+
 // TestDocsExamplesMatchSchema runs the same schema check over every fenced
 // terraform snippet in docs/resources/, which is the copy people actually read
 // on the Registry.
@@ -280,29 +287,49 @@ func TestDocsExamplesMatchSchema(t *testing.T) {
 	}
 	fields := resourceFields(t, context.Background())
 
-	docsDir := filepath.Join(root, "docs", "resources")
-	entries, err := os.ReadDir(docsDir)
-	if err != nil {
-		t.Fatalf("reading docs: %v", err)
+	// Guides are walked too. A guide is prose with configuration in it, and
+	// the configuration goes just as stale: kubernetes-storage.md used
+	// `groups { }` where the schema declares a nested attribute, and passed
+	// the portal's tag where the API wants its id. Neither showed up while
+	// this only read docs/resources.
+	var entries []docFile
+	for _, dir := range []string{
+		filepath.Join(root, "docs", "resources"),
+		filepath.Join(root, "docs", "guides"),
+		filepath.Join(root, "templates", "guides"),
+	} {
+		found, readErr := os.ReadDir(dir)
+		if readErr != nil {
+			continue // a repo without guides is fine
+		}
+		for _, e := range found {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") {
+				entries = append(entries, docFile{dir: dir, name: e.Name()})
+			}
+		}
+	}
+	if len(entries) == 0 {
+		t.Fatal("no documentation files found")
 	}
 
-	fence := regexp.MustCompile("(?s)```(?:terraform|hcl)\\n(.*?)\\n```")
+	// (?m) with a captured indent: a fence nested in a numbered list is
+	// indented, and its closing fence carries the same indentation. Anchoring
+	// the close at column 0 ran past it and swallowed the prose that followed,
+	// which then failed to parse and read as a broken snippet.
+	fence := regexp.MustCompile("(?s)(?m)^([ \\t]*)```(?:terraform|hcl)\\n(.*?)\\n[ \\t]*```")
 	parser := hclparse.NewParser()
 	var snippets int
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-		path := filepath.Join(docsDir, entry.Name())
+		path := filepath.Join(entry.dir, entry.name)
 		doc, readErr := os.ReadFile(path)
 		if readErr != nil {
-			t.Errorf("%s: %v", entry.Name(), readErr)
+			t.Errorf("%s: %v", entry.name, readErr)
 			continue
 		}
 		for i, m := range fence.FindAllSubmatch(doc, -1) {
-			f, diags := parser.ParseHCL(m[1], fmt.Sprintf("%s#%d", path, i))
+			f, diags := parser.ParseHCL(m[2], fmt.Sprintf("%s#%d", path, i))
 			if diags.HasErrors() {
-				t.Errorf("%s: snippet %d does not parse:\n%s", entry.Name(), i, diags.Error())
+				t.Errorf("%s: snippet %d does not parse:\n%s", entry.name, i, diags.Error())
 				continue
 			}
 			body, ok := f.Body.(*hclsyntax.Body)
@@ -316,12 +343,12 @@ func TestDocsExamplesMatchSchema(t *testing.T) {
 				known, registered := fields[blk.Labels[0]]
 				if !registered {
 					t.Errorf("%s: snippet %d configures %q, which the provider does not register",
-						entry.Name(), i, blk.Labels[0])
+						entry.name, i, blk.Labels[0])
 					continue
 				}
 				snippets++
 				for _, problem := range checkExampleBody(blk.Body, known, blk.Labels[0]) {
-					t.Errorf("%s snippet %d: %s", entry.Name(), i, problem)
+					t.Errorf("%s snippet %d: %s", entry.name, i, problem)
 				}
 			}
 		}

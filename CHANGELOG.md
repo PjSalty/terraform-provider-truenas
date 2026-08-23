@@ -255,6 +255,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Kubernetes storage guide could not have worked. It used `groups { }` and
+  `listen { }` where the schema declares nested attributes, and passed the
+  portal's tag where the API wants its id. Fixing the iSCSI resource in the
+  previous change corrected the copy under `docs/` and left
+  `templates/guides/`, which is what `tfplugindocs generate` repopulates from,
+  so the fix would have been reverted the next time anyone regenerated.
+
+  The schema check now walks `docs/guides/` and `templates/guides/` as well as
+  `docs/resources/`. A guide is prose with configuration in it, and the
+  configuration goes just as stale. It also handles a fenced block indented
+  inside a numbered list, which it had been running straight past.
+
 - **`idmap = { type = "ISOLATED" }` could not create a container**, which is
   verbatim the snippet in the provider's own published example and what the
   docs tell you to write to let TrueNAS pick a slice.

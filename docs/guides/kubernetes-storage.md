@@ -77,10 +77,12 @@ For databases and stateful workloads requiring block storage (ReadWriteOnce), iS
 resource "truenas_iscsi_portal" "k8s" {
   comment = "Kubernetes iSCSI portal"
 
-  listen {
-    ip   = "10.0.0.10"  # Storage network IP
-    port = 3260
-  }
+  listen = [
+    {
+      ip   = "10.0.0.10" # Storage network IP
+      port = 3260
+    },
+  ]
 }
 
 # 2. Initiator group: restrict to Kubernetes nodes
@@ -131,10 +133,12 @@ resource "truenas_iscsi_target" "postgres" {
   name  = "iqn.2025-01.com.example:postgres-data"
   alias = "postgres-data"
 
-  groups {
-    portal    = tonumber(truenas_iscsi_portal.k8s.id)
-    initiator = tonumber(truenas_iscsi_initiator.k8s_nodes.id)
-  }
+  groups = [
+    {
+      portal    = tonumber(truenas_iscsi_portal.k8s.id)
+      initiator = tonumber(truenas_iscsi_initiator.k8s_nodes.id)
+    },
+  ]
 }
 ```
 
