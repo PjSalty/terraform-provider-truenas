@@ -55,7 +55,7 @@ resource "truenas_user" "nfs_mapall" {
 
 The following arguments are supported:
 
-* `username` - (Required) The login name of the user. Changing this attribute forces a new resource to be created.
+* `username` - (Required) The login name of the user. Letters, digits, underscore, dash and dot, starting with a letter or underscore, up to 32 characters. Changing this attribute forces a new resource to be created.
 * `full_name` - (Required) The full (display) name of the user.
 * `password` - (Optional) The password for the user. Marked sensitive. Omit it
   and set `password_disabled = true` for an account that should have no

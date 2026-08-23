@@ -45,7 +45,7 @@ resource "truenas_cloudsync_credential" "b2_example" {
 The following arguments are supported:
 
 * `name` - (Required) The display name of the credential.
-* `provider_type` - (Required) The cloud provider type. One of: S3, B2, AZUREBLOB, GOOGLE_CLOUD_STORAGE, DROPBOX, FTP, SFTP, HTTP, MEGA, OPENSTACK_SWIFT, PCLOUD, WEBDAV, YANDEX, ONEDRIVE, GOOGLE_DRIVE, BACKBLAZE_B2. Changing this forces replacement. Valid values: `S3`, `B2`, `AZUREBLOB`, `GOOGLE_CLOUD_STORAGE`, `DROPBOX`, `FTP`, `SFTP`, `HTTP`, `MEGA`, `OPENSTACK_SWIFT`, `PCLOUD`, `WEBDAV`, `YANDEX`, `ONEDRIVE`, `GOOGLE_DRIVE`, `BACKBLAZE_B2`. Changing this attribute forces a new resource to be created.
+* `provider_type` - (Required) The cloud provider type. Changing this forces replacement. Valid values: `AZUREBLOB`, `B2`, `BOX`, `DROPBOX`, `FTP`, `GOOGLE_CLOUD_STORAGE`, `GOOGLE_DRIVE`, `GOOGLE_PHOTOS`, `HTTP`, `HUBIC`, `MEGA`, `ONEDRIVE`, `OPENSTACK_SWIFT`, `PCLOUD`, `S3`, `SFTP`, `STORJ_IX`, `WEBDAV`, `YANDEX`.
 * `provider_attributes_json` - (Required) Provider-specific credential fields as a JSON object (e.g. jsonencode({access_key_id = "X", secret_access_key = "Y"})). The exact keys depend on provider_type. Marked sensitive.
 * `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
 

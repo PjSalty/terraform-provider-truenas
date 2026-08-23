@@ -36,7 +36,7 @@ resource "truenas_vm" "example" {
 
 The following arguments are supported:
 
-* `name` - (Required) The name of the VM. Only alphanumeric characters are allowed, no spaces, hyphens, underscores, or punctuation.
+* `name` - (Required) The name of the VM. Upstream places no character restriction on it, so hyphens, underscores, dots and spaces are all accepted; the only bound is 1 to 150 characters.
 * `memory` - (Required) Memory allocated to the VM, in MiB. Minimum 20 MiB. Max 4 TiB.
 * `description` - (Optional) A description for the VM. Default: ``.
 * `vcpus` - (Optional) Number of virtual CPU sockets (1-16). Default: `1`.
