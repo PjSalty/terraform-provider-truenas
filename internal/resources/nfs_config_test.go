@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 func TestAccNFSConfig_basic(t *testing.T) {
@@ -17,6 +18,11 @@ func TestAccNFSConfig_basic(t *testing.T) {
 			// Create with defaults
 			{
 				Config: testAccNFSConfigBasic(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "id", "1"),
 					resource.TestCheckResourceAttr(resourceName, "servers", "2"),
@@ -45,6 +51,11 @@ func TestAccNFSConfig_update(t *testing.T) {
 			// Create with custom servers count
 			{
 				Config: testAccNFSConfigCustom(4, true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "servers", "4"),
 					resource.TestCheckResourceAttr(resourceName, "allow_nonroot", "true"),
@@ -53,6 +64,11 @@ func TestAccNFSConfig_update(t *testing.T) {
 			// Update servers count
 			{
 				Config: testAccNFSConfigCustom(2, false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "servers", "2"),
 					resource.TestCheckResourceAttr(resourceName, "allow_nonroot", "false"),

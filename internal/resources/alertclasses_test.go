@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 func TestAccAlertClasses_basic(t *testing.T) {
@@ -20,6 +21,11 @@ func TestAccAlertClasses_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccAlertClassesConfigBasic(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "id", "alertclasses"),
 					resource.TestCheckResourceAttr(resourceName, "classes.ZpoolCapacityNotice.level", "NOTICE"),

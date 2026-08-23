@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 func TestAccSSHConfig_basic(t *testing.T) {
@@ -17,6 +18,11 @@ func TestAccSSHConfig_basic(t *testing.T) {
 			// Create with defaults
 			{
 				Config: testAccSSHConfigBasic(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "id", "1"),
 					resource.TestCheckResourceAttr(resourceName, "tcpport", "22"),
@@ -46,6 +52,11 @@ func TestAccSSHConfig_update(t *testing.T) {
 			// Create with custom port
 			{
 				Config: testAccSSHConfigCustom(2222, false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "tcpport", "2222"),
 					resource.TestCheckResourceAttr(resourceName, "passwordauth", "false"),
@@ -54,6 +65,11 @@ func TestAccSSHConfig_update(t *testing.T) {
 			// Update back to defaults
 			{
 				Config: testAccSSHConfigCustom(22, true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "tcpport", "22"),
 					resource.TestCheckResourceAttr(resourceName, "passwordauth", "true"),

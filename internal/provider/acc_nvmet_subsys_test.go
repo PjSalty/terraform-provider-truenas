@@ -67,6 +67,11 @@ resource "truenas_nvmet_subsys" "test" {
   allow_any_host = false
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_nvmet_subsys.test", "allow_any_host", "false"),
 			},
 			{
@@ -79,6 +84,9 @@ resource "truenas_nvmet_subsys" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_nvmet_subsys.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_nvmet_subsys.test", "allow_any_host", "true"),

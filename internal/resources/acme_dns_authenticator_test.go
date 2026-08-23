@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -22,6 +23,11 @@ func TestAccACMEDNSAuthenticator_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccACMEDNSAuthenticatorConfigBasic("tf-acc-test-acme", "cloudflare", "fake-token-12345"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-acme"),
 					resource.TestCheckResourceAttr(resourceName, "authenticator", "cloudflare"),
@@ -50,12 +56,22 @@ func TestAccACMEDNSAuthenticator_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccACMEDNSAuthenticatorConfigBasic("tf-acc-test-acme-v1", "cloudflare", "fake-token-1"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-acme-v1"),
 				),
 			},
 			{
 				Config: testAccACMEDNSAuthenticatorConfigBasic("tf-acc-test-acme-v2", "cloudflare", "fake-token-2"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-acme-v2"),
 				),
@@ -151,7 +167,12 @@ func TestAccACMEDNSAuthenticator_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccACMEDNSAuthenticatorConfigBasic(name, "cloudflare", "tf-acc-disappears-token"),
-				Check:  testAccCheckACMEDNSAuthenticatorExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckACMEDNSAuthenticatorExists(resourceName),
 			},
 			{
 				Config:             testAccACMEDNSAuthenticatorConfigBasic(name, "cloudflare", "tf-acc-disappears-token"),

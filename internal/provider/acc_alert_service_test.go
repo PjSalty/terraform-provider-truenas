@@ -83,13 +83,21 @@ resource "truenas_alert_service" "test" {
 		Steps: []resource.TestStep{
 			{
 				Config: cfg("WARNING"),
-				Check:  resource.TestCheckResourceAttr("truenas_alert_service.test", "level", "WARNING"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_alert_service.test", "level", "WARNING"),
 			},
 			{
 				Config: cfg("CRITICAL"),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_alert_service.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_alert_service.test", "level", "CRITICAL"),

@@ -98,6 +98,11 @@ resource "truenas_nvmet_host" "test" {
   dhchap_hash = "SHA-256"
 }
 `, hostnqn, dhchapKey1),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_nvmet_host.test", "hostnqn", hostnqn),
 					resource.TestCheckResourceAttr("truenas_nvmet_host.test", "dhchap_key", dhchapKey1),
@@ -114,6 +119,9 @@ resource "truenas_nvmet_host" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_nvmet_host.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(

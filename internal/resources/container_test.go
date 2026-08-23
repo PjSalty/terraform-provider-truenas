@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -101,6 +102,11 @@ func TestAccContainer_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccContainerConfig(t, name, "created by the acceptance suite", true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
@@ -141,6 +147,11 @@ func TestAccContainer_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccContainerConfig(t, name, "before", true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "description", "before"),
 					resource.TestCheckResourceAttr(resourceName, "autostart", "true"),
@@ -151,6 +162,11 @@ func TestAccContainer_update(t *testing.T) {
 			// RequiresReplace attributes.
 			{
 				Config: testAccContainerConfig(t, name, "after", false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "description", "after"),
 					resource.TestCheckResourceAttr(resourceName, "autostart", "false"),
@@ -174,7 +190,12 @@ func TestAccContainer_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccContainerConfig(t, name, "disappears", true),
-				Check:  testAccCheckContainerExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckContainerExists(resourceName),
 			},
 			{
 				Config:             testAccContainerConfig(t, name, "disappears", true),

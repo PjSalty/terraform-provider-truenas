@@ -131,13 +131,21 @@ resource "truenas_filesystem_acl_template" "test" {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(tpl, name, "initial"),
-				Check:  resource.TestCheckResourceAttr("truenas_filesystem_acl_template.test", "comment", "initial"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_filesystem_acl_template.test", "comment", "initial"),
 			},
 			{
 				Config: fmt.Sprintf(tpl, name, "updated"),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_filesystem_acl_template.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_filesystem_acl_template.test", "comment", "updated"),

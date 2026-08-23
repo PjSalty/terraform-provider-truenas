@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 func TestAccNetworkConfig_basic(t *testing.T) {
@@ -17,6 +18,11 @@ func TestAccNetworkConfig_basic(t *testing.T) {
 			// Create with defaults
 			{
 				Config: testAccNetworkConfigResourceBasic(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "id", "1"),
 					resource.TestCheckResourceAttrSet(resourceName, "hostname"),
@@ -44,6 +50,11 @@ func TestAccNetworkConfig_update(t *testing.T) {
 			// Create with custom domain
 			{
 				Config: testAccNetworkConfigResourceCustom("truenas", "test.local"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "hostname", "truenas"),
 					resource.TestCheckResourceAttr(resourceName, "domain", "test.local"),
@@ -52,6 +63,11 @@ func TestAccNetworkConfig_update(t *testing.T) {
 			// Update domain
 			{
 				Config: testAccNetworkConfigResourceCustom("truenas", "local"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "hostname", "truenas"),
 					resource.TestCheckResourceAttr(resourceName, "domain", "local"),

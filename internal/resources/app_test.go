@@ -45,6 +45,11 @@ func TestAccApp_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccAppConfigBasic(appName, catalogApp),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "app_name", appName),
 					resource.TestCheckResourceAttr(resourceName, "catalog_app", catalogApp),

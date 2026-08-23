@@ -86,6 +86,11 @@ resource "truenas_reporting_exporter" "test" {
 		Steps: []resource.TestStep{
 			{
 				Config: cfg(false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_reporting_exporter.test", "name", name),
 					resource.TestCheckResourceAttr("truenas_reporting_exporter.test", "enabled", "false"),
@@ -96,6 +101,9 @@ resource "truenas_reporting_exporter" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_reporting_exporter.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -19,6 +20,11 @@ func TestAccService_basic(t *testing.T) {
 			// Create (enable SSH service)
 			{
 				Config: testAccServiceConfig("ssh", true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "service", "ssh"),
 					resource.TestCheckResourceAttr(resourceName, "enable", "true"),
@@ -48,6 +54,11 @@ func TestAccService_disableEnable(t *testing.T) {
 			// Start disabled
 			{
 				Config: testAccServiceConfig("ssh", false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "service", "ssh"),
 					resource.TestCheckResourceAttr(resourceName, "enable", "false"),
@@ -57,6 +68,11 @@ func TestAccService_disableEnable(t *testing.T) {
 			// Enable
 			{
 				Config: testAccServiceConfig("ssh", true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "enable", "true"),
 					resource.TestCheckResourceAttr(resourceName, "state", "RUNNING"),
@@ -65,6 +81,11 @@ func TestAccService_disableEnable(t *testing.T) {
 			// Disable again
 			{
 				Config: testAccServiceConfig("ssh", false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "enable", "false"),
 					resource.TestCheckResourceAttr(resourceName, "state", "STOPPED"),

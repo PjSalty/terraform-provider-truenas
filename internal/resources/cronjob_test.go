@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -22,6 +23,11 @@ func TestAccCronJob_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCronJobConfigBasic(true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "user", "root"),
@@ -51,6 +57,11 @@ func TestAccCronJob_enableDisable(t *testing.T) {
 			// Create enabled
 			{
 				Config: testAccCronJobConfigBasic(true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
 				),
@@ -58,6 +69,11 @@ func TestAccCronJob_enableDisable(t *testing.T) {
 			// Update: disable
 			{
 				Config: testAccCronJobConfigBasic(false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "enabled", "false"),
 				),
@@ -152,7 +168,12 @@ func TestAccCronJob_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCronJobConfigBasic(true),
-				Check:  testAccCheckCronJobExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckCronJobExists(resourceName),
 			},
 			{
 				Config:             testAccCronJobConfigBasic(true),

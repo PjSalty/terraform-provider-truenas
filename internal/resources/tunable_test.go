@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -22,6 +23,11 @@ func TestAccTunable_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccTunableConfigBasic("SYSCTL", "net.ipv4.ip_forward", "1"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "type", "SYSCTL"),
 					resource.TestCheckResourceAttr(resourceName, "var", "net.ipv4.ip_forward"),
@@ -50,6 +56,11 @@ func TestAccTunable_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccTunableConfigWithComment("SYSCTL", "net.ipv4.tcp_syncookies", "1", "Enable syncookies"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "value", "1"),
 					resource.TestCheckResourceAttr(resourceName, "comment", "Enable syncookies"),
@@ -58,6 +69,11 @@ func TestAccTunable_update(t *testing.T) {
 			// Update value and comment in-place
 			{
 				Config: testAccTunableConfigWithComment("SYSCTL", "net.ipv4.tcp_syncookies", "0", "Disable syncookies"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "value", "0"),
 					resource.TestCheckResourceAttr(resourceName, "comment", "Disable syncookies"),
@@ -161,7 +177,12 @@ func TestAccTunable_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccTunableConfigBasic("SYSCTL", varName, "1"),
-				Check:  testAccCheckTunableExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckTunableExists(resourceName),
 			},
 			{
 				Config:             testAccTunableConfigBasic("SYSCTL", varName, "1"),
