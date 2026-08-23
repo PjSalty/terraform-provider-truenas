@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccCatalogDataSource_basic reads the always-present TrueNAS
@@ -28,6 +29,11 @@ data "truenas_catalog" "test" {
   id = "TRUENAS"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(dataSourceName, "id", "TRUENAS"),
 					resource.TestCheckResourceAttrSet(dataSourceName, "label"),

@@ -62,6 +62,11 @@ resource "truenas_catalog" "test" {
   preferred_trains = ["stable"]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_catalog.test", "preferred_trains.#", "1"),
 					resource.TestCheckResourceAttr("truenas_catalog.test", "preferred_trains.0", "stable"),
@@ -76,6 +81,9 @@ resource "truenas_catalog" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_catalog.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(

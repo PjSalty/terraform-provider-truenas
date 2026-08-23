@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -23,6 +24,11 @@ func TestAccReplication_local(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccReplicationConfigLocal(pool),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-repl"),
@@ -123,7 +129,12 @@ func TestAccReplication_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccReplicationConfigLocal(pool),
-				Check:  testAccCheckReplicationExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckReplicationExists(resourceName),
 			},
 			{
 				Config:             testAccReplicationConfigLocal(pool),

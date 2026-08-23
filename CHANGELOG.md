@@ -150,6 +150,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   behaviour for unknown on every existing deployment. Unset keeps the exact
   endpoint every previous release dialled.
 
+- `truenas_share_smb` gained an `options` block carrying the purpose-specific
+  settings, and accepts the `FCP_SHARE` purpose.
+
+  Without `options` the `EXTERNAL_SHARE` purpose could not be created at all:
+  it is a DFS proxy, so it requires `remote_path`, and there was nowhere to put
+  it. TrueNAS models `options` as a union keyed on `purpose` and rejects a
+  field belonging to another member outright, so the pairing is checked at plan
+  time rather than surfacing as `Extra inputs are not permitted` from the
+  server. `FCP_SHARE` arrived upstream in 25.10.1 and the purpose validator had
+  never learned it, so it was rejected on every release that supports it; the
+  vocabulary is now one list feeding both the validator and the options map.
+
+  `TIMEMACHINE_SHARE` and `FCP_SHARE` additionally need `aapl_extensions` on
+  the global SMB config. Without it the create fails with an EINVAL naming
+  `purpose` rather than the setting it wants, which is documented on the
+  resource now.
+
 ### Changed
 
 - **`truenas_system_update` was rewritten and its schema changed.** It called
@@ -254,6 +271,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `wsclient.TestHandler`, where the frames are already decoded.
 
 ### Fixed
+
+- The SMB preset compatibility test skipped `EXTERNAL_SHARE` with the reason
+  "truenas_share_smb exposes no preset-options map". That was true when it was
+  written and stopped being true when the `options` block landed, so a test
+  whose whole purpose is to cycle **every** preset was silently skipping the
+  one that had been broken. It runs now, along with `FCP_SHARE`, which was
+  never in the list at all.
+
+  Eight of the nine presets are exercised against a live box.
+  `VEEAM_REPOSITORY_SHARE` still skips: it needs an enterprise license.
 
 - The Kubernetes storage guide could not have worked. It used `groups { }` and
   `listen { }` where the schema declares nested attributes, and passed the
@@ -380,6 +407,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   test compares them to the `OneOf` validators with no TrueNAS and no network,
   and the drift script re-derives the model-backed ones from upstream so a new
   release surfaces the difference.
+- Every acceptance step that applies a configuration now asserts that the
+  following plan is empty. 324 of the 390 did not, so a resource could produce
+  a diff on every plan after a clean apply and the suite would still pass: the
+  apply succeeds, the `Check` functions pass, and nothing looks at what the
+  refresh brought back. That matters most for `Optional`+`Computed` attributes,
+  which read server defaults into state.
+
+  The ratchet added alongside this had the same hole in miniature. It accepted
+  any `ConfigPlanChecks` as a gate, but 54 steps set only `PreApply`, which
+  asserts what the plan will do and nothing about what the apply leaves behind.
+  It now requires `PostApplyPostRefresh` specifically, and the ceiling is zero.
+
+  134 steps stay exempt because they never reach an apply whose idempotency
+  could be checked: 82 expect a non-empty plan deliberately (81 of them delete
+  the resource out of band), 34 are plan-only, 17 expect an error, one is an
+  import round-trip.
+
+- **`EXTERNAL_SHARE` on `truenas_share_smb` could not be created**, even after
+  the `options` block landed. Cross-field validation required
+  `path = "EXTERNAL"` while the `path` attribute's own regex still demanded
+  `/mnt/`, so the two contradicted each other and every configuration failed at
+  plan with `SMB share path must start with /mnt/, got: EXTERNAL`.
+
+  Schema validators run before `ValidateConfig`, so no `ValidateConfig` test
+  could reach them, and statement coverage is blind to validators because they
+  are declarative data rather than statements. The path validator now admits
+  the sentinel, anchored so `EXTERNALISH` stays rejected, and the other
+  direction is checked too: `EXTERNAL` is only valid for that one purpose.
+
+- Twenty-five published examples named attributes the provider does not have,
+  so copying the canonical usage out of the Registry could not plan. Forty-eight
+  defects in total: attributes that are not in the schema, renamed ones
+  (`sudo_commands_nopasswd`, `shutdown_timer`, `auto_download`, `train`), block
+  syntax where the schema declares a nested attribute (`listen {}`, `groups {}`,
+  and `schedule {}` on five task resources that have flat `schedule_minute`
+  fields), and assignments to computed-only attributes.
+
+  Nothing had ever checked them: the existing test proved only that an example
+  parses as HCL, and the acceptance tests use their own inline configurations
+  and never read `examples/`. Both the examples and the snippets embedded in
+  `docs/` are now checked against the real schema.
 
 - All 40 unit tests disabled by the v2.0 WebSocket cutover run again (issue #2).
   They were httptest fixtures against the REST API, skipped rather than

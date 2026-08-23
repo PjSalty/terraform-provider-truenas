@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -24,6 +25,11 @@ func TestAccISCSIExtent_fileType(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccISCSIExtentConfigFile(pool, datasetName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-extent-file"),
@@ -131,7 +137,12 @@ func TestAccISCSIExtent_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccISCSIExtentConfigFile(pool, datasetName),
-				Check:  testAccCheckISCSIExtentExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckISCSIExtentExists(resourceName),
 			},
 			{
 				Config:             testAccISCSIExtentConfigFile(pool, datasetName),

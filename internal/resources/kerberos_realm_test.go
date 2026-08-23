@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -22,6 +23,11 @@ func TestAccKerberosRealm_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccKerberosRealmConfigBasic("TF-ACC.EXAMPLE.COM"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "realm", "TF-ACC.EXAMPLE.COM"),
@@ -32,6 +38,11 @@ func TestAccKerberosRealm_basic(t *testing.T) {
 			// Update: change KDC list
 			{
 				Config: testAccKerberosRealmConfigUpdated("TF-ACC.EXAMPLE.COM"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "kdc.#", "2"),
 				),
@@ -133,7 +144,12 @@ func TestAccKerberosRealm_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccKerberosRealmConfigBasic(realm),
-				Check:  testAccCheckKerberosRealmExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckKerberosRealmExists(resourceName),
 			},
 			{
 				Config:             testAccKerberosRealmConfigBasic(realm),

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -36,6 +37,11 @@ func TestAccVMware_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccVMwareConfigBasic(host, user, pass, datastore, filesystem),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "hostname", host),
@@ -133,7 +139,12 @@ func TestAccVMware_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccVMwareConfigBasic(host, user, pass, datastore, filesystem),
-				Check:  testAccCheckVMwareExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckVMwareExists(resourceName),
 			},
 			{
 				Config:             testAccVMwareConfigBasic(host, user, pass, datastore, filesystem),

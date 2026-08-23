@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
@@ -45,6 +46,11 @@ func TestAccNVMetGlobal_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccNVMetGlobalConfigBasic("nqn.2014-08.org.nvmexpress:truenas-acc"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "basenqn", "nqn.2014-08.org.nvmexpress:truenas-acc"),

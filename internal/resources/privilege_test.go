@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -22,6 +23,11 @@ func TestAccPrivilege_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccPrivilegeConfigBasic("tf-acc-priv", false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-priv"),
@@ -33,6 +39,11 @@ func TestAccPrivilege_basic(t *testing.T) {
 			// Update: enable web_shell
 			{
 				Config: testAccPrivilegeConfigBasic("tf-acc-priv", true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "web_shell", "true"),
 				),
@@ -134,7 +145,12 @@ func TestAccPrivilege_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccPrivilegeConfigBasic(name, false),
-				Check:  testAccCheckPrivilegeExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckPrivilegeExists(resourceName),
 			},
 			{
 				Config:             testAccPrivilegeConfigBasic(name, false),

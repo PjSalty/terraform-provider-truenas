@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 func TestAccDNSNameserver_basic(t *testing.T) {
@@ -16,6 +17,11 @@ func TestAccDNSNameserver_basic(t *testing.T) {
 			// Create and read
 			{
 				Config: testAccDNSNameserverConfigBasic("8.8.8.8", "8.8.4.4"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "nameserver1", "8.8.8.8"),
 					resource.TestCheckResourceAttr(resourceName, "nameserver2", "8.8.4.4"),
@@ -25,6 +31,11 @@ func TestAccDNSNameserver_basic(t *testing.T) {
 			// Update nameservers
 			{
 				Config: testAccDNSNameserverConfigBasic("1.1.1.1", "1.0.0.1"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "nameserver1", "1.1.1.1"),
 					resource.TestCheckResourceAttr(resourceName, "nameserver2", "1.0.0.1"),

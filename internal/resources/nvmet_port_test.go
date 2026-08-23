@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -25,6 +26,11 @@ func TestAccNVMetPort_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccNVMetPortConfigBasic("127.0.0.1", 4420),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "addr_trtype", "TCP"),
@@ -127,7 +133,12 @@ func TestAccNVMetPort_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccNVMetPortConfigBasic("0.0.0.0", 4420),
-				Check:  testAccCheckNVMetPortExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckNVMetPortExists(resourceName),
 			},
 			{
 				Config:             testAccNVMetPortConfigBasic("0.0.0.0", 4420),

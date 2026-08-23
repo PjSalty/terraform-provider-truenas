@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -32,6 +33,11 @@ func TestAccUser_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccUserConfigBasic(basicUser, "TF Acc Test User"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "username", basicUser),
 					resource.TestCheckResourceAttr(resourceName, "full_name", "TF Acc Test User"),
@@ -65,6 +71,11 @@ func TestAccUser_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccUserConfigBasic(updateUser, "TF Acc Before"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "full_name", "TF Acc Before"),
 				),
@@ -72,6 +83,11 @@ func TestAccUser_update(t *testing.T) {
 			// Update full_name in-place
 			{
 				Config: testAccUserConfigBasic(updateUser, "TF Acc After"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "full_name", "TF Acc After"),
 				),
@@ -167,7 +183,12 @@ func TestAccUser_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccUserConfigBasic(username, "Disappears Test User"),
-				Check:  testAccCheckUserExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckUserExists(resourceName),
 			},
 			{
 				Config:             testAccUserConfigBasic(username, "Disappears Test User"),

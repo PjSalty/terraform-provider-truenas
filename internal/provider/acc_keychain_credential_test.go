@@ -110,13 +110,21 @@ resource "truenas_keychain_credential" "test" {
 		Steps: []resource.TestStep{
 			{
 				Config: cfg(name1),
-				Check:  resource.TestCheckResourceAttr("truenas_keychain_credential.test", "name", name1),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_keychain_credential.test", "name", name1),
 			},
 			{
 				Config: cfg(name2),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_keychain_credential.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_keychain_credential.test", "name", name2),

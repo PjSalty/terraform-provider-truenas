@@ -61,6 +61,11 @@ resource "truenas_network_config" "test" {
   httpproxy = ""
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_network_config.test", "httpproxy", ""),
 			},
 			{
@@ -73,6 +78,9 @@ resource "truenas_network_config" "test" {
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_network_config.test", plancheck.ResourceActionUpdate),
 					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_network_config.test", "httpproxy", "http://proxy.example.invalid:3128"),
 			},
@@ -84,6 +92,11 @@ resource "truenas_network_config" "test" {
   httpproxy = ""
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_network_config.test", "httpproxy", ""),
 			},
 		},

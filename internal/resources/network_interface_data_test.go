@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccNetworkInterfaceDataSource_basic queries an existing network
@@ -34,6 +35,11 @@ data "truenas_network_interface" "test" {
   id = %q
 }
 `, parent),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(dataSourceName, "id", parent),
 					resource.TestCheckResourceAttr(dataSourceName, "name", parent),

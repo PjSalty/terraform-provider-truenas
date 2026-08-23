@@ -512,6 +512,9 @@ resource "truenas_dataset" "drift" {
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_dataset.drift", plancheck.ResourceActionCreate),
 					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
 				},
 			},
 		},
@@ -538,6 +541,11 @@ resource "truenas_dataset" "integration" {
   comments = "initial"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_dataset.integration", "comments", "initial"),
 			},
 			{
@@ -551,6 +559,9 @@ resource "truenas_dataset" "integration" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_dataset.integration", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_dataset.integration", "comments", "updated"),
@@ -719,6 +730,11 @@ data "truenas_dataset" "seeded" {
   id = "tank/seeded"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.truenas_dataset.seeded", "id", "tank/seeded"),
 					resource.TestCheckResourceAttr("data.truenas_dataset.seeded", "name", "tank/seeded"),

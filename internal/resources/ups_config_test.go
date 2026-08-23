@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 func TestAccUPSConfig_basic(t *testing.T) {
@@ -16,6 +17,11 @@ func TestAccUPSConfig_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccUPSConfigCustom("test-ups", "Test UPS", 60),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "id", "1"),
 					resource.TestCheckResourceAttr(resourceName, "identifier", "test-ups"),
@@ -45,6 +51,11 @@ func TestAccUPSConfig_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccUPSConfigCustom("test-ups-2", "Test UPS Device", 45),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "identifier", "test-ups-2"),
 					resource.TestCheckResourceAttr(resourceName, "description", "Test UPS Device"),
@@ -53,6 +64,11 @@ func TestAccUPSConfig_update(t *testing.T) {
 			},
 			{
 				Config: testAccUPSConfigCustom("ups", "", 30),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "identifier", "ups"),
 					resource.TestCheckResourceAttr(resourceName, "description", ""),

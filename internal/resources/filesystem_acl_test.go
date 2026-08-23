@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 func TestAccFilesystemACL_basic(t *testing.T) {
@@ -18,6 +19,11 @@ func TestAccFilesystemACL_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFilesystemACLConfigBasic(pool, datasetName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "acltype", "POSIX1E"),

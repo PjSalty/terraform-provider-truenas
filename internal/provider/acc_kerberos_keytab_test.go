@@ -92,13 +92,21 @@ resource "truenas_kerberos_keytab" "test" {
 		Steps: []resource.TestStep{
 			{
 				Config: cfg(name1),
-				Check:  resource.TestCheckResourceAttr("truenas_kerberos_keytab.test", "name", name1),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_kerberos_keytab.test", "name", name1),
 			},
 			{
 				Config: cfg(name2),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_kerberos_keytab.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_kerberos_keytab.test", "name", name2),

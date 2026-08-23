@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -65,6 +66,11 @@ func TestAccContainerDevice_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccContainerDeviceFilesystemConfig(t, name, "/srv/data"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "filesystem.target", "/srv/data"),
@@ -99,11 +105,21 @@ func TestAccContainerDevice_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccContainerDeviceFilesystemConfig(t, name, "/srv/data"),
-				Check:  resource.TestCheckResourceAttr(resourceName, "filesystem.target", "/srv/data"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr(resourceName, "filesystem.target", "/srv/data"),
 			},
 			{
 				Config: testAccContainerDeviceFilesystemConfig(t, name, "/srv/other"),
-				Check:  resource.TestCheckResourceAttr(resourceName, "filesystem.target", "/srv/other"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr(resourceName, "filesystem.target", "/srv/other"),
 			},
 		},
 	})
@@ -123,6 +139,11 @@ func TestAccContainerDevice_nicGeneratedMACIsStable(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccContainerDeviceNICConfig(t, name, bridge),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "nic.type", "VIRTIO"),
 					resource.TestCheckResourceAttr(resourceName, "nic.nic_attach", bridge),
@@ -151,7 +172,12 @@ func TestAccContainerDevice_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccContainerDeviceFilesystemConfig(t, name, "/srv/data"),
-				Check:  testAccCheckContainerDeviceExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckContainerDeviceExists(resourceName),
 			},
 			{
 				Config:             testAccContainerDeviceFilesystemConfig(t, name, "/srv/data"),

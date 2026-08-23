@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -22,6 +23,11 @@ func TestAccAPIKey_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccAPIKeyConfigBasic("tf-acc-test-key"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-key"),
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
@@ -43,12 +49,22 @@ func TestAccAPIKey_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccAPIKeyConfigBasic("tf-acc-test-key-v1"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-key-v1"),
 				),
 			},
 			{
 				Config: testAccAPIKeyConfigBasic("tf-acc-test-key-v2"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-key-v2"),
 				),
@@ -144,7 +160,12 @@ func TestAccAPIKey_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccAPIKeyConfigBasic(name),
-				Check:  testAccCheckAPIKeyExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckAPIKeyExists(resourceName),
 			},
 			{
 				Config:             testAccAPIKeyConfigBasic(name),

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -44,6 +45,11 @@ func TestAccWebshare_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWebshareConfig(pool, datasetName, shareName, true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "name", shareName),
@@ -81,12 +87,22 @@ func TestAccWebshare_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWebshareConfig(pool, datasetName, shareName, true),
-				Check:  resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
 			},
 			// Toggling enabled is the cheapest round trip that proves the
 			// update path sends what it claims.
 			{
 				Config: testAccWebshareConfig(pool, datasetName, shareName, false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "enabled", "false"),
 					resource.TestCheckResourceAttr(resourceName, "name", shareName),
@@ -158,7 +174,12 @@ func TestAccWebshare_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWebshareConfig(pool, datasetName, shareName, true),
-				Check:  testAccCheckWebshareExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckWebshareExists(resourceName),
 			},
 			{
 				Config:             testAccWebshareConfig(pool, datasetName, shareName, true),

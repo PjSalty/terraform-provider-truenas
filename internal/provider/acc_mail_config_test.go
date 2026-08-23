@@ -73,13 +73,21 @@ resource "truenas_mail_config" "test" {
 		Steps: []resource.TestStep{
 			{
 				Config: cfg("acctest-initial"),
-				Check:  resource.TestCheckResourceAttr("truenas_mail_config.test", "fromname", "acctest-initial"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_mail_config.test", "fromname", "acctest-initial"),
 			},
 			{
 				Config: cfg("acctest-updated"),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_mail_config.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_mail_config.test", "fromname", "acctest-updated"),
@@ -89,7 +97,12 @@ resource "truenas_mail_config" "test" {
 				// test VM is left in a predictable state for subsequent
 				// runs.
 				Config: cfg(""),
-				Check:  resource.TestCheckResourceAttr("truenas_mail_config.test", "fromname", ""),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_mail_config.test", "fromname", ""),
 			},
 		},
 	})

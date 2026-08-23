@@ -62,6 +62,11 @@ resource "truenas_ssh_config" "test" {
   tcpport = 22
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_ssh_config.test", "tcpport", "22"),
 			},
 			{
@@ -74,6 +79,9 @@ resource "truenas_ssh_config" "test" {
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_ssh_config.test", plancheck.ResourceActionUpdate),
 					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_ssh_config.test", "tcpport", "2222"),
 			},
@@ -85,6 +93,11 @@ resource "truenas_ssh_config" "test" {
   tcpport = 22
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_ssh_config.test", "tcpport", "22"),
 			},
 		},

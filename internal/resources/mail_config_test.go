@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 func TestAccMailConfig_basic(t *testing.T) {
@@ -17,6 +18,11 @@ func TestAccMailConfig_basic(t *testing.T) {
 			// Create with minimal required settings
 			{
 				Config: testAccMailConfigMinimal(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "id", "1"),
 					resource.TestCheckResourceAttr(resourceName, "port", "25"),
@@ -45,6 +51,11 @@ func TestAccMailConfig_update(t *testing.T) {
 			// Create with custom settings
 			{
 				Config: testAccMailConfigCustom("test@example.com", "smtp.example.com", 587),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "fromemail", "test@example.com"),
 					resource.TestCheckResourceAttr(resourceName, "outgoingserver", "smtp.example.com"),
@@ -54,6 +65,11 @@ func TestAccMailConfig_update(t *testing.T) {
 			// Update settings
 			{
 				Config: testAccMailConfigCustom("admin@example.com", "mail.example.com", 25),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "fromemail", "admin@example.com"),
 					resource.TestCheckResourceAttr(resourceName, "outgoingserver", "mail.example.com"),

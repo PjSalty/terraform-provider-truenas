@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -22,6 +23,11 @@ func TestAccGroup_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccGroupConfigBasic("tfaccgrp"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tfaccgrp"),
 					resource.TestCheckResourceAttr(resourceName, "smb", "false"),
@@ -49,6 +55,11 @@ func TestAccGroup_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccGroupConfigWithSMB("tfaccgrpupd", false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tfaccgrpupd"),
 					resource.TestCheckResourceAttr(resourceName, "smb", "false"),
@@ -57,6 +68,11 @@ func TestAccGroup_update(t *testing.T) {
 			// Update SMB in-place
 			{
 				Config: testAccGroupConfigWithSMB("tfaccgrpupd", true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "smb", "true"),
 				),
@@ -152,7 +168,12 @@ func TestAccGroup_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccGroupConfigBasic(name),
-				Check:  testAccCheckGroupExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckGroupExists(resourceName),
 			},
 			{
 				Config:             testAccGroupConfigBasic(name),

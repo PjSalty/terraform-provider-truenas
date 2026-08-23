@@ -107,11 +107,21 @@ func TestAccNVMetPortSubsysResource_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: nvmetPortSubsysConfig(subsysName, port),
-				Check:  resource.TestCheckResourceAttrSet("truenas_nvmet_port_subsys.test", "id"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttrSet("truenas_nvmet_port_subsys.test", "id"),
 			},
 			{
 				Config: nvmetPortSubsysConfigAlt(subsysName, subsysNameAlt, port),
-				Check:  resource.TestCheckResourceAttrSet("truenas_nvmet_port_subsys.test", "id"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttrSet("truenas_nvmet_port_subsys.test", "id"),
 			},
 		},
 	})

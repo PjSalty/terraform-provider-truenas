@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccNetworkInterfaceResource_basic is an IMPORT-ONLY test against a
@@ -83,6 +84,11 @@ resource "truenas_network_interface" "test" {
   description = "acctest-initial"
 }
 `, iface),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_network_interface.test", "description", "acctest-initial"),
 			},
 			{
@@ -93,6 +99,11 @@ resource "truenas_network_interface" "test" {
   description = "acctest-updated"
 }
 `, iface),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_network_interface.test", "description", "acctest-updated"),
 			},
 			{
@@ -105,6 +116,11 @@ resource "truenas_network_interface" "test" {
   description = ""
 }
 `, iface),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_network_interface.test", "description", ""),
 			},
 		},

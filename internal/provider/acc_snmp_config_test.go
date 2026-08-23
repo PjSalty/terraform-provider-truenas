@@ -61,6 +61,11 @@ resource "truenas_snmp_config" "test" {
   location  = "acctest-rack-1"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_snmp_config.test", "contact", "acctest initial"),
 					resource.TestCheckResourceAttr("truenas_snmp_config.test", "location", "acctest-rack-1"),
@@ -78,6 +83,9 @@ resource "truenas_snmp_config" "test" {
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_snmp_config.test", plancheck.ResourceActionUpdate),
 					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_snmp_config.test", "contact", "acctest updated"),
@@ -94,6 +102,11 @@ resource "truenas_snmp_config" "test" {
   location  = ""
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_snmp_config.test", "contact", ""),
 					resource.TestCheckResourceAttr("truenas_snmp_config.test", "location", ""),

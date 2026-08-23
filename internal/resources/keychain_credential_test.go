@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"golang.org/x/crypto/ssh"
 
@@ -55,6 +56,11 @@ func TestAccKeychainCredential_sshKeyPair(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccKeychainCredentialConfigSSHKeyPair("tf-acc-test-keypair", privKey, pubKey),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-keypair"),
 					resource.TestCheckResourceAttr(resourceName, "type", "SSH_KEY_PAIR"),
@@ -80,12 +86,22 @@ func TestAccKeychainCredential_updateName(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccKeychainCredentialConfigSSHKeyPair("tf-acc-test-kc-v1", privKey, pubKey),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-kc-v1"),
 				),
 			},
 			{
 				Config: testAccKeychainCredentialConfigSSHKeyPair("tf-acc-test-kc-v2", privKey, pubKey),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-kc-v2"),
 				),
@@ -185,7 +201,12 @@ func TestAccKeychainCredential_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccKeychainCredentialConfigSSHKeyPair(name, priv, pub),
-				Check:  testAccCheckKeychainCredentialExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckKeychainCredentialExists(resourceName),
 			},
 			{
 				Config:             testAccKeychainCredentialConfigSSHKeyPair(name, priv, pub),
