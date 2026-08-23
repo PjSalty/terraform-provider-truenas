@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
 )
@@ -43,6 +44,11 @@ func TestAccLXCConfig_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccLXCConfig(pool),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "id", "lxc_config"),
 					resource.TestCheckResourceAttr(resourceName, "preferred_pool", pool),
@@ -79,7 +85,12 @@ func TestAccLXCConfig_idempotent(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccLXCConfig(pool),
-				Check:  resource.TestCheckResourceAttr(resourceName, "preferred_pool", pool),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr(resourceName, "preferred_pool", pool),
 			},
 			{
 				Config:             testAccLXCConfig(pool),
@@ -129,6 +140,11 @@ func TestAccLXCConfig_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccLXCConfigWithNetwork(pool, lxcAltV4Network),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "v4_network", lxcAltV4Network),
 					resource.TestCheckResourceAttr(resourceName, "preferred_pool", pool),
@@ -136,6 +152,11 @@ func TestAccLXCConfig_update(t *testing.T) {
 			},
 			{
 				Config: testAccLXCConfigWithNetwork(pool, lxcDefaultV4Network),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "v4_network", lxcDefaultV4Network),
 					resource.TestCheckResourceAttr(resourceName, "preferred_pool", pool),
@@ -190,6 +211,11 @@ data "truenas_lxc_config" "test" {
   depends_on = [truenas_lxc_config.test]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.truenas_lxc_config.test", "id", "lxc_config"),
 					resource.TestCheckResourceAttrPair(

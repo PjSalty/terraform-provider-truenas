@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -53,6 +54,11 @@ func TestAccDataset_basic(t *testing.T) {
 			// Create and read
 			{
 				Config: testAccDatasetConfigBasic(pool, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "pool", pool),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
@@ -86,6 +92,11 @@ func TestAccDataset_withCompression(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDatasetConfigWithCompression(pool, name, "LZ4"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "compression", "LZ4"),
 				),
@@ -93,6 +104,11 @@ func TestAccDataset_withCompression(t *testing.T) {
 			// Update compression in-place (no replace required)
 			{
 				Config: testAccDatasetConfigWithCompression(pool, name, "ZSTD"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "compression", "ZSTD"),
 				),
@@ -113,6 +129,11 @@ func TestAccDataset_requiresReplaceOnPoolChange(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDatasetConfigBasic(pool, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "pool", pool),
 				),
@@ -120,6 +141,11 @@ func TestAccDataset_requiresReplaceOnPoolChange(t *testing.T) {
 			// Changing the name triggers a destroy+recreate (RequiresReplace).
 			{
 				Config: testAccDatasetConfigBasic(pool, name+"-renamed"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", name+"-renamed"),
 				),
@@ -248,6 +274,11 @@ func TestAccDataset_disappears(t *testing.T) {
 			// the upstream agree it exists.
 			{
 				Config: testAccDatasetConfigBasic(pool, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckDatasetExists(resourceName),
 				),

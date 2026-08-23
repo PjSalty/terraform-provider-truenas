@@ -64,6 +64,11 @@ resource "truenas_smb_config" "test" {
   description = "initial"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_smb_config.test", "description", "initial"),
 			},
 			{
@@ -77,6 +82,9 @@ resource "truenas_smb_config" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_smb_config.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_smb_config.test", "description", "updated"),

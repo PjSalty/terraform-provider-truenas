@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccDatasetsDataSource_basic queries the datasets list datasource
@@ -29,6 +30,11 @@ resource "truenas_dataset" "fixture" {
 
 data "truenas_datasets" "test" {}
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					// The list contains at least our fixture; assert
 					// the count is >= 1 and the fixture-derived id is

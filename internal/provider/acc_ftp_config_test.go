@@ -64,6 +64,11 @@ resource "truenas_ftp_config" "test" {
   clients = 5
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_ftp_config.test", "clients", "5"),
 			},
 			{
@@ -77,6 +82,9 @@ resource "truenas_ftp_config" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_ftp_config.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(

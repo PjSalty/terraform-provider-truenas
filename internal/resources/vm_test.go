@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -28,6 +29,11 @@ func TestAccVM_basic(t *testing.T) {
 				// memory is in MB on SCALE 25.10+ (validator: 20–4194304).
 				// Earlier SCALE accepted bytes; 256 MB works on either.
 				Config: testAccVMConfigBasic(name, "initial description", 256),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
@@ -43,6 +49,11 @@ func TestAccVM_basic(t *testing.T) {
 			// Update description
 			{
 				Config: testAccVMConfigBasic(name, "updated description", 256),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "description", "updated description"),
 				),
@@ -149,7 +160,12 @@ func TestAccVM_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccVMConfigBasic(name, "disappears test VM", 512),
-				Check:  testAccCheckVMExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckVMExists(resourceName),
 			},
 			{
 				Config:             testAccVMConfigBasic(name, "disappears test VM", 512),

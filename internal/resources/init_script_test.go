@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -23,6 +24,11 @@ func TestAccInitScript_basic(t *testing.T) {
 			// Create and read
 			{
 				Config: testAccInitScriptConfigBasic("echo hello", "POSTINIT"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "type", "COMMAND"),
@@ -35,6 +41,11 @@ func TestAccInitScript_basic(t *testing.T) {
 			// Update
 			{
 				Config: testAccInitScriptConfigBasic("echo world", "PREINIT"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "command", "echo world"),
 					resource.TestCheckResourceAttr(resourceName, "when", "PREINIT"),
@@ -136,7 +147,12 @@ func TestAccInitScript_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccInitScriptConfigBasic("echo disappears-test", "POSTINIT"),
-				Check:  testAccCheckInitScriptExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckInitScriptExists(resourceName),
 			},
 			{
 				Config:             testAccInitScriptConfigBasic("echo disappears-test", "POSTINIT"),

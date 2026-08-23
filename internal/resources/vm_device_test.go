@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -33,6 +34,11 @@ func TestAccVMDevice_display(t *testing.T) {
 			// Create a DISPLAY device attached to the target VM.
 			{
 				Config: testAccVMDeviceConfigDisplay(vmID, "1024x768"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "vm", vmID),
@@ -43,6 +49,11 @@ func TestAccVMDevice_display(t *testing.T) {
 			// Update resolution
 			{
 				Config: testAccVMDeviceConfigDisplay(vmID, "1280x720"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "attributes.resolution", "1280x720"),
 				),
@@ -147,7 +158,12 @@ func TestAccVMDevice_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccVMDeviceConfigDisplay(vmID, "1024x768"),
-				Check:  testAccCheckVMDeviceExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckVMDeviceExists(resourceName),
 			},
 			{
 				Config:             testAccVMDeviceConfigDisplay(vmID, "1024x768"),

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccKeychainCredentialDataSource_basic creates an SSH_KEY_PAIR
@@ -42,6 +43,11 @@ data "truenas_keychain_credential" "test" {
   id = truenas_keychain_credential.fixture.id
 }
 `, privKey, pubKey),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(dataSourceName, "id"),
 					resource.TestCheckResourceAttr(dataSourceName, "name", "tf-acc-kc-ds"),

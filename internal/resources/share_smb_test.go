@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -25,6 +26,11 @@ func TestAccSMBShare_basic(t *testing.T) {
 			// Create and read
 			{
 				Config: testAccSMBShareConfigBasic(pool, datasetName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-smb-basic"),
@@ -56,6 +62,11 @@ func TestAccSMBShare_update(t *testing.T) {
 			// Create with readonly false
 			{
 				Config: testAccSMBShareConfigReadOnly(pool, datasetName, false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "readonly", "false"),
@@ -65,6 +76,11 @@ func TestAccSMBShare_update(t *testing.T) {
 			// Update: set readonly true
 			{
 				Config: testAccSMBShareConfigReadOnly(pool, datasetName, true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "readonly", "true"),
 				),
@@ -161,7 +177,12 @@ func TestAccSMBShare_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSMBShareConfigBasic(pool, datasetName),
-				Check:  testAccCheckSMBShareExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckSMBShareExists(resourceName),
 			},
 			{
 				Config:             testAccSMBShareConfigBasic(pool, datasetName),
@@ -234,15 +255,19 @@ func TestAccSMBShare_purposePreset_25_10(t *testing.T) {
 	//     TRUENAS_TEST_SMB_AAPL=1. Both halves were false: smb_config
 	//     exposes aapl_extensions, and no such env gate was ever
 	//     implemented, so setting that variable did nothing at all.
-	//   - EXTERNAL_SHARE: requires `options.EXTERNAL_SHARE.remote_path`
-	//     in the create request. The provider doesn't expose the
-	//     preset-options map. Tracked as a known v2.x gap.
+	//   - EXTERNAL_SHARE: needs options.remote_path and the literal path
+	//     "EXTERNAL". That used to be skipped as "the provider exposes no
+	//     preset-options map", which was true when it was written and is not
+	//     now: truenas_share_smb has an options block. A test that claims to
+	//     cycle EVERY preset while skipping the one that was broken is worse
+	//     than one that admits the gap, so it runs.
 	//   - VEEAM_REPOSITORY_SHARE: requires a TrueNAS enterprise
 	//     license. Always skipped on community edition.
 	type presetCase struct {
 		name      string
 		skip      string // non-empty => skip with reason
 		needsAAPL bool   // preset needs aapl_extensions on the global SMB config
+		external  bool   // proxies to a remote server rather than local storage
 	}
 	presets := []presetCase{
 		{name: "DEFAULT_SHARE"},
@@ -250,13 +275,11 @@ func TestAccSMBShare_purposePreset_25_10(t *testing.T) {
 		{name: "TIMEMACHINE_SHARE", needsAAPL: true},
 		{name: "MULTIPROTOCOL_SHARE"},
 		{name: "PRIVATE_DATASETS_SHARE"},
-		// Genuinely unsupported, unlike the TIMEMACHINE case above: the
-		// create request needs options.EXTERNAL_SHARE.remote_path and
-		// truenas_share_smb exposes no preset-options map. A real gap,
-		// not a stale comment.
-		{name: "EXTERNAL_SHARE", skip: "truenas_share_smb exposes no preset-options map, so remote_path cannot be set"},
+		{name: "EXTERNAL_SHARE", external: true},
 		{name: "TIME_LOCKED_SHARE"},
 		{name: "VEEAM_REPOSITORY_SHARE", skip: "requires TrueNAS enterprise license"},
+		// Added upstream in 25.10.1, so a 25.10.0 box rejects it.
+		{name: "FCP_SHARE", needsAAPL: true},
 	}
 	for i, pc := range presets {
 		preset := pc.name
@@ -278,7 +301,12 @@ func TestAccSMBShare_purposePreset_25_10(t *testing.T) {
 				CheckDestroy:             testAccCheckSMBShareDestroy(resourceName),
 				Steps: []resource.TestStep{
 					{
-						Config: testAccSMBShareConfigPreset(pool, ds, preset, pc.needsAAPL),
+						Config: testAccSMBShareConfigPreset(pool, ds, preset, pc.needsAAPL, pc.external),
+						ConfigPlanChecks: resource.ConfigPlanChecks{
+							PostApplyPostRefresh: []plancheck.PlanCheck{
+								plancheck.ExpectEmptyPlan(),
+							},
+						},
 						Check: resource.ComposeAggregateTestCheckFunc(
 							resource.TestCheckResourceAttrSet(resourceName, "id"),
 							resource.TestCheckResourceAttr(resourceName, "purpose", preset),
@@ -290,7 +318,26 @@ func TestAccSMBShare_purposePreset_25_10(t *testing.T) {
 	}
 }
 
-func testAccSMBShareConfigPreset(pool, datasetName, preset string, needsAAPL bool) string {
+func testAccSMBShareConfigPreset(pool, datasetName, preset string, needsAAPL, external bool) string {
+	// An EXTERNAL_SHARE is a DFS redirect: there is no local dataset to make,
+	// the path is the literal sentinel, and remote_path carries the targets.
+	if external {
+		return fmt.Sprintf(`
+provider "truenas" {}
+
+resource "truenas_share_smb" "test" {
+  path    = "EXTERNAL"
+  name    = %q
+  purpose = %q
+  comment = "preset compat test"
+
+  options = {
+    remote_path = ["fileserver.example.com\\archive"]
+  }
+}
+`, datasetName, preset)
+	}
+
 	// TIMEMACHINE_SHARE is rejected outright unless Apple SMB2/3
 	// extensions are enabled globally. smb_config is a singleton, so this
 	// flips a box-wide setting for the duration of the test; the

@@ -152,13 +152,21 @@ resource "truenas_filesystem_acl" "test" {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(baseResource, name, 0),
-				Check:  resource.TestCheckResourceAttr("truenas_filesystem_acl.test", "uid", "0"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_filesystem_acl.test", "uid", "0"),
 			},
 			{
 				Config: fmt.Sprintf(baseResource, name, 1000),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_filesystem_acl.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_filesystem_acl.test", "uid", "1000"),

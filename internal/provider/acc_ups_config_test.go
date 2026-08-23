@@ -72,13 +72,21 @@ resource "truenas_ups_config" "test" {
 		Steps: []resource.TestStep{
 			{
 				Config: cfg("acctest-initial"),
-				Check:  resource.TestCheckResourceAttr("truenas_ups_config.test", "description", "acctest-initial"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_ups_config.test", "description", "acctest-initial"),
 			},
 			{
 				Config: cfg("acctest-updated"),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_ups_config.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_ups_config.test", "description", "acctest-updated"),
@@ -87,7 +95,12 @@ resource "truenas_ups_config" "test" {
 				// Restore the default description so the shared test
 				// VM is left in a predictable state for subsequent runs.
 				Config: cfg(""),
-				Check:  resource.TestCheckResourceAttr("truenas_ups_config.test", "description", ""),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_ups_config.test", "description", ""),
 			},
 		},
 	})

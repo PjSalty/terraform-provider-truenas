@@ -90,6 +90,11 @@ resource "truenas_iscsi_target" "test" {
   mode  = "ISCSI"
 }
 `, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_iscsi_target.test", "alias", "alias-initial"),
 			},
 			{
@@ -103,6 +108,9 @@ resource "truenas_iscsi_target" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_iscsi_target.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_iscsi_target.test", "alias", "alias-updated"),

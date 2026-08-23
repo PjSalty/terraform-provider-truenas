@@ -87,6 +87,9 @@ resource "truenas_cloudsync_credential" "test" {
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_cloudsync_credential.test", plancheck.ResourceActionCreate),
 					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_cloudsync_credential.test", "name", base+"-a"),
 			},
@@ -98,6 +101,9 @@ resource "truenas_cloudsync_credential" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_cloudsync_credential.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_cloudsync_credential.test", "name", base+"-b"),

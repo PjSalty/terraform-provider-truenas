@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // testAccProtoV6ProviderFactories is used for acceptance testing, it
@@ -45,6 +46,11 @@ provider "truenas" {}
 
 data "truenas_system_info" "this" {}
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.truenas_system_info.this", "version"),
 					resource.TestCheckResourceAttrSet("data.truenas_system_info.this", "hostname"),

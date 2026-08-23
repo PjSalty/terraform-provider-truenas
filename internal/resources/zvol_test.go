@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -23,6 +24,11 @@ func TestAccZvol_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccZvolConfigBasic(pool, name, 1073741824),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "pool", pool),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
@@ -55,6 +61,11 @@ func TestAccZvol_withCompression(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccZvolConfigWithCompression(pool, name, 1073741824, "LZ4"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "compression", "LZ4"),
 					resource.TestCheckResourceAttr(resourceName, "volsize", "1073741824"),
@@ -63,6 +74,11 @@ func TestAccZvol_withCompression(t *testing.T) {
 			// Update compression in-place
 			{
 				Config: testAccZvolConfigWithCompression(pool, name, 1073741824, "ZSTD"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "compression", "ZSTD"),
 				),
@@ -152,7 +168,12 @@ func TestAccZvol_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccZvolConfigBasic(pool, name, 1*1024*1024*1024),
-				Check:  testAccCheckZvolExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckZvolExists(resourceName),
 			},
 			{
 				Config:             testAccZvolConfigBasic(pool, name, 1*1024*1024*1024),

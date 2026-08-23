@@ -63,6 +63,11 @@ resource "truenas_nfs_config" "test" {
   protocols = ["NFSV3", "NFSV4"]
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_nfs_config.test", "servers", "2"),
 			},
 			{
@@ -75,6 +80,9 @@ resource "truenas_nfs_config" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_nfs_config.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(

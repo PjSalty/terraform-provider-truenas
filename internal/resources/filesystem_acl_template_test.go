@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -27,6 +28,11 @@ func TestAccFilesystemACLTemplate_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFilesystemACLTemplateConfigBasic("tf-acc-acltmpl"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-acltmpl"),
@@ -126,7 +132,12 @@ func TestAccFilesystemACLTemplate_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFilesystemACLTemplateConfigBasic("tf-acc-acltmpl-disappears"),
-				Check:  testAccCheckFilesystemACLTemplateExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckFilesystemACLTemplateExists(resourceName),
 			},
 			{
 				Config:             testAccFilesystemACLTemplateConfigBasic("tf-acc-acltmpl-disappears"),

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -26,6 +27,11 @@ func TestAccNFSShare_basic(t *testing.T) {
 			// Create and read
 			{
 				Config: testAccNFSShareConfigBasic(pool, datasetName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
@@ -54,6 +60,11 @@ func TestAccNFSShare_withHosts(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccNFSShareConfigWithHosts(pool, datasetName, []string{"10.0.0.1", "10.0.0.2"}),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "hosts.#", "2"),
 					resource.TestCheckResourceAttr(resourceName, "hosts.0", "10.0.0.1"),
@@ -63,6 +74,11 @@ func TestAccNFSShare_withHosts(t *testing.T) {
 			// Update hosts list
 			{
 				Config: testAccNFSShareConfigWithHosts(pool, datasetName, []string{"10.0.0.3"}),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "hosts.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "hosts.0", "10.0.0.3"),
@@ -84,6 +100,11 @@ func TestAccNFSShare_withNetworks(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccNFSShareConfigWithNetworks(pool, datasetName, "192.168.1.0/24"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "networks.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "networks.0", "192.168.1.0/24"),
@@ -181,7 +202,12 @@ func TestAccNFSShare_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccNFSShareConfigBasic(pool, datasetName),
-				Check:  testAccCheckNFSShareExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckNFSShareExists(resourceName),
 			},
 			{
 				Config:             testAccNFSShareConfigBasic(pool, datasetName),

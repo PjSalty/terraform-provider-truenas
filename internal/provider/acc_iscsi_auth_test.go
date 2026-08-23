@@ -75,6 +75,11 @@ resource "truenas_iscsi_auth" "test" {
   secret = "secretpass1234"
 }
 `, tag),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_iscsi_auth.test", "user", "acctest1"),
 			},
 			{
@@ -88,6 +93,9 @@ resource "truenas_iscsi_auth" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_iscsi_auth.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_iscsi_auth.test", "user", "acctest2"),

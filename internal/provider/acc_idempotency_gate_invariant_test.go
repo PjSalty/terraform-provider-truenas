@@ -12,12 +12,11 @@ import (
 
 // ungatedStepCeiling is a ratchet, not a target. It is the number of
 // acceptance TestSteps that apply a config without asserting the plan settles
-// afterwards. It may only go down.
+// afterwards. It may only go down, and it is now at zero.
 //
 // If this fails because the count went UP, the new step needs a gate, not a
-// higher number here. Lowering it is the point: pick a resource, add the gate,
-// run it live, and drop this by however many you fixed.
-const ungatedStepCeiling = 270
+// higher number here.
+const ungatedStepCeiling = 0
 
 // TestAcceptanceStepsHaveIdempotencyGate reports acceptance steps that apply a
 // config and then never check that a follow-up plan is empty.
@@ -79,7 +78,7 @@ func TestAcceptanceStepsHaveIdempotencyGate(t *testing.T) {
 						continue
 					}
 					applied++
-					if keys["ConfigPlanChecks"] {
+					if hasPostApplyCheck(step) {
 						gated++
 						continue
 					}
@@ -113,6 +112,40 @@ func TestAcceptanceStepsHaveIdempotencyGate(t *testing.T) {
 			"Lower ungatedStepCeiling to %d so the ratchet holds the ground you gained.",
 			len(ungated), ungatedStepCeiling, len(ungated))
 	}
+}
+
+// hasPostApplyCheck reports whether a step sets ConfigPlanChecks with
+// PostApplyPostRefresh.
+//
+// The presence of ConfigPlanChecks alone is not enough, and treating it as
+// enough was this invariant's own bug: 54 steps carried a PreApply check that
+// asserts what the plan WILL do and nothing about what it leaves behind, and
+// they counted as gated while asserting nothing about idempotency.
+func hasPostApplyCheck(step *ast.CompositeLit) bool {
+	for _, e := range step.Elts {
+		kv, ok := e.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		id, ok := kv.Key.(*ast.Ident)
+		if !ok || id.Name != "ConfigPlanChecks" {
+			continue
+		}
+		cl, ok := kv.Value.(*ast.CompositeLit)
+		if !ok {
+			return false
+		}
+		for _, el := range cl.Elts {
+			ekv, ok := el.(*ast.KeyValueExpr)
+			if !ok {
+				continue
+			}
+			if eid, ok := ekv.Key.(*ast.Ident); ok && eid.Name == "PostApplyPostRefresh" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // stepKeys returns the field names set on one TestStep literal.

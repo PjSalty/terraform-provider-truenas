@@ -79,13 +79,21 @@ resource "truenas_cronjob" "test" {
 		Steps: []resource.TestStep{
 			{
 				Config: cfg("acctest initial"),
-				Check:  resource.TestCheckResourceAttr("truenas_cronjob.test", "description", "acctest initial"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_cronjob.test", "description", "acctest initial"),
 			},
 			{
 				Config: cfg("acctest updated"),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_cronjob.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_cronjob.test", "description", "acctest updated"),

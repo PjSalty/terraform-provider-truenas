@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccDirectoryServices_disable verifies the singleton resource can be
@@ -20,6 +21,11 @@ func TestAccDirectoryServices_disable(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDirectoryServicesDisabled(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "id", "1"),
 					resource.TestCheckResourceAttr(resourceName, "enable", "false"),
@@ -91,6 +97,11 @@ func TestAccDirectoryServices_fullADLifecycle(t *testing.T) {
 			// AD state yet.
 			{
 				Config: testAccDSConfig_RealmOnly(realm),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_kerberos_realm.ad",
 						"realm", realm),
@@ -102,6 +113,11 @@ func TestAccDirectoryServices_fullADLifecycle(t *testing.T) {
 			// /etc/krb5.conf + nsswitch.conf.
 			{
 				Config: testAccDSConfig_ADEnabled(realm, dcAddr, principal),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "enable", "true"),
 					resource.TestCheckResourceAttr(resourceName, "service_type", "ACTIVEDIRECTORY"),
@@ -112,6 +128,11 @@ func TestAccDirectoryServices_fullADLifecycle(t *testing.T) {
 			// /etc/krb5.conf to defaults.
 			{
 				Config: testAccDSConfig_RealmOnly(realm),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "enable", "false"),
 				),
@@ -119,7 +140,12 @@ func TestAccDirectoryServices_fullADLifecycle(t *testing.T) {
 			// Step 4: remove the realm entirely.
 			{
 				Config: testAccDSConfig_Empty(),
-				Check:  resource.ComposeAggregateTestCheckFunc(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(),
 			},
 		},
 	})

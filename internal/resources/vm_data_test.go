@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccVMDataSource_basic reads a specific VM by id. Env-gated
@@ -33,6 +34,11 @@ data "truenas_vm" "test" {
   id = %s
 }
 `, id),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(dataSourceName, "id", id),
 					resource.TestCheckResourceAttrSet(dataSourceName, "name"),

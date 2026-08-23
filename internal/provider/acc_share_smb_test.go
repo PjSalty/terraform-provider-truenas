@@ -90,6 +90,11 @@ resource "truenas_share_smb" "test" {
   readonly  = false
 }
 `, ds, share),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_share_smb.test", "comment", "initial"),
 					resource.TestCheckResourceAttr("truenas_share_smb.test", "readonly", "false"),
@@ -115,6 +120,9 @@ resource "truenas_share_smb" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_share_smb.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(

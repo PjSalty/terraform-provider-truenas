@@ -67,6 +67,11 @@ resource "truenas_nvmet_global" "test" {
   xport_referral = false
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_nvmet_global.test", "ana", "false"),
 					resource.TestCheckResourceAttr("truenas_nvmet_global.test", "xport_referral", "false"),
@@ -82,6 +87,9 @@ resource "truenas_nvmet_global" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_nvmet_global.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
