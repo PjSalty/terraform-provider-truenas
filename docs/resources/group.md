@@ -29,7 +29,7 @@ resource "truenas_group" "example" {
 
 The following arguments are supported:
 
-* `name` - (Required) The name of the group.
+* `name` - (Required) The name of the group. Letters, digits, underscore, dash and dot, starting with a letter, digit, underscore or dot. Unlike a username there is no length cap.
 * `gid` - (Optional) The GID for the group. If not set, TrueNAS will assign one.
 * `smb` - (Optional) Whether the group should be mapped to a Samba group. Default: `false`.
 * `sudo_commands` - (Optional) List of sudo commands the group members are allowed to run.

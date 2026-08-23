@@ -266,6 +266,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/resources/`. A guide is prose with configuration in it, and the
   configuration goes just as stale. It also handles a fenced block indented
   inside a numbered list, which it had been running straight past.
+- The documented "Valid values" lists were left behind by the validator fixes
+  above, so the Registry page still advertised `GZIP-2` through `GZIP-8` on
+  `truenas_dataset.compression`, still capped `record_size` at `1M`, still
+  named `BACKBLAZE_B2`, and still told you `truenas_vm.name` accepted only
+  alphanumerics. `truenas_directoryservices.service_type` was worse than stale:
+  its list had been rendered as `` `, `, `, ` `` and named nothing at all.
+
+  These lists are hand-written prose, and prose does not move when a validator
+  does. A test now compares every documented list to the resource's own `OneOf`,
+  in both directions, so a doc cannot advertise a value that fails at plan or
+  hide one that works. 55 lists are covered.
 
 - **`idmap = { type = "ISOLATED" }` could not create a container**, which is
   verbatim the snippet in the provider's own published example and what the

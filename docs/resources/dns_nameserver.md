@@ -29,7 +29,7 @@ resource "truenas_dns_nameserver" "primary" {
 
 The following arguments are supported:
 
-* `nameserver1` - (Optional) Primary DNS nameserver IP address.
+* `nameserver1` - (Optional) Primary DNS nameserver IP address, or an empty string to clear it.
 * `nameserver2` - (Optional) Secondary DNS nameserver IP address.
 * `nameserver3` - (Optional) Tertiary DNS nameserver IP address.
 * `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).

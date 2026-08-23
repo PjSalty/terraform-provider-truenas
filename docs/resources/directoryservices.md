@@ -36,7 +36,7 @@ resource "truenas_directoryservices" "this" {
 
 The following arguments are supported:
 
-* `service_type` - (Optional) One of ACTIVEDIRECTORY, IPA, LDAP. Set to empty string to disable. Valid values: `, `, `, `, `, `.
+* `service_type` - (Optional) The directory service to join. Leave unset to disable directory services. Valid values: `ACTIVEDIRECTORY`, `IPA`, `LDAP`.
 * `enable` - (Optional) Whether the directory service is enabled. Default: `false`.
 * `enable_account_cache` - (Optional) Enable backend caching for user and group lists. Default: `true`.
 * `enable_dns_updates` - (Optional) Enable automatic DNS updates via nsupdate. Default: `true`.
