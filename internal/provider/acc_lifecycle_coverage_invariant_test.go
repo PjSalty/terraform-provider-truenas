@@ -90,12 +90,11 @@ var lifecycleResourceExclusions = map[string]map[string]string{
 	// Env-gated / beta, full lifecycle deferred until the test
 	// environment can support the resource. The base test ships a
 	// t.Skip stub when the relevant TRUENAS_TEST_* env var is unset.
-	"App":                 {"update": "beta: full app install too slow/flaky for CI", "import": "beta", "disappears": "beta"},
-	"CloudBackup":         {"update": "env-gated on TRUENAS_TEST_CLOUD_BACKUP", "import": "env-gated"},
-	"CloudSyncCredential": {"import": "env-gated on TRUENAS_TEST_CLOUDSYNC"},
-	"VMware":              {"update": "env-gated on TRUENAS_TEST_VMWARE", "import": "env-gated"},
-	"NetworkInterface":    {"disappears": "real-NIC: deleting a configured NIC could disconnect the test VM"},
-	"Directory":           {"disappears": "TrueNAS exposes no directory-removal API; Delete is state-only and the directory persists on disk, so there is no out-of-band-delete drift to recover from"},
+	"App":              {"update": "beta: full app install too slow/flaky for CI", "import": "beta", "disappears": "beta"},
+	"CloudBackup":      {"update": "env-gated on TRUENAS_TEST_CLOUD_BACKUP", "import": "env-gated"},
+	"VMware":           {"update": "env-gated on TRUENAS_TEST_VMWARE", "import": "env-gated"},
+	"NetworkInterface": {"disappears": "real-NIC: deleting a configured NIC could disconnect the test VM"},
+	"Directory":        {"disappears": "TrueNAS exposes no directory-removal API; Delete is state-only and the directory persists on disk, so there is no out-of-band-delete drift to recover from"},
 
 	// Resources that use a custom-named basic step rather than
 	// _basic, OR that lack a separate _update because they have

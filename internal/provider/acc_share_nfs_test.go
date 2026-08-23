@@ -85,6 +85,11 @@ resource "truenas_share_nfs" "test" {
   enabled = true
 }
 `, ds),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_share_nfs.test", "comment", "initial"),
 					resource.TestCheckResourceAttr("truenas_share_nfs.test", "enabled", "true"),
@@ -106,6 +111,9 @@ resource "truenas_share_nfs" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_share_nfs.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(

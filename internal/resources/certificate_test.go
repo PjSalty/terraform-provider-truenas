@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -67,6 +68,11 @@ func TestAccCertificate_import(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCertificateConfigImport("tf-acc-test-cert", certPEM, keyPEM),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-cert"),
 					resource.TestCheckResourceAttr(resourceName, "create_type", "CERTIFICATE_CREATE_IMPORTED"),
@@ -95,12 +101,22 @@ func TestAccCertificate_updateName(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCertificateConfigImport("tf-acc-test-cert-v1", certPEM, keyPEM),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-cert-v1"),
 				),
 			},
 			{
 				Config: testAccCertificateConfigImport("tf-acc-test-cert-v2", certPEM, keyPEM),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-test-cert-v2"),
 				),
@@ -200,7 +216,12 @@ func TestAccCertificate_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCertificateConfigImport(name, cert, key),
-				Check:  testAccCheckCertificateExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckCertificateExists(resourceName),
 			},
 			{
 				Config:             testAccCertificateConfigImport(name, cert, key),

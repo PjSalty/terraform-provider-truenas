@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 // TestAccDirectoryServicesDataSource_basic reads the always-present
@@ -29,6 +30,11 @@ provider "truenas" {}
 
 data "truenas_directoryservices" "test" {}
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(dataSourceName, "id", "directoryservices"),
 					resource.TestCheckResourceAttrSet(dataSourceName, "enable"),

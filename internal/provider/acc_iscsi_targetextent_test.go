@@ -102,6 +102,11 @@ resource "truenas_iscsi_targetextent" "test" {
   lunid  = 0
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_iscsi_targetextent.test", "lunid", "0"),
 			},
 			{
@@ -115,6 +120,9 @@ resource "truenas_iscsi_targetextent" "test" {
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_iscsi_targetextent.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_iscsi_targetextent.test", "lunid", "3"),

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -47,6 +48,11 @@ func TestAccKerberosKeytab_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccKerberosKeytabConfig("tf-acc-keytab", payload),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-keytab"),
@@ -152,7 +158,12 @@ func TestAccKerberosKeytab_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccKerberosKeytabConfig(name, priv),
-				Check:  testAccCheckKerberosKeytabExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckKerberosKeytabExists(resourceName),
 			},
 			{
 				Config:             testAccKerberosKeytabConfig(name, priv),

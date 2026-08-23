@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -25,6 +26,11 @@ func TestAccNVMetPortSubsys_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccNVMetPortSubsysConfigBasic(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttrSet(resourceName, "port_id"),
@@ -126,7 +132,12 @@ func TestAccNVMetPortSubsys_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccNVMetPortSubsysConfigBasic(),
-				Check:  testAccCheckNVMetPortSubsysExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckNVMetPortSubsysExists(resourceName),
 			},
 			{
 				Config:             testAccNVMetPortSubsysConfigBasic(),

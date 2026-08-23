@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -33,6 +34,11 @@ data "truenas_pool" "test" {
   name = "test"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.truenas_pool.test", "name", "test"),
 					resource.TestCheckResourceAttrSet("data.truenas_pool.test", "id"),
@@ -74,6 +80,11 @@ data "truenas_pool" "test" {
   name = "test"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: func(s *terraform.State) error {
 					rs, ok := s.RootModule().Resources["data.truenas_pool.test"]
 					if !ok {

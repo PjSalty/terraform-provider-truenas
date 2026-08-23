@@ -88,13 +88,21 @@ func TestAccVMDeviceResource_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: vmDeviceConfig(vmName, "1024x768"),
-				Check:  resource.TestCheckResourceAttr("truenas_vm_device.test", "attributes.resolution", "1024x768"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_vm_device.test", "attributes.resolution", "1024x768"),
 			},
 			{
 				Config: vmDeviceConfig(vmName, "1280x1024"),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_vm_device.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_vm_device.test", "attributes.resolution", "1280x1024"),

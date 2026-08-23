@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -23,6 +24,11 @@ func TestAccStaticRoute_basic(t *testing.T) {
 			// Create
 			{
 				Config: testAccStaticRouteConfigBasic("192.168.99.0/24", "192.0.2.1", "test route"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "destination", "192.168.99.0/24"),
@@ -51,6 +57,11 @@ func TestAccStaticRoute_update(t *testing.T) {
 			// Create
 			{
 				Config: testAccStaticRouteConfigBasic("192.168.88.0/24", "192.0.2.1", "initial route"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "destination", "192.168.88.0/24"),
 					resource.TestCheckResourceAttr(resourceName, "description", "initial route"),
@@ -59,6 +70,11 @@ func TestAccStaticRoute_update(t *testing.T) {
 			// Update description and gateway
 			{
 				Config: testAccStaticRouteConfigBasic("192.168.88.0/24", "192.0.2.1", "updated route"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "description", "updated route"),
 				),
@@ -153,7 +169,12 @@ func TestAccStaticRoute_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccStaticRouteConfigBasic("203.0.113.0/24", "192.0.2.1", "tf-acc-disappears"),
-				Check:  testAccCheckStaticRouteExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckStaticRouteExists(resourceName),
 			},
 			{
 				Config:             testAccStaticRouteConfigBasic("203.0.113.0/24", "192.0.2.1", "tf-acc-disappears"),

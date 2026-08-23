@@ -75,13 +75,21 @@ resource "truenas_init_script" "test" {
 		Steps: []resource.TestStep{
 			{
 				Config: cfg("acctest initial"),
-				Check:  resource.TestCheckResourceAttr("truenas_init_script.test", "comment", "acctest initial"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_init_script.test", "comment", "acctest initial"),
 			},
 			{
 				Config: cfg("acctest updated"),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_init_script.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_init_script.test", "comment", "acctest updated"),

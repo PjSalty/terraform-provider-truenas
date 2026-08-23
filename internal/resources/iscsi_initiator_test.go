@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -22,6 +23,11 @@ func TestAccISCSIInitiator_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccISCSIInitiatorConfigBasic(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "comment", "tf-acc-test initiator"),
@@ -123,7 +129,12 @@ func TestAccISCSIInitiator_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccISCSIInitiatorConfigBasic(),
-				Check:  testAccCheckISCSIInitiatorExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckISCSIInitiatorExists(resourceName),
 			},
 			{
 				Config:             testAccISCSIInitiatorConfigBasic(),

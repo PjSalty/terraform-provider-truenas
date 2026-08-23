@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 func TestAccSMBConfig_basic(t *testing.T) {
@@ -17,6 +18,11 @@ func TestAccSMBConfig_basic(t *testing.T) {
 			// Create with defaults
 			{
 				Config: testAccSMBConfigBasic(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "id", "1"),
 					resource.TestCheckResourceAttr(resourceName, "netbiosname", "truenas"),
@@ -45,6 +51,11 @@ func TestAccSMBConfig_update(t *testing.T) {
 			// Create with custom description
 			{
 				Config: testAccSMBConfigCustom("Test SMB Server", "TESTGROUP"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "description", "Test SMB Server"),
 					resource.TestCheckResourceAttr(resourceName, "workgroup", "TESTGROUP"),
@@ -53,6 +64,11 @@ func TestAccSMBConfig_update(t *testing.T) {
 			// Update description
 			{
 				Config: testAccSMBConfigCustom("TrueNAS Server", "WORKGROUP"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "description", "TrueNAS Server"),
 					resource.TestCheckResourceAttr(resourceName, "workgroup", "WORKGROUP"),

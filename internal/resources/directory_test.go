@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -20,6 +21,11 @@ func TestAccDirectory_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDirectoryConfigBasic(pool, datasetName, "755"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "mode", "755"),
@@ -49,6 +55,11 @@ func TestAccDirectory_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDirectoryConfigBasic(pool, datasetName, "755"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "mode", "755"),
 				),
@@ -56,6 +67,11 @@ func TestAccDirectory_update(t *testing.T) {
 			// mode is applied in place via setperm (no replace).
 			{
 				Config: testAccDirectoryConfigBasic(pool, datasetName, "750"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "mode", "750"),
 				),

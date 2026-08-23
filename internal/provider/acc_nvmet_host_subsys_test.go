@@ -107,11 +107,21 @@ func TestAccNVMetHostSubsysResource_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: nvmetHostSubsysConfig(hostnqn, subsysName),
-				Check:  resource.TestCheckResourceAttrSet("truenas_nvmet_host_subsys.test", "id"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttrSet("truenas_nvmet_host_subsys.test", "id"),
 			},
 			{
 				Config: nvmetHostSubsysConfigAlt(hostnqn, hostnqnAlt, subsysName),
-				Check:  resource.TestCheckResourceAttrSet("truenas_nvmet_host_subsys.test", "id"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttrSet("truenas_nvmet_host_subsys.test", "id"),
 			},
 		},
 	})

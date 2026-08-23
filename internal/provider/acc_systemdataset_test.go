@@ -75,6 +75,11 @@ resource "truenas_systemdataset" "test" {
   pool = "test"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.TestCheckResourceAttr("truenas_systemdataset.test", "pool", "test"),
 			},
 			{
@@ -84,6 +89,11 @@ resource "truenas_systemdataset" "test" {
   pool = "test"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_systemdataset.test", "pool", "test"),
 					resource.TestCheckResourceAttrSet("truenas_systemdataset.test", "uuid"),

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 func TestAccSNMPConfig_basic(t *testing.T) {
@@ -17,6 +18,11 @@ func TestAccSNMPConfig_basic(t *testing.T) {
 			// Create with defaults
 			{
 				Config: testAccSNMPConfigBasic(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "id", "1"),
 					resource.TestCheckResourceAttr(resourceName, "community", "public"),
@@ -45,6 +51,11 @@ func TestAccSNMPConfig_update(t *testing.T) {
 			// Create with custom community
 			{
 				Config: testAccSNMPConfigCustom("private", "Server Room"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "community", "private"),
 					resource.TestCheckResourceAttr(resourceName, "location", "Server Room"),
@@ -53,6 +64,11 @@ func TestAccSNMPConfig_update(t *testing.T) {
 			// Update community
 			{
 				Config: testAccSNMPConfigCustom("public", ""),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "community", "public"),
 					resource.TestCheckResourceAttr(resourceName, "location", ""),

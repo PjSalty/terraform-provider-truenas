@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -22,6 +23,11 @@ func TestAccISCSIPortal_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccISCSIPortalConfigBasic(),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "comment", "tf-acc-test portal"),
@@ -126,7 +132,12 @@ func TestAccISCSIPortal_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccISCSIPortalConfigBasic(),
-				Check:  testAccCheckISCSIPortalExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckISCSIPortalExists(resourceName),
 			},
 			{
 				Config:             testAccISCSIPortalConfigBasic(),

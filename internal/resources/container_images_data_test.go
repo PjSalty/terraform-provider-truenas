@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
 )
@@ -42,6 +43,11 @@ data "truenas_container_images" "test" {
   name_prefix = "alpine:"
 }
 `,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(name, "id", "container_images"),
 					resource.TestCheckResourceAttrSet(name, "images.#"),

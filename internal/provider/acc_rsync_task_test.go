@@ -129,13 +129,21 @@ resource "truenas_rsync_task" "test" {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(tpl, "initial"),
-				Check:  resource.TestCheckResourceAttr("truenas_rsync_task.test", "desc", "initial"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_rsync_task.test", "desc", "initial"),
 			},
 			{
 				Config: fmt.Sprintf(tpl, "updated"),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("truenas_rsync_task.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
 					},
 				},
 				Check: resource.TestCheckResourceAttr("truenas_rsync_task.test", "desc", "updated"),

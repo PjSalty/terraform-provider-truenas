@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
@@ -22,6 +23,11 @@ func TestAccISCSIAuth_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccISCSIAuthConfigBasic(99, "tf-acc-user", "TfAccSecret12345"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "tag", "99"),
@@ -106,7 +112,12 @@ func TestAccISCSIAuth_disappears(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccISCSIAuthConfigBasic(98, "tf-acc-disappears", "TfAccDisappear1"),
-				Check:  testAccCheckISCSIAuthExists(resourceName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: testAccCheckISCSIAuthExists(resourceName),
 			},
 			{
 				Config:             testAccISCSIAuthConfigBasic(98, "tf-acc-disappears", "TfAccDisappear1"),
