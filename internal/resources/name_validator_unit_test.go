@@ -137,6 +137,19 @@ func TestNameserverValidatorAcceptsEmpty(t *testing.T) {
 	if v.Description(ctx) == "" || v.MarkdownDescription(ctx) == "" {
 		t.Error("validator has no description")
 	}
+
+	// A null or unknown value is not the practitioner's to justify: it is
+	// absent, or not resolved yet. Judging it would fail plans that are still
+	// waiting on another resource.
+	for _, in := range []types.String{types.StringNull(), types.StringUnknown()} {
+		resp := &validator.StringResponse{}
+		v.ValidateString(ctx, validator.StringRequest{
+			Path: path.Root("nameserver1"), ConfigValue: in,
+		}, resp)
+		if resp.Diagnostics.HasError() {
+			t.Errorf("%v was judged; null and unknown must pass through", in)
+		}
+	}
 }
 
 // TestContainerIdmapWireShape pins the discriminator-sensitive slice key.
@@ -167,6 +180,21 @@ func TestContainerIdmapWireShape(t *testing.T) {
 	got = containerIdmapFromObject(obj(containerIdmapIsolated, types.Int64Value(7)))
 	if got == nil || got.Slice == nil || *got.Slice == nil || **got.Slice != 7 {
 		t.Fatalf("explicit slice lost, got %+v", got)
+	}
+
+	// An unset authmethod must fall back to the upstream default rather than
+	// going out as an empty string, which is not a member of IscsiAuthType.
+	wire := iscsiGroupToWire(ISCSITargetGroupModel{
+		Portal:     types.Int64Value(1),
+		Initiator:  types.Int64Null(),
+		AuthMethod: types.StringNull(),
+		Auth:       types.Int64Null(),
+	})
+	if wire.AuthMethod != iscsiAuthMethodNone {
+		t.Errorf("authmethod = %q, want the upstream default %q", wire.AuthMethod, iscsiAuthMethodNone)
+	}
+	if wire.Initiator != nil || wire.Auth != nil {
+		t.Errorf("an unset initiator or auth must be null, got %v / %v", wire.Initiator, wire.Auth)
 	}
 
 	got = containerIdmapFromObject(obj(containerIdmapDefault, types.Int64Null()))
