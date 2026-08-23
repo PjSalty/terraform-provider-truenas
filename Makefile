@@ -36,9 +36,13 @@ install: build
 	mkdir -p $(PLUGIN_DIR)
 	cp $(BINARY) $(PLUGIN_DIR)/$(BINARY)_v$(VERSION)
 
-## test: Run unit tests with race detection (no live infrastructure). Includes the tiered coverage gate enforced by acc.sh.
+## test: Run unit tests with race detection (no live infrastructure) and the
+## per-package coverage gate. The gate is the same script CI runs, so a green
+## `make test` means a green CI: it used to only claim that, and the difference
+## let two uncovered branches through while `go test -cover` rounded to 100.0%.
 test:
-	$(GO) test -v -count=1 -race -coverprofile=coverage.out $(INTERNAL)
+	$(GO) test -count=1 -race -coverprofile=coverage.out ./...
+	./scripts/coverage-gate.sh coverage.out
 
 ## prod-ready: Run the Phase B battle-hardening invariant tests that gate
 ## a safe production rollout. Fast (<5s), no live infrastructure, no TF_ACC.
