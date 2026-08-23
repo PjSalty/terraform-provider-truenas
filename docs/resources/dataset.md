@@ -43,7 +43,7 @@ The following arguments are supported:
 * `pool` - (Required) The pool to create the dataset in. Changing this attribute forces a new resource to be created.
 * `parent_dataset` - (Optional) Optional parent dataset path relative to pool (e.g., 'parent/child'). The full dataset path will be pool/parent_dataset/name. Changing this attribute forces a new resource to be created.
 * `type` - (Optional) The dataset type: FILESYSTEM or VOLUME. Valid values: `FILESYSTEM`, `VOLUME`. Default: `FILESYSTEM`. Changing this attribute forces a new resource to be created.
-* `compression` - (Optional) Compression algorithm (OFF, LZ4, GZIP, ZSTD, ZLE, LZJB). Valid values: `OFF`, `ON`, `LZ4`, `GZIP`, `GZIP-1`, `GZIP-2`, `GZIP-3`, `GZIP-4`, `GZIP-5`, `GZIP-6`, `GZIP-7`, `GZIP-8`, `GZIP-9`, `ZSTD`, `ZSTD-FAST`, `ZLE`, `LZJB`, `INHERIT`.
+* `compression` - (Optional) Compression algorithm. `INHERIT` takes the parent's setting; the graded `ZSTD-N` and `ZSTD-FAST-N` levels trade CPU for ratio. Valid values: `OFF`, `ON`, `INHERIT`, `LZ4`, `LZJB`, `ZLE`, `GZIP`, `GZIP-1`, `GZIP-9`, `ZSTD`, `ZSTD-FAST`, `ZSTD-1`, `ZSTD-2`, `ZSTD-3`, `ZSTD-4`, `ZSTD-5`, `ZSTD-6`, `ZSTD-7`, `ZSTD-8`, `ZSTD-9`, `ZSTD-10`, `ZSTD-11`, `ZSTD-12`, `ZSTD-13`, `ZSTD-14`, `ZSTD-15`, `ZSTD-16`, `ZSTD-17`, `ZSTD-18`, `ZSTD-19`, `ZSTD-FAST-1`, `ZSTD-FAST-2`, `ZSTD-FAST-3`, `ZSTD-FAST-4`, `ZSTD-FAST-5`, `ZSTD-FAST-6`, `ZSTD-FAST-7`, `ZSTD-FAST-8`, `ZSTD-FAST-9`, `ZSTD-FAST-10`, `ZSTD-FAST-20`, `ZSTD-FAST-30`, `ZSTD-FAST-40`, `ZSTD-FAST-50`, `ZSTD-FAST-60`, `ZSTD-FAST-70`, `ZSTD-FAST-80`, `ZSTD-FAST-90`, `ZSTD-FAST-100`, `ZSTD-FAST-500`, `ZSTD-FAST-1000`.
 * `atime` - (Optional) Access time update behavior (ON, OFF). Valid values: `ON`, `OFF`, `INHERIT`.
 * `deduplication` - (Optional) Deduplication setting (ON, OFF, VERIFY). Valid values: `ON`, `OFF`, `VERIFY`, `INHERIT`.
 * `quota` - (Optional) Dataset quota in bytes. 0 means no quota.
@@ -53,7 +53,7 @@ The following arguments are supported:
 * `snapdir` - (Optional) Snapshot directory visibility (VISIBLE, HIDDEN). Valid values: `VISIBLE`, `HIDDEN`, `INHERIT`.
 * `copies` - (Optional) Number of data copies (1, 2, or 3).
 * `readonly` - (Optional) Read-only setting (ON, OFF). Valid values: `ON`, `OFF`, `INHERIT`.
-* `record_size` - (Optional) Record size (e.g., 128K, 1M). Valid values: 512, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M. Valid values: `512`, `1K`, `2K`, `4K`, `8K`, `16K`, `32K`, `64K`, `128K`, `256K`, `512K`, `1M`, `INHERIT`.
+* `record_size` - (Optional) Suggested block size for files in the dataset, for example `128K`. Valid values: `INHERIT`, `512`, `512B`, `1K`, `2K`, `4K`, `8K`, `16K`, `32K`, `64K`, `128K`, `256K`, `512K`, `1M`, `2M`, `4M`, `8M`, `16M`.
 * `share_type` - (Optional) Share type preset (GENERIC, SMB). Valid values: `GENERIC`, `SMB`, `MULTIPROTOCOL`, `NFS`, `APPS`.
 * `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
 

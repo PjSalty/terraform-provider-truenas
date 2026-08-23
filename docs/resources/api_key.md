@@ -36,7 +36,7 @@ resource "truenas_api_key" "example" {
 The following arguments are supported:
 
 * `name` - (Required) The name of the API key.
-* `username` - (Required) The username this API key is associated with. Changing this attribute forces a new resource to be created.
+* `username` - (Required) The username this API key is associated with. A directory-service username has no length limit; only a local one is capped at 32 characters. Changing this attribute forces a new resource to be created.
 * `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
 
 ### Timeouts

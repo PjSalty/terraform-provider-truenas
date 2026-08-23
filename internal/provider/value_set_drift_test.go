@@ -137,8 +137,15 @@ func oneOfValues(path, attr string) ([]string, error) {
 		return nil, fmt.Errorf("%s: unbalanced OneOf for %q", path, attr)
 	}
 
-	var out []string
 	body := s[j : k+1]
+	// A variadic expansion such as OneOf(smbPurposes...) has no literals to
+	// read. Report that rather than returning an empty set, which a caller
+	// would otherwise read as "this attribute accepts nothing".
+	if strings.Contains(body, "...") {
+		return nil, fmt.Errorf("%s: %q uses a variadic OneOf, its values are not literals", path, attr)
+	}
+
+	var out []string
 	for _, line := range strings.Split(body, "\n") {
 		if idx := strings.Index(line, "//"); idx >= 0 {
 			line = line[:idx]
@@ -151,6 +158,17 @@ func oneOfValues(path, attr string) ([]string, error) {
 			out = append(out, parts[n])
 		}
 	}
-	sort.Strings(out)
-	return out, nil
+	// An empty accepted value cannot be enumerated in prose, so it is dropped
+	// here and callers compare only the nameable ones.
+	kept := out[:0]
+	for _, v := range out {
+		if v != "" {
+			kept = append(kept, v)
+		}
+	}
+	sort.Strings(kept)
+	if len(kept) == 0 {
+		return nil, fmt.Errorf("%s: %q has no literal OneOf values", path, attr)
+	}
+	return kept, nil
 }
