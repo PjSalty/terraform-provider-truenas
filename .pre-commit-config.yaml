@@ -30,7 +30,26 @@ repos:
       - id: go-fmt
       - id: go-imports
         args: ["-local", "github.com/PjSalty/terraform-provider-truenas"]
-      - id: go-vet-mod
+      # No vet hook here on purpose. This block used to carry `go-vet-mod`,
+      # which does not exist in dnephin/pre-commit-golang at any tag; it is an
+      # id from the tekwizely fork. pre-commit refuses to build an environment
+      # when an id is unknown, and it fails at INITIALISATION, so the error was
+      # not "go-vet-mod is broken" but every hook in this file never running:
+      #
+      #   [ERROR] `go-vet-mod` is not present in repository
+      #           https://github.com/dnephin/pre-commit-golang.
+      #
+      # `.git/hooks/pre-commit` was installed and exited non-zero on every
+      # commit, and no CI ran the hooks either, so nothing reported it.
+      #
+      # Swapping in this repo's `go-vet` does not work: it vets the directories
+      # of the changed files, and naming ./tools explicitly fails with "build
+      # constraints exclude all Go files" because tools.go is behind a `tools`
+      # build tag. The module-wide form is the one that works here, which is
+      # exactly why the config asked for -mod in the first place.
+      #
+      # ci.yml's lint job already runs `go vet ./...` on every push and PR, so
+      # the coverage is unchanged and this needs no second hook repo.
       - id: go-mod-tidy
 
   - repo: https://github.com/golangci/golangci-lint
