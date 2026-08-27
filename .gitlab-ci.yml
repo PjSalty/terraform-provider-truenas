@@ -1,0 +1,48 @@
+# Pre-merge hook enforcement.
+#
+# This repo had no pipeline at all, so precommit:drift and precommit:run never
+# ran and `git commit --no-verify` walked straight past every hook. git-hooks.md
+# is explicit that a local hook is fast feedback and not a control; the control
+# is CI, where it cannot be skipped. The adoption audit reported this repo as
+# "SKIP no .gitlab-ci.yml", which read as a pass, until it learned to call that
+# state NO-CI and fail on it.
+#
+# .github/workflows/ci.yml does run on the GitHub mirror, but it runs after the
+# push, so it is not a pre-merge gate for merge requests here.
+
+include:
+  - project: 'infrastructure/homelab-ci-templates'
+    file: '/pre-commit.yml'
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+stages:
+  - validate
+
+# Drift waived, deliberately and out loud, which is the supported way to opt out
+# of the byte comparison (git-hooks.md). This tree is a public Go provider: it
+# carries its own hook set including go-fmt, go-imports, go-mod-tidy and
+# golangci-lint, and canonical's header comments describe the internal estate and
+# would leak through the GitHub mirror. The same waiver the two jellyfin trees
+# use. precommit:run below still enforces the hooks this repo does declare.
+precommit:drift:
+  rules:
+    - when: never
+
+# The shared precommit:run image is python and carries no Go toolchain. The four
+# Go hooks need one: dnephin's are `language: script` wrappers that shell out to
+# `go`, and golangci-lint is `language: golang`, which pre-commit builds from
+# source. Skipping them here is not papering over a failure: ci.yml already runs
+# gofmt, go vet and golangci-lint v2.11.4 against a real toolchain on every push
+# and pull request. What nothing ran before this file existed is everything else
+# in the config, which is the point of adding it: gitleaks, yamllint,
+# check-json, check-toml, check-yaml and the whitespace hooks.
+precommit:run:
+  variables:
+    SKIP: go-fmt,go-imports,go-mod-tidy,golangci-lint
