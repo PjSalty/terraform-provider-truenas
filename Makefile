@@ -192,6 +192,14 @@ docs:
 docs-regen:
 	$(TFPLUGINDOCS) generate --provider-name truenas
 
+## release-check: Validate .goreleaser.yml without releasing anything.
+## Needs goreleaser >= 2.6: the archives.formats key this config uses replaced
+## the older singular `format`, and an older v2 reports it as an unknown field,
+## which reads like the config is broken when the tool is what is stale.
+## CI runs the same check on every push via the same `~> v2` constraint.
+release-check:
+	goreleaser check
+
 ## clean: Remove build artifacts.
 clean:
 	rm -f $(BINARY) coverage.out
