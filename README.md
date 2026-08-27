@@ -357,9 +357,12 @@ v2.0 is validated against live instances of each line:
   resource, the 25.10 SMB share `purpose` vocabulary, and some
   `alert_service` types. If you need those resources on 25.04, stay on
   `1.10.x` until you upgrade SCALE.
-- **SCALE 26.0-BETA**, 143/147; the four failures are 26.0 API drift
-  (`service.start` signature, SMB config shape) tracked for a v2.x
-  release alongside 26.0 final. Note 26.0 removes the REST API
+- **SCALE 26.0.0-BETA.1**, the full acceptance suite passes: 351 of 351
+  acceptance tests that run, 0 failures, with 31 skipped for documented
+  prerequisites (a KMIP server, a second NIC, an app catalog with seeded
+  images, an enterprise licence). Measured 2026-08-27 against a live box.
+  Four of those skips are optional env gates that also pass when enabled,
+  see the acceptance test section below. Note 26.0 removes the REST API
   entirely, so the v1.x line cannot work there at all.
 
 ## Development
@@ -385,6 +388,27 @@ go test ./...
 # Acceptance tests (requires TRUENAS_URL and TRUENAS_API_KEY).
 TF_ACC=1 go test ./internal/resources/ -v -timeout 30m
 ```
+
+Some acceptance tests are gated behind an extra variable because they touch
+something global, need a prerequisite the test cannot create, or are slow.
+Four of them need nothing but the flag and pass against a stock box:
+
+```bash
+TRUENAS_TEST_ACLTEMPLATE=1        # creates and deletes its own ACL template
+TRUENAS_TEST_REPORTING_EXPORTER=1 # creates and deletes its own exporter
+TRUENAS_TEST_CATALOG=1            # reads the built-in catalog
+TRUENAS_TEST_ALERTCLASSES=1       # writes the alert-class singleton, restored on destroy
+```
+
+The rest stay off for a reason, and the reason is not that they are broken:
+
+| gate | why it is off |
+|---|---|
+| `TRUENAS_TEST_IFACE` | a test VM usually has one NIC, and that NIC is the API path |
+| `TRUENAS_TEST_VM_ID` | needs a parent VM the test does not create |
+| `TRUENAS_TEST_KMIP` | changes key management, and wants a real KMIP server |
+| `TRUENAS_TEST_APPS`, `TRUENAS_TEST_CATALOG_APP` | need seeded container images and egress |
+| `TRUENAS_TEST_VMWARE`, `TRUENAS_TEST_CLOUD_*`, `TRUENAS_TEST_AD` | need external services |
 
 ### Generate docs
 

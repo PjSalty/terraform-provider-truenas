@@ -25,7 +25,7 @@ output "catalog_label" {
 
 ### Read-Only
 
-- `id` (String) Catalog ID (always 'catalog' for the singleton).
+- `id` (String) Catalog ID. TrueNAS returns the catalog label here, `TRUENAS` on a stock system, not the literal string `catalog`.
 - `label` (String) Catalog label (typically TRUENAS).
 - `location` (String) On-disk location of the catalog data.
 - `preferred_trains` (List of String) List of preferred catalog trains.
