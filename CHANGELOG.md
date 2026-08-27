@@ -272,6 +272,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Four acceptance tests had been switched off behind env gates long enough to
+  rot, and turning them on found three real defects:
+
+  - `catalog_data_test.go` set `id = "TRUENAS"` on a data source whose `id` is
+    Computed, so the step died with "Cannot set value for this attribute as the
+    provider has marked it as read-only". The catalog is a singleton; there is
+    nothing to select by.
+  - `reporting_exporter_test.go` import-verified `attributes_json`, which
+    TrueNAS enriches with its own defaults (`buffer_on_failures`,
+    `matching_charts`, `send_names_instead_of_ids`, `update_every`). A sparse
+    configuration cannot match an enriched read. The provider-package copy of
+    this test already ignored the field for the same reason.
+  - The same tests used fixed resource names, so one failed run left an
+    exporter behind and every later run died on "Specified name is already in
+    use", which reads like a provider fault rather than leftover state. They
+    are unique per run now.
+
+  The `truenas_catalog` data source also described `id` as "always 'catalog'
+  for the singleton". A live box returns the label, `TRUENAS`.
+
+- `TestAcceptanceConfigsMatchSchema` checks the inline terraform in every
+  acceptance test against the schema, the way the examples and docs are already
+  checked. 461 resource and data blocks across 360 configurations. The
+  read-only `id` above is exactly what it catches, and catching it needed a
+  live run against an env-gated test before this existed.
+
 - Nothing validated `.goreleaser.yml` until a tag was pushed, which is the
   worst moment to learn it is broken: `release.yml` fires only on `v*`. CI now
   runs `goreleaser check` on every push, under the same `~> v2` constraint the

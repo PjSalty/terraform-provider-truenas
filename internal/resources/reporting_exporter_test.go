@@ -20,6 +20,11 @@ func TestAccReportingExporter_basic(t *testing.T) {
 	}
 
 	resourceName := "truenas_reporting_exporter.test"
+	// Unique per run. A fixed name meant one failed run left an exporter
+	// behind and every later run died on
+	// "reporting_exporter_create.name: Specified name is already in use",
+	// which reads like a provider fault rather than leftover state.
+	name := acctest.RandomName("tfaccgraphite")
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -27,7 +32,7 @@ func TestAccReportingExporter_basic(t *testing.T) {
 		CheckDestroy:             testAccCheckReportingExporterDestroy(resourceName),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccReportingExporterConfigBasic("tf-acc-graphite", false),
+				Config: testAccReportingExporterConfigBasic(name, false),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PostApplyPostRefresh: []plancheck.PlanCheck{
 						plancheck.ExpectEmptyPlan(),
@@ -35,7 +40,7 @@ func TestAccReportingExporter_basic(t *testing.T) {
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttr(resourceName, "name", "tf-acc-graphite"),
+					resource.TestCheckResourceAttr(resourceName, "name", name),
 					resource.TestCheckResourceAttr(resourceName, "enabled", "false"),
 				),
 			},
@@ -43,6 +48,14 @@ func TestAccReportingExporter_basic(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+				// The server fills in its own defaults for an exporter, so a
+				// round-tripped attributes_json carries buffer_on_failures,
+				// matching_charts, send_names_instead_of_ids and update_every
+				// that the configuration never set. Comparing a sparse config
+				// against an enriched read can only fail. The same attribute is
+				// ignored for the same reason in
+				// internal/provider/acc_reporting_exporter_test.go.
+				ImportStateVerifyIgnore: []string{"attributes_json"},
 			},
 		},
 	})
@@ -117,6 +130,7 @@ func TestAccReportingExporter_disappears(t *testing.T) {
 		t.Skip("TRUENAS_TEST_REPORTING_EXPORTER=1 not set; skipping")
 	}
 	resourceName := "truenas_reporting_exporter.test"
+	disappearsName := acctest.RandomName("tfaccgraphitedis")
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -124,7 +138,7 @@ func TestAccReportingExporter_disappears(t *testing.T) {
 		CheckDestroy:             testAccCheckReportingExporterDestroy(resourceName),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccReportingExporterConfigBasic("tf-acc-graphite-disappears", false),
+				Config: testAccReportingExporterConfigBasic(disappearsName, false),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PostApplyPostRefresh: []plancheck.PlanCheck{
 						plancheck.ExpectEmptyPlan(),
@@ -133,7 +147,7 @@ func TestAccReportingExporter_disappears(t *testing.T) {
 				Check: testAccCheckReportingExporterExists(resourceName),
 			},
 			{
-				Config:             testAccReportingExporterConfigBasic("tf-acc-graphite-disappears", false),
+				Config:             testAccReportingExporterConfigBasic(disappearsName, false),
 				Check:              testAccCheckReportingExporterDisappears(resourceName),
 				ExpectNonEmptyPlan: true,
 			},
