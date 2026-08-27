@@ -60,23 +60,24 @@ prod-ready:
 	$(GO) test -count=1 -run '^TestResourcesHaveTimeoutsBlock$$' ./internal/provider/
 	@echo "==> Apply-idempotency coverage ratchet"
 	$(GO) test -count=1 -run '^TestIdempotencyCheckCoverage$$' ./internal/provider/
+	$(GO) test -count=1 -run '^TestAcceptanceStepsHaveIdempotencyGate$$' ./internal/provider/
 	@echo "==> Read-only safety rail"
-	$(GO) test -count=1 -run '^TestReadOnly_' ./internal/client/
+	$(GO) test -count=1 -run '^Test(IsReadOnlyMethod|CheckReadOnly)$$' ./internal/wsclient/
 	$(GO) test -count=1 -run '^TestProvider_Configure_ReadOnly' ./internal/provider/
 	$(GO) test -count=1 -run '^TestIntegration_ReadOnly' ./internal/provider/
 	@echo "==> Fault injection"
-	$(GO) test -count=1 -run '^TestFault_' ./internal/client/
+	$(GO) test -count=1 -run '^TestChaos_' ./internal/wsclient/
 	@echo "==> Request timeout plumbing"
-	$(GO) test -count=1 -run '^TestRequestTimeout_' ./internal/client/
+	$(GO) test -count=1 -run '^TestRequestTimeout_' ./internal/wsclient/
 	$(GO) test -count=1 -run '^TestProvider_Configure_RequestTimeout' ./internal/provider/
 	@echo "==> Phase C, plan-modifier hygiene"
 	$(GO) test -count=1 -run '^TestRequiresReplaceRespectsUseStateForUnknown$$' ./internal/provider/
 	$(GO) test -count=1 -run '^TestOptionalComputedHasUseStateForUnknown$$' ./internal/provider/
 	$(GO) test -count=1 -run '^TestPEMEquivalent' ./internal/planmodifiers/
 	@echo "==> Phase C, request ID correlation"
-	$(GO) test -count=1 -run '^(TestNewRequestID|TestDoRequest_EmitsXRequestIDHeader|TestDoRequest_RetriesShareRequestID)' ./internal/client/
+	$(GO) test -count=1 -run '^TestNextRequestID' ./internal/wsclient/
 	@echo "==> Phase D, destroy protection safety rail"
-	$(GO) test -count=1 -run '^TestDestroyProtection' ./internal/client/
+	$(GO) test -count=1 -run '^Test(IsDestructiveMethod|CheckDestroyProtection)$$' ./internal/wsclient/
 	$(GO) test -count=1 -run '^TestProvider_Configure_(DestroyProtection|SafeApply)' ./internal/provider/
 	@echo "==> Phase E, config-time cross-attribute validators"
 	$(GO) test -count=1 -run '^TestRequiredWhenEqual' ./internal/resourcevalidators/
@@ -85,7 +86,7 @@ prod-ready:
 	$(GO) test -count=1 -run '^TestWarnOnDestroy' ./internal/planhelpers/
 	$(GO) test -count=1 -run '^TestDestroyWarningCoverage$$' ./internal/provider/
 	@echo "==> Phase G, secret redaction in error diagnostics"
-	$(GO) test -count=1 -run '^(TestIsSensitiveKey|TestRedact|TestAPIErrorBodyNeverLeaksSecrets|TestDoOnceRedacts)' ./internal/client/
+	$(GO) test -count=1 -run '^Test(IsSensitiveKey|RedactJSONBody|RedactMessage|Redact_)' ./internal/wsclient/
 	@echo "==> Phase H, strict static analysis (golangci-lint, 18 linters)"
 	@test -x "$(GOLANGCI_LINT)" || { \
 		echo "ERROR: golangci-lint not found at $(GOLANGCI_LINT)"; \
@@ -96,10 +97,13 @@ prod-ready:
 	$(GOLANGCI_LINT) run --timeout=5m $(PKGS)
 	@echo "==> Phase I, docs & examples coverage ratchet"
 	$(GO) test -count=1 -run '^TestDocs(Coverage|NoPlaceholders)$$' ./internal/provider/
+	$(GO) test -count=1 -run '^Test(ExamplesMatchSchema|DocsExamplesMatchSchema|DocsValidValuesMatchSchema)$$' ./internal/provider/
 	@echo "==> Phase J, acceptance test coverage ratchet"
 	$(GO) test -count=1 -run '^TestAcceptanceTestCoverage$$' ./internal/provider/
+	@echo "==> Phase K, API value sets match upstream"
+	$(GO) test -count=1 -run '^TestProviderValueSetsMatchAPI$$' ./internal/provider/
 	@echo
-	@echo "All Phase B+C+D+E+F+G+H+I+J battle-hardening invariants green, safe to tag."
+	@echo "All battle-hardening invariants green, safe to tag."
 
 ## testacc: Run acceptance tests against a real TrueNAS instance. Requires TRUENAS_URL, TRUENAS_API_KEY.
 ##          Low-level entry. Prefer `make acc` for the full six-stage pipeline
