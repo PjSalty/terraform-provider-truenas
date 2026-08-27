@@ -47,10 +47,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - run: go build -v ./...
+
+      # release.yml only fires on a tag push, so a broken .goreleaser.yml would
+      # surface at the moment of release and not before. Validating it on every
+      # push costs seconds and moves that discovery to the change that caused
+      # it. Same goreleaser constraint the release job uses, so the two cannot
+      # disagree about what the config means.
+      - name: release config is valid
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: ~> v2
+          args: check
+
+      # `check` validates the schema and stops there: it does not expand a
+      # single template, so a name_template of "{{ .Broken }}" passes it and
+      # fails at release time. A snapshot build does expand them, and builds
+      # every target, which is the only way to know a tag would succeed
+      # without cutting one.
+      #
+      # Weekly rather than per-push because it produces 7 archives, and syft
+      # is installed so the SBOM step is exercised the way release.yml does
+      # it. Nothing is published: --snapshot with --skip=publish,sign.
+      - name: Install syft
+        if: github.event_name == 'schedule'
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: a release would actually build
+        if: github.event_name == 'schedule'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: ~> v2
+          args: release --snapshot --clean --skip=publish,sign
 
   security:
     runs-on: ubuntu-latest
