@@ -272,6 +272,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Nothing validated `.goreleaser.yml` until a tag was pushed, which is the
+  worst moment to learn it is broken: `release.yml` fires only on `v*`. CI now
+  runs `goreleaser check` on every push, under the same `~> v2` constraint the
+  release job uses so the two cannot disagree about what the config means.
+
+  `check` validates the schema and nothing else. It does not expand a single
+  template, so a `name_template` of `{{ .Broken }}` passes it and fails at
+  release time. The weekly scheduled run therefore also does a full snapshot
+  build, which expands every template, produces all seven archives and the
+  checksums, and exercises the SBOM step with syft the way the release job
+  does. Nothing is published: `--snapshot` with `--skip=publish,sign`.
+
+  `make release-check` runs the schema check locally. It needs goreleaser 2.6
+  or newer, because the `archives.formats` key this config uses replaced the
+  older singular `format`; an older v2 reports it as an unknown field, which
+  reads like the config is broken when the tool is what is stale.
+
 - **`make prod-ready` could not run.** The target whose own help says "run this
   before any tag" invoked `./internal/client` seven times, a package deleted in
   the v2.0 WebSocket cutover, and `make` stops at the first failing line. So
