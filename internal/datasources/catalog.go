@@ -39,8 +39,9 @@ func (d *CatalogDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 		Description: "Provides information about the singleton TrueNAS SCALE application catalog.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Description: "Catalog ID (always 'catalog' for the singleton).",
-				Computed:    true,
+				Description: "Catalog ID. TrueNAS returns the catalog label here, " +
+					"'TRUENAS' on a stock system, not the literal string 'catalog'.",
+				Computed: true,
 			},
 			"label": schema.StringAttribute{
 				Description: "Catalog label (typically TRUENAS).",
