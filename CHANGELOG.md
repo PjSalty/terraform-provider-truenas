@@ -272,6 +272,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`make prod-ready` could not run.** The target whose own help says "run this
+  before any tag" invoked `./internal/client` seven times, a package deleted in
+  the v2.0 WebSocket cutover, and `make` stops at the first failing line. So
+  everything after it never ran either: the strict static analysis, the docs and
+  examples ratchet, and the acceptance-coverage ratchet were all unreachable,
+  while the target still ended by printing "safe to tag".
+
+  Every safety rail it claimed still exists; they moved packages and changed
+  names. The read-only rail is `TestIsReadOnlyMethod` and `TestCheckReadOnly` in
+  `wsclient`, destroy protection is `TestIsDestructiveMethod` and
+  `TestCheckDestroyProtection`, fault injection is the `TestChaos_` family, and
+  redaction is `TestRedact*`. Each line now points at a test that exists, and
+  each was confirmed to match a non-zero number of tests rather than silently
+  matching none.
+
+  Two of the old assertions do not carry over to JSON-RPC and are gone rather
+  than faked: an `X-Request-ID` header has no equivalent when the id is a
+  protocol field, and retries deliberately mint a fresh id, since reusing one
+  across a reconnect could correlate with a stale response. `TestNextRequestID`
+  covers what remains.
+
+  The gate also picked up the invariants added since it broke: the acceptance
+  idempotency ratchet, the examples and doc-snippet schema checks, and the API
+  value-set check.
+
 - The SMB preset compatibility test skipped `EXTERNAL_SHARE` with the reason
   "truenas_share_smb exposes no preset-options map". That was true when it was
   written and stopped being true when the `options` block landed, so a test
