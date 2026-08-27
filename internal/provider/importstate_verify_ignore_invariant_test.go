@@ -74,6 +74,7 @@ var allowedIgnoreFields = map[string]string{
 	"alert_service_test.go::settings_json":                       "settings_json contains the alert receiver password which TrueNAS masks on read",
 	"acc_cloudsync_credential_test.go::provider_attributes_json": "cloud-credential attributes contain S3/B2/etc secret keys masked on read",
 	"acc_reporting_exporter_test.go::attributes_json":            "graphite/influx/etc auth tokens inside attributes_json are masked on read",
+	"reporting_exporter_test.go::attributes_json":                "TrueNAS fills in its own exporter defaults (buffer_on_failures, matching_charts, send_names_instead_of_ids, update_every), so an enriched read cannot match a sparse config",
 	"acc_filesystem_acl_template_test.go::acl_json":              "TrueNAS canonicalises ACL JSON server-side; bit-exact round-trip is not guaranteed",
 
 	// Write-only convenience or trigger flags that have no Read counterpart.
