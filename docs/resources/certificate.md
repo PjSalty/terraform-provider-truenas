@@ -2,12 +2,12 @@
 page_title: "truenas_certificate Resource - terraform-provider-truenas"
 subcategory: "Users & RBAC"
 description: |-
-  Manages a TLS certificate on TrueNAS SCALE. Default timeouts: 20m create (ACME/CSR signing can be slow), 10m update/delete.
+  Manages a TLS certificate on TrueNAS SCALE.
 ---
 
 # truenas_certificate (Resource)
 
-Manages a TLS certificate on TrueNAS SCALE. Default timeouts: 20m create (ACME/CSR signing can be slow), 10m update/delete.
+Manages a TLS certificate on TrueNAS SCALE.
 
 Managed attributes map directly to the TrueNAS SCALE API. Changes are applied
 via the JSON-RPC endpoint on the target system; mutations that cannot be
@@ -55,7 +55,9 @@ permanent diff.
 
 ### Satisfy a signing request through ACME
 
-ACME needs an existing CSR and an authenticator for every domain in it.
+ACME needs an existing CSR and an authenticator for every domain in it. The
+`dns_mapping` keys are matched against the CSR as TrueNAS stores it, so each
+`san` is keyed with its `DNS:` kind.
 
 ```terraform
 resource "truenas_acme_dns_authenticator" "cloudflare" {
@@ -63,7 +65,7 @@ resource "truenas_acme_dns_authenticator" "cloudflare" {
   authenticator = "cloudflare"
   attributes = {
     cloudflare_email   = "dns@example.com"
-    cloudflare_api_key = var.cloudflare_api_key
+    api_key            = var.cloudflare_api_key
   }
 }
 
@@ -75,9 +77,12 @@ resource "truenas_certificate" "acme" {
   tos                = true
   renew_days         = 10
 
+  # Keyed the way TrueNAS reads the CSR back, which is where it compares
+  # them: each san carries its general-name kind. A bare name is refused with
+  # "<name> not specified in the CSR" unless it is also the common name.
   dns_mapping = {
-    "app.example.com"     = truenas_acme_dns_authenticator.cloudflare.id
-    "www.app.example.com" = truenas_acme_dns_authenticator.cloudflare.id
+    "DNS:app.example.com"     = truenas_acme_dns_authenticator.cloudflare.id
+    "DNS:www.app.example.com" = truenas_acme_dns_authenticator.cloudflare.id
   }
 }
 ```
@@ -90,10 +95,10 @@ checks both directions at plan time.
 
 | `create_type` | Required | Rejected |
 |---|---|---|
-| `CERTIFICATE_CREATE_IMPORTED` | `certificate`, `privatekey` | the ACME arguments |
-| `CERTIFICATE_CREATE_CSR` | `san` (at least one), plus `key_length` unless `key_type = "EC"` | the ACME arguments |
-| `CERTIFICATE_CREATE_IMPORTED_CSR` | `certificate` | the ACME arguments |
-| `CERTIFICATE_CREATE_ACME` | `tos`, `csr_id`, `acme_directory_uri`, `dns_mapping` | - |
+| `CERTIFICATE_CREATE_IMPORTED` | `certificate`, `privatekey` | `csr`, the ACME arguments |
+| `CERTIFICATE_CREATE_CSR` | `san` (at least one), plus `key_length` unless `key_type = "EC"` | `csr`, the ACME arguments |
+| `CERTIFICATE_CREATE_IMPORTED_CSR` | `csr`, `privatekey` | the ACME arguments |
+| `CERTIFICATE_CREATE_ACME` | `tos`, `csr_id`, `acme_directory_uri`, `dns_mapping` | `csr` |
 
 `renew_days` is the one ACME argument that is optional; TrueNAS defaults it to
 10. `key_type` and `digest_algorithm` are optional for a CSR for the same
@@ -110,7 +115,7 @@ The following arguments are supported:
 * `key_type` - (Optional) The key type: RSA or EC. Valid values: `RSA`, `EC`. Changing this attribute forces a new resource to be created.
 * `key_length` - (Optional) The key length in bits. Required for CERTIFICATE_CREATE_CSR unless `key_type` is `EC`. Valid values: `2048`, `4096`.
 * `digest_algorithm` - (Optional) The digest algorithm (e.g., SHA256, SHA384). Valid values: `SHA224`, `SHA256`, `SHA384`, `SHA512`.
-* `lifetime` - (Optional) The certificate lifetime in days (1-36500).
+
 * `country` - (Optional) The certificate country (C). Two-letter ISO 3166 code.
 * `state` - (Optional) The certificate state/province (ST).
 * `city` - (Optional) The certificate city/locality (L).
@@ -119,27 +124,31 @@ The following arguments are supported:
 * `email` - (Optional) The certificate email address.
 * `common` - (Optional) The common name (CN) of the certificate.
 * `san` - (Optional) Subject alternative names, written as bare values such as `example.com`. Required for CERTIFICATE_CREATE_CSR, which needs at least one entry.
+* `csr` - (Optional) The PEM-encoded certificate signing request. Required for CERTIFICATE_CREATE_IMPORTED_CSR, which imports a request generated elsewhere together with its `privatekey`, and rejected on every other create_type. Changing this attribute forces a new resource to be created.
 * `tos` - (Optional) CERTIFICATE_CREATE_ACME only, and required for it. Accept the ACME provider's terms of service.
 * `csr_id` - (Optional) CERTIFICATE_CREATE_ACME only, and required for it. ID of an existing certificate signing request to satisfy, typically another `truenas_certificate` created with CERTIFICATE_CREATE_CSR.
 * `acme_directory_uri` - (Optional) CERTIFICATE_CREATE_ACME only, and required for it. The ACME directory URI, for example `https://acme-v02.api.letsencrypt.org/directory`.
 * `renew_days` - (Optional) CERTIFICATE_CREATE_ACME only. Days before expiry to attempt renewal, between 1 and 30. Defaults to 10 when unset.
-* `dns_mapping` - (Optional) CERTIFICATE_CREATE_ACME only, and required for it. Maps each domain in the CSR to the ID of a `truenas_acme_dns_authenticator` that can complete the DNS-01 challenge for it. The keys are the CSR's `common` and `san` values as written there, and every one of them must appear: TrueNAS refuses the request naming any domain it cannot authenticate, and refuses a key that is not in the CSR.
+* `dns_mapping` - (Optional) CERTIFICATE_CREATE_ACME only, and required for it. Maps each domain in the CSR to the ID of a `truenas_acme_dns_authenticator` that can complete the DNS-01 challenge for it. Key each `san` entry the way TrueNAS reads it back, with its general-name kind attached (`DNS:app.example.com`), and the `common` name as written. TrueNAS compares the raw keys against the CSR's stored domain list, so a bare `san` name is refused with "not specified in the CSR" unless it is also the common name. Every domain in the CSR must be covered, or the request is refused naming the one that is not.
 * `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
 
 ### Timeouts
 
 The `timeouts` block supports:
 
-* `create` - (Default `10m`) Timeout for creating the resource.
-* `read` - (Default `5m`) Timeout for reading the resource.
-* `update` - (Default `10m`) Timeout for updating the resource.
-* `delete` - (Default `10m`) Timeout for deleting the resource.
+* `create`, `read`, `update`, `delete`
+
+The block is accepted and stored, and **nothing in the provider reads it yet**:
+every resource declares one and none consumes it, so a value set here does not
+change how long an operation is allowed to take. The page previously advertised
+a 20m create default in one place and 10m in another, and neither was enforced.
 
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The unique identifier of the `truenas_certificate` resource.
+* `lifetime` - The certificate validity period, as reported by TrueNAS. Read-only: `certificate.create` has no lifetime field on any supported version, so it cannot be requested.
 * `dn` - The full distinguished name.
 * `from` - The certificate valid-from date.
 * `until` - The certificate valid-until date.

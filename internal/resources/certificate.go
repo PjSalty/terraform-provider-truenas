@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/mapvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -63,6 +64,7 @@ type CertificateResourceModel struct {
 	Email              types.String   `tfsdk:"email"`
 	Common             types.String   `tfsdk:"common"`
 	SAN                types.List     `tfsdk:"san"`
+	CSR                types.String   `tfsdk:"csr"`
 	TOS                types.Bool     `tfsdk:"tos"`
 	CSRID              types.Int64    `tfsdk:"csr_id"`
 	AcmeDirectoryURI   types.String   `tfsdk:"acme_directory_uri"`
@@ -188,12 +190,16 @@ func (r *CertificateResource) Schema(ctx context.Context, _ resource.SchemaReque
 				},
 			},
 			"lifetime": schema.Int64Attribute{
-				Description: "The certificate lifetime in days (1-36500).",
-				Optional:    true,
-				Computed:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(1, 36500),
-				},
+				// Read-only, because certificate.create has no lifetime field
+				// on any supported version: it is on CertificateEntry, the
+				// query model, and nowhere else. As an Optional argument it
+				// passed plan, was never sent, and was then either overwritten
+				// from the parsed certificate or silently kept as a value the
+				// server had never been told. A Computed-only attribute says
+				// so at plan time instead.
+				Description: "The certificate validity period, as reported by TrueNAS. " +
+					"Read-only: `certificate.create` has no lifetime field, so it cannot be requested.",
+				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
@@ -288,6 +294,22 @@ func (r *CertificateResource) Schema(ctx context.Context, _ resource.SchemaReque
 				},
 			},
 
+			"csr": schema.StringAttribute{
+				Description: "The PEM-encoded certificate signing request. Required for " +
+					"CERTIFICATE_CREATE_IMPORTED_CSR, which imports a CSR generated " +
+					"elsewhere together with its `privatekey`, and rejected on every " +
+					"other create_type.",
+				Optional: true,
+				Computed: true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+
 			// ACME. All five are rejected outright on any other create_type,
 			// and all but renew_days are required for this one. ModifyPlan
 			// enforces both directions; see the CERTIFICATE_CREATE_ACME case
@@ -317,6 +339,14 @@ func (r *CertificateResource) Schema(ctx context.Context, _ resource.SchemaReque
 					"directory URI, for example " +
 					"`https://acme-v02.api.letsencrypt.org/directory`.",
 				Optional: true,
+				Validators: []validator.String{
+					// Upstream types this NonEmptyString. Without the length
+					// rule an empty string satisfied the presence check here
+					// and was then dropped by omitempty, so the server saw the
+					// field missing and answered with the same "Input should
+					// be a valid string" this change exists to prevent.
+					stringvalidator.LengthAtLeast(1),
+				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -338,6 +368,13 @@ func (r *CertificateResource) Schema(ctx context.Context, _ resource.SchemaReque
 					"authenticate, and refuses a key that is not in the CSR.",
 				Optional:    true,
 				ElementType: types.Int64Type,
+				Validators: []validator.Map{
+					// An empty map satisfied the presence check and was then
+					// dropped by omitempty. It could never have worked: a CSR
+					// always has at least one domain, and issuance refuses any
+					// domain without an authenticator.
+					mapvalidator.SizeAtLeast(1),
+				},
 				PlanModifiers: []planmodifier.Map{
 					mapplanmodifier.RequiresReplace(),
 				},
@@ -448,6 +485,9 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 	if !plan.Common.IsNull() && !plan.Common.IsUnknown() {
 		createReq.Common = plan.Common.ValueString()
 	}
+	if !plan.CSR.IsNull() && !plan.CSR.IsUnknown() {
+		createReq.CSR = plan.CSR.ValueString()
+	}
 	if !plan.SAN.IsNull() && !plan.SAN.IsUnknown() {
 		var sans []string
 		resp.Diagnostics.Append(plan.SAN.ElementsAs(ctx, &sans, false)...)
@@ -485,6 +525,15 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		for k, v := range mapping {
 			createReq.DNSMapping[k] = int(v)
 		}
+	}
+
+	// The san and dns_mapping conversions above can fail, and both only
+	// APPEND a diagnostic. Without this the create went out anyway, with the
+	// failed field missing from the payload, so Terraform reported an error
+	// while the server happily made a certificate with the wrong subject
+	// alternative names and no state to manage it by.
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	tflog.Debug(ctx, "Creating certificate", map[string]interface{}{
@@ -653,9 +702,34 @@ func (r *CertificateResource) ModifyPlan(ctx context.Context, req resource.Modif
 	}
 	createType := config.CreateType.ValueString()
 
-	certSet := !config.Certificate.IsNull() && !config.Certificate.IsUnknown() && config.Certificate.ValueString() != ""
-	pkSet := !config.Privatekey.IsNull() && !config.Privatekey.IsUnknown() && config.Privatekey.ValueString() != ""
-	sanSet := !config.SAN.IsNull() && !config.SAN.IsUnknown() && len(config.SAN.Elements()) > 0
+	// "Is this attribute present in the configuration?" is IsNull, NOT
+	// IsNull-or-IsUnknown. ModifyPlanRequest.Config carries UNKNOWN for any
+	// value the practitioner interpolated from something Terraform cannot
+	// resolve yet, and the framework says so on the field itself:
+	//
+	//	Config is the configuration the user supplied for the resource. This
+	//	configuration may contain unknown values if a user uses interpolation
+	//	or other functionality that would prevent Terraform from knowing the
+	//	value at request time.
+	//
+	// Unknown therefore means "set, value pending", and treating it as unset
+	// rejects the two-resource ACME configuration this provider documents:
+	// csr_id = truenas_certificate.csr.id is unknown on a first apply, so the
+	// required-field check failed on the very workflow it exists to enable.
+	// Every framework validator guards the same way (ConfigValue.IsUnknown ->
+	// return); this is the one place that has to do it by hand.
+	//
+	// A value-dependent test (non-empty string, non-empty list) can only run
+	// when the value is known, so an unknown one is accepted here and left to
+	// the server.
+	certSet := !config.Certificate.IsNull() &&
+		(config.Certificate.IsUnknown() || config.Certificate.ValueString() != "")
+	pkSet := !config.Privatekey.IsNull() &&
+		(config.Privatekey.IsUnknown() || config.Privatekey.ValueString() != "")
+	sanSet := !config.SAN.IsNull() &&
+		(config.SAN.IsUnknown() || len(config.SAN.Elements()) > 0)
+	csrSet := !config.CSR.IsNull() &&
+		(config.CSR.IsUnknown() || config.CSR.ValueString() != "")
 
 	switch createType {
 	case "CERTIFICATE_CREATE_IMPORTED":
@@ -671,6 +745,26 @@ func (r *CertificateResource) ModifyPlan(ctx context.Context, req resource.Modif
 				path.Root("privatekey"),
 				"Missing privatekey",
 				"create_type=CERTIFICATE_CREATE_IMPORTED requires `privatekey` to be set to a PEM-encoded private key.",
+			)
+		}
+	case "CERTIFICATE_CREATE_IMPORTED_CSR":
+		// CertificateCreateImportedCSRPayload is name + CSR + privatekey.
+		// The provider had no csr attribute at all, so this create_type was
+		// in the schema's OneOf and in the docs and could never succeed.
+		if !csrSet {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("csr"),
+				"Missing csr",
+				"create_type=CERTIFICATE_CREATE_IMPORTED_CSR requires `csr` to be set to a "+
+					"PEM-encoded certificate signing request.",
+			)
+		}
+		if !pkSet {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("privatekey"),
+				"Missing privatekey",
+				"create_type=CERTIFICATE_CREATE_IMPORTED_CSR requires `privatekey`, the key "+
+					"the request was generated with.",
 			)
 		}
 	case "CERTIFICATE_CREATE_CSR":
@@ -701,11 +795,15 @@ func (r *CertificateResource) ModifyPlan(ctx context.Context, req resource.Modif
 		// 'SHA256') that is filled in before the check reads them, so demanding
 		// them would refuse configurations the server accepts. key_length is
 		// the only one of the three that defaults to null.
+		// An unknown key_type could be anything, including EC, so the
+		// key_length rule below cannot be decided and is left to the server.
 		keyType := "RSA"
-		if !config.KeyType.IsNull() && !config.KeyType.IsUnknown() && config.KeyType.ValueString() != "" {
+		if config.KeyType.IsUnknown() {
+			keyType = "EC"
+		} else if !config.KeyType.IsNull() && config.KeyType.ValueString() != "" {
 			keyType = config.KeyType.ValueString()
 		}
-		if keyType != "EC" && (config.KeyLength.IsNull() || config.KeyLength.IsUnknown()) {
+		if keyType != "EC" && config.KeyLength.IsNull() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("key_length"),
 				"Missing key_length",
@@ -732,13 +830,13 @@ func (r *CertificateResource) ModifyPlan(ctx context.Context, req resource.Modif
 			set     bool
 			hint    string
 		}{
-			{"tos", "Missing tos", !config.TOS.IsNull() && !config.TOS.IsUnknown(),
+			{"tos", "Missing tos", !config.TOS.IsNull(),
 				"set it to true to accept the ACME provider's terms of service"},
-			{"csr_id", "Missing csr_id", !config.CSRID.IsNull() && !config.CSRID.IsUnknown(),
+			{"csr_id", "Missing csr_id", !config.CSRID.IsNull(),
 				"point it at an existing CSR, typically another truenas_certificate created with CERTIFICATE_CREATE_CSR"},
-			{"acme_directory_uri", "Missing acme_directory_uri", !config.AcmeDirectoryURI.IsNull() && !config.AcmeDirectoryURI.IsUnknown(),
+			{"acme_directory_uri", "Missing acme_directory_uri", !config.AcmeDirectoryURI.IsNull(),
 				"for example https://acme-v02.api.letsencrypt.org/directory"},
-			{"dns_mapping", "Missing dns_mapping", !config.DNSMapping.IsNull() && !config.DNSMapping.IsUnknown(),
+			{"dns_mapping", "Missing dns_mapping", !config.DNSMapping.IsNull(),
 				"map every domain in the CSR to a truenas_acme_dns_authenticator id"},
 		} {
 			if !req.set {
@@ -755,17 +853,26 @@ func (r *CertificateResource) ModifyPlan(ctx context.Context, req resource.Modif
 	// The ACME fields are rejected outright on any other create_type, so say
 	// so here rather than letting middleware answer with a field the
 	// practitioner did not set on purpose.
+	if createType != "CERTIFICATE_CREATE_IMPORTED_CSR" && csrSet {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("csr"),
+			"Invalid csr",
+			fmt.Sprintf("`csr` applies only to create_type=CERTIFICATE_CREATE_IMPORTED_CSR, got %s.",
+				createType),
+		)
+	}
+
 	if createType != "CERTIFICATE_CREATE_ACME" {
 		for _, f := range []struct {
 			name    string
 			summary string
 			set     bool
 		}{
-			{"tos", "Invalid tos", !config.TOS.IsNull() && !config.TOS.IsUnknown()},
-			{"csr_id", "Invalid csr_id", !config.CSRID.IsNull() && !config.CSRID.IsUnknown()},
-			{"acme_directory_uri", "Invalid acme_directory_uri", !config.AcmeDirectoryURI.IsNull() && !config.AcmeDirectoryURI.IsUnknown()},
-			{"renew_days", "Invalid renew_days", !config.RenewDays.IsNull() && !config.RenewDays.IsUnknown()},
-			{"dns_mapping", "Invalid dns_mapping", !config.DNSMapping.IsNull() && !config.DNSMapping.IsUnknown()},
+			{"tos", "Invalid tos", !config.TOS.IsNull()},
+			{"csr_id", "Invalid csr_id", !config.CSRID.IsNull()},
+			{"acme_directory_uri", "Invalid acme_directory_uri", !config.AcmeDirectoryURI.IsNull()},
+			{"renew_days", "Invalid renew_days", !config.RenewDays.IsNull()},
+			{"dns_mapping", "Invalid dns_mapping", !config.DNSMapping.IsNull()},
 		} {
 			if f.set {
 				resp.Diagnostics.AddAttributeError(
@@ -780,12 +887,36 @@ func (r *CertificateResource) ModifyPlan(ctx context.Context, req resource.Modif
 }
 
 func (r *CertificateResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if _, err := strconv.Atoi(req.ID); err != nil {
+	id, err := strconv.Atoi(req.ID)
+	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Certificate ID must be numeric: %s", err))
 		return
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("create_type"), types.StringValue("CERTIFICATE_CREATE_IMPORTED"))...)
+
+	// create_type is not a field on the certificate, but the record says
+	// enough to derive it, so importing does not have to guess. It used to
+	// assume CERTIFICATE_CREATE_IMPORTED unconditionally, and create_type
+	// forces replacement, so importing a CSR or an ACME certificate and then
+	// planning against the configuration that describes it proposed a
+	// destroy and re-create. For an ACME certificate that means re-issuing
+	// from the CA.
+	createType := "CERTIFICATE_CREATE_IMPORTED"
+	cert, err := r.client.GetCertificate(ctx, id)
+	switch {
+	case err != nil:
+		// Read runs straight after this and reports the failure properly.
+		// Falling back to the historical assumption keeps import working
+		// rather than failing on a field that is only a hint.
+		tflog.Debug(ctx, "could not read certificate during import, assuming imported", map[string]interface{}{
+			"id": id, "error": err.Error(),
+		})
+	case cert.CertTypeCSR:
+		createType = "CERTIFICATE_CREATE_CSR"
+	case cert.AcmeURI != "":
+		createType = "CERTIFICATE_CREATE_ACME"
+	}
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("create_type"), types.StringValue(createType))...)
 }
 
 func (r *CertificateResource) mapResponseToModel(ctx context.Context, cert *truenas.Certificate, model *CertificateResourceModel) diag.Diagnostics {
@@ -850,6 +981,8 @@ func (r *CertificateResource) mapResponseToModel(ctx context.Context, cert *true
 	} else {
 		model.Common = types.StringValue("")
 	}
+
+	model.CSR = keepKnownString(model.CSR, cert.CSR)
 
 	// SAN from API. The element type has to be the schema's own, not
 	// types.StringType: a list built with the wrong element type fails to

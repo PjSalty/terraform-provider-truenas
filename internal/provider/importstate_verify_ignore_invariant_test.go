@@ -49,7 +49,7 @@ var allowedIgnoreFields = map[string]string{
 	"container_test.go::pool":               "computed-but-not-readable: pool is on ContainerCreate only, ContainerEntry has no pool field, so no read can report it (ModifyPlan stops this forcing a replace after import)",
 	"container_test.go::timeouts":           "provider-side only: the timeouts block is Terraform config, never round-tripped through the API",
 	"certificate_test.go::timeouts":         "provider-side only: the timeouts block is Terraform config, never round-tripped through the API",
-	"certificate_test.go::create_type":      "computed-but-not-readable: certificate.query reports no field saying how a certificate was made, so ImportState has to assume CERTIFICATE_CREATE_IMPORTED",
+	"certificate_test.go::create_type":      "derived, not returned: certificate.query has no create_type, so ImportState derives it from cert_type_CSR and acme_uri; IMPORTED_CSR stays indistinguishable from IMPORTED once the certificate exists",
 	"certificate_test.go::privatekey":       "private key: write-only; certificate.query never returns it",
 	"certificate_test.go::digest_algorithm": "computed-but-not-readable: certificate.query returns \"\" for a CSR, which has no signed certificate to read the digest off (verified against a live 26.0 box)",
 	"certificate_test.go::san":              "server-normalized: each entry comes back with its general-name kind attached (DNS:example.com); the schema's custom type compares the two spellings equal, but ImportStateVerify compares raw state strings",
