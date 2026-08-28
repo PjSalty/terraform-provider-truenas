@@ -102,9 +102,15 @@ func TestProviderValueSetsMatchAPI(t *testing.T) {
 	}
 }
 
-// oneOfValues reads the string literals of the OneOf validator attached to an
+// oneOfValues reads the literals of the OneOf validator attached to an
 // attribute. It parses the source text rather than the built schema because a
 // validator does not expose its accepted set through the framework interface.
+//
+// The search is bounded to the attribute's own block. It used to run to the
+// end of the file, so an attribute with no stringvalidator.OneOf silently
+// borrowed the next one that appeared: certificate.key_length, an
+// int64validator.OneOf, was compared against digest_algorithm's SHA values and
+// the mismatch was reported against key_length.
 func oneOfValues(path, attr string) ([]string, error) {
 	src, err := os.ReadFile(path)
 	if err != nil {
@@ -115,11 +121,30 @@ func oneOfValues(path, attr string) ([]string, error) {
 	if i < 0 {
 		return nil, fmt.Errorf("%s: attribute %q not found", path, attr)
 	}
-	j := strings.Index(s[i:], "stringvalidator.OneOf(")
-	if j < 0 {
-		return nil, fmt.Errorf("%s: attribute %q has no stringvalidator.OneOf", path, attr)
+	block := s[i:]
+	// Skip this attribute's own ": schema." before looking for the next one.
+	own := len(fmt.Sprintf("%q: schema.", attr))
+	if n := strings.Index(block[own:], ": schema."); n >= 0 {
+		// Trim back to the start of the line the next attribute begins on.
+		end := own + n
+		if nl := strings.LastIndex(block[:end], "\n"); nl >= 0 {
+			end = nl
+		}
+		block = block[:end]
 	}
-	j += i + len("stringvalidator.OneOf(") - 1
+
+	var j int
+	var prefix string
+	for _, p := range []string{"stringvalidator.OneOf(", "int64validator.OneOf("} {
+		if k := strings.Index(block, p); k >= 0 && (prefix == "" || k < j) {
+			j, prefix = k, p
+		}
+	}
+	if prefix == "" {
+		return nil, fmt.Errorf("%s: attribute %q has no OneOf validator", path, attr)
+	}
+	s = block
+	j += len(prefix) - 1
 
 	depth, k := 0, j
 	for ; k < len(s); k++ {
@@ -150,8 +175,9 @@ func oneOfValues(path, attr string) ([]string, error) {
 		if idx := strings.Index(line, "//"); idx >= 0 {
 			line = line[:idx]
 		}
-		for _, m := range strings.Split(line, `"`)[1:] {
-			_ = m
+		if prefix == "int64validator.OneOf(" {
+			out = append(out, numericLiterals(line)...)
+			continue
 		}
 		parts := strings.Split(line, `"`)
 		for n := 1; n < len(parts); n += 2 {
@@ -171,4 +197,12 @@ func oneOfValues(path, attr string) ([]string, error) {
 		return nil, fmt.Errorf("%s: %q has no literal OneOf values", path, attr)
 	}
 	return kept, nil
+}
+
+// numericLiterals pulls the bare integers out of an int64validator.OneOf
+// argument list, which carries no quotes for the string splitter to find.
+func numericLiterals(line string) []string {
+	return strings.FieldsFunc(line, func(r rune) bool {
+		return r < '0' || r > '9'
+	})
 }

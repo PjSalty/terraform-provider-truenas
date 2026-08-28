@@ -272,6 +272,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `truenas_certificate` could not create an ACME certificate at all, and could
+  not create a CSR from a common name. Reported as
+  [#33](https://github.com/PjSalty/terraform-provider-truenas/issues/33).
+
+  `create_type = "CERTIFICATE_CREATE_ACME"` was offered by the schema and
+  documented, but the provider had no `tos`, `csr_id`, `acme_directory_uri`,
+  `renew_days` or `dns_mapping` to send, so every attempt came back rejecting
+  three fields nobody could set. TrueNAS validates the create in two passes: a
+  public model where those default to null, then a per-`create_type` model that
+  declares them non-nullable. All five now exist as attributes and are sent.
+
+  A CSR was rejected the same way from the other direction. The provider
+  required "`common` or at least one `san`", where the server requires a
+  non-empty `san` outright and, for an RSA key, `key_length` with it. Both are
+  now checked at plan time, so the configuration fails before the apply instead
+  of during it.
+
+  The ACME attributes are also refused at plan time on any other `create_type`,
+  which is what the server does with them.
+
+- `truenas_certificate` reported a permanent diff on `san`. A configuration
+  asking for `example.com` got `DNS:example.com` back from the parsed
+  certificate, and the next plan proposed changing it back forever. The two
+  spellings now compare equal, and so do the two OpenSSL uses for an IP entry
+  (`IP:` and `IP Address:`) and for a registered ID (`RID:` and
+  `RegisteredID:`). Two different kinds on the same name stay different.
+
+- A `CERTIFICATE_CREATE_CSR` apply ended in "Provider produced inconsistent
+  result after apply". TrueNAS reads `certificate`, `digest_algorithm` and
+  `lifetime` off a signed certificate, and a CSR has none, so it reports them
+  as `""`, `""` and `0` whatever was asked for. The provider wrote those empties
+  over what the practitioner had configured. It now keeps the configured value
+  when the API has nothing to report, and still overwrites for a `create_type`
+  that does report them, so an out-of-band change is still seen.
+
+- `truenas_certificate` built its `san` list with the wrong element type, so
+  the value could not convert into state. The error was discarded rather than
+  reported.
+
+- `truenas_certificate` accepted `key_length = 1024`, which no supported
+  TrueNAS has ever taken: the model is `Literal[2048, 4096]`. It passed plan
+  and failed at apply.
+
+- The docs invariant that compares a documented "Valid values" list against its
+  validator searched to the end of the file for a `stringvalidator.OneOf`, so
+  an attribute validated with `int64validator.OneOf` silently borrowed the next
+  string one it found and was checked against the wrong set. Bounded to the
+  attribute's own block, and numeric value sets are now read. That found
+  `truenas_iscsi_extent.blocksize` documented as "512 or 4096" where the API
+  takes 512, 1024, 2048 and 4096.
+
 - Four acceptance tests had been switched off behind env gates long enough to
   rot, and turning them on found three real defects:
 
