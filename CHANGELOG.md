@@ -359,6 +359,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `truenas_certificate` and in `truenas_acme_dns_authenticator`, where it had
   been wrong since the example was written.
 
+- Half the acceptance suite never ran. `scripts/acc.sh`, the pipeline whose own
+  banner calls it the full acceptance suite, listed only `internal/resources`
+  and `internal/datasources`. `internal/provider` carries **192** `TestAcc`
+  functions and was not on that line, so `make acc` reported success without
+  having run any of them. They were reachable only through `make testacc`,
+  which nothing in the documented flow calls.
+
+- The acceptance packages raced each other over a single appliance. Ten
+  singleton config resources are exercised from both of them: `smb_config`,
+  `nfs_config`, `ssh_config`, `snmp_config`, `mail_config`, `ftp_config`,
+  `systemdataset`, `network_config`, `ups_config` and `kmip_config`. Run
+  concurrently, whichever test loses the race fails on state the other one set.
+  Caught on a real run: a `TIMEMACHINE_SHARE` preset test in one package turns
+  `aapl_extensions` on, and `TestAccSMBConfigResource_update` in the other died
+  with "This option must be enabled when AFP, time machine, or Final Cut Pro
+  shares are present", on a tree where both pass in isolation. Both runners now
+  pass `-p 1`.
+
+  `TestAccPackagesAreInAccRunner` and `TestAccRunnerIsSerial` hold both of
+  these, and are verified by mutation: dropping the package from the list, or
+  the flag from either runner, fails them.
+
 - Changing `renew_days` on a `truenas_certificate` did nothing. Update sent
   only `name`, so the new value went into state without ever reaching the
   server. Upstream's `CertificateUpdate` model takes `renew_days`, `name` and
