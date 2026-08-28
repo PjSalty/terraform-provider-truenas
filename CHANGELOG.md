@@ -272,6 +272,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `TestAccValidator_Certificate_lifetimeOutOfRange` passed on the wrong
+  diagnostic. Its configuration also set
+  `create_type = "CERTIFICATE_CREATE_INTERNAL"`, which is not in the
+  `create_type` OneOf, so the step failed for two reasons and the assertion
+  could not tell them apart. Split into one case per rule, and the lifetime one
+  now asserts what is actually true: the attribute is read-only.
+
 - `acme_directory_uri = ""` and `dns_mapping = {}` passed the new required-field
   check and were then erased from the request by `omitempty`, so the server saw
   them missing and answered with exactly the error the check exists to prevent.
