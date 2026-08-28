@@ -1,34 +1,61 @@
 # Releasing terraform-provider-truenas
 
-The release process is **fully autonomous**. This document is the runbook for
-the rare case when you need to intervene manually (rollback, emergency fix,
-or rotating the maintenance token).
+Releases are cut by hand from `main` and published by GitHub Actions. This
+document is the runbook.
 
 ## Normal flow, happy path
 
-There is no `git tag` step. Releases are driven by `CHANGELOG.md`:
+1. Open an MR against `main` with your code change. Add an entry under
+   `## [Unreleased]` in `CHANGELOG.md` describing what changed for users.
+2. When the change is ready to ship, open a release MR that renames
+   `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` and adds a fresh empty
+   `## [Unreleased]` block above it. Nothing else goes in that MR.
+3. Merge it.
+4. From a clean checkout of `main` at that merge commit, run `make prod-ready`.
+   It has to print `safe to tag`; that target is the gate, and it exercises
+   the static analysis, the docs and examples ratchets, and the acceptance
+   coverage ratchet.
+5. Tag and push to both remotes:
 
-1. Open a PR against `dev` with your code change. Add an entry under
-   `## [Unreleased]` describing what changed for users.
-2. When the change is ready to ship, **bump the heading**: rename
-   `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` and add a fresh empty
-   `## [Unreleased]` block above it.
-3. Merge the PR (squash) into `dev`.
-4. The `promote` job replicates the `dev` tree to `main` and reads the latest
-   concrete version from `CHANGELOG.md`. If the resulting tag (`vX.Y.Z`) does
-   not yet exist on the remote, it is created and pushed.
-5. The mirror replicates the tag to GitHub. The GitHub Actions release
-   workflow builds, signs, and uploads release artifacts. The Terraform
-   Registry indexes the new version within minutes.
+   ```sh
+   NEW_VERSION=X.Y.Z
+   git tag -a "v${NEW_VERSION}" -m "release: terraform-provider-truenas v${NEW_VERSION}"
+   git push origin "v${NEW_VERSION}"
+   git push https://github.com/PjSalty/terraform-provider-truenas.git "v${NEW_VERSION}"
+   ```
 
-That's it. No manual `git tag`. No manual `terraform-provider-truenas` push.
+   The mirror normally replicates the tag on its own. Pushing both ways
+   guarantees the GitHub Actions release workflow fires even during a mirror
+   outage, and pushing a tag that already exists is a no-op.
+6. `.github/workflows/release.yml` fires on `v*`, runs goreleaser, signs with
+   the GPG key when `GPG_PRIVATE_KEY` is set, and uploads the artifacts. The
+   Terraform Registry indexes the new version within minutes.
+7. Check the release actually contains something before calling it done:
+
+   ```sh
+   gh release view "v${NEW_VERSION}" --json assets --jq '.assets[].name'
+   ```
+
+   A tag can point at a partial tree, and a release can exist with no
+   binaries. Verify the assets, not just that the tag resolves.
+
+There is no `dev` branch and no promote job. An earlier version of this
+document described a `dev` -> `main` promote that read the version out of
+`CHANGELOG.md` and tagged automatically. It does not exist in
+`.gitlab-ci.yml`, and every tag from v2.1.0 onward was made by hand, so the
+runbook was describing a process nobody could follow.
 
 ## Versioning rules
 
-- **Patch (`1.10.x`)**, bug fix, doc fix, dependency bump, no schema change.
-- **Minor (`1.x.0`)**, new resource, new optional attribute, new data source.
-- **Major (`2.0.0`)**, removed/renamed attribute, changed default that
-  breaks state, dropped TrueNAS SCALE version support.
+- **Patch (`X.Y.Z+1`)**, bug fix, doc fix, dependency bump, no schema change.
+- **Minor (`X.Y+1.0`)**, new resource, new optional attribute, new data
+  source. A validator that stops accepting a value the API never accepted is
+  minor: no configuration that worked can break.
+- **Major (`X+1.0.0`)**, removed or renamed attribute, changed default that
+  breaks state, dropped TrueNAS SCALE version support. A rename is major even
+  when the resource it belongs to was non-functional, because the old
+  attribute name in a practitioner's configuration becomes a hard
+  "Unsupported argument" error on upgrade.
 
 ## Rolling back a bad release
 
@@ -36,11 +63,11 @@ If a published version is broken (release-pipeline failure, schema
 regression, signing key issue), do this:
 
 ```sh
-# 1. Delete the tag from GitLab so a future promote can re-publish it cleanly
-glab api --method DELETE "projects/16/repository/tags/v1.10.X"
+# 1. Delete the tag from GitLab so a future release can re-publish it cleanly
+glab api --method DELETE "projects/16/repository/tags/vX.Y.Z"
 
 # 2. Delete the GitHub release + tag
-gh release delete v1.10.X --repo PjSalty/terraform-provider-truenas \
+gh release delete vX.Y.Z --repo PjSalty/terraform-provider-truenas \
     --cleanup-tag --yes
 
 # 3. The Terraform Registry caches the version metadata for ~24h. To remove
@@ -48,30 +75,18 @@ gh release delete v1.10.X --repo PjSalty/terraform-provider-truenas \
 #    deleting a published provider version.
 ```
 
-Then fix forward on `dev`, bump `CHANGELOG.md` to the next version, merge.
-The auto-tag step picks up the new version and the registry republishes.
+Then fix forward on `main`, bump `CHANGELOG.md` to the next version, and tag
+again.
 
-## Manual tag (emergency only)
-
-If `promote:to-main` is broken and you need to ship anyway:
-
-```sh
-# Run from a clean checkout of main
-NEW_VERSION=1.10.X
-git tag -a "v${NEW_VERSION}" -m "release: terraform-provider-truenas v${NEW_VERSION}"
-git push origin "v${NEW_VERSION}"
-git push https://github.com/PjSalty/terraform-provider-truenas.git "v${NEW_VERSION}"
-```
-
-The mirror normally handles the second push, but pushing both ways
-guarantees the GitHub Actions release workflow fires even during a mirror
-outage.
-
-## Token rotation
+## PROMOTE_TOKEN
 
 The `PROMOTE_TOKEN` CI variable is a Project Access Token with
-`api + write_repository` scope and Maintainer role. It expires once a year.
-Rotation procedure:
+`api + write_repository` scope and Maintainer role. **Nothing reads it.** It
+was created for the promote job described above, and that job does not exist,
+so the token is an unused credential with write access to the repository.
+
+Either revoke it, or wire the promote job it was made for. Leaving it is the
+one option that has no upside. Rotation, if it is kept:
 
 ```sh
 GLAB_TOKEN=<your admin GitLab PAT>
@@ -95,16 +110,14 @@ curl -sf --header "Private-Token: $GLAB_TOKEN" \
 # 3. Revoke the old token (find its id via GET projects/16/access_tokens)
 ```
 
-A future improvement would be to wire a scheduled `gomplate`-based job that
-rotates this 30 days before expiry, but for now it is a calendar reminder.
-
 ## What the maintenance loop looks like
 
-Renovate runs every Monday at 06:00 UTC against `dev`. For each outdated
-dependency, it opens an MR. Patch + minor updates auto-merge after CI
-passes. Major Go module updates and `terraform-plugin-framework` ecosystem
-bumps require human review (they can change schema behaviour).
+Renovate runs every Monday before 06:00 against the default branch, `main`
+(`renovate.json` sets no `baseBranches`, so the default is used). For each
+outdated dependency it opens an MR. Patch and minor updates auto-merge after
+CI passes. Major Go module updates and `terraform-plugin-framework` ecosystem
+bumps require human review, because they can change schema behaviour.
 
-A typical Monday: 2–6 auto-merged dependency MRs land on `dev`, the promote
-job tags `v1.10.(N+1)` if any of them touched module-affecting files, and a
-new patch release ships. No human action required.
+Those merges accumulate under `## [Unreleased]`. Shipping them is the release
+MR in step 2, which is a deliberate act, not a side effect of a dependency
+bump landing.

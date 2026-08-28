@@ -36,7 +36,7 @@ var (
 )
 
 // SystemUpdateResource manages the TrueNAS SCALE system update configuration -
-// the auto-download toggle and the active release train. This resource does
+// the nightly autocheck toggle and the active update profile. This resource does
 // not apply updates; it only governs how the system behaves when an update
 // becomes available. Applying an update remains a manual action.
 type SystemUpdateResource struct {
@@ -69,16 +69,18 @@ func (r *SystemUpdateResource) Schema(ctx context.Context, _ resource.SchemaRequ
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true}),
 		},
-		Description: "Manages the TrueNAS SCALE system update configuration: the auto-download toggle " +
-			"and the active release train. This resource is a singleton, TrueNAS has exactly one " +
+		Description: "Manages the TrueNAS SCALE system update configuration: the nightly autocheck " +
+			"toggle and the active update profile. This resource is a singleton, TrueNAS has exactly one " +
 			"update config per system. It does NOT execute updates; applying an update is a separate " +
-			"manual action outside Terraform's control. Use this resource to pin a train and/or " +
-			"disable auto-download so that SCALE updates never happen without a conscious action.",
-		MarkdownDescription: "Manages the TrueNAS SCALE system update configuration: the `auto_download` " +
-			"toggle and the active release `train`. This resource is a singleton, TrueNAS has exactly " +
+			"manual action outside Terraform's control. Use this resource to pin an update profile " +
+			"and/or disable the nightly check so that SCALE updates never happen without a " +
+			"conscious action.",
+		MarkdownDescription: "Manages the TrueNAS SCALE system update configuration: the `autocheck` " +
+			"toggle and the active update `profile`. This resource is a singleton, TrueNAS has exactly " +
 			"one update config per system. It does **not** execute updates; applying an update is a " +
-			"separate manual action outside Terraform's control. Use this resource to pin a train " +
-			"and/or disable auto-download so that SCALE updates never happen without a conscious action.",
+			"separate manual action outside Terraform's control. Use this resource to pin an update " +
+			"profile and/or disable the nightly check so that SCALE updates never happen without a " +
+			"conscious action.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:         "Fixed singleton identifier. Always \"system_update\".",
@@ -325,7 +327,7 @@ func (r *SystemUpdateResource) Update(ctx context.Context, req resource.UpdateRe
 // it's a system singleton. Destroying the resource therefore leaves the last
 // applied auto_download and train settings in place on the system. This
 // prevents a surprising reboot-risk vector where `terraform destroy` could
-// unintentionally re-enable auto-download and schedule an upgrade.
+// unintentionally re-enable the nightly check and schedule an upgrade.
 func (r *SystemUpdateResource) Delete(ctx context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 	tflog.Trace(ctx, "Delete SystemUpdate no-op (singleton)")
 }

@@ -335,6 +335,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `truenas_iscsi_extent.blocksize` documented as "512 or 4096" where the API
   takes 512, 1024, 2048 and 4096.
 
+- `truenas_system_update` still described itself as managing `auto_download`
+  and a release `train` on the Registry page, which are the two attributes its
+  rewrite renamed. The schema had moved to `autocheck` and `profile`; only the
+  prose was left behind.
+
+- `docs/RELEASING.md` documented a release process that does not exist. It
+  described opening PRs against a `dev` branch and a `promote` job that reads
+  the version out of `CHANGELOG.md` and tags automatically. There is no `dev`
+  branch, `.gitlab-ci.yml` has no promote job, and every tag from v2.1.0 on
+  was made by hand, so the runbook's "happy path" was unfollowable and its
+  emergency path was the real one. Rewritten to the process that exists,
+  including a step that verifies the published release has assets rather than
+  just a tag that resolves.
+
+  It also documents that `PROMOTE_TOKEN`, a Project Access Token with
+  `api + write_repository` and Maintainer role, is still set as a CI variable
+  and is read by nothing.
+
+- `testdata/fuzz/README.md` was six months stale. It listed 8 fuzz targets
+  where the repo has 99, and the one smoke-run command it offered ran against
+  `./internal/client/`, a package deleted in the v2.0 WebSocket cutover, so it
+  could not work. Rewritten to per-package counts, with
+  `TestFuzzReadmeMatchesTargets` and `TestFuzzReadmeCommandsPointAtRealPackages`
+  asserting the counts and the commands against the code so it cannot rot
+  silently again.
+
 - Four acceptance tests had been switched off behind env gates long enough to
   rot, and turning them on found three real defects:
 
