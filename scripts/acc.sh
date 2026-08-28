@@ -142,8 +142,26 @@ if [ "${ACC_ONLY}" -eq 1 ]; then
   acc_check_pool
 fi
 
+# -p 1 is not a tuning choice. The whole suite runs against ONE appliance, and
+# ten singleton config resources are exercised from both acceptance packages:
+# smb_config, nfs_config, ssh_config, snmp_config, mail_config, ftp_config,
+# systemdataset, network_config, ups_config and kmip_config. Left parallel, go
+# test runs the two packages at once and they fight over those singletons.
+# Observed 2026-08-28: TestAccSMBShare_purposePreset_25_10/TIMEMACHINE_SHARE in
+# internal/resources turns aapl_extensions ON, and TestAccSMBConfigResource_update
+# in internal/provider failed mid-flight with
+#
+#   [EINVAL] smb_update.aapl_extensions: This option must be enabled when AFP,
+#   time machine, or Final Cut Pro shares are present
+#
+# on a tree where both had passed separately. Any of the ten can lose that race.
+#
+# shortcut: serialising the packages roughly doubles wall clock. If that becomes
+# the constraint, the surgical version is a file lock per singleton (flock on a
+# name like smb_config) so only the contended tests serialise, and the other 380
+# stay parallel.
 ACCEPTANCE_ARGS=(
-  -v -count=1 -timeout 120m -race
+  -v -count=1 -timeout 240m -race -p 1
 )
 
 if [ -n "${RESOURCE}" ]; then
@@ -155,7 +173,12 @@ LOG="${REPO_ROOT}/acc-$(date +%Y%m%d-%H%M%S).log"
 acc_info "streaming output and saving full log to ${LOG}"
 
 set +e
-TF_ACC=1 go test "${ACCEPTANCE_ARGS[@]}" ./internal/resources/ ./internal/datasources/ 2>&1 | tee "${LOG}"
+# internal/provider carries 192 TestAcc functions and was NOT in this list, so
+# the pipeline that calls itself the full acceptance suite never ran half of
+# them. They are not dead: `make testacc` runs ./internal/... and reaches them,
+# which is how the singleton race above was found. TestAccPackagesAreInAccRunner
+# fails if a package with TestAcc functions goes missing from this line again.
+TF_ACC=1 go test "${ACCEPTANCE_ARGS[@]}" ./internal/resources/ ./internal/datasources/ ./internal/provider/ 2>&1 | tee "${LOG}"
 ACC_STATUS=${PIPESTATUS[0]}
 set -e
 
