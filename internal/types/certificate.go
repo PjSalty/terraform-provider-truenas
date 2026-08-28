@@ -28,6 +28,13 @@ type Certificate struct {
 	Parsed             bool     `json:"parsed"`
 	DN                 string   `json:"DN"`
 	SAN                []string `json:"san"`
+
+	// How the certificate came to exist. certificate.query reports this, so
+	// ImportState does not have to assume: cert_type_CSR marks a request that
+	// has not been signed yet, and acme_uri is set only on one issued through
+	// ACME.
+	CertTypeCSR bool   `json:"cert_type_CSR"`
+	AcmeURI     string `json:"acme_uri"`
 }
 
 // CertificateCreateRequest is the body for POST /certificate /
@@ -49,6 +56,12 @@ type CertificateCreateRequest struct {
 	Email              string   `json:"email,omitempty"`
 	Common             string   `json:"common,omitempty"`
 	SAN                []string `json:"san,omitempty"`
+
+	// create_type = CERTIFICATE_CREATE_IMPORTED_CSR. That model is
+	// name + CSR + privatekey, and the provider had no way to send the CSR
+	// itself, so the create_type was offered by the schema and could never
+	// succeed. Same shape as the ACME gap.
+	CSR string `json:"CSR,omitempty"`
 
 	// ACME, for create_type = CERTIFICATE_CREATE_ACME. Middleware validates
 	// that create_type against CertificateCreateACMEArgs, where tos, csr_id,

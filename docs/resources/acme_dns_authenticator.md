@@ -23,7 +23,7 @@ resource "truenas_acme_dns_authenticator" "example" {
   authenticator = "cloudflare"
   attributes = {
     cloudflare_email   = "dns@example.com"
-    cloudflare_api_key = "changeme"
+    api_key            = "changeme"
   }
 }
 ```
