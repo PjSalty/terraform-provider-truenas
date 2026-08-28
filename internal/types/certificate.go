@@ -69,8 +69,14 @@ type CertificateCreateRequest struct {
 	DNSMapping       map[string]int `json:"dns_mapping,omitempty"`
 }
 
-// CertificateUpdateRequest is the body for PUT /certificate/id/{id} /
-// JSON-RPC certificate.update. Only Name is mutable post-creation.
+// CertificateUpdateRequest is the body for certificate.update. Upstream's
+// CertificateUpdate model carries exactly three fields; everything else about
+// a certificate is fixed at creation. add_to_trusted_store is not modeled by
+// this provider yet.
+//
+// RenewDays is a pointer so an unset value is omitted rather than sent as 0,
+// which is outside the 1..30 the server accepts.
 type CertificateUpdateRequest struct {
-	Name string `json:"name,omitempty"`
+	Name      string `json:"name,omitempty"`
+	RenewDays *int   `json:"renew_days,omitempty"`
 }
