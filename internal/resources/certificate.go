@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -21,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/customtypes"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planmodifiers"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators"
@@ -59,6 +61,11 @@ type CertificateResourceModel struct {
 	Email              types.String   `tfsdk:"email"`
 	Common             types.String   `tfsdk:"common"`
 	SAN                types.List     `tfsdk:"san"`
+	TOS                types.Bool     `tfsdk:"tos"`
+	CSRID              types.Int64    `tfsdk:"csr_id"`
+	AcmeDirectoryURI   types.String   `tfsdk:"acme_directory_uri"`
+	RenewDays          types.Int64    `tfsdk:"renew_days"`
+	DNSMapping         types.Map      `tfsdk:"dns_mapping"`
 	DN                 types.String   `tfsdk:"dn"`
 	From               types.String   `tfsdk:"from"`
 	Until              types.String   `tfsdk:"until"`
@@ -154,11 +161,14 @@ func (r *CertificateResource) Schema(ctx context.Context, _ resource.SchemaReque
 				},
 			},
 			"key_length": schema.Int64Attribute{
-				Description: "The key length in bits (1024, 2048, 4096).",
-				Optional:    true,
-				Computed:    true,
+				Description: "The key length in bits. Required when key_type is RSA. " +
+					"1024 was never accepted: upstream declares Literal[2048, 4096] on " +
+					"every supported release, so offering it only moved the failure to " +
+					"apply time.",
+				Optional: true,
+				Computed: true,
 				Validators: []validator.Int64{
-					int64validator.OneOf(1024, 2048, 4096),
+					int64validator.OneOf(2048, 4096),
 				},
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
@@ -264,13 +274,59 @@ func (r *CertificateResource) Schema(ctx context.Context, _ resource.SchemaReque
 				},
 			},
 			"san": schema.ListAttribute{
-				Description: "Subject alternative names.",
+				Description: "Subject alternative names, as bare values such as " +
+					"`example.com`. TrueNAS reads them back from the parsed certificate " +
+					"with their general-name kind attached (`DNS:example.com`), which is " +
+					"compared as equal rather than as drift.",
 				Optional:    true,
 				Computed:    true,
-				ElementType: types.StringType,
+				ElementType: customtypes.SANEntryType{},
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.UseStateForUnknown(),
 				},
+			},
+
+			// ACME. All five are rejected outright on any other create_type,
+			// and all but renew_days are required for this one. ModifyPlan
+			// enforces both directions; see the CERTIFICATE_CREATE_ACME case
+			// there for which upstream check each one answers.
+			"tos": schema.BoolAttribute{
+				Description: "CERTIFICATE_CREATE_ACME only, and required for it. Accept the " +
+					"ACME provider's terms of service.",
+				Optional: true,
+			},
+			"csr_id": schema.Int64Attribute{
+				Description: "CERTIFICATE_CREATE_ACME only, and required for it. ID of an " +
+					"existing certificate signing request to satisfy, typically another " +
+					"`truenas_certificate` created with CERTIFICATE_CREATE_CSR.",
+				Optional: true,
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
+			},
+			"acme_directory_uri": schema.StringAttribute{
+				Description: "CERTIFICATE_CREATE_ACME only, and required for it. The ACME " +
+					"directory URI, for example " +
+					"`https://acme-v02.api.letsencrypt.org/directory`.",
+				Optional: true,
+			},
+			"renew_days": schema.Int64Attribute{
+				Description: "CERTIFICATE_CREATE_ACME only. Days before expiry to attempt " +
+					"renewal, between 1 and 30. Defaults to 10 when unset.",
+				Optional: true,
+				Validators: []validator.Int64{
+					int64validator.Between(1, 30),
+				},
+			},
+			"dns_mapping": schema.MapAttribute{
+				Description: "CERTIFICATE_CREATE_ACME only, and required for it. Maps each " +
+					"domain in the CSR to the ID of a `truenas_acme_dns_authenticator` that " +
+					"can complete the DNS-01 challenge for it. The keys are the CSR's " +
+					"`common` and `san` values as written there, and every one of them must " +
+					"appear: TrueNAS refuses the request naming any domain it cannot " +
+					"authenticate, and refuses a key that is not in the CSR.",
+				Optional:    true,
+				ElementType: types.Int64Type,
 			},
 			"dn": schema.StringAttribute{
 				Description: "The full distinguished name.",
@@ -342,46 +398,79 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		CreateType: plan.CreateType.ValueString(),
 	}
 
-	if !plan.Certificate.IsNull() {
+	if !plan.Certificate.IsNull() && !plan.Certificate.IsUnknown() {
 		createReq.CertificateData = plan.Certificate.ValueString()
 	}
-	if !plan.Privatekey.IsNull() {
+	if !plan.Privatekey.IsNull() && !plan.Privatekey.IsUnknown() {
 		createReq.Privatekey = plan.Privatekey.ValueString()
 	}
-	if !plan.KeyType.IsNull() {
+	if !plan.KeyType.IsNull() && !plan.KeyType.IsUnknown() {
 		createReq.KeyType = plan.KeyType.ValueString()
 	}
-	if !plan.KeyLength.IsNull() {
+	if !plan.KeyLength.IsNull() && !plan.KeyLength.IsUnknown() {
 		createReq.KeyLength = int(plan.KeyLength.ValueInt64())
 	}
-	if !plan.DigestAlgorithm.IsNull() {
+	if !plan.DigestAlgorithm.IsNull() && !plan.DigestAlgorithm.IsUnknown() {
 		createReq.DigestAlgorithm = plan.DigestAlgorithm.ValueString()
 	}
-	if !plan.Country.IsNull() {
+	if !plan.Country.IsNull() && !plan.Country.IsUnknown() {
 		createReq.Country = plan.Country.ValueString()
 	}
-	if !plan.State.IsNull() {
+	if !plan.State.IsNull() && !plan.State.IsUnknown() {
 		createReq.State = plan.State.ValueString()
 	}
-	if !plan.City.IsNull() {
+	if !plan.City.IsNull() && !plan.City.IsUnknown() {
 		createReq.City = plan.City.ValueString()
 	}
-	if !plan.Organization.IsNull() {
+	if !plan.Organization.IsNull() && !plan.Organization.IsUnknown() {
 		createReq.Organization = plan.Organization.ValueString()
 	}
-	if !plan.OrganizationalUnit.IsNull() {
+	if !plan.OrganizationalUnit.IsNull() && !plan.OrganizationalUnit.IsUnknown() {
 		createReq.OrganizationalUnit = plan.OrganizationalUnit.ValueString()
 	}
-	if !plan.Email.IsNull() {
+	if !plan.Email.IsNull() && !plan.Email.IsUnknown() {
 		createReq.Email = plan.Email.ValueString()
 	}
-	if !plan.Common.IsNull() {
+	if !plan.Common.IsNull() && !plan.Common.IsUnknown() {
 		createReq.Common = plan.Common.ValueString()
 	}
 	if !plan.SAN.IsNull() && !plan.SAN.IsUnknown() {
 		var sans []string
 		resp.Diagnostics.Append(plan.SAN.ElementsAs(ctx, &sans, false)...)
+		// Send bare values. The practitioner may have written the kind
+		// explicitly after reading it back, and the server rejects a doubled
+		// prefix.
+		for i, v := range sans {
+			sans[i] = customtypes.StripSANPrefix(v)
+		}
 		createReq.SAN = sans
+	}
+
+	// ACME. All five are required for that create_type and rejected on the
+	// others, which ModifyPlan checks first, so sending them unconditionally
+	// when set is safe.
+	if !plan.TOS.IsNull() && !plan.TOS.IsUnknown() {
+		v := plan.TOS.ValueBool()
+		createReq.TOS = &v
+	}
+	if !plan.CSRID.IsNull() && !plan.CSRID.IsUnknown() {
+		v := int(plan.CSRID.ValueInt64())
+		createReq.CSRID = &v
+	}
+	if !plan.AcmeDirectoryURI.IsNull() && !plan.AcmeDirectoryURI.IsUnknown() {
+		createReq.AcmeDirectoryURI = plan.AcmeDirectoryURI.ValueString()
+	}
+	if !plan.RenewDays.IsNull() && !plan.RenewDays.IsUnknown() {
+		v := int(plan.RenewDays.ValueInt64())
+		createReq.RenewDays = &v
+	}
+	if !plan.DNSMapping.IsNull() && !plan.DNSMapping.IsUnknown() {
+		mapping := map[string]int64{}
+		resp.Diagnostics.Append(plan.DNSMapping.ElementsAs(ctx, &mapping, false)...)
+		createReq.DNSMapping = make(map[string]int, len(mapping))
+		for k, v := range mapping {
+			createReq.DNSMapping[k] = int(v)
+		}
 	}
 
 	tflog.Debug(ctx, "Creating certificate", map[string]interface{}{
@@ -397,7 +486,7 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	r.mapResponseToModel(ctx, cert, &plan)
+	resp.Diagnostics.Append(r.mapResponseToModel(ctx, cert, &plan)...)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -435,7 +524,7 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 
 	// Preserve the privatekey from state since the API masks it
 	privatekey := state.Privatekey
-	r.mapResponseToModel(ctx, cert, &state)
+	resp.Diagnostics.Append(r.mapResponseToModel(ctx, cert, &state)...)
 	state.Privatekey = privatekey
 
 	diags = resp.State.Set(ctx, state)
@@ -481,7 +570,7 @@ func (r *CertificateResource) Update(ctx context.Context, req resource.UpdateReq
 
 	// Preserve the privatekey from state since the API masks it
 	privatekey := state.Privatekey
-	r.mapResponseToModel(ctx, cert, &plan)
+	resp.Diagnostics.Append(r.mapResponseToModel(ctx, cert, &plan)...)
 	plan.Privatekey = privatekey
 
 	diags = resp.State.Set(ctx, plan)
@@ -544,7 +633,6 @@ func (r *CertificateResource) ModifyPlan(ctx context.Context, req resource.Modif
 
 	certSet := !config.Certificate.IsNull() && !config.Certificate.IsUnknown() && config.Certificate.ValueString() != ""
 	pkSet := !config.Privatekey.IsNull() && !config.Privatekey.IsUnknown() && config.Privatekey.ValueString() != ""
-	commonSet := !config.Common.IsNull() && !config.Common.IsUnknown() && config.Common.ValueString() != ""
 	sanSet := !config.SAN.IsNull() && !config.SAN.IsUnknown() && len(config.SAN.Elements()) > 0
 
 	switch createType {
@@ -564,12 +652,107 @@ func (r *CertificateResource) ModifyPlan(ctx context.Context, req resource.Modif
 			)
 		}
 	case "CERTIFICATE_CREATE_CSR":
-		if !commonSet && !sanSet {
+		// The server requires a non-empty san outright, not "common or san".
+		// CertificateCreateCSRArgs declares san with min_length=1, so a CSR
+		// with only a common name failed at apply while planning clean:
+		//
+		//	[EINVAL] certificate_create_csr.san: List should have at least 1
+		//	item after validation, not 0
+		if !sanSet {
 			resp.Diagnostics.AddAttributeError(
-				path.Root("common"),
-				"Missing identity",
-				"create_type=CERTIFICATE_CREATE_CSR requires either `common` (CN) or at least one SAN entry.",
+				path.Root("san"),
+				"Missing SAN",
+				"create_type=CERTIFICATE_CREATE_CSR requires at least one `san` entry. "+
+					"A common name alone is not enough: TrueNAS validates the request "+
+					"against a model that requires a non-empty san.",
 			)
+		}
+		// An RSA key needs key_length with it:
+		//
+		//	if key_type != 'EC':
+		//	    if not data.get('key_length'):
+		//	        verrors.add(f'{schema}.key_length',
+		//	                    'RSA-based keys require an entry in this field.')
+		//
+		// key_type and digest_algorithm are checked in the same block and are
+		// deliberately NOT required here: both carry a model default ('RSA',
+		// 'SHA256') that is filled in before the check reads them, so demanding
+		// them would refuse configurations the server accepts. key_length is
+		// the only one of the three that defaults to null.
+		keyType := "RSA"
+		if !config.KeyType.IsNull() && !config.KeyType.IsUnknown() && config.KeyType.ValueString() != "" {
+			keyType = config.KeyType.ValueString()
+		}
+		if keyType != "EC" && (config.KeyLength.IsNull() || config.KeyLength.IsUnknown()) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("key_length"),
+				"Missing key_length",
+				"create_type=CERTIFICATE_CREATE_CSR with an RSA key requires `key_length` "+
+					"(2048 or 4096). Set `key_type = \"EC\"` if you did not mean RSA.",
+			)
+		}
+	case "CERTIFICATE_CREATE_ACME":
+		// tos, csr_id and acme_directory_uri default to null in the public
+		// model and are then re-read by a per-create_type model that declares
+		// them non-nullable, which is the three-error reply the issue reported.
+		//
+		// dns_mapping defaults to an empty map and survives that second model,
+		// then fails a later check that every domain in the CSR has an
+		// authenticator ("Please provide DNS authenticator id for ..."). A CSR
+		// always has at least one domain, so an empty map can never work and it
+		// belongs here with the rest.
+		//
+		// renew_days is deliberately absent: it defaults to 10 upstream, so
+		// requiring it would refuse a configuration that applies cleanly.
+		for _, req := range []struct {
+			name    string
+			summary string
+			set     bool
+			hint    string
+		}{
+			{"tos", "Missing tos", !config.TOS.IsNull() && !config.TOS.IsUnknown(),
+				"set it to true to accept the ACME provider's terms of service"},
+			{"csr_id", "Missing csr_id", !config.CSRID.IsNull() && !config.CSRID.IsUnknown(),
+				"point it at an existing CSR, typically another truenas_certificate created with CERTIFICATE_CREATE_CSR"},
+			{"acme_directory_uri", "Missing acme_directory_uri", !config.AcmeDirectoryURI.IsNull() && !config.AcmeDirectoryURI.IsUnknown(),
+				"for example https://acme-v02.api.letsencrypt.org/directory"},
+			{"dns_mapping", "Missing dns_mapping", !config.DNSMapping.IsNull() && !config.DNSMapping.IsUnknown(),
+				"map every domain in the CSR to a truenas_acme_dns_authenticator id"},
+		} {
+			if !req.set {
+				resp.Diagnostics.AddAttributeError(
+					path.Root(req.name),
+					req.summary,
+					fmt.Sprintf("create_type=CERTIFICATE_CREATE_ACME requires `%s`: %s.",
+						req.name, req.hint),
+				)
+			}
+		}
+	}
+
+	// The ACME fields are rejected outright on any other create_type, so say
+	// so here rather than letting middleware answer with a field the
+	// practitioner did not set on purpose.
+	if createType != "CERTIFICATE_CREATE_ACME" {
+		for _, f := range []struct {
+			name    string
+			summary string
+			set     bool
+		}{
+			{"tos", "Invalid tos", !config.TOS.IsNull() && !config.TOS.IsUnknown()},
+			{"csr_id", "Invalid csr_id", !config.CSRID.IsNull() && !config.CSRID.IsUnknown()},
+			{"acme_directory_uri", "Invalid acme_directory_uri", !config.AcmeDirectoryURI.IsNull() && !config.AcmeDirectoryURI.IsUnknown()},
+			{"renew_days", "Invalid renew_days", !config.RenewDays.IsNull() && !config.RenewDays.IsUnknown()},
+			{"dns_mapping", "Invalid dns_mapping", !config.DNSMapping.IsNull() && !config.DNSMapping.IsUnknown()},
+		} {
+			if f.set {
+				resp.Diagnostics.AddAttributeError(
+					path.Root(f.name),
+					f.summary,
+					fmt.Sprintf("`%s` applies only to create_type=CERTIFICATE_CREATE_ACME, got %s.",
+						f.name, createType),
+				)
+			}
 		}
 	}
 }
@@ -583,14 +766,27 @@ func (r *CertificateResource) ImportState(ctx context.Context, req resource.Impo
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("create_type"), types.StringValue("CERTIFICATE_CREATE_IMPORTED"))...)
 }
 
-func (r *CertificateResource) mapResponseToModel(ctx context.Context, cert *truenas.Certificate, model *CertificateResourceModel) {
+func (r *CertificateResource) mapResponseToModel(ctx context.Context, cert *truenas.Certificate, model *CertificateResourceModel) diag.Diagnostics {
 	model.ID = types.StringValue(strconv.Itoa(cert.ID))
 	model.Name = types.StringValue(cert.Name)
-	model.Certificate = types.StringValue(cert.CertificateData)
 	model.KeyType = types.StringValue(cert.KeyType)
 	model.KeyLength = types.Int64Value(int64(cert.KeyLength))
-	model.DigestAlgorithm = types.StringValue(cert.DigestAlgorithm)
-	model.Lifetime = types.Int64Value(int64(cert.Lifetime))
+
+	// A CSR has no signed certificate behind it, so TrueNAS reports these
+	// three as empty for one, whatever was asked for:
+	//
+	//	"certificate": "", "digest_algorithm": "", "lifetime": 0
+	//
+	// They are read off the parsed certificate, and there is not one yet. All
+	// three are Optional+Computed, so overwriting a configured value with the
+	// empty one is "Provider produced inconsistent result after apply", which
+	// Terraform calls a provider bug and which is what a CERTIFICATE_CREATE_CSR
+	// apply used to end with. Keep what the caller already holds when the API
+	// has nothing to say; a create_type that does report these still overwrites
+	// normally, so an out-of-band change is still seen.
+	model.Certificate = keepKnownString(model.Certificate, cert.CertificateData)
+	model.DigestAlgorithm = keepKnownString(model.DigestAlgorithm, cert.DigestAlgorithm)
+	model.Lifetime = keepKnownInt64(model.Lifetime, int64(cert.Lifetime))
 	model.DN = types.StringValue(cert.DN)
 	model.From = types.StringValue(cert.From)
 	model.Until = types.StringValue(cert.Until)
@@ -633,8 +829,29 @@ func (r *CertificateResource) mapResponseToModel(ctx context.Context, cert *true
 		model.Common = types.StringValue("")
 	}
 
-	// SAN from API
+	// SAN from API. The element type has to be the schema's own, not
+	// types.StringType: a list built with the wrong element type fails to
+	// convert into state, and the error used to be discarded here.
 	sanValues := make([]string, 0, len(cert.SAN))
 	sanValues = append(sanValues, cert.SAN...)
-	model.SAN, _ = types.ListValueFrom(ctx, types.StringType, sanValues)
+	san, diags := types.ListValueFrom(ctx, customtypes.SANEntryType{}, sanValues)
+	model.SAN = san
+	return diags
+}
+
+// keepKnownString returns the API's value, or the one already in the model when
+// the API returned nothing and the model holds something known.
+func keepKnownString(current types.String, apiValue string) types.String {
+	if apiValue == "" && !current.IsNull() && !current.IsUnknown() {
+		return current
+	}
+	return types.StringValue(apiValue)
+}
+
+// keepKnownInt64 is keepKnownString for a numeric field whose empty is zero.
+func keepKnownInt64(current types.Int64, apiValue int64) types.Int64 {
+	if apiValue == 0 && !current.IsNull() && !current.IsUnknown() {
+		return current
+	}
+	return types.Int64Value(apiValue)
 }

@@ -49,6 +49,24 @@ type CertificateCreateRequest struct {
 	Email              string   `json:"email,omitempty"`
 	Common             string   `json:"common,omitempty"`
 	SAN                []string `json:"san,omitempty"`
+
+	// ACME, for create_type = CERTIFICATE_CREATE_ACME. Middleware validates
+	// that create_type against CertificateCreateACMEArgs, where tos, csr_id,
+	// renew_days, acme_directory_uri and dns_mapping are all declared with no
+	// default. Omitting them is what made that create_type impossible:
+	//
+	//	[EINVAL] certificate_create_acme.tos: Input should be a valid boolean
+	//	[EINVAL] certificate_create_acme.csr_id: Input should be a valid integer
+	//	[EINVAL] certificate_create_acme.acme_directory_uri: Input should be a valid string
+	//
+	// Tos is a *bool on purpose. A plain bool with omitempty drops
+	// `tos = false`, the server sees nothing, and reports the same error the
+	// practitioner was trying to fix.
+	AcmeDirectoryURI string         `json:"acme_directory_uri,omitempty"`
+	CSRID            *int           `json:"csr_id,omitempty"`
+	TOS              *bool          `json:"tos,omitempty"`
+	RenewDays        *int           `json:"renew_days,omitempty"`
+	DNSMapping       map[string]int `json:"dns_mapping,omitempty"`
 }
 
 // CertificateUpdateRequest is the body for PUT /certificate/id/{id} /

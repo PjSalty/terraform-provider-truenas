@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 )
@@ -193,7 +195,16 @@ func TestCertificateResource_MapResponseToModel_Cases(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var m CertificateResourceModel
-			r.mapResponseToModel(ctx, tc.cert, &m)
+			if diags := r.mapResponseToModel(ctx, tc.cert, &m); diags.HasError() {
+				t.Fatalf("mapResponseToModel: %v", diags)
+			}
+			// The list has to carry the element type the schema declares.
+			// Building it with types.StringType instead compiled, passed vet
+			// and returned the right number of elements, and then failed at
+			// runtime converting the model into state.
+			if got := m.SAN.ElementType(ctx); !got.Equal(certificateSANElementType(ctx, t)) {
+				t.Errorf("SAN element type = %s, want the schema's", got)
+			}
 			if m.Name.ValueString() != tc.cert.Name {
 				t.Errorf("Name mismatch")
 			}
@@ -422,5 +433,73 @@ func TestPoolResource_Schema(t *testing.T) {
 	}
 	if !attrs["name"].IsRequired() {
 		t.Error("name should be required")
+	}
+}
+
+// certificateSANElementType reads the element type off the live schema rather
+// than restating it, so the assertion cannot drift from what the schema says.
+func certificateSANElementType(ctx context.Context, t *testing.T) attr.Type {
+	t.Helper()
+	resp := &resource.SchemaResponse{}
+	NewCertificateResource().Schema(ctx, resource.SchemaRequest{}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("schema errors: %v", resp.Diagnostics)
+	}
+	san, ok := resp.Schema.GetAttributes()["san"]
+	if !ok {
+		t.Fatal("certificate schema has no san attribute")
+	}
+	withElem, ok := san.GetType().(attr.TypeWithElementType)
+	if !ok {
+		t.Fatalf("san is %T, want a type with an element type", san.GetType())
+	}
+	return withElem.ElementType()
+}
+
+// A CSR reports no certificate, digest_algorithm or lifetime, because all
+// three are read off a signed certificate that does not exist yet. Overwriting
+// what the caller configured with those empties is the "inconsistent result
+// after apply" a CERTIFICATE_CREATE_CSR used to end with.
+func TestCertificateResource_MapResponseToModel_KeepsCSROnlyFields(t *testing.T) {
+	r := &CertificateResource{}
+	ctx := context.Background()
+
+	m := CertificateResourceModel{
+		Certificate:     types.StringValue("-----BEGIN CERTIFICATE REQUEST-----"),
+		DigestAlgorithm: types.StringValue("SHA256"),
+		Lifetime:        types.Int64Value(365),
+	}
+	csr := &truenas.Certificate{
+		ID: 1, Name: "csr", KeyType: "RSA", KeyLength: 2048,
+		CertificateData: "", DigestAlgorithm: "", Lifetime: 0,
+		SAN: []string{"DNS:example.com"},
+	}
+	if diags := r.mapResponseToModel(ctx, csr, &m); diags.HasError() {
+		t.Fatalf("mapResponseToModel: %v", diags)
+	}
+	if got := m.DigestAlgorithm.ValueString(); got != "SHA256" {
+		t.Errorf("digest_algorithm = %q, want the configured SHA256", got)
+	}
+	if got := m.Lifetime.ValueInt64(); got != 365 {
+		t.Errorf("lifetime = %d, want the configured 365", got)
+	}
+	if got := m.Certificate.ValueString(); got == "" {
+		t.Error("certificate was cleared")
+	}
+
+	// A create_type that DOES report them still overwrites, so an out-of-band
+	// change is not hidden.
+	signed := &truenas.Certificate{
+		ID: 2, Name: "imported", KeyType: "RSA", KeyLength: 2048,
+		CertificateData: "-----BEGIN CERTIFICATE-----", DigestAlgorithm: "SHA512", Lifetime: 90,
+	}
+	if diags := r.mapResponseToModel(ctx, signed, &m); diags.HasError() {
+		t.Fatalf("mapResponseToModel: %v", diags)
+	}
+	if got := m.DigestAlgorithm.ValueString(); got != "SHA512" {
+		t.Errorf("digest_algorithm = %q, want the API's SHA512", got)
+	}
+	if got := m.Lifetime.ValueInt64(); got != 90 {
+		t.Errorf("lifetime = %d, want the API's 90", got)
 	}
 }

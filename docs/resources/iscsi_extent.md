@@ -44,7 +44,7 @@ The following arguments are supported:
 * `disk` - (Optional) The zvol path for DISK type extents.
 * `path` - (Optional) The file path for FILE type extents. For DISK type extents, the API computes this from `disk`, leave unset.
 * `filesize` - (Optional) The file size in bytes for FILE type extents.
-* `blocksize` - (Optional) Block size in bytes (512 or 4096). Default: `512`.
+* `blocksize` - (Optional) Block size in bytes. Default: `512`. Valid values: `512`, `1024`, `2048`, `4096`.
 * `rpm` - (Optional) Reported RPM (SSD, 5400, 7200, 10000, 15000). Default: `SSD`.
 * `enabled` - (Optional) Whether the extent is enabled. Default: `true`.
 * `comment` - (Optional) A comment for the extent.
