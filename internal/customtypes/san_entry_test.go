@@ -119,6 +119,27 @@ func TestSANEntryType_Roundtrip(t *testing.T) {
 	if _, ok := typ.ValueType(ctx).(SANEntry); !ok {
 		t.Errorf("ValueType() = %T, want SANEntry", typ.ValueType(ctx))
 	}
+	if got := NewSANEntryValue("x").Type(ctx); !got.Equal(typ) {
+		t.Errorf("SANEntry.Type() = %s, want %s", got, typ)
+	}
+
+	// A value of the wrong shape has to fail rather than convert.
+	if _, err := typ.ValueFromTerraform(ctx, tftypes.NewValue(tftypes.Bool, true)); err == nil {
+		t.Error("ValueFromTerraform accepted a bool")
+	}
+	if _, err := typ.ValueFromTerraform(ctx, tftypes.NewValue(tftypes.Number, 1)); err == nil {
+		t.Error("ValueFromTerraform accepted a number")
+	}
+
+	// ValueFromString is the StringTypable half of the contract and the
+	// framework calls it directly, so it is exercised directly too.
+	got, diags := typ.ValueFromString(ctx, basetypes.NewStringValue("DNS:example.com"))
+	if diags.HasError() {
+		t.Fatalf("ValueFromString: %v", diags)
+	}
+	if entry, ok := got.(SANEntry); !ok || entry.ValueString() != "DNS:example.com" {
+		t.Errorf("ValueFromString() = %#v", got)
+	}
 
 	for _, in := range []tftypes.Value{
 		tftypes.NewValue(tftypes.String, "DNS:example.com"),
