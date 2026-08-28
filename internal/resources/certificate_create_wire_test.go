@@ -193,3 +193,116 @@ func TestCertificateResource_CreateStripsSANPrefixes(t *testing.T) {
 		}
 	}
 }
+
+// captureCertUpdate is captureCertCreate for certificate.update, which is a
+// plain call rather than a job.
+func captureCertUpdate(t *testing.T, body map[string]interface{}) (*wsclient.Client, func() map[string]interface{}) {
+	t.Helper()
+	var mu sync.Mutex
+	var seen map[string]interface{}
+
+	ts := wsclient.NewTestServer(t, func(_ context.Context, method string, params []interface{}) (interface{}, *wsclient.RPCError) {
+		switch method {
+		case "system.info":
+			return map[string]interface{}{"version": "26.0.0-BETA.2"}, nil
+		case "certificate.update":
+			mu.Lock()
+			if len(params) > 1 {
+				if b, err := json.Marshal(params[1]); err == nil {
+					_ = json.Unmarshal(b, &seen)
+				}
+			}
+			mu.Unlock()
+			return 2, nil // job id; certificate.update is a job too
+		case "core.get_jobs":
+			return []interface{}{map[string]interface{}{
+				"id": 2, "state": "SUCCESS", "result": body, "error": "",
+			}}, nil
+		}
+		return body, nil
+	})
+	c, err := ts.NewClient(context.Background())
+	if err != nil {
+		t.Fatalf("testserver NewClient: %v", err)
+	}
+	return c, func() map[string]interface{} {
+		mu.Lock()
+		defer mu.Unlock()
+		return seen
+	}
+}
+
+// renew_days is the one ACME field upstream's update model accepts, so it has
+// to actually be sent. Before this it was not, and Update writes the plan into
+// state, so changing it left state claiming a value the server never got.
+func TestCertificateResource_UpdateSendsRenewDays(t *testing.T) {
+	ctx := context.Background()
+	c, sent := captureCertUpdate(t, map[string]interface{}{
+		"id": 12, "name": "acme", "key_type": "RSA", "key_length": 4096,
+	})
+	r := &CertificateResource{client: c}
+	sch := schemaOf(t, ctx, r)
+
+	vals := map[string]tftypes.Value{
+		"id":                 str("12"),
+		"name":               str("acme"),
+		"create_type":        str("CERTIFICATE_CREATE_ACME"),
+		"tos":                tftypes.NewValue(tftypes.Bool, true),
+		"csr_id":             num(4),
+		"acme_directory_uri": str("https://acme-v02.api.letsencrypt.org/directory"),
+		"renew_days":         num(20),
+		"dns_mapping": tftypes.NewValue(
+			tftypes.Map{ElementType: tftypes.Number},
+			map[string]tftypes.Value{"example.com": num(3)},
+		),
+	}
+	state := stateFromValues(t, ctx, sch, vals)
+	plan := planFromValues(t, ctx, sch, vals)
+	resp := &resource.UpdateResponse{State: state}
+	r.Update(ctx, resource.UpdateRequest{State: state, Plan: plan}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", resp.Diagnostics)
+	}
+
+	got := sent()
+	if got == nil {
+		t.Fatal("certificate.update was never called")
+	}
+	if got["renew_days"] != float64(20) {
+		t.Errorf("renew_days on the wire = %#v, want 20", got["renew_days"])
+	}
+	if got["name"] != "acme" {
+		t.Errorf("name on the wire = %#v", got["name"])
+	}
+}
+
+// An unset renew_days must not be sent: 0 is outside the 1..30 the server
+// accepts, so a zero value would turn a rename into a validation error.
+func TestCertificateResource_UpdateOmitsUnsetRenewDays(t *testing.T) {
+	ctx := context.Background()
+	c, sent := captureCertUpdate(t, map[string]interface{}{
+		"id": 13, "name": "imported-v2", "key_type": "RSA", "key_length": 4096,
+	})
+	r := &CertificateResource{client: c}
+	sch := schemaOf(t, ctx, r)
+
+	vals := map[string]tftypes.Value{
+		"id":          str("13"),
+		"name":        str("imported-v2"),
+		"create_type": str("CERTIFICATE_CREATE_IMPORTED"),
+		"certificate": str("-----BEGIN CERTIFICATE-----"),
+		"privatekey":  str("PRIVATE_KEY_PLACEHOLDER"),
+	}
+	state := stateFromValues(t, ctx, sch, vals)
+	plan := planFromValues(t, ctx, sch, vals)
+	resp := &resource.UpdateResponse{State: state}
+	r.Update(ctx, resource.UpdateRequest{State: state, Plan: plan}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", resp.Diagnostics)
+	}
+
+	got := sent()
+	if _, present := got["renew_days"]; present {
+		t.Errorf("renew_days was sent as %#v despite not being configured", got["renew_days"])
+	}
+}

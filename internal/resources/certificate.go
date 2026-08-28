@@ -19,8 +19,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/customtypes"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
@@ -294,6 +296,9 @@ func (r *CertificateResource) Schema(ctx context.Context, _ resource.SchemaReque
 				Description: "CERTIFICATE_CREATE_ACME only, and required for it. Accept the " +
 					"ACME provider's terms of service.",
 				Optional: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
+				},
 			},
 			"csr_id": schema.Int64Attribute{
 				Description: "CERTIFICATE_CREATE_ACME only, and required for it. ID of an " +
@@ -303,12 +308,18 @@ func (r *CertificateResource) Schema(ctx context.Context, _ resource.SchemaReque
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
 				},
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
+				},
 			},
 			"acme_directory_uri": schema.StringAttribute{
 				Description: "CERTIFICATE_CREATE_ACME only, and required for it. The ACME " +
 					"directory URI, for example " +
 					"`https://acme-v02.api.letsencrypt.org/directory`.",
 				Optional: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"renew_days": schema.Int64Attribute{
 				Description: "CERTIFICATE_CREATE_ACME only. Days before expiry to attempt " +
@@ -327,6 +338,9 @@ func (r *CertificateResource) Schema(ctx context.Context, _ resource.SchemaReque
 					"authenticate, and refuses a key that is not in the CSR.",
 				Optional:    true,
 				ElementType: types.Int64Type,
+				PlanModifiers: []planmodifier.Map{
+					mapplanmodifier.RequiresReplace(),
+				},
 			},
 			"dn": schema.StringAttribute{
 				Description: "The full distinguished name.",
@@ -557,6 +571,14 @@ func (r *CertificateResource) Update(ctx context.Context, req resource.UpdateReq
 
 	updateReq := &truenas.CertificateUpdateRequest{
 		Name: plan.Name.ValueString(),
+	}
+	// renew_days is the one ACME field upstream's update model accepts, so it
+	// changes in place. The other four force replacement, declared on the
+	// schema, because a certificate cannot change which CSR or directory it
+	// came from.
+	if !plan.RenewDays.IsNull() && !plan.RenewDays.IsUnknown() {
+		v := int(plan.RenewDays.ValueInt64())
+		updateReq.RenewDays = &v
 	}
 
 	cert, err := r.client.UpdateCertificate(ctx, id, updateReq)

@@ -52,7 +52,7 @@ var allowedIgnoreFields = map[string]string{
 	"certificate_test.go::create_type":      "computed-but-not-readable: certificate.query reports no field saying how a certificate was made, so ImportState has to assume CERTIFICATE_CREATE_IMPORTED",
 	"certificate_test.go::privatekey":       "private key: write-only; certificate.query never returns it",
 	"certificate_test.go::digest_algorithm": "computed-but-not-readable: certificate.query returns \"\" for a CSR, which has no signed certificate to read the digest off (verified against a live 26.0 box)",
-	"certificate_test.go::san":              "server-normalised: each entry comes back with its general-name kind attached (DNS:example.com); the schema's custom type compares the two spellings equal, but ImportStateVerify compares raw state strings",
+	"certificate_test.go::san":              "server-normalized: each entry comes back with its general-name kind attached (DNS:example.com); the schema's custom type compares the two spellings equal, but ImportStateVerify compares raw state strings",
 
 	// Secrets / sensitive write-only inputs that the API never returns.
 	"acc_iscsi_auth_test.go::secret":          "CHAP secret: write-only; TrueNAS returns it masked on read",

@@ -272,6 +272,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Changing `renew_days` on a `truenas_certificate` did nothing. Update sent
+  only `name`, so the new value went into state without ever reaching the
+  server. Upstream's `CertificateUpdate` model takes `renew_days`, `name` and
+  `add_to_trusted_store`, so `renew_days` is now sent and changes in place.
+
+- Changing `tos`, `csr_id`, `acme_directory_uri` or `dns_mapping` on an
+  existing `truenas_certificate` did nothing either, and unlike the attributes
+  read back off the certificate it failed silently: nothing in the response
+  overwrites them, so state ended up claiming a value the server had never
+  been told. None of the four can change on a certificate that already exists,
+  so they now force replacement.
+
 - `truenas_certificate` could not create an ACME certificate at all, and could
   not create a CSR from a common name. Reported as
   [#33](https://github.com/PjSalty/terraform-provider-truenas/issues/33).
