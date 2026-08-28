@@ -272,6 +272,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `acme_directory_uri = ""` and `dns_mapping = {}` passed the new required-field
+  check and were then erased from the request by `omitempty`, so the server saw
+  them missing and answered with exactly the error the check exists to prevent.
+  Presence is not a value test: both now carry the non-empty rule upstream
+  declares (`NonEmptyString`, and a mapping that must cover every domain), as
+  do `csr` and `certificate`.
+
+- A failed `san` or `dns_mapping` conversion did not stop the create. Both only
+  appended a diagnostic, so the request went out with the field missing:
+  Terraform reported an error while the server made a certificate with the
+  wrong subject alternative names and no state to manage it by.
+
+- `terraform import` proposed destroying and re-issuing a CSR or ACME
+  certificate. `ImportState` assumed `CERTIFICATE_CREATE_IMPORTED` for
+  everything and `create_type` forces replacement, so importing one and
+  planning against the configuration that describes it planned a replace. For
+  an ACME certificate that means re-issuing from the CA. The record says
+  enough to derive it: `cert_type_CSR` marks an unsigned request and
+  `acme_uri` is set only on one issued through ACME.
+
+- `acme_directory_uri = ""` and `dns_mapping = {}` passed the new required-field
+  check and were then erased from the request by `omitempty`, so the server saw
+  them missing and answered with exactly the error the check exists to prevent.
+  Presence is not a value test: both now carry the non-empty rule upstream
+  declares, as does `csr`.
+
+- A failed `san` or `dns_mapping` conversion did not stop the create. Both only
+  appended a diagnostic, so the request went out with the field missing:
+  Terraform reported an error while the server made a certificate with the
+  wrong subject alternative names and no state to manage it by.
+
+- `terraform import` proposed destroying and re-issuing a CSR or ACME
+  certificate. `ImportState` assumed `CERTIFICATE_CREATE_IMPORTED` for
+  everything and `create_type` forces replacement, so importing one and
+  planning against the configuration that describes it planned a replace. For
+  an ACME certificate that means re-issuing from the CA. The record says enough
+  to derive it: `cert_type_CSR` marks an unsigned request and `acme_uri` is set
+  only on one issued through ACME.
+
+- `truenas_certificate.lifetime` was a settable argument that could not be set.
+  `certificate.create` has no `lifetime` field on any supported version; it is
+  on the query model only. Setting it passed plan, was never sent, and was then
+  either overwritten from the parsed certificate or kept in state as a value
+  the server had never been told. It is Computed-only now, so a configuration
+  that sets it says so at plan time.
+
+- The `truenas_certificate` page advertised a 20m create timeout in its
+  description and 10m in its timeouts section. Neither was true: **no resource
+  in this provider reads its `timeouts` block.** All 68 declare one, the
+  invariant that guards them checks only that the block is declared, and
+  nothing consumes the value. The page now says so rather than quoting a
+  default that does not apply. Filed as an issue; wiring it through 68
+  resources is its own change.
+
+- The provider's own documented ACME workflow could not be planned. `ModifyPlan`
+  treated an UNKNOWN configuration value as unset, and
+  `csr_id = truenas_certificate.csr.id` is unknown on a first apply, so
+  `terraform plan` on the two-resource example failed with "Missing csr_id",
+  the same class of unusable-`create_type` error the ACME work set out to
+  remove. Presence is now `IsNull` alone, which is what every validator in the
+  framework does; unknown means "set, value pending". The same reading applies
+  in reverse to the rejection direction, so an unknown ACME field on a
+  non-ACME `create_type` is still refused, and to `san`, `key_type` and
+  `key_length`, whose value-dependent rules cannot run on an unknown and are
+  now left to the server.
+
+- `create_type = "CERTIFICATE_CREATE_IMPORTED_CSR"` was offered by the schema
+  and documented, and could not succeed. Its payload model is
+  `name` + `CSR` + `privatekey`, and the provider had no attribute for the
+  request itself. A new `csr` attribute carries it, required for that
+  `create_type` and rejected on every other one. This is the same defect as
+  the ACME one, in the create_type next to it.
+
+- The ACME example's `dns_mapping` keys could not match. TrueNAS compares the
+  keys as written against the CSR's stored domain list, where every `san`
+  carries its general-name kind, so a bare `san` name is refused with
+  "not specified in the CSR" unless it also happens to be the common name.
+  The example and the argument reference now key each `san` as
+  `DNS:name`.
+
+- The Cloudflare authenticator examples set `cloudflare_api_key`, which is not
+  a field on any supported version. `CloudFlareSchema` is `cloudflare_email`,
+  `api_key` and `api_token`, and the model forbids unknown keys, so the
+  authenticator create was rejected. Corrected in
+  `truenas_certificate` and in `truenas_acme_dns_authenticator`, where it had
+  been wrong since the example was written.
+
 - Changing `renew_days` on a `truenas_certificate` did nothing. Update sent
   only `name`, so the new value went into state without ever reaching the
   server. Upstream's `CertificateUpdate` model takes `renew_days`, `name` and

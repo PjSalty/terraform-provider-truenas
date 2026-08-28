@@ -30,8 +30,8 @@ resource "truenas_acme_dns_authenticator" "cloudflare" {
   name          = "cloudflare"
   authenticator = "cloudflare"
   attributes = {
-    cloudflare_email   = "dns@example.com"
-    cloudflare_api_key = var.cloudflare_api_key
+    cloudflare_email = "dns@example.com"
+    api_key          = var.cloudflare_api_key
   }
 }
 
@@ -43,8 +43,11 @@ resource "truenas_certificate" "acme" {
   tos                = true
   renew_days         = 10
 
+  # Keyed the way TrueNAS reads the CSR back, which is where it compares
+  # them: each san carries its general-name kind. A bare name is refused with
+  # "<name> not specified in the CSR" unless it is also the common name.
   dns_mapping = {
-    "app.example.com"     = truenas_acme_dns_authenticator.cloudflare.id
-    "www.app.example.com" = truenas_acme_dns_authenticator.cloudflare.id
+    "DNS:app.example.com"     = truenas_acme_dns_authenticator.cloudflare.id
+    "DNS:www.app.example.com" = truenas_acme_dns_authenticator.cloudflare.id
   }
 }
