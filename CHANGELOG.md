@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-08-28
+
+**Breaking.** `truenas_system_update` renamed two attributes and removed a
+third. `auto_download` is now `autocheck`, `train` is now `profile`, and
+`available_status` is gone. The resource called five `update.*` methods that
+do not exist in TrueNAS middleware, so every plan touching it failed before
+reaching anything else; it is now built on `update.config` / `update.update`,
+and TrueNAS 26.0 replaced release trains with update profiles. Existing state
+migrates automatically, but a configuration naming `auto_download` or `train`
+has to be updated or it fails with "Unsupported argument". Nothing else in
+this release removes or renames an attribute: verified by diffing every
+`Schema()` attribute name against v2.4.1.
+
+
 ### Added
 
 - New `truenas_container_images` data source listing the images an LXC
