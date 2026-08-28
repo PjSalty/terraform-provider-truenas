@@ -89,15 +89,11 @@ func (t SANEntryType) ValueFromTerraform(ctx context.Context, in tftypes.Value) 
 	if err != nil {
 		return nil, err
 	}
-	stringValue, ok := attrValue.(basetypes.StringValue)
-	if !ok {
-		return nil, fmt.Errorf("unexpected value type %T from StringType.ValueFromTerraform", attrValue)
-	}
-	stringValuable, diags := t.ValueFromString(ctx, stringValue)
-	if diags.HasError() {
-		return nil, fmt.Errorf("unexpected error converting StringValue to SANEntry: %v", diags)
-	}
-	return stringValuable, nil
+	// StringType.ValueFromTerraform is contract-bound to return a
+	// basetypes.StringValue on success, the comma-ok keeps the
+	// impossible mismatch from panicking
+	stringValue, _ := attrValue.(basetypes.StringValue)
+	return SANEntry{StringValue: stringValue}, nil
 }
 
 func (t SANEntryType) ValueType(_ context.Context) attr.Value {
