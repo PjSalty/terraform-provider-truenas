@@ -418,11 +418,13 @@ resource "truenas_iscsi_targetextent" "bad_lunid" {
 	})
 }
 
-// TestAccValidator_Certificate_lifetimeOutOfRange covers the
-// certificate.lifetime int64validator.Between(1, 36500), values
-// outside the [1, 36500] day range must be rejected before reaching
-// the API.
-func TestAccValidator_Certificate_lifetimeOutOfRange(t *testing.T) {
+// TestAccValidator_Certificate_lifetimeIsReadOnly covers certificate.lifetime,
+// which is Computed-only: certificate.create has no lifetime field on any
+// supported version, so a range validator on it guarded a value that could
+// never be sent. This test previously asserted that range, on a config whose
+// create_type (CERTIFICATE_CREATE_INTERNAL) is not in the OneOf either, so it
+// passed on the wrong diagnostic.
+func TestAccValidator_Certificate_lifetimeIsReadOnly(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip(skipMsg)
 	}
@@ -433,16 +435,38 @@ func TestAccValidator_Certificate_lifetimeOutOfRange(t *testing.T) {
 			{
 				Config: `
 resource "truenas_certificate" "bad_lifetime" {
-  name             = "tf-acc-bad-lifetime"
-  create_type      = "CERTIFICATE_CREATE_INTERNAL"
-  key_length       = 2048
-  key_type         = "RSA"
-  digest_algorithm = "SHA256"
-  lifetime         = 36501
-  common           = "example.com"
+  name        = "tf-acc-bad-lifetime"
+  create_type = "CERTIFICATE_CREATE_IMPORTED"
+  certificate = "-----BEGIN CERTIFICATE-----"
+  privatekey  = "PLACEHOLDER"
+  lifetime    = 36501
 }
 `,
-				ExpectError: regexp.MustCompile(`(?i)attribute lifetime value must be between`),
+				ExpectError: regexp.MustCompile(`(?i)Cannot set value for this attribute`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}
+
+// The create_type OneOf is what the previous version of the test above was
+// accidentally exercising, so it gets its own case rather than being lost.
+func TestAccValidator_Certificate_createTypeNotInOneOf(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "truenas_certificate" "bad_create_type" {
+  name        = "tf-acc-bad-create-type"
+  create_type = "CERTIFICATE_CREATE_INTERNAL"
+}
+`,
+				ExpectError: regexp.MustCompile(`(?i)Attribute create_type value must be one of`),
 				PlanOnly:    true,
 			},
 		},
