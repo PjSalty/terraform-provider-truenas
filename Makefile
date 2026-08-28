@@ -109,7 +109,7 @@ prod-ready:
 ##          Low-level entry. Prefer `make acc` for the full six-stage pipeline
 ##          with preflight, env loading, and per-test summary.
 testacc:
-	TF_ACC=1 $(GO) test -v -count=1 -timeout 120m $(INTERNAL)
+	TF_ACC=1 $(GO) test -v -count=1 -timeout 240m -p 1 $(INTERNAL)
 
 ## acc: Full local acceptance pipeline against the test TrueNAS.
 ##      Loads .envrc.local, runs preflight + build + lint + unit + invariants
