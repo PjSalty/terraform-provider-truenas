@@ -176,6 +176,9 @@ func (r *CronJobResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.CronJobCreateRequest{
 		User:    plan.User.ValueString(),
 		Command: plan.Command.ValueString(),
@@ -225,6 +228,9 @@ func (r *CronJobResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse cron job ID: %s", err))
@@ -260,6 +266,9 @@ func (r *CronJobResource) Update(ctx context.Context, req resource.UpdateRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state CronJobResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -323,6 +332,9 @@ func (r *CronJobResource) Delete(ctx context.Context, req resource.DeleteRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

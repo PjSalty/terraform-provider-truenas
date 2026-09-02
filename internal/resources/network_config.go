@@ -24,6 +24,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	tnvalidators "github.com/PjSalty/terraform-provider-truenas/internal/validators"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
@@ -183,6 +184,9 @@ func (r *NetworkConfigResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Debug(ctx, "Creating network config resource (updating singleton)")
 
 	var d diag.Diagnostics
@@ -215,6 +219,9 @@ func (r *NetworkConfigResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	config, err := r.client.GetFullNetworkConfig(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -241,6 +248,9 @@ func (r *NetworkConfigResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	var d diag.Diagnostics
 	updateReq := r.buildUpdateRequest(ctx, &plan, &d)
 	resp.Diagnostics.Append(d...)
@@ -261,7 +271,15 @@ func (r *NetworkConfigResource) Update(ctx context.Context, req resource.UpdateR
 	tflog.Trace(ctx, "Update NetworkConfig success")
 }
 
-func (r *NetworkConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *NetworkConfigResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state NetworkConfigResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Trace(ctx, "Delete NetworkConfig start")
 
 	tflog.Debug(ctx, "Deleting network config resource (resetting to defaults)")

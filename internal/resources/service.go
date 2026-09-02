@@ -18,6 +18,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -122,6 +123,9 @@ func (r *ServiceResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	serviceName := plan.Service.ValueString()
 
 	tflog.Debug(ctx, "Creating service resource", map[string]interface{}{
@@ -194,6 +198,9 @@ func (r *ServiceResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse service ID %q: %s", state.ID.ValueString(), err))
@@ -232,6 +239,9 @@ func (r *ServiceResource) Update(ctx context.Context, req resource.UpdateRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state ServiceResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -301,6 +311,9 @@ func (r *ServiceResource) Delete(ctx context.Context, req resource.DeleteRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

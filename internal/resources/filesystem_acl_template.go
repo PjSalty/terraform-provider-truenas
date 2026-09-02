@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -136,6 +137,9 @@ func (r *FilesystemACLTemplateResource) Create(ctx context.Context, req resource
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	acl, err := normalizeJSON(plan.ACLJSON.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid acl_json", err.Error())
@@ -174,6 +178,9 @@ func (r *FilesystemACLTemplateResource) Read(ctx context.Context, req resource.R
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse ACL template ID: %s", err))
@@ -206,6 +213,9 @@ func (r *FilesystemACLTemplateResource) Update(ctx context.Context, req resource
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state FilesystemACLTemplateResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -257,6 +267,9 @@ func (r *FilesystemACLTemplateResource) Delete(ctx context.Context, req resource
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

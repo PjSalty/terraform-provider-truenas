@@ -366,6 +366,9 @@ func (r *SMBShareResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.SMBShareCreateRequest{
 		Path:      plan.Path.ValueString(),
 		Name:      plan.Name.ValueString(),
@@ -419,6 +422,9 @@ func (r *SMBShareResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse SMB share ID: %s", err))
@@ -454,6 +460,9 @@ func (r *SMBShareResource) Update(ctx context.Context, req resource.UpdateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state SMBShareResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -520,6 +529,9 @@ func (r *SMBShareResource) Delete(ctx context.Context, req resource.DeleteReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

@@ -161,6 +161,9 @@ func (r *NVMetPortResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.NVMetPortCreateRequest{
 		AddrTrtype: plan.AddrTrtype.ValueString(),
 		AddrTraddr: plan.AddrTraddr.ValueString(),
@@ -217,6 +220,9 @@ func (r *NVMetPortResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse NVMe-oF port ID: %s", err))
@@ -252,6 +258,9 @@ func (r *NVMetPortResource) Update(ctx context.Context, req resource.UpdateReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state NVMetPortResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -321,6 +330,9 @@ func (r *NVMetPortResource) Delete(ctx context.Context, req resource.DeleteReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

@@ -478,6 +478,9 @@ func (r *VMResource) Create(ctx context.Context, req resource.CreateRequest, res
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := buildVMCreateRequest(&plan)
 
 	tflog.Debug(ctx, "Creating VM", map[string]interface{}{"name": createReq.Name})
@@ -505,6 +508,9 @@ func (r *VMResource) Read(ctx context.Context, req resource.ReadRequest, resp *r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
@@ -539,6 +545,9 @@ func (r *VMResource) Update(ctx context.Context, req resource.UpdateRequest, res
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state VMResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -578,6 +587,9 @@ func (r *VMResource) Delete(ctx context.Context, req resource.DeleteRequest, res
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

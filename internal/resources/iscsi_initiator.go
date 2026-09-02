@@ -110,6 +110,9 @@ func (r *ISCSIInitiatorResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.ISCSIInitiatorCreateRequest{}
 
 	if !plan.Initiators.IsNull() && !plan.Initiators.IsUnknown() {
@@ -150,6 +153,9 @@ func (r *ISCSIInitiatorResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse iSCSI initiator ID: %s", err))
@@ -185,6 +191,9 @@ func (r *ISCSIInitiatorResource) Update(ctx context.Context, req resource.Update
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state ISCSIInitiatorResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -236,6 +245,9 @@ func (r *ISCSIInitiatorResource) Delete(ctx context.Context, req resource.Delete
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

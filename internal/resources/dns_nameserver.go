@@ -16,6 +16,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -152,6 +153,9 @@ func (r *DNSNameserverResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	updateReq := r.buildUpdateRequest(&plan)
 
 	tflog.Debug(ctx, "Setting DNS nameservers")
@@ -182,6 +186,9 @@ func (r *DNSNameserverResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	config, err := r.client.GetNetworkConfig(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -208,6 +215,9 @@ func (r *DNSNameserverResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	updateReq := r.buildUpdateRequest(&plan)
 
 	config, err := r.client.UpdateNetworkConfig(ctx, updateReq)
@@ -228,6 +238,14 @@ func (r *DNSNameserverResource) Update(ctx context.Context, req resource.UpdateR
 
 func (r *DNSNameserverResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	tflog.Trace(ctx, "Delete DNSNameserver start")
+
+	var state DNSNameserverResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	// For a singleton resource, "delete" clears the nameservers to empty.
 	empty := ""

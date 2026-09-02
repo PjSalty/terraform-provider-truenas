@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	"github.com/PjSalty/terraform-provider-truenas/internal/resourcevalidators"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	tnvalidators "github.com/PjSalty/terraform-provider-truenas/internal/validators"
@@ -335,6 +336,9 @@ func (r *NetworkInterfaceResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	rollback := plan.Rollback.ValueBool()
 
 	if plan.Type.ValueString() == "PHYSICAL" {
@@ -442,6 +446,9 @@ func (r *NetworkInterfaceResource) Read(ctx context.Context, req resource.ReadRe
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	iface, err := r.client.GetInterface(ctx, state.ID.ValueString())
 	if err != nil {
 		if wsclient.IsNotFound(err) {
@@ -470,6 +477,9 @@ func (r *NetworkInterfaceResource) Update(ctx context.Context, req resource.Upda
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 	var state NetworkInterfaceResourceModel
 	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -505,6 +515,9 @@ func (r *NetworkInterfaceResource) Delete(ctx context.Context, req resource.Dele
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	rollback := state.Rollback.ValueBool()
 

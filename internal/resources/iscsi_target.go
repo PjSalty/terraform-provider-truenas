@@ -41,15 +41,12 @@ type ISCSITargetResource struct {
 
 // ISCSITargetResourceModel describes the resource data model.
 type ISCSITargetResourceModel struct {
-	ID       types.String `tfsdk:"id"`
-	Name     types.String `tfsdk:"name"`
-	Alias    types.String `tfsdk:"alias"`
-	Mode     types.String `tfsdk:"mode"`
-	Groups   types.List   `tfsdk:"groups"`
-	Timeouts timeouts.
-
-		// ISCSITargetGroupModel describes a target group in the data model.
-		Value `tfsdk:"timeouts"`
+	ID       types.String   `tfsdk:"id"`
+	Name     types.String   `tfsdk:"name"`
+	Alias    types.String   `tfsdk:"alias"`
+	Mode     types.String   `tfsdk:"mode"`
+	Groups   types.List     `tfsdk:"groups"`
+	Timeouts timeouts.Value `tfsdk:"timeouts"`
 }
 
 const iscsiAuthMethodNone = "NONE"
@@ -88,6 +85,7 @@ func iscsiGroupToWire(g ISCSITargetGroupModel) truenas.ISCSITargetGroup {
 	return out
 }
 
+// ISCSITargetGroupModel describes a target group in the data model.
 type ISCSITargetGroupModel struct {
 	Portal     types.Int64  `tfsdk:"portal"`
 	Initiator  types.Int64  `tfsdk:"initiator"`
@@ -227,6 +225,9 @@ func (r *ISCSITargetResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.ISCSITargetCreateRequest{
 		Name: plan.Name.ValueString(),
 		Mode: plan.Mode.ValueString(),
@@ -272,6 +273,9 @@ func (r *ISCSITargetResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse iSCSI target ID: %s", err))
@@ -307,6 +311,9 @@ func (r *ISCSITargetResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state ISCSITargetResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -363,6 +370,9 @@ func (r *ISCSITargetResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

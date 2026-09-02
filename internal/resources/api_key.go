@@ -118,6 +118,9 @@ func (r *APIKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.APIKeyCreateRequest{
 		Name: plan.Name.ValueString(),
 	}
@@ -160,6 +163,9 @@ func (r *APIKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse API key ID: %s", err))
@@ -200,6 +206,9 @@ func (r *APIKeyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state APIKeyResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -247,6 +256,9 @@ func (r *APIKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

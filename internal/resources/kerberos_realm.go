@@ -137,6 +137,9 @@ func (r *KerberosRealmResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	kdc := privilegeListToStringSlice(ctx, plan.KDC, &resp.Diagnostics)
 	admin := privilegeListToStringSlice(ctx, plan.AdminServer, &resp.Diagnostics)
 	kpasswd := privilegeListToStringSlice(ctx, plan.KPasswdServer, &resp.Diagnostics)
@@ -177,6 +180,9 @@ func (r *KerberosRealmResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse realm ID: %s", err))
@@ -209,6 +215,9 @@ func (r *KerberosRealmResource) Update(ctx context.Context, req resource.UpdateR
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 	var state KerberosRealmResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -259,6 +268,9 @@ func (r *KerberosRealmResource) Delete(ctx context.Context, req resource.DeleteR
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
