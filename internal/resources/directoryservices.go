@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -184,6 +185,9 @@ func (r *DirectoryServicesResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Debug(ctx, "Configuring directory services singleton")
 
 	updateReq := r.buildUpdateRequest(&plan, &resp.Diagnostics)
@@ -214,6 +218,9 @@ func (r *DirectoryServicesResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	cfg, err := r.client.GetDirectoryServicesConfig(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -237,6 +244,9 @@ func (r *DirectoryServicesResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	updateReq := r.buildUpdateRequest(&plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -256,7 +266,15 @@ func (r *DirectoryServicesResource) Update(ctx context.Context, req resource.Upd
 	tflog.Trace(ctx, "Update DirectoryServices success")
 }
 
-func (r *DirectoryServicesResource) Delete(ctx context.Context, _ resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *DirectoryServicesResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state DirectoryServicesResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Trace(ctx, "Delete DirectoryServices start")
 
 	tflog.Debug(ctx, "Disabling directory services (delete = disable singleton)")

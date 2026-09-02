@@ -178,6 +178,9 @@ func (r *ZvolResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	fullName := plan.Pool.ValueString() + "/" + plan.Name.ValueString()
 
 	createReq := &truenas.ZvolCreateRequest{
@@ -228,6 +231,9 @@ func (r *ZvolResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	dataset, err := r.client.GetZvol(ctx, state.ID.ValueString())
 	if err != nil {
 		if wsclient.IsNotFound(err) {
@@ -257,6 +263,9 @@ func (r *ZvolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state ZvolResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -305,6 +314,9 @@ func (r *ZvolResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	tflog.Debug(ctx, "Deleting zvol", map[string]interface{}{
 		"id": state.ID.ValueString(),

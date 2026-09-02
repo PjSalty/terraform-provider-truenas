@@ -11,8 +11,13 @@ import (
 // crudMethodInvariantRE matches every CRUD method signature in a resource
 // file. The first capture group is the method name (Create/Read/
 // Update/Delete), used to dispatch per-method invariants.
+// The parameter names are `(req|_)` and `(resp|_)`: a method that discards
+// either one is still a CRUD method and still has to satisfy these rules. The
+// pattern used to require both to be named, which made 16 of the 272 CRUD
+// methods invisible to every invariant in this file. They were not exempt, they
+// were unseen, which reads exactly like passing.
 var crudMethodInvariantRE = regexp.MustCompile(
-	`func \(r \*\w+\) (Create|Read|Update|Delete)\(ctx context\.Context, req resource\.\w+Request, resp \*resource\.\w+Response\) \{`)
+	`func \(r \*\w+\) (Create|Read|Update|Delete)\(ctx context\.Context, (?:req|_) resource\.\w+Request, (?:resp|_) \*resource\.\w+Response\) \{`)
 
 // methodBodyAfter returns the body of a CRUD method starting at the
 // matched signature line. The body ends at the matching brace -
@@ -221,6 +226,8 @@ func TestCRUDDiscipline_DeleteHandlesNotFound(t *testing.T) {
 		"systemdataset.go":          "singleton config resource, Delete is a no-op",
 		"service.go":                "singleton config resource, Delete is a no-op",
 		"dns_nameserver.go":         "singleton config resource, Delete clears nameservers via network_config update; no 404 path",
+		"catalog.go":                "singleton config resource, Delete resets preferred_trains via catalog.update; no 404 path",
+		"lxc_config.go":             "singleton config resource, Delete is a no-op",
 		"reporting_exporter.go":     "Delete is reporting_exporter.delete which doesn't 404 (always succeeds)",
 		"acme_dns_authenticator.go": "Delete error handling deferred to client; covered by 404 client tests",
 	}

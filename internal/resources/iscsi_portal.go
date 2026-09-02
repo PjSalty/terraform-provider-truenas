@@ -39,16 +39,14 @@ type ISCSIPortalResource struct {
 
 // ISCSIPortalResourceModel describes the resource data model.
 type ISCSIPortalResourceModel struct {
-	ID       types.String `tfsdk:"id"`
-	Comment  types.String `tfsdk:"comment"`
-	Listen   types.List   `tfsdk:"listen"`
-	Tag      types.Int64  `tfsdk:"tag"`
-	Timeouts timeouts.
-
-		// ISCSIPortalListenModel describes a portal listen entry.
-		Value `tfsdk:"timeouts"`
+	ID       types.String   `tfsdk:"id"`
+	Comment  types.String   `tfsdk:"comment"`
+	Listen   types.List     `tfsdk:"listen"`
+	Tag      types.Int64    `tfsdk:"tag"`
+	Timeouts timeouts.Value `tfsdk:"timeouts"`
 }
 
+// ISCSIPortalListenModel describes a portal listen entry.
 type ISCSIPortalListenModel struct {
 	IP   types.String `tfsdk:"ip"`
 	Port types.Int64  `tfsdk:"port"`
@@ -151,6 +149,9 @@ func (r *ISCSIPortalResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.ISCSIPortalCreateRequest{}
 
 	if !plan.Comment.IsNull() {
@@ -197,6 +198,9 @@ func (r *ISCSIPortalResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse iSCSI portal ID: %s", err))
@@ -232,6 +236,9 @@ func (r *ISCSIPortalResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state ISCSIPortalResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -289,6 +296,9 @@ func (r *ISCSIPortalResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

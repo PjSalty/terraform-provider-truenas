@@ -113,6 +113,9 @@ func (r *KeychainCredentialResource) Create(ctx context.Context, req resource.Cr
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	// Convert attributes from TF map to Go map
 	attrs := make(map[string]interface{})
 	if !plan.Attributes.IsNull() {
@@ -160,6 +163,9 @@ func (r *KeychainCredentialResource) Read(ctx context.Context, req resource.Read
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse keychain credential ID: %s", err))
@@ -195,6 +201,9 @@ func (r *KeychainCredentialResource) Update(ctx context.Context, req resource.Up
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state KeychainCredentialResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -249,6 +258,9 @@ func (r *KeychainCredentialResource) Delete(ctx context.Context, req resource.De
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

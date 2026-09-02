@@ -138,6 +138,9 @@ func (r *VMwareResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.VMwareCreateRequest{
 		Datastore:  plan.Datastore.ValueString(),
 		Filesystem: plan.Filesystem.ValueString(),
@@ -173,6 +176,9 @@ func (r *VMwareResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse VMware ID: %s", err))
@@ -205,6 +211,9 @@ func (r *VMwareResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state VMwareResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -255,6 +264,9 @@ func (r *VMwareResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

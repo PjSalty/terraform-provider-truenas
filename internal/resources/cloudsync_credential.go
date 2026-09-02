@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -164,6 +165,9 @@ func (r *CloudSyncCredentialResource) Create(ctx context.Context, req resource.C
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	providerMap, err := buildProviderMap(plan.ProviderType.ValueString(), plan.ProviderAttributesJSON.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid provider_attributes_json", err.Error())
@@ -206,6 +210,9 @@ func (r *CloudSyncCredentialResource) Read(ctx context.Context, req resource.Rea
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse cloud sync credential ID: %s", err))
@@ -241,6 +248,9 @@ func (r *CloudSyncCredentialResource) Update(ctx context.Context, req resource.U
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state CloudSyncCredentialResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -291,6 +301,9 @@ func (r *CloudSyncCredentialResource) Delete(ctx context.Context, req resource.D
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

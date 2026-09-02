@@ -18,6 +18,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -188,6 +189,9 @@ func (r *SNMPConfigResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Debug(ctx, "Creating SNMP config resource (updating singleton)")
 
 	updateReq := r.buildUpdateRequest(&plan)
@@ -218,6 +222,9 @@ func (r *SNMPConfigResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	config, err := r.client.GetSNMPConfig(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -244,6 +251,9 @@ func (r *SNMPConfigResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	updateReq := r.buildUpdateRequest(&plan)
 
 	config, err := r.client.UpdateSNMPConfig(ctx, updateReq)
@@ -262,7 +272,15 @@ func (r *SNMPConfigResource) Update(ctx context.Context, req resource.UpdateRequ
 	tflog.Trace(ctx, "Update SNMPConfig success")
 }
 
-func (r *SNMPConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *SNMPConfigResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state SNMPConfigResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Trace(ctx, "Delete SNMPConfig start")
 
 	tflog.Debug(ctx, "Deleting SNMP config resource (resetting to defaults)")

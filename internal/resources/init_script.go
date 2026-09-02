@@ -158,6 +158,9 @@ func (r *InitScriptResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.InitScriptCreateRequest{
 		Type:    plan.Type.ValueString(),
 		When:    plan.When.ValueString(),
@@ -206,6 +209,9 @@ func (r *InitScriptResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse init script ID: %s", err))
@@ -241,6 +247,9 @@ func (r *InitScriptResource) Update(ctx context.Context, req resource.UpdateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state InitScriptResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -298,6 +307,9 @@ func (r *InitScriptResource) Delete(ctx context.Context, req resource.DeleteRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

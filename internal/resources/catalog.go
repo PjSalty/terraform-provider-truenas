@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -135,6 +136,9 @@ func (r *CatalogResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	trains, d := listToStringSlice(ctx, plan.PreferredTrains)
 	resp.Diagnostics.Append(d...)
 
@@ -183,6 +187,9 @@ func (r *CatalogResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	cat, err := r.client.GetCatalog(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -209,6 +216,9 @@ func (r *CatalogResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	trains, d := listToStringSlice(ctx, plan.PreferredTrains)
 	resp.Diagnostics.Append(d...)
 
@@ -228,7 +238,15 @@ func (r *CatalogResource) Update(ctx context.Context, req resource.UpdateRequest
 	tflog.Trace(ctx, "Update Catalog success")
 }
 
-func (r *CatalogResource) Delete(ctx context.Context, _ resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *CatalogResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state CatalogResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Trace(ctx, "Delete Catalog start")
 
 	// Singleton, cannot be deleted. Reset preferred_trains to the SCALE

@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -129,6 +130,9 @@ func (r *SystemDatasetResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Debug(ctx, "Creating system dataset resource (updating singleton)",
 		map[string]interface{}{"pool": plan.Pool.ValueString()})
 
@@ -158,6 +162,9 @@ func (r *SystemDatasetResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	cfg, err := r.client.GetSystemDataset(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -183,6 +190,9 @@ func (r *SystemDatasetResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	updateReq := buildSystemDatasetUpdate(&plan)
 	cfg, err := r.client.UpdateSystemDataset(ctx, updateReq)
 	if err != nil {
@@ -199,7 +209,15 @@ func (r *SystemDatasetResource) Update(ctx context.Context, req resource.UpdateR
 	tflog.Trace(ctx, "Update SystemDataset success")
 }
 
-func (r *SystemDatasetResource) Delete(ctx context.Context, _ resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *SystemDatasetResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state SystemDatasetResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Trace(ctx, "Delete SystemDataset start")
 
 	tflog.Debug(ctx, "Deleting system dataset resource (resetting to default boot-pool)")
