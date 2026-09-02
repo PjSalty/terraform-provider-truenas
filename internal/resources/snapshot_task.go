@@ -184,6 +184,9 @@ func (r *SnapshotTaskResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.SnapshotTaskCreateRequest{
 		Dataset:      plan.Dataset.ValueString(),
 		Recursive:    plan.Recursive.ValueBool(),
@@ -231,6 +234,9 @@ func (r *SnapshotTaskResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse snapshot task ID: %s", err))
@@ -266,6 +272,9 @@ func (r *SnapshotTaskResource) Update(ctx context.Context, req resource.UpdateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state SnapshotTaskResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -327,6 +336,9 @@ func (r *SnapshotTaskResource) Delete(ctx context.Context, req resource.DeleteRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

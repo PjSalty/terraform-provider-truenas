@@ -160,6 +160,9 @@ func (r *NVMetSubsysResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.NVMetSubsysCreateRequest{
 		Name: plan.Name.ValueString(),
 	}
@@ -216,6 +219,9 @@ func (r *NVMetSubsysResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse NVMe-oF subsystem ID: %s", err))
@@ -251,6 +257,9 @@ func (r *NVMetSubsysResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state NVMetSubsysResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -320,6 +329,9 @@ func (r *NVMetSubsysResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

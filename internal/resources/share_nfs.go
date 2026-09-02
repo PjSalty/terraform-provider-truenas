@@ -192,6 +192,9 @@ func (r *NFSShareResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.NFSShareCreateRequest{
 		Path:    plan.Path.ValueString(),
 		Enabled: plan.Enabled.ValueBool(),
@@ -264,6 +267,9 @@ func (r *NFSShareResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse NFS share ID %q: %s", state.ID.ValueString(), err))
@@ -299,6 +305,9 @@ func (r *NFSShareResource) Update(ctx context.Context, req resource.UpdateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state NFSShareResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -381,6 +390,9 @@ func (r *NFSShareResource) Delete(ctx context.Context, req resource.DeleteReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

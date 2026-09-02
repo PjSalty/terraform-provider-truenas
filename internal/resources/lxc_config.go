@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -279,6 +280,9 @@ func (r *LXCConfigResource) Create(ctx context.Context, req resource.CreateReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 	if err := r.applyConfig(ctx, &plan); err != nil {
 		resp.Diagnostics.AddError("Error Creating LXC Config", err.Error())
 		return
@@ -299,6 +303,9 @@ func (r *LXCConfigResource) Read(ctx context.Context, req resource.ReadRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 	if err := r.refreshState(ctx, &state); err != nil {
 		resp.Diagnostics.AddError("Error Reading LXC Config", err.Error())
 		return
@@ -315,6 +322,9 @@ func (r *LXCConfigResource) Update(ctx context.Context, req resource.UpdateReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 	if err := r.applyConfig(ctx, &plan); err != nil {
 		resp.Diagnostics.AddError("Error Updating LXC Config", err.Error())
 		return

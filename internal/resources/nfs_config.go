@@ -25,6 +25,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -182,6 +183,9 @@ func (r *NFSConfigResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Debug(ctx, "Creating NFS config resource (updating singleton)")
 
 	var d diag.Diagnostics
@@ -214,6 +218,9 @@ func (r *NFSConfigResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	config, err := r.client.GetNFSConfig(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -240,6 +247,9 @@ func (r *NFSConfigResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	var d diag.Diagnostics
 	updateReq := r.buildUpdateRequest(ctx, &plan, &d)
 	resp.Diagnostics.Append(d...)
@@ -260,7 +270,15 @@ func (r *NFSConfigResource) Update(ctx context.Context, req resource.UpdateReque
 	tflog.Trace(ctx, "Update NFSConfig success")
 }
 
-func (r *NFSConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *NFSConfigResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state NFSConfigResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Trace(ctx, "Delete NFSConfig start")
 
 	tflog.Debug(ctx, "Deleting NFS config resource (resetting to defaults)")

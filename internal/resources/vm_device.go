@@ -185,6 +185,9 @@ func (r *VMDeviceResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	attrs := vmDeviceAttrsToAPI(ctx, plan.Dtype.ValueString(), plan.Attributes)
 
 	createReq := &truenas.VMDeviceCreateRequest{
@@ -225,6 +228,9 @@ func (r *VMDeviceResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse VM device ID: %s", err))
@@ -258,6 +264,9 @@ func (r *VMDeviceResource) Update(ctx context.Context, req resource.UpdateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state VMDeviceResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -307,6 +316,9 @@ func (r *VMDeviceResource) Delete(ctx context.Context, req resource.DeleteReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

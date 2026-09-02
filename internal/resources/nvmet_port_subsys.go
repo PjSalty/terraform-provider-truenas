@@ -119,6 +119,9 @@ func (r *NVMetPortSubsysResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.NVMetPortSubsysCreateRequest{
 		PortID:   int(plan.PortID.ValueInt64()),
 		SubsysID: int(plan.SubsysID.ValueInt64()),
@@ -154,6 +157,9 @@ func (r *NVMetPortSubsysResource) Read(ctx context.Context, req resource.ReadReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
@@ -191,6 +197,9 @@ func (r *NVMetPortSubsysResource) Update(ctx context.Context, req resource.Updat
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	tflog.Trace(ctx, "Update NVMetPortSubsys success")
@@ -205,6 +214,9 @@ func (r *NVMetPortSubsysResource) Delete(ctx context.Context, req resource.Delet
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

@@ -139,6 +139,9 @@ func (r *PrivilegeResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	localGroups := privilegeListToIntSlice(ctx, plan.LocalGroups, &resp.Diagnostics)
 	dsGroups := privilegeListToDSGroupSlice(ctx, plan.DSGroups, &resp.Diagnostics)
 	roles := privilegeListToStringSlice(ctx, plan.Roles, &resp.Diagnostics)
@@ -176,6 +179,9 @@ func (r *PrivilegeResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse privilege ID: %s", err))
@@ -208,6 +214,9 @@ func (r *PrivilegeResource) Update(ctx context.Context, req resource.UpdateReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 	var state PrivilegeResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -256,6 +265,9 @@ func (r *PrivilegeResource) Delete(ctx context.Context, req resource.DeleteReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

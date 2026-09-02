@@ -152,6 +152,9 @@ func (r *NVMetNamespaceResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.NVMetNamespaceCreateRequest{
 		DeviceType: plan.DeviceType.ValueString(),
 		DevicePath: plan.DevicePath.ValueString(),
@@ -201,6 +204,9 @@ func (r *NVMetNamespaceResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse NVMe-oF namespace ID: %s", err))
@@ -236,6 +242,9 @@ func (r *NVMetNamespaceResource) Update(ctx context.Context, req resource.Update
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state NVMetNamespaceResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -301,6 +310,9 @@ func (r *NVMetNamespaceResource) Delete(ctx context.Context, req resource.Delete
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

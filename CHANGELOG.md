@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The `timeouts` block did nothing. All 68 resources declared one, and not a
+  single CRUD method read it, so `timeouts { create = "45m" }` was accepted,
+  stored in state, and ignored. Reported as
+  [#34](https://github.com/PjSalty/terraform-provider-truenas/issues/34).
+
+  268 CRUD methods now derive their context from the block. Four are exempt
+  with a reason: they make no API call, so there is nothing to bound. Defaults
+  are 20m create, 20m update, 20m delete and 5m read, and an unreadable value
+  reports the problem and falls back rather than leaving the call unbounded.
+
+  `TestResourcesHaveTimeoutsBlock` only ever checked that a resource DECLARED
+  a block, which is presence rather than enforcement, and is why this survived.
+  `TestResourcesConsumeTimeoutsBlock` now checks that each one reads it.
+
+- The CRUD-discipline invariants were blind to 16 of the 272 CRUD methods.
+  Their shared pattern required both `req` and `resp` to be named, so any
+  method that discarded one with `_` was never matched by
+  delete-handles-not-found, CRUD logging, or state persistence. Those methods
+  were not exempt, they were unseen, which reads exactly like passing. Widening
+  the pattern surfaced two singleton deletes that now carry an explicit
+  exemption and rationale.
+
+- Three resources carried a `Timeouts` field split across a stray comment
+  (`Timeouts timeouts.` / comment / `Value`), a leftover from an earlier
+  mechanical edit. It compiled, and it hid the field from anything matching on
+  the type.
+
+
 ## [3.0.0] - 2026-08-28
 
 **Breaking.** `truenas_system_update` renamed two attributes and removed a
