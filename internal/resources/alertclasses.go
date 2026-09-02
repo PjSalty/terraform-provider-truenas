@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -134,6 +135,9 @@ func (r *AlertClassesResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Debug(ctx, "Creating alertclasses config (updating singleton)")
 
 	updateReq := r.buildUpdateRequest(ctx, &plan)
@@ -161,6 +165,9 @@ func (r *AlertClassesResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	cfg, err := r.client.GetAlertClassesConfig(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Error Reading Alert Classes", fmt.Sprintf("Could not read alert classes: %s", err))
@@ -184,6 +191,9 @@ func (r *AlertClassesResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	updateReq := r.buildUpdateRequest(ctx, &plan)
 
 	cfg, err := r.client.UpdateAlertClassesConfig(ctx, updateReq)
@@ -199,7 +209,15 @@ func (r *AlertClassesResource) Update(ctx context.Context, req resource.UpdateRe
 	tflog.Trace(ctx, "Update AlertClasses success")
 }
 
-func (r *AlertClassesResource) Delete(ctx context.Context, _ resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *AlertClassesResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state AlertClassesResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Trace(ctx, "Delete AlertClasses start")
 
 	tflog.Debug(ctx, "Deleting alertclasses config (resetting to empty)")

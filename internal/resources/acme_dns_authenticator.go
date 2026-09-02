@@ -119,6 +119,9 @@ func (r *ACMEDNSAuthenticatorResource) Create(ctx context.Context, req resource.
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	// Build attributes map, the authenticator type goes inside attributes
 	attrs := map[string]interface{}{
 		"authenticator": plan.Authenticator.ValueString(),
@@ -167,6 +170,9 @@ func (r *ACMEDNSAuthenticatorResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse ACME DNS authenticator ID: %s", err))
@@ -202,6 +208,9 @@ func (r *ACMEDNSAuthenticatorResource) Update(ctx context.Context, req resource.
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state ACMEDNSAuthenticatorResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -258,6 +267,9 @@ func (r *ACMEDNSAuthenticatorResource) Delete(ctx context.Context, req resource.
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

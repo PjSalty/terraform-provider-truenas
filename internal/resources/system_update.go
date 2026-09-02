@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -262,6 +263,9 @@ func (r *SystemUpdateResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	if err := r.applyConfig(ctx, &plan); err != nil {
 		resp.Diagnostics.AddError("Error Applying System Update Config", err.Error())
 		return
@@ -287,6 +291,9 @@ func (r *SystemUpdateResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	if err := r.refreshState(ctx, &state); err != nil {
 		resp.Diagnostics.AddError("Error Reading System Update", err.Error())
 		return
@@ -306,6 +313,9 @@ func (r *SystemUpdateResource) Update(ctx context.Context, req resource.UpdateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	if err := r.applyConfig(ctx, &plan); err != nil {
 		resp.Diagnostics.AddError("Error Updating System Update Config", err.Error())

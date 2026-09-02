@@ -212,6 +212,9 @@ func (r *ISCSIExtentResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.ISCSIExtentCreateRequest{
 		Name:      plan.Name.ValueString(),
 		Type:      plan.Type.ValueString(),
@@ -264,6 +267,9 @@ func (r *ISCSIExtentResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse iSCSI extent ID: %s", err))
@@ -299,6 +305,9 @@ func (r *ISCSIExtentResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state ISCSIExtentResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -365,6 +374,9 @@ func (r *ISCSIExtentResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

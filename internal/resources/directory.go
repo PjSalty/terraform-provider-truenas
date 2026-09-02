@@ -28,6 +28,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -158,6 +159,9 @@ func (r *DirectoryResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	dirPath := plan.Path.ValueString()
 	mode := plan.Mode.ValueString()
 
@@ -224,6 +228,9 @@ func (r *DirectoryResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	stat, err := r.client.StatFilesystem(ctx, state.Path.ValueString())
 	if err != nil {
 		if wsclient.IsNotFound(err) {
@@ -256,6 +263,9 @@ func (r *DirectoryResource) Update(ctx context.Context, req resource.UpdateReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	// path is RequiresReplace, so only mode/uid/gid can change in place.
 	// setperm carries all three in one call.
@@ -292,6 +302,9 @@ func (r *DirectoryResource) Delete(ctx context.Context, req resource.DeleteReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	// TrueNAS exposes no directory-removal method (no rmdir/unlink), so
 	// Delete is state-only. If the path is already gone, IsNotFound

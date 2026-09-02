@@ -190,6 +190,9 @@ func (r *CloudSyncResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	createReq := &truenas.CloudSyncCreateRequest{
 		Path:         plan.Path.ValueString(),
 		Credentials:  int(plan.Credentials.ValueInt64()),
@@ -251,6 +254,9 @@ func (r *CloudSyncResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse cloud sync ID: %s", err))
@@ -286,6 +292,9 @@ func (r *CloudSyncResource) Update(ctx context.Context, req resource.UpdateReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state CloudSyncResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -359,6 +368,9 @@ func (r *CloudSyncResource) Delete(ctx context.Context, req resource.DeleteReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

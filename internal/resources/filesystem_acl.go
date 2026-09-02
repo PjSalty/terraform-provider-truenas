@@ -26,6 +26,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -42,16 +43,13 @@ type FilesystemACLResource struct {
 
 // FilesystemACLResourceModel describes the resource data model.
 type FilesystemACLResourceModel struct {
-	ID       types.String `tfsdk:"id"`
-	Path     types.String `tfsdk:"path"`
-	ACLType  types.String `tfsdk:"acltype"`
-	UID      types.Int64  `tfsdk:"uid"`
-	GID      types.Int64  `tfsdk:"gid"`
-	DACL     types.List   `tfsdk:"dacl"`
-	Timeouts timeouts.
-
-		// ACLEntryModel represents a single ACL entry in the Terraform model.
-		Value `tfsdk:"timeouts"`
+	ID       types.String   `tfsdk:"id"`
+	Path     types.String   `tfsdk:"path"`
+	ACLType  types.String   `tfsdk:"acltype"`
+	UID      types.Int64    `tfsdk:"uid"`
+	GID      types.Int64    `tfsdk:"gid"`
+	DACL     types.List     `tfsdk:"dacl"`
+	Timeouts timeouts.Value `tfsdk:"timeouts"`
 }
 
 var aclEntryAttrTypes = map[string]attr.Type{
@@ -198,6 +196,9 @@ func (r *FilesystemACLResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Debug(ctx, "Setting filesystem ACL", map[string]interface{}{
 		"path": plan.Path.ValueString(),
 	})
@@ -241,6 +242,9 @@ func (r *FilesystemACLResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	acl, err := r.client.GetFilesystemACL(ctx, state.Path.ValueString())
 	if err != nil {
 		if wsclient.IsNotFound(err) {
@@ -270,6 +274,9 @@ func (r *FilesystemACLResource) Update(ctx context.Context, req resource.UpdateR
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	setReq, d := r.buildSetRequest(ctx, &plan)
 	resp.Diagnostics.Append(d...)
@@ -309,6 +316,9 @@ func (r *FilesystemACLResource) Delete(ctx context.Context, req resource.DeleteR
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	tflog.Debug(ctx, "Resetting filesystem ACL to trivial defaults", map[string]interface{}{
 		"path": state.Path.ValueString(),

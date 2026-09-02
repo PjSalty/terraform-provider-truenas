@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 
 	"github.com/PjSalty/terraform-provider-truenas/internal/customtypes"
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/validators"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
@@ -298,6 +299,9 @@ func (r *AppResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	var createReq *truenas.AppCreateRequest
 	if !plan.CustomCompose.IsNull() {
 		// custom compose install: custom_app plus the raw compose
@@ -368,6 +372,9 @@ func (r *AppResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	app, err := r.client.GetApp(ctx, state.ID.ValueString())
 	if err != nil {
 		if wsclient.IsNotFound(err) {
@@ -429,6 +436,9 @@ func (r *AppResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	var state AppResourceModel
 	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -477,6 +487,9 @@ func (r *AppResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	delReq := &truenas.AppDeleteRequest{
 		RemoveImages:    boolOrDefault(state.RemoveImages, true),

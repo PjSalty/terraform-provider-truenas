@@ -251,6 +251,9 @@ func (r *CloudBackupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	attrs, err := normalizeJSON(plan.AttributesJSON.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid attributes_json", fmt.Sprintf("%s", err))
@@ -318,6 +321,9 @@ func (r *CloudBackupResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid ID", fmt.Sprintf("Could not parse cloud backup ID: %s", err))
@@ -350,6 +356,9 @@ func (r *CloudBackupResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	var state CloudBackupResourceModel
 	diags = req.State.Get(ctx, &state)
@@ -437,6 +446,9 @@ func (r *CloudBackupResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
 
 	id, err := strconv.Atoi(state.ID.ValueString())
 	if err != nil {

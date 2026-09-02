@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
@@ -231,6 +232,9 @@ func (r *FTPConfigResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Debug(ctx, "Creating FTP config resource (updating singleton)")
 
 	updateReq := r.buildUpdateRequest(&plan)
@@ -261,6 +265,9 @@ func (r *FTPConfigResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
+	ctx, cancel := planhelpers.WithReadTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	config, err := r.client.GetFTPConfig(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -287,6 +294,9 @@ func (r *FTPConfigResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
+	ctx, cancel := planhelpers.WithUpdateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	updateReq := r.buildUpdateRequest(&plan)
 
 	config, err := r.client.UpdateFTPConfig(ctx, updateReq)
@@ -305,7 +315,15 @@ func (r *FTPConfigResource) Update(ctx context.Context, req resource.UpdateReque
 	tflog.Trace(ctx, "Update FTPConfig success")
 }
 
-func (r *FTPConfigResource) Delete(ctx context.Context, _ resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *FTPConfigResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state FTPConfigResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := planhelpers.WithDeleteTimeout(ctx, state.Timeouts, &resp.Diagnostics)
+	defer cancel()
+
 	tflog.Trace(ctx, "Delete FTPConfig start")
 
 	tflog.Debug(ctx, "Deleting FTP config resource (resetting to defaults)")
