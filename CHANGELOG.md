@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped `google.golang.org/grpc` from 1.82.1 to 1.83.1 (indirect, via the
+  plugin framework's provider server). The 1.83.1 notes carry two xds/rbac
+  fixes for DENY rules failing open on nested rules. `govulncheck` reports
+  nothing reachable from this provider before or after the bump, so unlike
+  the 1.82.1 bump that went out as v2.4.1, this one is routine hygiene and
+  waits for the next release. Applied GitLab-side; the GitHub dependabot PR
+  (#35) was closed with a pointer, since GitHub is a push mirror.
+
 ### Fixed
 
 - The `timeouts` block did nothing. All 68 resources declared one, and not a
