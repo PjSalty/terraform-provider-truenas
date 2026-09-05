@@ -19,6 +19,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `truenas_cloudsync_credential`'s `provider_attributes_json` was `Required`
+  with no `Computed`, but `mapResponseToModel` always rewrites it from the
+  server's own echo of the credential (the same drift-suppression pattern
+  `truenas_cloud_sync.attributes_json` uses, correctly marked
+  `Optional`+`Computed` there). TrueNAS does not echo every credential field
+  back verbatim - `acc_cloudsync_credential_test.go`'s own
+  `ImportStateVerifyIgnore` rationale already says as much ("cloud-credential
+  attributes contain S3/B2/etc secret keys masked on read") - so any create
+  of an S3 (and likely other) credential fails immediately with "Provider
+  produced inconsistent result after apply: .provider_attributes_json:
+  inconsistent values for sensitive attribute", not a corner case. Changed
+  to `Optional`+`Computed`, matching the sibling field. The same
+  `Required`-without-`Computed` shape exists on `reporting_exporter.go`'s
+  `attributes_json` and `keychain_credential.go`'s `attributes` (both also
+  documented as masked-on-read in the same ignore-list), left out of this
+  fix to keep it scoped to the resource that was actually blocking.
+
 - The `timeouts` block did nothing. All 68 resources declared one, and not a
   single CRUD method read it, so `timeouts { create = "45m" }` was accepted,
   stored in state, and ignored. Reported as

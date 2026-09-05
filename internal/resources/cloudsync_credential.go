@@ -118,8 +118,16 @@ func (r *CloudSyncCredentialResource) Schema(ctx context.Context, _ resource.Sch
 			"provider_attributes_json": schema.StringAttribute{
 				Description: "Provider-specific credential fields as a JSON object " +
 					"(e.g. jsonencode({access_key_id = \"X\", secret_access_key = \"Y\"})). " +
-					"The exact keys depend on provider_type.",
-				Required:  true,
+					"The exact keys depend on provider_type. Optional+Computed rather than " +
+					"Required: mapResponseToModel below always rewrites this from the server's " +
+					"own echo of the credential (same drift-suppression pattern as " +
+					"truenas_cloud_sync's attributes_json), and TrueNAS does not necessarily " +
+					"echo every sensitive field back verbatim (see CHANGELOG). A Required-only " +
+					"attribute must come back byte-for-byte identical to the plan or Terraform " +
+					"raises \"Provider produced inconsistent result after apply\" - Optional+Computed " +
+					"is the contract that actually matches what this resource does.",
+				Optional:  true,
+				Computed:  true,
 				Sensitive: true,
 			},
 		},

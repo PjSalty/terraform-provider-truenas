@@ -46,7 +46,7 @@ The following arguments are supported:
 
 * `name` - (Required) The display name of the credential.
 * `provider_type` - (Required) The cloud provider type. Changing this forces replacement. Valid values: `AZUREBLOB`, `B2`, `BOX`, `DROPBOX`, `FTP`, `GOOGLE_CLOUD_STORAGE`, `GOOGLE_DRIVE`, `GOOGLE_PHOTOS`, `HTTP`, `HUBIC`, `MEGA`, `ONEDRIVE`, `OPENSTACK_SWIFT`, `PCLOUD`, `S3`, `SFTP`, `STORJ_IX`, `WEBDAV`, `YANDEX`.
-* `provider_attributes_json` - (Required) Provider-specific credential fields as a JSON object (e.g. jsonencode({access_key_id = "X", secret_access_key = "Y"})). The exact keys depend on provider_type. Marked sensitive.
+* `provider_attributes_json` - (Optional) Provider-specific credential fields as a JSON object (e.g. jsonencode({access_key_id = "X", secret_access_key = "Y"})). The exact keys depend on provider_type. Optional+Computed rather than Required: mapResponseToModel always rewrites this from the server's own echo of the credential (same drift-suppression pattern as truenas_cloud_sync's attributes_json), and TrueNAS does not necessarily echo every sensitive field back verbatim. A Required-only attribute must come back byte-for-byte identical to the plan or Terraform raises "Provider produced inconsistent result after apply" - Optional+Computed is the contract that actually matches what this resource does. Marked sensitive.
 * `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
 
 ### Timeouts

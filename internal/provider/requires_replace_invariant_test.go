@@ -135,9 +135,10 @@ func TestOptionalComputedHasUseStateForUnknown(t *testing.T) {
 	// for state migration. Most attributes should NOT be in here, the
 	// default behavior is to preserve state when config is null.
 	exclusions := map[string]string{
-		"cronjob.go:description":         "appears in cronjobSchemaV0, the frozen v0 schema used by UpgradeState, historical shape must not be modified or state migration breaks",
-		"system_update.go:auto_download": "appears only in systemUpdateSchemaV0, the frozen v0 schema used by UpgradeState; renamed to autocheck in v1 and the historical shape must not be modified",
-		"system_update.go:train":         "appears only in systemUpdateSchemaV0, the frozen v0 schema used by UpgradeState; trains were replaced by profiles in TrueNAS 26.0 and the historical shape must not be modified",
+		"cronjob.go:description":                           "appears in cronjobSchemaV0, the frozen v0 schema used by UpgradeState, historical shape must not be modified or state migration breaks",
+		"system_update.go:auto_download":                   "appears only in systemUpdateSchemaV0, the frozen v0 schema used by UpgradeState; renamed to autocheck in v1 and the historical shape must not be modified",
+		"system_update.go:train":                           "appears only in systemUpdateSchemaV0, the frozen v0 schema used by UpgradeState; trains were replaced by profiles in TrueNAS 26.0 and the historical shape must not be modified",
+		"cloudsync_credential.go:provider_attributes_json": "computed-at-apply secret: TrueNAS masks sensitive credential fields (e.g. secret_access_key) on read, so mapResponseToModel's server echo can legitimately differ from the plan value on every apply - UseStateForUnknown would paper over that by pinning stale state instead of surfacing it. Same masked-on-read behavior documented for reporting_exporter.go's attributes_json and keychain_credential.go's attributes in allowedIgnoreFields (importstate_verify_ignore_invariant_test.go), though both are still Required-only today so this test doesn't see them yet.",
 	}
 
 	matches, err := filepath.Glob("../resources/*.go")
