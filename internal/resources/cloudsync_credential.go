@@ -10,9 +10,10 @@
 //   - Users pass e.g.
 //     `provider_attributes_json = jsonencode({ access_key_id = "X",
 //     secret_access_key = "Y" })`.
-//   - On read we filter the server response back down to the keys the user
-//     originally specified (via filterJSONByKeys) so server-side defaults
-//     don't cause phantom drift, same pattern as cloud_backup.go.
+//   - The field is write-only from the API's perspective: TrueNAS masks
+//     sensitive values (e.g. secret_access_key) in its own echo of the
+//     credential, so mapResponseToModel never reconstructs it from the
+//     server response, unlike cloud_backup.go's attributes_json.
 package resources
 
 import (
@@ -118,7 +119,15 @@ func (r *CloudSyncCredentialResource) Schema(ctx context.Context, _ resource.Sch
 			"provider_attributes_json": schema.StringAttribute{
 				Description: "Provider-specific credential fields as a JSON object " +
 					"(e.g. jsonencode({access_key_id = \"X\", secret_access_key = \"Y\"})). " +
-					"The exact keys depend on provider_type.",
+					"The exact keys depend on provider_type. Write-only in practice: TrueNAS " +
+					"masks sensitive fields (e.g. secret_access_key) in its own echo of the " +
+					"credential, so mapResponseToModel below never reconstructs this attribute " +
+					"from the server response the way cloud_sync.go/cloud_backup.go do for " +
+					"their own (non-sensitive) attributes_json - it stays exactly what was " +
+					"planned. Required, not Optional+Computed: nothing about it is actually " +
+					"computed by the provider, so Required is the honest contract, and it also " +
+					"avoids TestOptionalComputedHasUseStateForUnknown's UseStateForUnknown/Default " +
+					"requirement for a field that has neither.",
 				Required:  true,
 				Sensitive: true,
 			},
@@ -336,38 +345,30 @@ func (r *CloudSyncCredentialResource) ImportState(ctx context.Context, req resou
 }
 
 // mapResponseToModel projects a CloudSyncCredential API response into the
-// Terraform model, extracting the provider type and filtering the remaining
-// provider keys back down to the user's original JSON shape to avoid
-// phantom drift from server-side defaults.
+// Terraform model, extracting the provider type. Deliberately does NOT
+// touch model.ProviderAttributesJSON: TrueNAS masks sensitive credential
+// fields (e.g. secret_access_key) in its own echo of the credential, so
+// reconstructing that attribute from cred.Provider (as this function used
+// to, via filterJSONByKeys/normalizeJSON - the same drift-suppression
+// pattern cloud_sync.go and cloud_backup.go use for their own,
+// non-sensitive attributes_json) can silently produce a value that
+// differs from what was actually planned. When the plan's value for that
+// field is already known (not depending on an as-yet-unapplied resource),
+// Terraform requires the post-apply value to match it byte-for-byte or
+// apply fails outright with "Provider produced inconsistent result after
+// apply" - a hard crash on every Create/Update, not just a cosmetic
+// diff. Leaving the field alone means Create/Update keep exactly what
+// was planned (model IS the plan there) and Read/Import keep exactly
+// what was already in state - this resource treats
+// provider_attributes_json as write-only from the API's perspective,
+// the same way user.go treats `password` and iscsi_auth.go treats
+// `secret`/`peersecret` (see those resources' own ImportStateVerifyIgnore
+// entries in importstate_verify_ignore_invariant_test.go).
 func (r *CloudSyncCredentialResource) mapResponseToModel(_ context.Context, cred *truenas.CloudSyncCredential, model *CloudSyncCredentialResourceModel) {
 	model.ID = types.StringValue(strconv.Itoa(cred.ID))
 	model.Name = types.StringValue(cred.Name)
 
-	// Split out the `type` key: it maps to provider_type, everything else
-	// becomes provider_attributes_json.
-	providerType := ""
-	remaining := make(map[string]interface{}, len(cred.Provider))
-	for k, v := range cred.Provider {
-		if k == "type" {
-			if s, ok := v.(string); ok {
-				providerType = s
-			}
-			continue
-		}
-		remaining[k] = v
-	}
-	if providerType != "" {
+	if providerType, ok := cred.Provider["type"].(string); ok && providerType != "" {
 		model.ProviderType = types.StringValue(providerType)
 	}
-
-	// json.Marshal cannot fail: `remaining` was built from a decoded JSON map.
-	raw, _ := json.Marshal(remaining)
-
-	// Filter server response against prior user-supplied JSON to avoid
-	// server-side defaults (e.g. region = null, endpoint = "") causing drift.
-	// Both helpers operate on known-valid JSON from json.Marshal above.
-	prior := model.ProviderAttributesJSON.ValueString()
-	filtered, _ := filterJSONByKeys(string(raw), prior)
-	canon, _ := normalizeJSON(filtered)
-	model.ProviderAttributesJSON = types.StringValue(string(canon))
 }

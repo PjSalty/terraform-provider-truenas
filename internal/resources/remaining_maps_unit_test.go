@@ -488,3 +488,32 @@ func TestVMwareResource_MapResponseToModel(t *testing.T) {
 
 // boolTypeHelper forces compile use of types package.
 var _ = types.StringValue
+
+// The credential's echo from the server is role-dependent: a session that is
+// neither FULL_ADMIN nor holds CLOUD_SYNC_WRITE gets every Secret[...] field
+// back as "********" (middleware main.py, expose_secrets). Rebuilding
+// provider_attributes_json from that echo wrote the placeholder over the
+// planned value, and Terraform refused the apply with "inconsistent values
+// for sensitive attribute". The attribute is write-only from the API's point
+// of view, so the response must never touch it, masked or not.
+func TestCloudSyncCredentialResource_MapResponseToModel_LeavesAttributesAlone(t *testing.T) {
+	r := &CloudSyncCredentialResource{}
+	ctx := context.Background()
+	planned := `{"access_key_id":"AKIA","secret_access_key":"real"}`
+
+	for _, echo := range []map[string]interface{}{
+		// what a restricted role sees
+		{"type": "S3", "access_key_id": "********", "secret_access_key": "********"},
+		// what an admin sees, plus a server-side default the plan never had
+		{"type": "S3", "access_key_id": "AKIA", "secret_access_key": "real", "endpoint": ""},
+	} {
+		m := CloudSyncCredentialResourceModel{ProviderAttributesJSON: types.StringValue(planned)}
+		r.mapResponseToModel(ctx, &truenas.CloudSyncCredential{ID: 7, Name: "s3", Provider: echo}, &m)
+		if got := m.ProviderAttributesJSON.ValueString(); got != planned {
+			t.Errorf("echo %v rewrote provider_attributes_json:\n got  %s\n want %s", echo, got, planned)
+		}
+		if m.ProviderType.ValueString() != "S3" {
+			t.Errorf("provider_type = %q, want S3", m.ProviderType.ValueString())
+		}
+	}
+}
