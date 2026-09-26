@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `truenas_snapshot_task`: `exclude`, the datasets a recursive task skips. It
+  was on the API but not in the schema, so an exclusion set outside Terraform
+  was invisible to `terraform plan`: a task could exclude its own datasets,
+  produce no snapshots, and still report no drift. It is Optional+Computed with
+  no default, so omitting it reads the box's value into state without changing
+  it, and `exclude = []` clears it. The request body now uses a pointer slice,
+  since `omitempty` would otherwise drop an explicit empty list exactly like an
+  unset one.
+
 ### Security
 
 - Bumped `google.golang.org/grpc` from 1.83.1 to 1.83.2 for GO-2026-6443

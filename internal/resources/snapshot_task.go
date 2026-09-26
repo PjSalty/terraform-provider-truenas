@@ -7,11 +7,13 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -47,6 +49,7 @@ type SnapshotTaskResourceModel struct {
 	NamingSchema types.String   `tfsdk:"naming_schema"`
 	Enabled      types.Bool     `tfsdk:"enabled"`
 	AllowEmpty   types.Bool     `tfsdk:"allow_empty"`
+	Exclude      types.List     `tfsdk:"exclude"`
 	Minute       types.String   `tfsdk:"schedule_minute"`
 	Hour         types.String   `tfsdk:"schedule_hour"`
 	Dom          types.String   `tfsdk:"schedule_dom"`
@@ -125,6 +128,32 @@ func (r *SnapshotTaskResource) Schema(ctx context.Context, _ resource.SchemaRequ
 				Computed:    true,
 				Default:     booldefault.StaticBool(true),
 			},
+			// Optional+Computed with NO default, deliberately. This field was
+			// absent from the schema entirely, which made any exclude list set
+			// out of band invisible to `terraform plan`: an enabled task on the
+			// right dataset with the right schedule reports clean while
+			// excluding its own datasets and producing nothing. Reading it into
+			// state makes it visible. A static default of [] would instead make
+			// the next apply CLEAR whatever the box holds, which is a live
+			// change to a storage system and is the operator's call, not a
+			// side effect of adding an attribute. Declare `exclude = []`
+			// explicitly to enforce empty.
+			"exclude": schema.ListAttribute{
+				Description: "Datasets to exclude from a recursive snapshot task. Omit it to leave the " +
+					"task's current exclusions untouched (they are still read into state, so changes " +
+					"made outside Terraform show in the plan). Set it to [] to clear them.",
+				ElementType: types.StringType,
+				Optional:    true,
+				Computed:    true,
+				// Required because this is Optional+Computed with no Default.
+				// Without it every plan renders exclude as (known after apply),
+				// and a phantom diff on every run is how operators are trained
+				// to scroll past real drift. Enforced by
+				// TestOptionalComputedHasUseStateForUnknown.
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"schedule_minute": schema.StringAttribute{
 				Description: "Cron schedule minute field.",
 				Optional:    true,
@@ -195,6 +224,7 @@ func (r *SnapshotTaskResource) Create(ctx context.Context, req resource.CreateRe
 		NamingSchema: plan.NamingSchema.ValueString(),
 		Enabled:      plan.Enabled.ValueBool(),
 		AllowEmpty:   plan.AllowEmpty.ValueBool(),
+		Exclude:      excludeFromList(plan.Exclude),
 		Schedule: truenas.Schedule{
 			Minute: plan.Minute.ValueString(),
 			Hour:   plan.Hour.ValueString(),
@@ -308,6 +338,7 @@ func (r *SnapshotTaskResource) Update(ctx context.Context, req resource.UpdateRe
 		NamingSchema: plan.NamingSchema.ValueString(),
 		Enabled:      &enabled,
 		AllowEmpty:   &allowEmpty,
+		Exclude:      excludeFromList(plan.Exclude),
 		Schedule:     schedule,
 	}
 
@@ -388,9 +419,39 @@ func (r *SnapshotTaskResource) mapResponseToModel(task *truenas.SnapshotTask, mo
 	model.NamingSchema = types.StringValue(task.NamingSchema)
 	model.Enabled = types.BoolValue(task.Enabled)
 	model.AllowEmpty = types.BoolValue(task.AllowEmpty)
+	model.Exclude = excludeToList(task.Exclude)
 	model.Minute = types.StringValue(task.Schedule.Minute)
 	model.Hour = types.StringValue(task.Schedule.Hour)
 	model.Dom = types.StringValue(task.Schedule.Dom)
 	model.Month = types.StringValue(task.Schedule.Month)
 	model.Dow = types.StringValue(task.Schedule.Dow)
+}
+
+// excludeFromList converts the tfsdk list into the wire field. A null or
+// unknown list returns nil, which omits the key, so an unset attribute never
+// clears the value the box already holds. A known list, including an empty
+// one, returns a pointer so the key is sent: the request tags are omitempty,
+// which drops an empty slice exactly like a nil one.
+func excludeFromList(l types.List) *[]string {
+	if l.IsNull() || l.IsUnknown() {
+		return nil
+	}
+	out := make([]string, 0, len(l.Elements()))
+	for _, e := range l.Elements() {
+		if sv, ok := e.(types.String); ok && !sv.IsNull() && !sv.IsUnknown() {
+			out = append(out, sv.ValueString())
+		}
+	}
+	return &out
+}
+
+// excludeToList converts the wire slice into a tfsdk list. A nil slice becomes
+// an EMPTY list rather than null, so the attribute is never unknown after a
+// read and Computed stays satisfied.
+func excludeToList(in []string) types.List {
+	elems := make([]attr.Value, 0, len(in))
+	for _, s := range in {
+		elems = append(elems, types.StringValue(s))
+	}
+	return types.ListValueMust(types.StringType, elems)
 }

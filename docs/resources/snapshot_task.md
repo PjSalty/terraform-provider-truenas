@@ -41,6 +41,7 @@ The following arguments are supported:
 
 * `dataset` - (Required) The dataset to snapshot (e.g., tank/data).
 * `recursive` - (Optional) Whether to recursively snapshot child datasets. Default: `false`.
+* `exclude` - (Optional) Datasets to exclude from a recursive snapshot task. Omit it to leave the task's current exclusions untouched; they are still read into state, so a change made outside Terraform shows in the plan. Set `exclude = []` to clear them.
 * `lifetime_value` - (Optional) How long to keep snapshots (numeric value). Default: `2`.
 * `lifetime_unit` - (Optional) Lifetime unit (HOUR, DAY, WEEK, MONTH, YEAR). Valid values: `HOUR`, `DAY`, `WEEK`, `MONTH`, `YEAR`. Default: `WEEK`.
 * `naming_schema` - (Optional) Naming schema for snapshots (e.g., auto-%Y-%m-%d_%H-%M). Default: `auto-%Y-%m-%d_%H-%M`.
