@@ -16,15 +16,15 @@ type SnapshotTask struct {
 
 // SnapshotTaskCreateRequest represents the request to create a snapshot task.
 type SnapshotTaskCreateRequest struct {
-	Dataset      string   `json:"dataset"`
-	Recursive    bool     `json:"recursive"`
-	Lifetime     int      `json:"lifetime_value"`
-	LifetimeUnit string   `json:"lifetime_unit"`
-	NamingSchema string   `json:"naming_schema"`
-	Schedule     Schedule `json:"schedule"`
-	Enabled      bool     `json:"enabled"`
-	AllowEmpty   bool     `json:"allow_empty"`
-	Exclude      []string `json:"exclude,omitempty"`
+	Dataset      string    `json:"dataset"`
+	Recursive    bool      `json:"recursive"`
+	Lifetime     int       `json:"lifetime_value"`
+	LifetimeUnit string    `json:"lifetime_unit"`
+	NamingSchema string    `json:"naming_schema"`
+	Schedule     Schedule  `json:"schedule"`
+	Enabled      bool      `json:"enabled"`
+	AllowEmpty   bool      `json:"allow_empty"`
+	Exclude      *[]string `json:"exclude,omitempty"`
 }
 
 // SnapshotTaskUpdateRequest represents the request to update a snapshot task.
@@ -37,5 +37,5 @@ type SnapshotTaskUpdateRequest struct {
 	Schedule     *Schedule `json:"schedule,omitempty"`
 	Enabled      *bool     `json:"enabled,omitempty"`
 	AllowEmpty   *bool     `json:"allow_empty,omitempty"`
-	Exclude      []string  `json:"exclude,omitempty"`
+	Exclude      *[]string `json:"exclude,omitempty"`
 }
