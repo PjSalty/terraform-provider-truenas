@@ -93,8 +93,8 @@ The provider authenticates via the JSON-RPC handshake using an API key.
 | `read_only`            | `TRUENAS_READONLY`            | no       | When true, the provider refuses every mutating JSON-RPC call before it reaches the network. See [Read-only mode](#read-only-mode-safety-rail). |
 
 The provider normalizes the base URL and connects to `/api/current` (the JSON-RPC WebSocket endpoint) automatically.
-API keys should be stored in a secret manager (e.g. SOPS, Vault,
-Vaultwarden) and injected via environment variables in CI.
+API keys should be stored in a secret manager (e.g. SOPS or Vault) and
+injected via environment variables in CI.
 
 ```bash
 export TRUENAS_URL="https://truenas.example.com"
