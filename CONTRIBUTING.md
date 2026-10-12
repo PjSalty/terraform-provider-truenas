@@ -332,6 +332,6 @@ See [`.goreleaser.yml`](.goreleaser.yml) for the full release configuration.
 ## Getting help
 
 - Open an issue with the `question` label.
-- Check existing issues and MRs before opening a new one.
+- Check existing issues and pull requests before opening a new one.
 - For security issues, follow [SECURITY.md](SECURITY.md), do not disclose
   publicly.
