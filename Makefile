@@ -1,7 +1,7 @@
 # Makefile for terraform-provider-truenas
 #
 # Standard HashiCorp-style provider build targets. Prefer this Makefile for
-# local development. CI uses the same targets via .gitlab-ci.yml.
+# local development. CI uses the same targets.
 
 BINARY       := terraform-provider-truenas
 VERSION      ?= 0.1.0
