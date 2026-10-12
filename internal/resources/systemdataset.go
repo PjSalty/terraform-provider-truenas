@@ -60,7 +60,7 @@ func (r *SystemDatasetResource) Schema(ctx context.Context, _ resource.SchemaReq
 	resp.Schema = schema.Schema{
 		Description: "Manages the TrueNAS system dataset pool assignment. This is a singleton, " +
 			"only one instance of this resource can exist per TrueNAS system. " +
-			"Default timeouts: 20m for create/update (system dataset move requires service restarts), 10m for delete.",
+			"Moving the system dataset restarts services and can be slow; raise `create` and `update` in the `timeouts` block if they time out.",
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{
 				Create: true,

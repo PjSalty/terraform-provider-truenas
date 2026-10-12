@@ -113,10 +113,10 @@ missing compose file on the NAS cannot wedge a destroy.
 
 The `timeouts` block supports:
 
-* `create` - (Default `10m`) Timeout for creating the resource.
+* `create` - (Default `20m`) Timeout for creating the resource.
 * `read` - (Default `5m`) Timeout for reading the resource.
-* `update` - (Default `10m`) Timeout for updating the resource.
-* `delete` - (Default `10m`) Timeout for deleting the resource.
+* `update` - (Default `20m`) Timeout for updating the resource.
+* `delete` - (Default `20m`) Timeout for deleting the resource.
 
 ## Attribute Reference
 

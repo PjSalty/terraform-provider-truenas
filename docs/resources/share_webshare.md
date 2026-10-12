@@ -38,6 +38,17 @@ resource "truenas_share_webshare" "docs" {
 * `is_home_base` - (Optional) Whether this share is the home base, under which
   per-user home shares are created. Default: `false`.
 
+* `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
+
+### Timeouts
+
+The `timeouts` block supports:
+
+* `create` - (Default `20m`) Timeout for creating the resource.
+* `read` - (Default `5m`) Timeout for reading the resource.
+* `update` - (Default `20m`) Timeout for updating the resource.
+* `delete` - (Default `20m`) Timeout for deleting the resource.
+
 ## Attribute Reference
 
 These are derived by TrueNAS and cannot be set. They are excluded from the
