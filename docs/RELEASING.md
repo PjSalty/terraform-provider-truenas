@@ -63,8 +63,8 @@ If a published version is broken (release-pipeline failure, schema
 regression, signing key issue), do this:
 
 ```sh
-# 1. Delete the tag from GitLab so a future release can re-publish it cleanly
-glab api --method DELETE "projects/16/repository/tags/vX.Y.Z"
+# 1. Delete the tag on the primary remote so a future release can re-publish it cleanly
+git push origin :refs/tags/vX.Y.Z
 
 # 2. Delete the GitHub release + tag
 gh release delete vX.Y.Z --repo PjSalty/terraform-provider-truenas \
@@ -78,37 +78,11 @@ gh release delete vX.Y.Z --repo PjSalty/terraform-provider-truenas \
 Then fix forward on `main`, bump `CHANGELOG.md` to the next version, and tag
 again.
 
-## PROMOTE_TOKEN
+## Unused CI credential
 
-The `PROMOTE_TOKEN` CI variable is a Project Access Token with
-`api + write_repository` scope and Maintainer role. **Nothing reads it.** It
-was created for the promote job described above, and that job does not exist,
-so the token is an unused credential with write access to the repository.
-
-Either revoke it, or wire the promote job it was made for. Leaving it is the
-one option that has no upside. Rotation, if it is kept:
-
-```sh
-GLAB_TOKEN=<your admin GitLab PAT>
-EXPIRY=$(date -d '+1 year' +%Y-%m-%d)
-
-# 1. Issue a new token
-NEW=$(curl -sf --header "Private-Token: $GLAB_TOKEN" \
-  --header "Content-Type: application/json" \
-  --data "{\"name\":\"promote-and-renovate\",\"scopes\":[\"api\",\"write_repository\"],\"access_level\":40,\"expires_at\":\"$EXPIRY\"}" \
-  --request POST \
-  https://gitlab.example.com/api/v4/projects/16/access_tokens \
-  | jq -r .token)
-
-# 2. Update the CI variable
-curl -sf --header "Private-Token: $GLAB_TOKEN" \
-  --header "Content-Type: application/json" \
-  --data "{\"value\":\"$NEW\"}" \
-  --request PUT \
-  https://gitlab.example.com/api/v4/projects/16/variables/PROMOTE_TOKEN
-
-# 3. Revoke the old token (find its id via GET projects/16/access_tokens)
-```
+A CI variable created for the promote job described above still exists and
+nothing reads it. Its rotation and revocation are internal operations and
+are documented in the private operations notes, not here.
 
 ## What the maintenance loop looks like
 
