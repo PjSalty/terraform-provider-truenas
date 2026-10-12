@@ -479,3 +479,32 @@ func TestSMBUpdateBody_nilSliceMarshalsAsEmptyList(t *testing.T) {
 		t.Errorf("expected an empty JSON list, got: %s", b)
 	}
 }
+
+// An empty list against a server without the field is not a request for the
+// feature. It is what the resource holds in state for such a server, so it
+// arrives with every later update. It must build a body without the key, for
+// both forms of "empty", and the rest of the request must still go out.
+func TestBuildSMBUpdateBody_emptySearchProtocolsAsksNothingPre26(t *testing.T) {
+	empty := []string{}
+	var nilSlice []string
+	for name, sp := range map[string]*[]string{"empty list": &empty, "nil slice": &nilSlice} {
+		t.Run(name, func(t *testing.T) {
+			body, err := buildSMBUpdateBody(
+				&types.SMBConfigUpdateRequest{Description: strp("updated"), SearchProtocols: sp},
+				types.SMBDialectEnableSMB1)
+			if err != nil {
+				t.Fatalf("an empty search_protocols was refused on a pre-26.0 server: %v", err)
+			}
+			b, err := json.Marshal(body)
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			if strings.Contains(string(b), "search_protocols") {
+				t.Errorf("search_protocols reached a server whose model forbids the key: %s", b)
+			}
+			if !strings.Contains(string(b), `"description":"updated"`) {
+				t.Errorf("the rest of the update was lost: %s", b)
+			}
+		})
+	}
+}
