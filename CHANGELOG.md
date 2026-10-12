@@ -617,7 +617,7 @@ this release removes or renames an attribute: verified by diffing every
 - `docs/RELEASING.md` documented a release process that does not exist. It
   described opening PRs against a `dev` branch and a `promote` job that reads
   the version out of `CHANGELOG.md` and tags automatically. There is no `dev`
-  branch, `.gitlab-ci.yml` has no promote job, and every tag from v2.1.0 on
+  branch, no pipeline has a promote job, and every tag from v2.1.0 on
   was made by hand, so the runbook's "happy path" was unfollowable and its
   emergency path was the real one. Rewritten to the process that exists,
   including a step that verifies the published release has assets rather than
