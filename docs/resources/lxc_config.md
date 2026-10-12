@@ -59,6 +59,17 @@ address family and cover at least 4 addresses (a `/30` or larger for IPv4).
 TrueNAS additionally rejects a network that overlaps the system's own static
 IPs, which can only be checked server-side at apply time.
 
+* `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
+
+### Timeouts
+
+The `timeouts` block supports:
+
+* `create` - (Default `20m`) Timeout for creating the resource.
+* `read` - (Default `5m`) Timeout for reading the resource.
+* `update` - (Default `20m`) Timeout for updating the resource.
+* `delete` - (Default `20m`) Timeout for deleting the resource.
+
 ## Attribute Reference
 
 * `id` - Fixed singleton identifier. Always `"lxc_config"`.

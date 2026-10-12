@@ -75,7 +75,7 @@ func (r *PoolResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 		Description: "Manages a ZFS pool on TrueNAS SCALE. Creation is asynchronous and " +
 			"the topology is passed through to the API as a raw JSON object to avoid " +
 			"modeling the deeply-nested discriminated-union schema. " +
-			"Default timeouts: 60m for create (zpool creation + encryption + initial scrub can be slow), 30m for update/delete." + "\n\n" +
+			"Pool creation with encryption can be slow; raise `create` in the `timeouts` block if it times out." + "\n\n" +
 			"**Stability: Beta.** Import and read verified live. Full create/destroy cycle has not been observed because the test environment has a single pool that cannot be destroyed. Pool creation uses a deeply-nested topology schema expressed as JSON; the format matches the TrueNAS REST API.",
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{

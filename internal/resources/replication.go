@@ -69,7 +69,7 @@ func (r *ReplicationResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *ReplicationResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{Blocks: map[string]schema.Block{"timeouts": timeouts.Block(ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true})}, Description: "Manages a ZFS replication task on TrueNAS SCALE. " +
-		"Default timeouts: 30m for create/update (initial snapshot sync may be slow), 10m for delete.",
+		"The initial snapshot sync can be slow; raise `create` and `update` in the `timeouts` block if they time out.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "The numeric ID of the replication task.",
