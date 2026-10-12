@@ -79,6 +79,7 @@ The following arguments are supported:
 * `smb` - (Optional) Whether the user should have Samba authentication enabled. Default: `false`.
 * `sshpubkey` - (Optional) SSH public key for the user. Default: ``.
 * `sudo_commands` - (Optional) List of sudo commands the user is allowed to run.
+* `sudo_commands_nopasswd` - (Optional) Commands the user may run with sudo without a password; `["ALL"]` allows any. Omit it to leave the user's current list untouched; it is still read into state, so a grant made outside Terraform appears in the drift report instead of being silently kept. Set `sudo_commands_nopasswd = []` to clear it.
 * `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
 
 ### Timeouts

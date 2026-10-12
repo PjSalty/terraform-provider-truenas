@@ -33,6 +33,7 @@ The following arguments are supported:
 * `gid` - (Optional) The GID for the group. If not set, TrueNAS will assign one.
 * `smb` - (Optional) Whether the group should be mapped to a Samba group. Default: `false`.
 * `sudo_commands` - (Optional) List of sudo commands the group members are allowed to run.
+* `sudo_commands_nopasswd` - (Optional) Commands the group members may run with sudo without a password; `["ALL"]` allows any. Omit it to leave the group's current list untouched; it is still read into state, so a grant made outside Terraform appears in the drift report instead of being silently kept. Set `sudo_commands_nopasswd = []` to clear it.
 * `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
 
 ### Timeouts

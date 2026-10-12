@@ -56,7 +56,9 @@ type UserCreateRequest struct {
 	SMB              bool     `json:"smb"`
 	SSHPubKey        string   `json:"sshpubkey,omitempty"`
 	SudoCommands     []string `json:"sudo_commands,omitempty"`
-	SudoCommandsNP   []string `json:"sudo_commands_nopasswd,omitempty"`
+	// A pointer slice, like SnapshotTaskCreateRequest.Exclude: nil omits the
+	// key, a pointer to an empty slice sends [].
+	SudoCommandsNP *[]string `json:"sudo_commands_nopasswd,omitempty"`
 }
 
 // UserUpdateRequest represents the request to update a user.
@@ -87,7 +89,10 @@ type UserUpdateRequest struct {
 	SMB              *bool           `json:"smb,omitempty"`
 	SSHPubKey        string          `json:"sshpubkey,omitempty"`
 	SudoCommands     []string        `json:"sudo_commands,omitempty"`
-	SudoCommandsNP   []string        `json:"sudo_commands_nopasswd,omitempty"`
+	// A pointer slice so `sudo_commands_nopasswd = []` reaches the server:
+	// omitempty would drop an explicit empty list exactly like an unset one,
+	// and the grant would survive an apply that claimed to remove it.
+	SudoCommandsNP *[]string `json:"sudo_commands_nopasswd,omitempty"`
 }
 
 // SetPassword puts an explicit password on the wire.

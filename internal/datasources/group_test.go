@@ -15,7 +15,7 @@ func TestGroupDataSource_Schema(t *testing.T) {
 	ds := NewGroupDataSource()
 	resp := getDataSourceSchema(t.Context(), t, ds)
 	attrs := resp.Schema.GetAttributes()
-	for _, want := range []string{"id", "name", "gid", "smb", "builtin", "sudo_commands"} {
+	for _, want := range []string{"id", "name", "gid", "smb", "builtin", "sudo_commands", "sudo_commands_nopasswd"} {
 		if _, ok := attrs[want]; !ok {
 			t.Errorf("missing attribute: %s", want)
 		}
@@ -26,12 +26,13 @@ func TestGroupDataSource_Read_Success(t *testing.T) {
 	c := newWSServer(t.Context(), t, wsReturn([]truenas.Group{
 		{ID: 1, GID: 100, Name: "wheel", Builtin: true, SMB: false},
 		{
-			ID:           42,
-			GID:          2000,
-			Name:         "admins",
-			Builtin:      false,
-			SMB:          true,
-			SudoCommands: []string{"/bin/ls", "/usr/bin/apt"},
+			ID:             42,
+			GID:            2000,
+			Name:           "admins",
+			Builtin:        false,
+			SMB:            true,
+			SudoCommands:   []string{"/bin/ls", "/usr/bin/apt"},
+			SudoCommandsNP: []string{"/usr/sbin/zpool status", "/usr/bin/df"},
 		},
 	}))
 
@@ -58,6 +59,9 @@ func TestGroupDataSource_Read_Success(t *testing.T) {
 	if state.SudoCommands.ValueString() != "/bin/ls,/usr/bin/apt" {
 		t.Errorf("SudoCommands: got %q", state.SudoCommands.ValueString())
 	}
+	if state.SudoNopasswd.ValueString() != "/usr/sbin/zpool status,/usr/bin/df" {
+		t.Errorf("SudoNopasswd: got %q", state.SudoNopasswd.ValueString())
+	}
 }
 
 func TestGroupDataSource_Read_EmptySudo(t *testing.T) {
@@ -75,6 +79,9 @@ func TestGroupDataSource_Read_EmptySudo(t *testing.T) {
 	_ = resp.State.Get(context.Background(), &state)
 	if state.SudoCommands.ValueString() != "" {
 		t.Errorf("SudoCommands: got %q, want empty", state.SudoCommands.ValueString())
+	}
+	if state.SudoNopasswd.ValueString() != "" {
+		t.Errorf("SudoNopasswd: got %q, want empty", state.SudoNopasswd.ValueString())
 	}
 }
 

@@ -36,3 +36,4 @@ output "wheel_gid" {
 - `id` (Number) The group ID.
 - `smb` (Boolean) Whether the group has SMB access.
 - `sudo_commands` (String) Comma-separated list of sudo commands allowed.
+- `sudo_commands_nopasswd` (String) Comma-separated list of sudo commands allowed without a password.

@@ -3,6 +3,7 @@ package datasources
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -26,6 +27,7 @@ type GroupDataSourceModel struct {
 	SMB          types.Bool   `tfsdk:"smb"`
 	Builtin      types.Bool   `tfsdk:"builtin"`
 	SudoCommands types.String `tfsdk:"sudo_commands"`
+	SudoNopasswd types.String `tfsdk:"sudo_commands_nopasswd"`
 }
 
 func NewGroupDataSource() datasource.DataSource {
@@ -62,6 +64,10 @@ func (d *GroupDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 			},
 			"sudo_commands": schema.StringAttribute{
 				Description: "Comma-separated list of sudo commands allowed.",
+				Computed:    true,
+			},
+			"sudo_commands_nopasswd": schema.StringAttribute{
+				Description: "Comma-separated list of sudo commands allowed without a password.",
 				Computed:    true,
 			},
 		},
@@ -117,6 +123,7 @@ func (d *GroupDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		sudoCmds += cmd
 	}
 	config.SudoCommands = types.StringValue(sudoCmds)
+	config.SudoNopasswd = types.StringValue(strings.Join(group.SudoCommandsNP, ","))
 
 	diags = resp.State.Set(ctx, config)
 	resp.Diagnostics.Append(diags...)

@@ -144,3 +144,56 @@ resource "truenas_group" "test" {
 		},
 	})
 }
+
+// TestAccGroupResource_sudoNopasswd mirrors the user test for groups: grant on
+// create, clear with an explicit [], keep when omitted, round-trip on import.
+func TestAccGroupResource_sudoNopasswd(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	name := fmt.Sprintf("acctg%d", shortSuffix())
+	config := func(nopasswd string) string {
+		return fmt.Sprintf(`
+resource "truenas_group" "test" {
+  gid  = 20040
+  name = %q
+%s}
+`, name, nopasswd)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: config(`  sudo_commands_nopasswd = ["/usr/sbin/zpool", "/usr/sbin/zfs"]` + "\n"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("truenas_group.test", "sudo_commands_nopasswd.#", "2"),
+					resource.TestCheckResourceAttr("truenas_group.test", "sudo_commands_nopasswd.0", "/usr/sbin/zpool"),
+					resource.TestCheckResourceAttr("truenas_group.test", "sudo_commands_nopasswd.1", "/usr/sbin/zfs"),
+				),
+			},
+			{
+				Config: config(`  sudo_commands_nopasswd = []` + "\n"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_group.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_group.test", "sudo_commands_nopasswd.#", "0"),
+			},
+			{
+				Config:   config(""),
+				PlanOnly: true,
+			},
+			{
+				ResourceName:      "truenas_group.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
