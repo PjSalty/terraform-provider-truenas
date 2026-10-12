@@ -5,11 +5,11 @@ document is the runbook.
 
 ## Normal flow, happy path
 
-1. Open an MR against `main` with your code change. Add an entry under
+1. Open a pull request against `main` with your code change. Add an entry under
    `## [Unreleased]` in `CHANGELOG.md` describing what changed for users.
-2. When the change is ready to ship, open a release MR that renames
+2. When the change is ready to ship, open a release pull request that renames
    `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` and adds a fresh empty
-   `## [Unreleased]` block above it. Nothing else goes in that MR.
+   `## [Unreleased]` block above it. Nothing else goes in that pull request.
 3. Merge it.
 4. From a clean checkout of `main` at that merge commit, run `make prod-ready`.
    It has to print `safe to tag`; that target is the gate, and it exercises
@@ -41,8 +41,8 @@ document is the runbook.
 
 There is no `dev` branch and no promote job. An earlier version of this
 document described a `dev` -> `main` promote that read the version out of
-`CHANGELOG.md` and tagged automatically. It does not exist in
-`.gitlab-ci.yml`, and every tag from v2.1.0 onward was made by hand, so the
+`CHANGELOG.md` and tagged automatically. It does not exist in any
+pipeline, and every tag from v2.1.0 onward was made by hand, so the
 runbook was describing a process nobody could follow.
 
 ## Versioning rules
@@ -88,10 +88,10 @@ are documented in the private operations notes, not here.
 
 Renovate runs every Monday before 06:00 against the default branch, `main`
 (`renovate.json` sets no `baseBranches`, so the default is used). For each
-outdated dependency it opens an MR. Patch and minor updates auto-merge after
+outdated dependency it proposes an update. Patch and minor updates auto-merge after
 CI passes. Major Go module updates and `terraform-plugin-framework` ecosystem
 bumps require human review, because they can change schema behaviour.
 
 Those merges accumulate under `## [Unreleased]`. Shipping them is the release
-MR in step 2, which is a deliberate act, not a side effect of a dependency
+pull request in step 2, which is a deliberate act, not a side effect of a dependency
 bump landing.
