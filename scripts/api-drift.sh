@@ -257,11 +257,20 @@ if [ ! -f "$VALUE_SETS" ]; then
   die "value_sets.json not found at $VALUE_SETS"
 fi
 if command -v python3 >/dev/null 2>&1; then
-  VS_OUT="$(python3 - "$VALUE_SETS" "$API_DIR" "$NEWEST" <<'PYEOF'
+  VS_OUT="$(python3 - "$VALUE_SETS" "$API_DIR" "$NEWEST" "$ALLOW_FILE" <<'PYEOF'
 import json, os, re, sys
 
-recorded_path, api_dir, newest = sys.argv[1], sys.argv[2], sys.argv[3]
+recorded_path, api_dir, newest, allow_path = sys.argv[1:5]
 recorded = json.load(open(recorded_path))
+
+# Value allowlist: a line in api-drift-allow.txt of the form
+#   truenas_dataset.compression:GZIP-2,GZIP-3   <reason>
+# names upstream values the provider deliberately refuses. The method
+# allowlist above silences a removed method; this silences an added value.
+allowed = {}
+if os.path.exists(allow_path):
+    for res, attr, vals in re.findall(r'^\s*(truenas_\w+)\.(\w+):(\S+)', open(allow_path).read(), re.M):
+        allowed.setdefault((res, attr), set()).update(vals.split(","))
 
 def literal(path, field):
     if not os.path.exists(path):
@@ -301,7 +310,11 @@ for vs in recorded:
         findings += 1
         continue
     rec = set(vs["values"])
-    added = sorted(upstream - rec)
+    skip = allowed.get(key, set()) & (upstream - rec)
+    if skip:
+        print(f"    allowlisted: {vs['resource']}.{vs['attribute']} refuses {sorted(skip)} "
+              f"that {newest} accepts (see api-drift-allow.txt)")
+    added = sorted(upstream - rec - skip)
     gone = sorted(rec - upstream)
     if added:
         print(f"FINDING: {newest} accepts {len(added)} new value(s) for "

@@ -42,6 +42,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `scripts/api-drift.sh` compared recorded value sets against the newest
+  upstream model directory, which became `v28_0_0`, and failed `main` on
+  GZIP-2 through GZIP-8 for `truenas_dataset.compression` and
+  `truenas_zvol.compression`: values no supported TrueNAS version accepts and
+  the provider refuses on purpose, since they could only fail at apply. The
+  check now honours a value allowlist in `scripts/api-drift-allow.txt`
+  (`resource.attribute:VALUE,...` plus the reason), reports what it skipped,
+  and carries the seven levels with the condition for removing them.
 - `truenas_cloudsync_credential`'s `mapResponseToModel` always rewrote
   `provider_attributes_json` from the server's own echo of the credential
   (the same drift-suppression pattern `cloud_sync.go`/`cloud_backup.go` use
