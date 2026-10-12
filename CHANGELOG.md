@@ -90,6 +90,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are 20m create, 20m update, 20m delete and 5m read, and an unreadable value
   reports the problem and falls back rather than leaving the call unbounded.
 
+  The resource pages had documented 10m write deadlines since the block first
+  appeared, and six schema descriptions promised their own numbers (up to 60m
+  for `truenas_pool`); none of those were ever applied. The pages now state
+  the enforced defaults, the descriptions point at the block instead of
+  quoting numbers, and `TestDocumentedTimeoutDefaultsMatchCode` fails the
+  build if the two drift again.
+
   `TestResourcesHaveTimeoutsBlock` only ever checked that a resource DECLARED
   a block, which is presence rather than enforcement, and is why this survived.
   `TestResourcesConsumeTimeoutsBlock` now checks that each one reads it.

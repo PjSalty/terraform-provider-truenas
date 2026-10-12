@@ -93,6 +93,17 @@ Set at least one of the pair or `device`, or the result is a USB controller with
 nothing behind it. Available devices are listed by
 `container.device.usb_choices`.
 
+* `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
+
+### Timeouts
+
+The `timeouts` block supports:
+
+* `create` - (Default `20m`) Timeout for creating the resource.
+* `read` - (Default `5m`) Timeout for reading the resource.
+* `update` - (Default `20m`) Timeout for updating the resource.
+* `delete` - (Default `20m`) Timeout for deleting the resource.
+
 ## Attribute Reference
 
 * `id` - Numeric container device ID.

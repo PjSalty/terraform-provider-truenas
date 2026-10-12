@@ -79,6 +79,17 @@ resource "truenas_container" "web" {
   * `slice` - (Optional) `ISOLATED` only, between 1 and 999. Omit to have
     TrueNAS pick an unused one.
 
+* `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
+
+### Timeouts
+
+The `timeouts` block supports:
+
+* `create` - (Default `20m`) Timeout for creating the resource.
+* `read` - (Default `5m`) Timeout for reading the resource.
+* `update` - (Default `20m`) Timeout for updating the resource.
+* `delete` - (Default `20m`) Timeout for deleting the resource.
+
 ## Attribute Reference
 
 * `id` - Numeric container ID.

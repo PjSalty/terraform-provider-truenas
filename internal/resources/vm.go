@@ -85,7 +85,7 @@ func (r *VMResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp 
 	resp.Schema = schema.Schema{
 		Description: "Manages a TrueNAS SCALE virtual machine via the /vm API. " +
 			"Devices (disks, NICs, CDROMs, displays) are managed independently via truenas_vm_device. " +
-			"Default timeouts: 20m for create/update/delete (VM start/stop can be slow).",
+			"VM start and stop can be slow; raise the deadlines in the `timeouts` block if they time out.",
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{
 				Create: true,
