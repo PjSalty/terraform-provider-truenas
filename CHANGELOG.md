@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `truenas_smb_config`: every update of an existing SMB configuration failed
+  on TrueNAS 25.10 and older with `search_protocols requires TrueNAS 26.0 or
+  newer`, whichever attribute was being changed. Creating the resource worked,
+  so a first apply looked fine and the second one broke. A server without
+  `search_protocols` is read back as an empty list, which keeps plans on 25.10
+  free of a phantom diff, and the update path then took that same empty list
+  for a request for the 26.0 feature. An empty list for such a server now
+  sends nothing. Asking for `SPOTLIGHT` there is still refused, with the same
+  message. Affects 3.0.0 and 3.1.0. Found by the acceptance suite on a 25.10
+  box, where `TestAccSMBConfigResource_update` failed on its second step; the
+  unit tests had covered the read and the refusal separately and never the
+  two in sequence, which is what the new test does.
+
 ## [3.1.0] - 2026-10-11
 
 ### Added
