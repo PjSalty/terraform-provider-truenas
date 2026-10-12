@@ -31,9 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   slice so the empty list survives `omitempty`. `data.truenas_group` exposes it
   beside `sudo_commands`.
 
-  Contributed by @stormsc1 as GitHub #40; applied here because GitLab is
-  primary. Acceptance steps for both resources (grant, clear with `[]`, omit,
-  import) were added with the port.
+  Contributed by @stormsc1 as GitHub #40, which was closed with a pointer
+  once this landed. Acceptance steps for both resources (grant, clear with
+  `[]`, omit, import) were added with the port.
 
 ### Security
 
@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same path GO-2026-6061 was reachable through when 1.82.1 shipped as v2.4.1.
   The panic itself requires xDS routing, which this provider never configures,
   so practical exposure is low; it is fixed anyway. Dependabot opened GitHub
-  #38 for this; applied here because GitLab is primary.
+  #38 for this; it was closed with a pointer once this landed.
 
 ### Changed
 
@@ -65,8 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixes for DENY rules failing open on nested rules. `govulncheck` reports
   nothing reachable from this provider before or after the bump, so unlike
   the 1.82.1 bump that went out as v2.4.1, this one is routine hygiene and
-  waits for the next release. Applied GitLab-side; the GitHub dependabot PR
-  (#35) was closed with a pointer, since GitHub is a push mirror.
+  waits for the next release. The GitHub dependabot PR (#35) was closed with
+  a pointer once this landed.
 
 ### Fixed
 

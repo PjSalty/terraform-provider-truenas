@@ -38,7 +38,7 @@ a one-line diff.
 - Terraform >= 1.5.
 - The provider already published to a registry your `terraform init`
   can reach (registry.terraform.io for public consumers, your
-  GitLab provider registry for internal use).
+  private provider registry for internal use).
 
 ### Setup
 
