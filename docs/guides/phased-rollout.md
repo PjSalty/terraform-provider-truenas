@@ -205,7 +205,7 @@ job MUST:
 1. Run `terraform plan` with `TRUENAS_READONLY=1` first and fail if
    the plan is non-empty or contains any destroy/replace action.
 2. Gate the apply step on manual approval (GitHub environment
-   protection, GitLab `when: manual`, etc.).
+   protection, a manual approval gate in your CI, etc.).
 3. Apply with the safety rail OFF only after approval.
 4. Re-run `terraform plan` with `TRUENAS_READONLY=1` post-apply and
    fail the pipeline if the plan is non-empty (drift detection).
