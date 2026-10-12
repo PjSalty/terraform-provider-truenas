@@ -35,6 +35,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Go toolchain 1.25.13 to 1.26.9, language version 1.25.9 to 1.26.0. Go 1.25
+  left support when 1.27 shipped, and `govulncheck` reports eleven standard
+  library findings against 1.25.13 (GO-2026-6599, 6600, 6603, 6605, 6607,
+  6608, 6610, 6611, 6612, 6613, 6617 in net/http, crypto/tls, net/textproto
+  and html/template) that 1.26.9 fixes, four of them shared with
+  `golang.org/x/net`, bumped 0.58.0 to 0.60.0; `x/crypto` 0.55.0 to 0.57.0
+  and the other `x/` modules moved with it. Release binaries are built with
+  the toolchain pinned in `go.mod`, so every published build carries those
+  versions. Under 1.26.9 `govulncheck` reports nothing. Exposure through a
+  Terraform provider is low (it serves one local gRPC client and dials one
+  WebSocket server), it is fixed anyway.
 - Bumped `google.golang.org/grpc` from 1.83.1 to 1.83.2 for GO-2026-6443
   (CVE-2026-84445): a gRPC server panics on a request that carries neither
   `:authority` nor `Host`. `govulncheck` reports it **reachable** in this
