@@ -14,17 +14,20 @@ type Group struct {
 
 // GroupCreateRequest represents the request to create a group.
 type GroupCreateRequest struct {
-	Name           string   `json:"name"`
-	GID            int      `json:"gid,omitempty"`
-	SMB            bool     `json:"smb"`
-	SudoCommands   []string `json:"sudo_commands,omitempty"`
-	SudoCommandsNP []string `json:"sudo_commands_nopasswd,omitempty"`
+	Name         string   `json:"name"`
+	GID          int      `json:"gid,omitempty"`
+	SMB          bool     `json:"smb"`
+	SudoCommands []string `json:"sudo_commands,omitempty"`
+	// A pointer slice, like UserCreateRequest.SudoCommandsNP.
+	SudoCommandsNP *[]string `json:"sudo_commands_nopasswd,omitempty"`
 }
 
 // GroupUpdateRequest represents the request to update a group.
 type GroupUpdateRequest struct {
-	Name           string   `json:"name,omitempty"`
-	SMB            *bool    `json:"smb,omitempty"`
-	SudoCommands   []string `json:"sudo_commands,omitempty"`
-	SudoCommandsNP []string `json:"sudo_commands_nopasswd,omitempty"`
+	Name         string   `json:"name,omitempty"`
+	SMB          *bool    `json:"smb,omitempty"`
+	SudoCommands []string `json:"sudo_commands,omitempty"`
+	// A pointer slice so an explicit [] clears the grant; see
+	// UserUpdateRequest.SudoCommandsNP.
+	SudoCommandsNP *[]string `json:"sudo_commands_nopasswd,omitempty"`
 }

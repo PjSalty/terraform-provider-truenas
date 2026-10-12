@@ -17,6 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it, and `exclude = []` clears it. The request body now uses a pointer slice,
   since `omitempty` would otherwise drop an explicit empty list exactly like an
   unset one.
+- `truenas_user` and `truenas_group`: `sudo_commands_nopasswd`, the commands a
+  user or the group's members may run with sudo without a password (`["ALL"]`
+  for any). The API and the request types already carried it, but the schema
+  did not, so an account that needs non-interactive sudo, such as one an
+  automation logs in as, could not be created in a single apply, and a grant
+  made in the UI was invisible to `terraform plan`. It follows `exclude`:
+  Optional+Computed with no default, so omitting it reads the server's value
+  into state without changing it (an upgrade does not strip grants made outside
+  Terraform), and `sudo_commands_nopasswd = []` clears it, sent as a pointer
+  slice so the empty list survives `omitempty`. `data.truenas_group` exposes it
+  beside `sudo_commands`.
+
+  Contributed by @stormsc1 as GitHub #40; applied here because GitLab is
+  primary. Acceptance steps for both resources (grant, clear with `[]`, omit,
+  import) were added with the port.
 
 ### Security
 

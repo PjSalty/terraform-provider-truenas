@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -64,6 +65,7 @@ type UserResourceModel struct {
 	SMB              types.Bool     `tfsdk:"smb"`
 	SSHPubKey        types.String   `tfsdk:"sshpubkey"`
 	SudoCommands     types.List     `tfsdk:"sudo_commands"`
+	SudoNopasswd     types.List     `tfsdk:"sudo_commands_nopasswd"`
 	Timeouts         timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -245,6 +247,18 @@ func (r *UserResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 				ElementType: types.StringType,
 				Default:     listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{})),
 			},
+			// No Default on purpose; see nopasswdFromList.
+			"sudo_commands_nopasswd": schema.ListAttribute{
+				Description: "Commands the user may run with sudo without a password; [\"ALL\"] allows any. " +
+					"Omit it to leave the user's current list untouched (it is still read into state, so " +
+					"a grant made outside Terraform appears in the drift report). Set it to [] to clear it.",
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
+			},
 		},
 	}
 }
@@ -337,6 +351,7 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 		resp.Diagnostics.Append(plan.SudoCommands.ElementsAs(ctx, &cmds, false)...)
 		createReq.SudoCommands = cmds
 	}
+	createReq.SudoCommandsNP = nopasswdFromList(plan.SudoNopasswd)
 
 	tflog.Debug(ctx, "Creating user", map[string]interface{}{
 		"username": plan.Username.ValueString(),
@@ -481,6 +496,7 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		resp.Diagnostics.Append(plan.SudoCommands.ElementsAs(ctx, &cmds, false)...)
 		updateReq.SudoCommands = cmds
 	}
+	updateReq.SudoCommandsNP = nopasswdFromList(plan.SudoNopasswd)
 
 	user, err := r.client.UpdateUser(ctx, id, updateReq)
 	if err != nil {
@@ -670,6 +686,7 @@ func (r *UserResource) mapResponseToModel(_ context.Context, user *truenas.User,
 		cmdValues[i] = types.StringValue(c)
 	}
 	model.SudoCommands = types.ListValueMust(types.StringType, cmdValues)
+	model.SudoNopasswd = nopasswdToList(user.SudoCommandsNP)
 }
 
 // setUserWebshare applies the webshare attribute to a create or update
@@ -698,4 +715,38 @@ func setUserWebshare(ctx context.Context, c *wsclient.Client, planned types.Bool
 		return fmt.Errorf("webshare requires TrueNAS 26.0 or newer; this server reports %s", v)
 	}
 	return nil
+}
+
+// sudo_commands_nopasswd is Optional+Computed with no Default on both
+// truenas_user and truenas_group, the same shape as snapshot_task's exclude.
+// A static default of [] would make the first apply after upgrading strip any
+// passwordless sudo granted outside Terraform, which changes who can become
+// root on the box as a side effect of adding an attribute. Unset keeps the
+// server's value (still read into state, so changes show in the plan), and
+// `sudo_commands_nopasswd = []` clears it.
+
+// nopasswdFromList returns nil, meaning send nothing, for a null or unknown
+// list, and otherwise the commands, possibly none. The request models take a
+// pointer slice so an explicit [] is not dropped by omitempty.
+func nopasswdFromList(l types.List) *[]string {
+	if l.IsNull() || l.IsUnknown() {
+		return nil
+	}
+	out := make([]string, 0, len(l.Elements()))
+	for _, e := range l.Elements() {
+		if sv, ok := e.(types.String); ok && !sv.IsNull() && !sv.IsUnknown() {
+			out = append(out, sv.ValueString())
+		}
+	}
+	return &out
+}
+
+// nopasswdToList maps the wire slice into state. nil becomes an empty list, not
+// null, so the Computed attribute is known after every read.
+func nopasswdToList(in []string) types.List {
+	elems := make([]attr.Value, 0, len(in))
+	for _, s := range in {
+		elems = append(elems, types.StringValue(s))
+	}
+	return types.ListValueMust(types.StringType, elems)
 }
