@@ -166,3 +166,65 @@ resource "truenas_user" "test" {
 		},
 	})
 }
+
+// TestAccUserResource_sudoNopasswd exercises sudo_commands_nopasswd on a real
+// box: granted on create, cleared with an explicit [] (the pointer-slice path,
+// since omitempty would have dropped the empty list and left the grant in
+// place), left untouched when the attribute is omitted, and read back on
+// import. Added with the port of GitHub #40, which shipped without a live run.
+func TestAccUserResource_sudoNopasswd(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	username := fmt.Sprintf("acctu%d", pidSuffix())
+	config := func(nopasswd string) string {
+		return fmt.Sprintf(`
+resource "truenas_user" "test" {
+  uid          = 20040
+  username     = %q
+  full_name    = "Sudo Nopasswd"
+  password     = "changeme-acctest"
+  shell        = "/usr/bin/bash"
+  group_create = true
+  home         = "/var/empty"
+%s}
+`, username, nopasswd)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: config(`  sudo_commands_nopasswd = ["ALL"]` + "\n"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("truenas_user.test", "sudo_commands_nopasswd.#", "1"),
+					resource.TestCheckResourceAttr("truenas_user.test", "sudo_commands_nopasswd.0", "ALL"),
+				),
+			},
+			{
+				Config: config(`  sudo_commands_nopasswd = []` + "\n"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_user.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_user.test", "sudo_commands_nopasswd.#", "0"),
+			},
+			{
+				// Omitted entirely: the server's value is kept, nothing to apply.
+				Config:   config(""),
+				PlanOnly: true,
+			},
+			{
+				ResourceName:            "truenas_user.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"password", "group_create"},
+			},
+		},
+	})
+}

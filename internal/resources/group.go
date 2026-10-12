@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -47,6 +48,7 @@ type GroupResourceModel struct {
 	GID          types.Int64    `tfsdk:"gid"`
 	SMB          types.Bool     `tfsdk:"smb"`
 	SudoCommands types.List     `tfsdk:"sudo_commands"`
+	SudoNopasswd types.List     `tfsdk:"sudo_commands_nopasswd"`
 	Timeouts     timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -108,6 +110,18 @@ func (r *GroupResource) Schema(ctx context.Context, _ resource.SchemaRequest, re
 				ElementType: types.StringType,
 				Default:     listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{})),
 			},
+			// No Default on purpose; see nopasswdFromList in user.go.
+			"sudo_commands_nopasswd": schema.ListAttribute{
+				Description: "Commands the group members may run with sudo without a password; [\"ALL\"] allows any. " +
+					"Omit it to leave the group's current list untouched (it is still read into state, so " +
+					"a grant made outside Terraform appears in the drift report). Set it to [] to clear it.",
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
+			},
 		},
 	}
 }
@@ -154,6 +168,7 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 		resp.Diagnostics.Append(plan.SudoCommands.ElementsAs(ctx, &cmds, false)...)
 		createReq.SudoCommands = cmds
 	}
+	createReq.SudoCommandsNP = nopasswdFromList(plan.SudoNopasswd)
 
 	tflog.Debug(ctx, "Creating group", map[string]interface{}{
 		"name": plan.Name.ValueString(),
@@ -252,6 +267,7 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		resp.Diagnostics.Append(plan.SudoCommands.ElementsAs(ctx, &cmds, false)...)
 		updateReq.SudoCommands = cmds
 	}
+	updateReq.SudoCommandsNP = nopasswdFromList(plan.SudoNopasswd)
 
 	group, err := r.client.UpdateGroup(ctx, id, updateReq)
 	if err != nil {
@@ -332,4 +348,5 @@ func (r *GroupResource) mapResponseToModel(group *truenas.Group, model *GroupRes
 		cmdValues[i] = types.StringValue(c)
 	}
 	model.SudoCommands = types.ListValueMust(types.StringType, cmdValues)
+	model.SudoNopasswd = nopasswdToList(group.SudoCommandsNP)
 }
