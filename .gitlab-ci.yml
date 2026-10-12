@@ -24,6 +24,7 @@ workflow:
 
 stages:
   - validate
+  - acceptance
 
 # Drift waived, deliberately and out loud, which is the supported way to opt out
 # of the byte comparison (git-hooks.md). This tree is a public Go provider: it
@@ -46,3 +47,39 @@ precommit:drift:
 precommit:run:
   variables:
     SKIP: go-fmt,go-imports,go-mod-tidy,golangci-lint
+
+# Nightly live acceptance against a disposable test box, one schedule per
+# TrueNAS line. This is what catches a dead test-box credential the day it
+# dies instead of on release night: the pre-flight fails on an auth error
+# before a single test runs. Everything that names a box or an image is a
+# project CI variable (managed in infrastructure code, not here), so this
+# public file carries no addresses. SCHEDULED_TASK, set by the schedule,
+# selects the box.
+.acceptance:
+  stage: acceptance
+  image: $ACC_GO_IMAGE
+  timeout: 5h
+  variables:
+    TF_ACC: "1"
+    TRUENAS_TEST_POOL: $ACC_TRUENAS_TEST_POOL
+    TRUENAS_PROD_DENY: $ACC_TRUENAS_PROD_DENY
+    TRUENAS_INSECURE_SKIP_VERIFY: "true"
+  script:
+    - ./scripts/acc-preflight.sh
+    - ./scripts/acc.sh --acc-only
+
+acceptance:25.10:
+  extends: .acceptance
+  variables:
+    TRUENAS_URL: $ACC_TRUENAS_URL_25_10
+    TRUENAS_API_KEY: $TRUENAS_API_KEY_25_10
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_TASK == "acceptance-25-10"
+
+acceptance:26:
+  extends: .acceptance
+  variables:
+    TRUENAS_URL: $ACC_TRUENAS_URL_26
+    TRUENAS_API_KEY: $TRUENAS_API_KEY_26
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_TASK == "acceptance-26"
