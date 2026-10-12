@@ -141,8 +141,9 @@ func (r *DatasetResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 						// The full ZFS set the API accepts. Verified against the compression Literal in
 						// the upstream pool_dataset model for every supported version, 25.10.0 through
 						// 27.0, where it is identical. GZIP-2 through GZIP-8 are deliberately absent:
-						// the provider used to offer them and no supported version has ever accepted
-						// them, so they could only ever fail at apply.
+						// the provider used to offer them and no supported version accepts them, so
+						// they could only ever fail at apply. The v28_0_0 model is the first to list
+						// them; scripts/api-drift-allow.txt carries that until 28 is supported.
 						"OFF", "ON", "INHERIT", "LZ4", "LZJB", "ZLE", "GZIP", "GZIP-1", "GZIP-9", "ZSTD", "ZSTD-FAST",
 						"ZSTD-1", "ZSTD-2", "ZSTD-3", "ZSTD-4", "ZSTD-5", "ZSTD-6", "ZSTD-7", "ZSTD-8", "ZSTD-9",
 						"ZSTD-10", "ZSTD-11", "ZSTD-12", "ZSTD-13", "ZSTD-14", "ZSTD-15", "ZSTD-16", "ZSTD-17",
