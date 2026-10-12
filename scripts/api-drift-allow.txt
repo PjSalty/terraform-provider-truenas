@@ -9,6 +9,11 @@
 # waiting to ship.
 #
 # Format: the method name first, then a free-text reason.
+#
+# A value an upstream model accepts that the provider's OneOf deliberately
+# refuses is listed as resource.attribute:VALUE[,VALUE...] followed by the
+# reason. Only for values no SUPPORTED TrueNAS version accepts yet; remove the
+# line when a supported version grows the Literal.
 
 service.start   pre-25.10 fallback only. controlService() calls service.control first and
 service.stop    reaches these two only on a method-not-found, which is exactly the 25.04
@@ -29,3 +34,11 @@ core.get_jobs   Real method, but the core service is special-cased upstream and 
 # truenas_system_update was rewritten onto update.config / update.update in the
 # 26.0 readiness series, so the five dead update.* methods are no longer
 # referenced and no allowlist entry is needed. Issue #32 is resolved.
+
+truenas_dataset.compression:GZIP-2,GZIP-3,GZIP-4,GZIP-5,GZIP-6,GZIP-7,GZIP-8
+truenas_zvol.compression:GZIP-2,GZIP-3,GZIP-4,GZIP-5,GZIP-6,GZIP-7,GZIP-8
+                The v28_0_0 pool_dataset model is the first to accept these; 25.10
+                through 27.0 refuse them, so offering them now would only fail at
+                apply (the provider used to, and removed them for that reason). Add
+                them to the OneOf in dataset.go and zvol.go, and drop these two lines,
+                when the provider supports a 28 box.
