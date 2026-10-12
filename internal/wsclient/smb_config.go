@@ -123,17 +123,26 @@ func buildSMBUpdateBody(req *types.SMBConfigUpdateRequest, d types.SMBDialect) (
 	// the pre-26.0 models are extra="forbid", so an unknown key is a hard
 	// ValidationError rather than an ignored one.
 	if req.SearchProtocols != nil {
-		if d != types.SMBDialectMinimumProtocol {
+		switch {
+		case d == types.SMBDialectMinimumProtocol:
+			// Must never marshal as JSON null: middleware rejects that with
+			// "Input should be a valid list". append([]string(nil), ...)
+			// yields nil for an empty input, so start from a non-nil empty
+			// slice. An empty list is a real value here, it is how Spotlight
+			// is disabled.
+			v := make([]string, 0, len(*req.SearchProtocols))
+			v = append(v, (*req.SearchProtocols)...)
+			body.SearchProtocols = &v
+		case len(*req.SearchProtocols) > 0:
 			return nil, fmt.Errorf("search_protocols requires TrueNAS 26.0 or newer; "+
 				"this server still uses the %q field", "enable_smb1")
 		}
-		// Must never marshal as JSON null: middleware rejects that with
-		// "Input should be a valid list". append([]string(nil), ...) yields
-		// nil for an empty input, so start from a non-nil empty slice. An
-		// empty list is a real value here, it is how Spotlight is disabled.
-		v := make([]string, 0, len(*req.SearchProtocols))
-		v = append(v, (*req.SearchProtocols)...)
-		body.SearchProtocols = &v
+		// What is left is an empty list for a server without the field. It
+		// asks for nothing, so nothing is sent. Tolerating it is not optional:
+		// the resource reports an empty list for such a server so the
+		// attribute stays known, and that empty list is then in the plan of
+		// every later change. Refusing it here failed every update of an
+		// existing SMB config on 25.10 and older, whatever was being changed.
 	}
 
 	// No protocol requested means no protocol key on the wire. Emitting one
