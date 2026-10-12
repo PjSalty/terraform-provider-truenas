@@ -58,6 +58,8 @@ prod-ready:
 	$(GO) test -count=1 -run '^TestStatePersistence$$' ./internal/provider/
 	@echo "==> Timeouts block invariant"
 	$(GO) test -count=1 -run '^TestResourcesHaveTimeoutsBlock$$' ./internal/provider/
+	$(GO) test -count=1 -run '^TestResourcesConsumeTimeoutsBlock$$' ./internal/provider/
+	$(GO) test -count=1 -run '^TestDocumentedTimeoutDefaultsMatchCode$$' ./internal/provider/
 	@echo "==> Apply-idempotency coverage ratchet"
 	$(GO) test -count=1 -run '^TestIdempotencyCheckCoverage$$' ./internal/provider/
 	$(GO) test -count=1 -run '^TestAcceptanceStepsHaveIdempotencyGate$$' ./internal/provider/

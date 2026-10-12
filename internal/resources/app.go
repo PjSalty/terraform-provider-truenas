@@ -73,7 +73,7 @@ func (r *AppResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp
 	resp.Schema = schema.Schema{
 		Description: "Manages a deployed application on TrueNAS SCALE (Docker/iX). " +
 			"Install is asynchronous, the provider waits for the underlying job to complete. " +
-			"Default timeouts: 30m for create/update (app install involves image pulls + chart deployment), 10m for delete.",
+			"Install pulls images and deploys the chart, which can be slow; raise `create` and `update` in the `timeouts` block if they time out.",
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{
 				Create: true,

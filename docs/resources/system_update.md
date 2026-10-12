@@ -62,7 +62,7 @@ as a computed attribute.
   `GENERAL` or `MISSION_CRITICAL`. Validated against `update.profile_choices`
   at apply time, honoring the `available` flag, so an unselectable profile is
   rejected with the valid choices listed rather than failing server-side.
-- `timeouts` (Block, Optional)
+- `timeouts` (Block, Optional) See [below](#timeouts).
 
 ### Read-Only
 
@@ -72,6 +72,15 @@ as a computed attribute.
 - `current_version` (String) The version the system is currently running.
 - `available_version` (String) The version available to update to, empty when
   none is offered.
+
+### Timeouts
+
+The `timeouts` block supports:
+
+* `create` - (Default `20m`) Timeout for creating the resource.
+* `read` - (Default `5m`) Timeout for reading the resource.
+* `update` - (Default `20m`) Timeout for updating the resource.
+* `delete` - (Default `20m`) Timeout for deleting the resource.
 
 ## Import
 

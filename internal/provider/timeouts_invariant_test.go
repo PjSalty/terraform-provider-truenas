@@ -3,9 +3,14 @@ package provider
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 )
 
 // TestResourcesHaveTimeoutsBlock verifies that every resource schema
@@ -140,4 +145,76 @@ func TestResourcesConsumeTimeoutsBlock(t *testing.T) {
 		t.Fatal("no CRUD methods were checked; the walk is broken, not the resources")
 	}
 	t.Logf("checked %d CRUD methods, %d exempt", checked, len(exempt))
+}
+
+// TestDocumentedTimeoutDefaultsMatchCode keeps the three places that talk
+// about CRUD deadlines telling the same story.
+//
+// planhelpers is the only place a default is applied. The registry page for
+// every resource states that default next to each operation the schema
+// declares, and no schema description quotes a number of its own. When the
+// timeouts block was decorative (GitHub #34) the pages said 10m, six
+// descriptions promised 20m to 60m, and the helper enforced 20m once it
+// existed; nothing checked any of it. This does.
+func TestDocumentedTimeoutDefaultsMatchCode(t *testing.T) {
+	t.Parallel()
+
+	minutes := func(d time.Duration) string { return strconv.Itoa(int(d.Minutes())) + "m" }
+	want := map[string]struct{ verb, def string }{
+		"Create": {"creating", minutes(planhelpers.DefaultCreateTimeout)},
+		"Read":   {"reading", minutes(planhelpers.DefaultReadTimeout)},
+		"Update": {"updating", minutes(planhelpers.DefaultUpdateTimeout)},
+		"Delete": {"deleting", minutes(planhelpers.DefaultDeleteTimeout)},
+	}
+	optsRE := regexp.MustCompile(`timeouts\.Opts\{([^}]*)\}`)
+	typeRE := regexp.MustCompile(`ProviderTypeName \+ "(_[a-z_]+)"`)
+
+	files, err := filepath.Glob("../resources/*.go")
+	if err != nil {
+		t.Fatalf("glob resources: %v", err)
+	}
+	var problems []string
+	checked := 0
+	for _, f := range files {
+		base := filepath.Base(f)
+		if strings.HasSuffix(base, "_test.go") {
+			continue
+		}
+		data, readErr := os.ReadFile(f)
+		if readErr != nil {
+			t.Fatalf("read %s: %v", f, readErr)
+		}
+		src := string(data)
+		if strings.Contains(src, "Default timeouts:") {
+			problems = append(problems, base+": schema description quotes its own timeout defaults; planhelpers is the only source")
+		}
+		opts := optsRE.FindStringSubmatch(src)
+		typ := typeRE.FindStringSubmatch(src)
+		if opts == nil || typ == nil {
+			continue
+		}
+		doc := filepath.Join("..", "..", "docs", "resources", strings.TrimPrefix(typ[1], "_")+".md")
+		page, docErr := os.ReadFile(doc)
+		if docErr != nil {
+			problems = append(problems, base+": "+docErr.Error())
+			continue
+		}
+		checked++
+		for _, op := range []string{"Create", "Read", "Update", "Delete"} {
+			if !strings.Contains(opts[1], op+": true") {
+				continue
+			}
+			line := "* `" + strings.ToLower(op) + "` - (Default `" + want[op].def + "`) Timeout for " + want[op].verb + " the resource."
+			if !strings.Contains(string(page), line) {
+				problems = append(problems, filepath.Base(doc)+": missing "+line)
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no resource declared a timeouts block, the check ran against nothing")
+	}
+	if len(problems) > 0 {
+		t.Fatalf("documented timeout defaults disagree with planhelpers (%d resources checked):\n  %s",
+			checked, strings.Join(problems, "\n  "))
+	}
 }

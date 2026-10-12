@@ -136,12 +136,10 @@ The following arguments are supported:
 
 The `timeouts` block supports:
 
-* `create`, `read`, `update`, `delete`
-
-The block is accepted and stored, and **nothing in the provider reads it yet**:
-every resource declares one and none consumes it, so a value set here does not
-change how long an operation is allowed to take. The page previously advertised
-a 20m create default in one place and 10m in another, and neither was enforced.
+* `create` - (Default `20m`) Timeout for creating the resource.
+* `read` - (Default `5m`) Timeout for reading the resource.
+* `update` - (Default `20m`) Timeout for updating the resource.
+* `delete` - (Default `20m`) Timeout for deleting the resource.
 
 ## Attribute Reference
 
