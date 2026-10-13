@@ -88,10 +88,10 @@ type UserUpdateRequest struct {
 	Locked           *bool           `json:"locked,omitempty"`
 	SMB              *bool           `json:"smb,omitempty"`
 	SSHPubKey        string          `json:"sshpubkey,omitempty"`
-	SudoCommands     []string        `json:"sudo_commands,omitempty"`
-	// A pointer slice so `sudo_commands_nopasswd = []` reaches the server:
-	// omitempty would drop an explicit empty list exactly like an unset one,
-	// and the grant would survive an apply that claimed to remove it.
+	// Pointer slices so an explicit [] reaches the server: omitempty would
+	// drop an empty list exactly like an unset one, and the grant would
+	// survive an apply that claimed to remove it.
+	SudoCommands   *[]string `json:"sudo_commands,omitempty"`
 	SudoCommandsNP *[]string `json:"sudo_commands_nopasswd,omitempty"`
 }
 
