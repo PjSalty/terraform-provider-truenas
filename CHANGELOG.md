@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unit tests had covered the read and the refusal separately and never the
   two in sequence, which is what the new test does.
 
+- `truenas_user` and `truenas_group`: `sudo_commands = []` never cleared the
+  list. `omitempty` dropped the empty list, so the grant stayed and the apply
+  failed with an inconsistent result. It is now sent as a pointer slice, like
+  `sudo_commands_nopasswd`.
+
 ## [3.1.0] - 2026-10-11
 
 ### Added
