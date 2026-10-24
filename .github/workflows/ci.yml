@@ -9,6 +9,9 @@ on:
   # mid-week against an unchanged dependency tree still gets caught.
   schedule:
     - cron: '0 6 * * 1'
+  # By hand before a tag (docs/RELEASING.md): the only run besides the
+  # weekly one that includes the release snapshot below.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -71,18 +74,18 @@ jobs:
       # every target, which is the only way to know a tag would succeed
       # without cutting one.
       #
-      # Weekly rather than per-push because it produces 7 archives, and syft
-      # is installed so the SBOM step is exercised the way release.yml does
-      # it: same action commit, same syft version. Nothing is published:
-      # --snapshot with --skip=publish,sign.
+      # Weekly and on a manual dispatch rather than per-push because it
+      # produces 7 archives, and syft is installed so the SBOM step is
+      # exercised the way release.yml does it: same action commit, same syft
+      # version. Nothing is published: --snapshot with --skip=publish,sign.
       - name: Install syft
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           syft-version: v1.14.0
 
       - name: a release would actually build
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           version: ~> v2
