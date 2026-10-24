@@ -17,22 +17,22 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
       - run: gofmt -l . | tee /tmp/fmt.out && test ! -s /tmp/fmt.out
       - run: go vet ./...
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8.0.0
         with:
           version: v2.11.4
 
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
       - run: go test -race -timeout 15m -coverprofile=coverage.out ./...
@@ -46,10 +46,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
       - run: go build -v ./...
@@ -60,7 +60,7 @@ jobs:
       # it. Same goreleaser constraint the release job uses, so the two cannot
       # disagree about what the config means.
       - name: release config is valid
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           version: ~> v2
           args: check
@@ -73,14 +73,17 @@ jobs:
       #
       # Weekly rather than per-push because it produces 7 archives, and syft
       # is installed so the SBOM step is exercised the way release.yml does
-      # it. Nothing is published: --snapshot with --skip=publish,sign.
+      # it: same action commit, same syft version. Nothing is published:
+      # --snapshot with --skip=publish,sign.
       - name: Install syft
         if: github.event_name == 'schedule'
-        uses: anchore/sbom-action/download-syft@v0
+        uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          syft-version: v1.14.0
 
       - name: a release would actually build
         if: github.event_name == 'schedule'
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           version: ~> v2
           args: release --snapshot --clean --skip=publish,sign
@@ -88,8 +91,8 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
       - run: go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...
@@ -97,8 +100,8 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
       # `make docs`, not a second copy of the command. Two things were wrong
@@ -140,7 +143,9 @@ jobs:
           for f in templates/guides/*.md; do
             b="$(basename "$f")"
             if ! diff -u "$f" "docs/guides/$b"; then
-              echo "::error file=$f::$f drifted from docs/guides/$b. tfplugindocs generate repopulates docs/guides/ from templates/, so this drift silently reverts the docs page. Change both."
+              msg="$f drifted from docs/guides/$b. tfplugindocs generate repopulates docs/guides/ from"
+              msg="$msg templates/, so this drift silently reverts the docs page. Change both."
+              echo "::error file=$f::$msg"
               rc=1
             fi
           done
@@ -159,5 +164,5 @@ jobs:
   api-drift:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - run: ./scripts/api-drift.sh
