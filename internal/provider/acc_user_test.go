@@ -228,3 +228,54 @@ resource "truenas_user" "test" {
 		},
 	})
 }
+
+// TestAccUserResource_sudoCommandsClear proves `sudo_commands = []` removes a
+// grant on a real box. The empty list used to be dropped by omitempty, so the
+// grant stayed and the apply ended in an inconsistent-result error. Added
+// with the port of GitHub #41.
+func TestAccUserResource_sudoCommandsClear(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	username := fmt.Sprintf("acctsc%d", pidSuffix())
+	config := func(cmds string) string {
+		return fmt.Sprintf(`
+resource "truenas_user" "test" {
+  uid           = 20041
+  username      = %q
+  full_name     = "Sudo Commands"
+  password      = "changeme-acctest"
+  shell         = "/usr/bin/bash"
+  group_create  = true
+  home          = "/var/empty"
+  sudo_commands = %s
+}
+`, username, cmds)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: config(`["ALL"]`),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("truenas_user.test", "sudo_commands.#", "1"),
+					resource.TestCheckResourceAttr("truenas_user.test", "sudo_commands.0", "ALL"),
+				),
+			},
+			{
+				Config: config(`[]`),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_user.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_user.test", "sudo_commands.#", "0"),
+			},
+		},
+	})
+}
