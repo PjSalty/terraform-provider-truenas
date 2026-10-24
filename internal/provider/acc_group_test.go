@@ -197,3 +197,45 @@ resource "truenas_group" "test" {
 		},
 	})
 }
+
+// TestAccGroupResource_sudoCommandsClear is the group half of
+// TestAccUserResource_sudoCommandsClear: `sudo_commands = []` must remove the
+// grant rather than be dropped on the wire. Added with the port of GitHub #41.
+func TestAccGroupResource_sudoCommandsClear(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip(skipMsg)
+	}
+	name := fmt.Sprintf("acctgc%d", shortSuffix())
+	config := func(cmds string) string {
+		return fmt.Sprintf(`
+resource "truenas_group" "test" {
+  gid           = 20041
+  name          = %q
+  sudo_commands = %s
+}
+`, name, cmds)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: config(`["ALL"]`),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_group.test", "sudo_commands.#", "1"),
+			},
+			{
+				Config: config(`[]`),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("truenas_group.test", plancheck.ResourceActionUpdate),
+					},
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("truenas_group.test", "sudo_commands.#", "0"),
+			},
+		},
+	})
+}
