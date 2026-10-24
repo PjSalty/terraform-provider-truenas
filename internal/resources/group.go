@@ -263,9 +263,9 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	if !plan.SudoCommands.IsNull() {
-		var cmds []string
+		cmds := []string{}
 		resp.Diagnostics.Append(plan.SudoCommands.ElementsAs(ctx, &cmds, false)...)
-		updateReq.SudoCommands = cmds
+		updateReq.SudoCommands = &cmds
 	}
 	updateReq.SudoCommandsNP = nopasswdFromList(plan.SudoNopasswd)
 
