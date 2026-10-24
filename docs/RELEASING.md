@@ -15,6 +15,18 @@ document is the runbook.
    It has to print `safe to tag`; that target is the gate, and it exercises
    the static analysis, the docs and examples ratchets, and the acceptance
    coverage ratchet.
+
+   Then run the CI workflow on GitHub by hand and wait for it to finish
+   green:
+
+   ```sh
+   gh workflow run ci.yml --repo PjSalty/terraform-provider-truenas --ref main
+   ```
+
+   A dispatched run includes the release snapshot, which otherwise runs only
+   on the weekly schedule: the same syft install and goreleaser build as
+   `release.yml`, with nothing signed or published. It is the only check
+   that runs the release workflow's steps before a tag does.
 5. Tag and push to both remotes:
 
    ```sh
