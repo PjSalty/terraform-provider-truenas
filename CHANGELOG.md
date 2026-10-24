@@ -31,6 +31,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resources (grant `["ALL"]`, then clear with `[]`) were added with the
   port; they fail with the inconsistent-result error on the code before it.
 
+### Security
+
+- Go toolchain 1.26.9 to 1.26.10 for GO-2026-6809 (CVE-2026-111943):
+  `crypto/x509` now distrusts a set of compromised intermediate
+  certificates, so a chain through one of them no longer verifies.
+  `govulncheck` reports it reachable from the provider binary through the
+  TLS handshake, which is where the TrueNAS server certificate is checked
+  unless `insecure_skip_verify` is set. Release binaries are built with the
+  toolchain pinned in `go.mod`, so every earlier release still trusts those
+  intermediates. Under 1.26.10 `govulncheck` reports nothing.
+
 ## [3.1.0] - 2026-10-11
 
 ### Added
