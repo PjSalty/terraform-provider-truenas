@@ -28,8 +28,13 @@ func (c *Client) dial(ctx context.Context, wsURL string) error {
 		// github.com/coder/websocket reuses the *http.Client.Transport for the
 		// dial. We can clone DefaultTransport and inject TLS skip here
 		// without affecting any other HTTP path in the process.
+		// MinVersion is Go's client default, written out because this
+		// config replaces the transport's own. Not TLS 1.3: TrueNAS lets
+		// an admin limit its web UI to TLS 1.2, and that box must still
+		// connect.
 		tr := http.DefaultTransport.(*http.Transport).Clone()
-		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // intentional opt-in
+		// nosemgrep: problem-based-packs.insecure-transport.go-stdlib.bypass-tls-verification.bypass-tls-verification
+		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12} //nolint:gosec // intentional opt-in
 		httpClient.Transport = tr
 	}
 

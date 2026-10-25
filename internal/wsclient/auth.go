@@ -2,10 +2,11 @@ package wsclient
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"strings"
 	"time"
 
@@ -20,13 +21,23 @@ func authJitterDelay(base, maxDelay time.Duration) time.Duration {
 	if base <= 0 {
 		return 0
 	}
-	// rand.Float64 ∈ [0, 1); scale into [1, 3) so the jittered delay
+	// randFraction ∈ [0, 1); scale into [1, 3) so the jittered delay
 	// straddles `base` rather than just adding a fraction on top.
-	d := time.Duration(float64(base) * (1 + rand.Float64()*2)) //nolint:gosec // jitter doesn't need crypto rand
+	d := time.Duration(float64(base) * (1 + randFraction()*2))
 	if d > maxDelay {
 		return maxDelay
 	}
 	return d
+}
+
+// randFraction returns a uniform float64 in [0, 1) from the top 53 bits
+// of a crypto/rand uint64, a float64's full mantissa. Jitter does not need
+// a cryptographic source, but this one costs nothing and every scanner
+// accepts it without a suppression.
+func randFraction() float64 {
+	var b [8]byte
+	_, _ = rand.Read(b[:]) // never fails: Read crashes the process instead of returning an error
+	return float64(binary.LittleEndian.Uint64(b[:])>>11) / (1 << 53)
 }
 
 // authenticate performs the post-dial JSON-RPC handshake that turns an
