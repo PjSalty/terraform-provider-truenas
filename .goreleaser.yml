@@ -90,18 +90,21 @@ snapshot:
 changelog:
   sort: asc
   use: git
+  # A scope can hold commas, dots, slashes and hyphens, as in
+  # fix(user,group): or feat(wave-2a):. With word characters only, those
+  # commits fell through to "Other".
   groups:
     - title: "Features"
-      regexp: "^.*feat[(\\w)]*:+.*$"
+      regexp: "^.*feat[(\\w,./)-]*:+.*$"
       order: 0
     - title: "Bug fixes"
-      regexp: "^.*fix[(\\w)]*:+.*$"
+      regexp: "^.*fix[(\\w,./)-]*:+.*$"
       order: 1
     - title: "Performance"
-      regexp: "^.*perf[(\\w)]*:+.*$"
+      regexp: "^.*perf[(\\w,./)-]*:+.*$"
       order: 2
     - title: "Dependencies"
-      regexp: "^.*(deps|build)[(\\w)]*:+.*$"
+      regexp: "^.*(deps|build)[(\\w,./)-]*:+.*$"
       order: 3
     - title: "Other"
       order: 999
