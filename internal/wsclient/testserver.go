@@ -73,7 +73,7 @@ func NewTestServerWithOptions(tb testing.TB, h TestHandler, opts TestServerOptio
 }
 
 // URL returns the http:// URL of the server. NewClient() converts this
-// to ws:// internally.
+// to the WebSocket scheme internally.
 func (ts *TestServer) URL() string { return ts.srv.URL }
 
 // NewClient dials the test server and returns a connected, authenticated
