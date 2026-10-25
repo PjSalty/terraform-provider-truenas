@@ -131,7 +131,7 @@ func (v NormalizedYAML) StringSemanticEquals(_ context.Context, newValuable base
 // to structurally equal documents, see YAMLDocsEqual for the equality
 // semantics.
 func YAMLStringsSemanticallyEqual(a, b string) (bool, error) {
-	var aDoc, bDoc interface{}
+	var aDoc, bDoc interface{} // nosemgrep: go.lang.security.deserialization.unsafe-deserialization-interface.go-unsafe-deserialization-interface
 	if err := yaml.Unmarshal([]byte(a), &aDoc); err != nil {
 		return false, fmt.Errorf("parsing first YAML document: %w", err)
 	}

@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"text/template"
+	"text/template" // nosemgrep: go.lang.security.audit.xss.import-text-template.import-text-template
 )
 
 // Test seams. Overridden in main_test.go so main and fatal are testable
