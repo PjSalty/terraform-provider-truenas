@@ -12,6 +12,7 @@
   "labels": ["dependencies", "renovate"],
   "schedule": ["before 6am on monday"],
   "timezone": "Etc/UTC",
+  "gitAuthor": "Renovate Bot <bot@renovateapp.com>",
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "rangeStrategy": "pin",
@@ -49,12 +50,12 @@
     {
       "description": "Plugin framework ecosystem requires human review (schema-affecting)",
       "matchManagers": ["gomod"],
-      "matchPackagePatterns": [
-        "^github.com/hashicorp/terraform-plugin-framework",
-        "^github.com/hashicorp/terraform-plugin-testing",
-        "^github.com/hashicorp/terraform-plugin-go",
-        "^github.com/hashicorp/terraform-plugin-docs",
-        "^github.com/hashicorp/terraform-plugin-log"
+      "matchPackageNames": [
+        "/^github.com/hashicorp/terraform-plugin-framework/",
+        "/^github.com/hashicorp/terraform-plugin-testing/",
+        "/^github.com/hashicorp/terraform-plugin-go/",
+        "/^github.com/hashicorp/terraform-plugin-docs/",
+        "/^github.com/hashicorp/terraform-plugin-log/"
       ],
       "groupName": "terraform-plugin-framework",
       "labels": ["dependencies", "renovate", "plugin-framework"],
