@@ -90,7 +90,7 @@ func redactJSONBody(body []byte) []byte {
 	if len(body) == 0 {
 		return body
 	}
-	var parsed interface{}
+	var parsed interface{} // nosemgrep: go.lang.security.deserialization.unsafe-deserialization-interface.go-unsafe-deserialization-interface
 	if err := json.Unmarshal(body, &parsed); err != nil {
 		if len(body) > 512 {
 			return append([]byte("[non-JSON body, truncated] "), body[:512]...)
@@ -133,7 +133,7 @@ func walkRedact(v interface{}) interface{} {
 		// buried inside (e.g. `"settings_json":"{...}"`) get hit.
 		s := strings.TrimSpace(t)
 		if len(s) >= 2 && (s[0] == '{' || s[0] == '[') {
-			var inner interface{}
+			var inner interface{} // nosemgrep: go.lang.security.deserialization.unsafe-deserialization-interface.go-unsafe-deserialization-interface
 			if err := json.Unmarshal([]byte(t), &inner); err == nil {
 				redactedInner := walkRedact(inner)
 				if out, mErr := json.Marshal(redactedInner); mErr == nil {
