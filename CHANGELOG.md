@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.1] - 2026-10-24
+
 ### Fixed
 
 - `truenas_smb_config`: every update of an existing SMB configuration failed
