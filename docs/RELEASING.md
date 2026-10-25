@@ -9,7 +9,9 @@ document is the runbook.
    `## [Unreleased]` in `CHANGELOG.md` describing what changed for users.
 2. When the change is ready to ship, open a release pull request that renames
    `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` and adds a fresh empty
-   `## [Unreleased]` block above it. Nothing else goes in that pull request.
+   `## [Unreleased]` block above it. At the bottom of the file, add a
+   `[X.Y.Z]` link to the release page for `vX.Y.Z` and point `[Unreleased]`
+   at `compare/vX.Y.Z...main`. Nothing else goes in that pull request.
 3. Merge it.
 4. From a clean checkout of `main` at that merge commit, run `make prod-ready`.
    It has to print `safe to tag`; that target is the gate, and it exercises
