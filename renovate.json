@@ -40,6 +40,14 @@
       "automergeType": "pr"
     },
     {
+      "description": "A new Go minor or major in the go or toolchain directive changes the release toolchain and the tools that must match it (golangci-lint): hold for review",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["golang", "toolchain"],
+      "matchUpdateTypes": ["minor", "major"],
+      "minimumReleaseAge": "7 days",
+      "automerge": false
+    },
+    {
       "description": "Major Go module updates require human review",
       "matchManagers": ["gomod"],
       "matchUpdateTypes": ["major"],
