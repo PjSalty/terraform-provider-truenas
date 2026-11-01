@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Release archives and the checksums file now carry build provenance
+  attestations, and the release workflow fails if the signing key is
+  unavailable instead of publishing an unsigned release.
+
 ## [3.2.0] - 2026-11-01
 
 ### Added
