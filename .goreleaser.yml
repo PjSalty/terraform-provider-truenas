@@ -53,8 +53,9 @@ checksum:
     - glob: "terraform-registry-manifest.json"
       name_template: "{{ .ProjectName }}_{{ .Version }}_manifest.json"
 
-# Signing stanza is skipped unless GPG_FINGERPRINT is set. When running
-# locally without a signing key, use `goreleaser release --snapshot --skip=sign`.
+# Signing is required for releases: the release workflow fails when the key is
+# missing. For a local build without a key, use
+# `goreleaser release --snapshot --skip=sign`; it publishes nothing.
 signs:
   - id: signed-checksums
     cmd: gpg
