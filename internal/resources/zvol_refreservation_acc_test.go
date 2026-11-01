@@ -1,12 +1,17 @@
 package resources_test
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+
+	"github.com/PjSalty/terraform-provider-truenas/internal/acctest"
+	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
 // TestAccZvol_refreservation covers GitHub #42: a thick zvol reads its
@@ -51,7 +56,22 @@ func TestAccZvol_refreservation(t *testing.T) {
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "volsize", "134217728"),
-					resource.TestCheckResourceAttrWith(resourceName, "refreservation", atLeast(134217728)),
+					// 25.10 keeps ZFS's automatic reservation, which follows volsize.
+					// TrueNAS 26 sets it to volsize at create (source LOCAL), so ZFS
+					// leaves it alone on the resize: the 64 MiB from step 1 stays.
+					resource.TestCheckResourceAttrWith(resourceName, "refreservation", func(v string) error {
+						sv, err := zvolServerVersion()
+						if err != nil {
+							return err
+						}
+						if sv.AtLeast(26, 0) {
+							if v != "67108864" {
+								return fmt.Errorf("refreservation = %s on TrueNAS %s, want 67108864 (set at create, kept on resize)", v, sv)
+							}
+							return nil
+						}
+						return atLeast(134217728)(v)
+					}),
 				),
 			},
 			{
@@ -85,6 +105,16 @@ func TestAccZvol_refreservation(t *testing.T) {
 			},
 		},
 	})
+}
+
+func zvolServerVersion() (wsclient.ServerVersion, error) {
+	c, err := acctest.Client()
+	if err != nil {
+		return wsclient.ServerVersion{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return c.ServerVersion(ctx)
 }
 
 func testAccZvolConfigRefres(pool, name string, volsize int64, refreservation string) string {
