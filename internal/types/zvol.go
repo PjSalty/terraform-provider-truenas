@@ -9,12 +9,16 @@ type ZvolCreateRequest struct {
 	Deduplication string `json:"deduplication,omitempty"`
 	Compression   string `json:"compression,omitempty"`
 	Comments      string `json:"comments,omitempty"`
+	// Refreservation is a pointer so an explicit 0 (thin provisioning) is
+	// sent, while an unset value leaves the server default (thick).
+	Refreservation *int64 `json:"refreservation,omitempty"`
 }
 
 // ZvolUpdateRequest represents the request to update a zvol.
 type ZvolUpdateRequest struct {
-	Volsize       int64  `json:"volsize,omitempty"`
-	Deduplication string `json:"deduplication,omitempty"`
-	Compression   string `json:"compression,omitempty"`
-	Comments      string `json:"comments,omitempty"`
+	Volsize        int64  `json:"volsize,omitempty"`
+	Deduplication  string `json:"deduplication,omitempty"`
+	Compression    string `json:"compression,omitempty"`
+	Comments       string `json:"comments,omitempty"`
+	Refreservation *int64 `json:"refreservation,omitempty"`
 }
