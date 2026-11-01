@@ -855,7 +855,7 @@ func (r *CertificateResource) ModifyPlan(ctx context.Context, req resource.Modif
 				resp.Diagnostics.AddAttributeError(
 					path.Root(req.name),
 					req.summary,
-					fmt.Sprintf("create_type=CERTIFICATE_CREATE_ACME requires `%s`: %s.",
+					fmt.Sprintf("create_type=CERTIFICATE_CREATE_ACME requires %#q: %s.",
 						req.name, req.hint),
 				)
 			}
@@ -890,7 +890,7 @@ func (r *CertificateResource) ModifyPlan(ctx context.Context, req resource.Modif
 				resp.Diagnostics.AddAttributeError(
 					path.Root(f.name),
 					f.summary,
-					fmt.Sprintf("`%s` applies only to create_type=CERTIFICATE_CREATE_ACME, got %s.",
+					fmt.Sprintf("%#q applies only to create_type=CERTIFICATE_CREATE_ACME, got %s.",
 						f.name, createType),
 				)
 			}
