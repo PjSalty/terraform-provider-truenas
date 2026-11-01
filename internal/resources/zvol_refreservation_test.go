@@ -178,6 +178,22 @@ func TestZvolResource_ModifyPlan_VolsizeChangeUnpinsRefreservation(t *testing.T)
 	}
 }
 
+// A config that does not decode into the model stops ModifyPlan with an
+// error diagnostic instead of planning on a half-read value.
+func TestZvolResource_ModifyPlan_UndecodableConfig(t *testing.T) {
+	ctx := context.Background()
+	r := &ZvolResource{}
+	sch := schemaOf(t, ctx, r)
+	plan := planFromValues(t, ctx, sch, zvolVals(num(17825792)))
+	state := stateFromValues(t, ctx, sch, zvolVals(num(17825792)))
+	bad := tfsdk.Config{Schema: plan.Schema, Raw: tftypes.NewValue(tftypes.String, "not an object")}
+	resp := &resource.ModifyPlanResponse{Plan: plan}
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{Config: bad, Plan: plan, State: state}, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("ModifyPlan accepted an undecodable config without an error diagnostic")
+	}
+}
+
 func TestZvolResource_MapResponseToModel_Refreservation(t *testing.T) {
 	r := &ZvolResource{}
 	cases := []struct {
