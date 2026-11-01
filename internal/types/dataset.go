@@ -83,8 +83,22 @@ type DatasetResponse struct {
 	RecordSize     *PropertyValue            `json:"recordsize"`
 	ShareType      *PropertyValue            `json:"share_type"`
 	// Zvol-specific properties, only populated when Type == "VOLUME".
-	Volsize      *PropertyRawVal `json:"volsize"`
-	Volblocksize *PropertyValue  `json:"volblocksize"`
+	Volsize        *PropertyRawVal `json:"volsize"`
+	Volblocksize   *PropertyValue  `json:"volblocksize"`
+	Refreservation *PropertyRawVal `json:"refreservation"`
+}
+
+// GetRefreservation returns the refreservation in bytes and whether the
+// server reported it. "none" comes back with rawvalue "0".
+func (d *DatasetResponse) GetRefreservation() (int64, bool) {
+	if d.Refreservation == nil || d.Refreservation.Rawvalue == "" {
+		return 0, false
+	}
+	var n int64
+	if _, err := fmt.Sscanf(d.Refreservation.Rawvalue, "%d", &n); err != nil {
+		return 0, false
+	}
+	return n, true
 }
 
 // GetVolsize returns the raw zvol size in bytes. Returns 0 for non-zvol

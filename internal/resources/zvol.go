@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -37,15 +38,16 @@ type ZvolResource struct {
 
 // ZvolResourceModel describes the resource data model.
 type ZvolResourceModel struct {
-	ID            types.String   `tfsdk:"id"`
-	Name          types.String   `tfsdk:"name"`
-	Pool          types.String   `tfsdk:"pool"`
-	Volsize       types.Int64    `tfsdk:"volsize"`
-	Volblocksize  types.String   `tfsdk:"volblocksize"`
-	Deduplication types.String   `tfsdk:"deduplication"`
-	Compression   types.String   `tfsdk:"compression"`
-	Comments      types.String   `tfsdk:"comments"`
-	Timeouts      timeouts.Value `tfsdk:"timeouts"`
+	ID             types.String   `tfsdk:"id"`
+	Name           types.String   `tfsdk:"name"`
+	Pool           types.String   `tfsdk:"pool"`
+	Volsize        types.Int64    `tfsdk:"volsize"`
+	Volblocksize   types.String   `tfsdk:"volblocksize"`
+	Deduplication  types.String   `tfsdk:"deduplication"`
+	Compression    types.String   `tfsdk:"compression"`
+	Comments       types.String   `tfsdk:"comments"`
+	Refreservation types.Int64    `tfsdk:"refreservation"`
+	Timeouts       timeouts.Value `tfsdk:"timeouts"`
 }
 
 func NewZvolResource() resource.Resource {
@@ -91,6 +93,19 @@ func (r *ZvolResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 				Required:    true,
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
+				},
+			},
+			"refreservation": schema.Int64Attribute{
+				Description: "Space guaranteed to the zvol itself, in bytes. Unset, TrueNAS " +
+					"reserves the full volume (thick provisioning) and the value is read " +
+					"back. Set 0 for a thin zvol. Changed in place, without replacing the zvol.",
+				Optional: true,
+				Computed: true,
+				Validators: []validator.Int64{
+					int64validator.AtLeast(0),
+				},
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
 				},
 			},
 			"volblocksize": schema.StringAttribute{
@@ -200,6 +215,10 @@ func (r *ZvolResource) Create(ctx context.Context, req resource.CreateRequest, r
 	if !plan.Comments.IsNull() {
 		createReq.Comments = plan.Comments.ValueString()
 	}
+	if !plan.Refreservation.IsNull() && !plan.Refreservation.IsUnknown() {
+		v := plan.Refreservation.ValueInt64()
+		createReq.Refreservation = &v
+	}
 
 	tflog.Debug(ctx, "Creating zvol", map[string]interface{}{
 		"name": fullName,
@@ -288,6 +307,16 @@ func (r *ZvolResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if !plan.Comments.IsNull() {
 		updateReq.Comments = plan.Comments.ValueString()
 	}
+	// A changed value is sent, and so is a pinned one whenever volsize
+	// changes: ZFS can rewrite a reservation equal to the automatic one on
+	// resize. An unchanged, unpinned read-back value is never re-sent, or it
+	// would pin a thick zvol's automatic reservation (ModifyPlan has already
+	// made an unpinned value unknown on resize, so it is skipped here).
+	if !plan.Refreservation.IsNull() && !plan.Refreservation.IsUnknown() &&
+		(!plan.Refreservation.Equal(state.Refreservation) || !plan.Volsize.Equal(state.Volsize)) {
+		v := plan.Refreservation.ValueInt64()
+		updateReq.Refreservation = &v
+	}
 
 	dataset, err := r.client.UpdateZvol(ctx, state.ID.ValueString(), updateReq)
 	if err != nil {
@@ -343,6 +372,22 @@ func (r *ZvolResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 // the blocking rail). See internal/planhelpers/destroy_warning.go.
 func (r *ZvolResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	planhelpers.WarnOnDestroy(ctx, req, resp, "truenas_zvol")
+	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() {
+		return
+	}
+	// ZFS recomputes the automatic reservation of a thick zvol when volsize
+	// changes. Unless the configuration pins refreservation, the value kept
+	// from state would no longer be true after apply.
+	var config, plan, state ZvolResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if config.Refreservation.IsNull() && !plan.Volsize.Equal(state.Volsize) {
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("refreservation"), types.Int64Unknown())...)
+	}
 }
 
 func (r *ZvolResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -377,4 +422,9 @@ func (r *ZvolResource) mapResponseToModel(dataset *truenas.DatasetResponse, mode
 	// SCALE 25.10+ moved comments from top-level `comments` (always null)
 	// to `user_properties.comments`. GetComments() handles both shapes.
 	model.Comments = types.StringValue(dataset.GetComments())
+	if v, ok := dataset.GetRefreservation(); ok {
+		model.Refreservation = types.Int64Value(v)
+	} else if model.Refreservation.IsUnknown() {
+		model.Refreservation = types.Int64Null()
+	}
 }
