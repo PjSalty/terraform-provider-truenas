@@ -13,8 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   zvol itself in bytes. TrueNAS creates zvols thick, reserving the whole
   volume; `refreservation = 0` makes one thin, on create or in place on
   an existing zvol, with no replacement. Left unset, the reservation
-  TrueNAS chose is read back, and it follows `volsize` when the zvol
-  grows. Removing the argument keeps the current value; to make a thin
+  TrueNAS chose is read back. On 25.10 that reservation follows
+  `volsize` when the zvol grows. TrueNAS 26 sets it to the volume size
+  at create and keeps it on a resize, so after growing a zvol on 26, set
+  `refreservation` to at least the new size to keep it thick. Removing
+  the argument keeps the current value; to make a thin
   zvol thick again, set it to at least `volsize`. There is deliberately
   no `sparse` argument: the API accepts it
   only at create time, and changing it later could only work by
