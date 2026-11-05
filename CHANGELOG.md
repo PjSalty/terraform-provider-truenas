@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `truenas_replication`: an `ssh_credentials` that is unknown at plan time,
+  such as `truenas_keychain_credential.x.id` for a credential created in the
+  same apply, is no longer rejected as "Missing ssh_credentials".
+
 ### Security
 
 - Release archives and the checksums file now carry build provenance
