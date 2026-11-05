@@ -51,6 +51,18 @@ func TestReplication_ModifyPlan_SSHWithCreds(t *testing.T) {
 	}
 }
 
+func TestReplication_ModifyPlan_SSHWithUnknownCreds(t *testing.T) {
+	r := NewReplicationResource().(*ReplicationResource)
+	resp := callModifyPlan(t, r, map[string]tftypes.Value{
+		"name":            str("rep1"),
+		"transport":       str("SSH"),
+		"ssh_credentials": unknownOf(tftypes.Number),
+	})
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected: %v", resp.Diagnostics)
+	}
+}
+
 func TestReplication_ModifyPlan_CustomRetentionNoLifetime(t *testing.T) {
 	r := NewReplicationResource().(*ReplicationResource)
 	resp := callModifyPlan(t, r, map[string]tftypes.Value{
