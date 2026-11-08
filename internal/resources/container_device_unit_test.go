@@ -337,6 +337,13 @@ func TestContainerDeviceResource_ValidateConfig(t *testing.T) {
 			"device":     tftypes.NewValue(tftypes.String, device),
 		})
 	}
+	unknownStr := tftypes.NewValue(tftypes.String, tftypes.UnknownValue)
+	usbRaw := func(vendor, product, device tftypes.Value) tftypes.Value {
+		return tftypes.NewValue(usbType, map[string]tftypes.Value{
+			"vendor_id": vendor, "product_id": product, "device": device,
+		})
+	}
+	known := func(s string) tftypes.Value { return tftypes.NewValue(tftypes.String, s) }
 	nic := tftypes.NewValue(nicType, map[string]tftypes.Value{
 		"type":                   tftypes.NewValue(tftypes.String, "E1000"),
 		"nic_attach":             tftypes.NewValue(tftypes.String, ""),
@@ -377,6 +384,15 @@ func TestContainerDeviceResource_ValidateConfig(t *testing.T) {
 		{"usb half a pair", map[string]tftypes.Value{"usb": usb("0x1d6b", "", "")}, "both or neither"},
 		{"usb with nothing", map[string]tftypes.Value{"usb": usb("", "", "")}, "nothing behind it"},
 		{"usb id not hex", map[string]tftypes.Value{"usb": usb("1d6b", "0002", "")}, "start with 0x"},
+		// A value wired from another resource is unknown at plan time: set,
+		// its value pending, so it neither breaks a pair nor leaves the
+		// device empty.
+		{"usb vendor unknown", map[string]tftypes.Value{"usb": usbRaw(unknownStr, known("0x0002"), known(""))}, ""},
+		{"usb product unknown", map[string]tftypes.Value{"usb": usbRaw(known("0x1d6b"), unknownStr, known(""))}, ""},
+		{"usb device unknown", map[string]tftypes.Value{"usb": usbRaw(known(""), known(""), unknownStr)}, ""},
+		{"usb only product unknown", map[string]tftypes.Value{"usb": usbRaw(known(""), unknownStr, known(""))}, ""},
+		{"usb pair null, device path", map[string]tftypes.Value{"usb": usbRaw(tftypes.NewValue(tftypes.String, nil), tftypes.NewValue(tftypes.String, nil), known("/dev/x"))}, ""},
+		{"usb all null", map[string]tftypes.Value{"usb": usbRaw(tftypes.NewValue(tftypes.String, nil), tftypes.NewValue(tftypes.String, nil), tftypes.NewValue(tftypes.String, nil))}, "nothing behind it"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

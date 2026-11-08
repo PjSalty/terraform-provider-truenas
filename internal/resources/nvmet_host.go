@@ -333,11 +333,17 @@ func (r *NVMetHostResource) ModifyPlan(ctx context.Context, req resource.ModifyP
 	var config NVMetHostResourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 
-	keySet := !config.DhchapKey.IsNull() && !config.DhchapKey.IsUnknown() && config.DhchapKey.ValueString() != ""
-	hashSet := !config.DhchapHash.IsNull() && !config.DhchapHash.IsUnknown() && config.DhchapHash.ValueString() != ""
-	ctrlKeySet := !config.DhchapCtrlKey.IsNull() && !config.DhchapCtrlKey.IsUnknown() && config.DhchapCtrlKey.ValueString() != ""
+	// A rule fires only on a known value (*Known). The attribute it requires
+	// counts as set when unknown (*Set): a value wired from another resource
+	// is pending, and Terraform plans again with it at apply.
+	keyKnown := !config.DhchapKey.IsNull() && !config.DhchapKey.IsUnknown() && config.DhchapKey.ValueString() != ""
+	ctrlKeyKnown := !config.DhchapCtrlKey.IsNull() && !config.DhchapCtrlKey.IsUnknown() && config.DhchapCtrlKey.ValueString() != ""
+	keySet := !config.DhchapKey.IsNull() &&
+		(config.DhchapKey.IsUnknown() || config.DhchapKey.ValueString() != "")
+	hashSet := !config.DhchapHash.IsNull() &&
+		(config.DhchapHash.IsUnknown() || config.DhchapHash.ValueString() != "")
 
-	if keySet && !hashSet {
+	if keyKnown && !hashSet {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("dhchap_hash"),
 			"Missing dhchap_hash",
@@ -346,7 +352,7 @@ func (r *NVMetHostResource) ModifyPlan(ctx context.Context, req resource.ModifyP
 		)
 	}
 
-	if ctrlKeySet && !keySet {
+	if ctrlKeyKnown && !keySet {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("dhchap_ctrl_key"),
 			"Missing dhchap_key",

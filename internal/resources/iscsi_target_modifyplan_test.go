@@ -96,3 +96,26 @@ func TestISCSITarget_ModifyPlan_Delete(t *testing.T) {
 		t.Fatalf("unexpected: %v", resp.Diagnostics)
 	}
 }
+
+// An auth wired from another resource (truenas_iscsi_auth.x.tag) is unknown at
+// plan time and counts as set.
+func TestISCSITarget_ModifyPlan_CHAPUnknownAuth(t *testing.T) {
+	for _, method := range []string{"CHAP", "CHAP_MUTUAL"} {
+		t.Run(method, func(t *testing.T) {
+			group := tftypes.NewValue(iscsiGroupObjType(), map[string]tftypes.Value{
+				"portal":      num(1),
+				"initiator":   num(1),
+				"auth_method": str(method),
+				"auth":        unknownOf(tftypes.Number),
+			})
+			r := NewISCSITargetResource().(*ISCSITargetResource)
+			resp := callModifyPlan(t, r, map[string]tftypes.Value{
+				"name":   str("iqn-test"),
+				"groups": iscsiGroupList(group),
+			})
+			if resp.Diagnostics.HasError() {
+				t.Fatalf("unexpected: %v", resp.Diagnostics)
+			}
+		})
+	}
+}

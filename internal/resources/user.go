@@ -563,14 +563,17 @@ func (r *UserResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 	var plan UserResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 
-	planDisabled := plan.PasswordDisabled.ValueBool()
-	planPasswordSet := !plan.Password.IsNull() && !plan.Password.IsUnknown()
+	// The rules fire only when password login is known to be on. A password
+	// wired from another resource (random_password.x.result) is unknown at
+	// plan time and counts as set, its value pending until apply.
+	planEnabled := !plan.PasswordDisabled.IsUnknown() && !plan.PasswordDisabled.ValueBool()
+	planPasswordSet := !plan.Password.IsNull()
 
 	// Create: middleware answers this with "Password is required"
 	// (account.py). Catching it at plan time means the operator sees it
 	// before anything is created.
 	if req.State.Raw.IsNull() {
-		if !planPasswordSet && !planDisabled {
+		if planEnabled && !planPasswordSet {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("password"),
 				"Invalid Password",
@@ -586,7 +589,7 @@ func (r *UserResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 	// claims password login but has unixhash '*'.
 	var state UserResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if state.PasswordDisabled.ValueBool() && !planDisabled && !planPasswordSet {
+	if state.PasswordDisabled.ValueBool() && planEnabled && !planPasswordSet {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("password"),
 			"Invalid Password",
