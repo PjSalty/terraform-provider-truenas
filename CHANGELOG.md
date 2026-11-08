@@ -43,6 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   been created, leaving it outside Terraform state. The ID is now read from
   either shape.
 
+- Acceptance-test sweepers now also remove fixtures named `acctest...`, the
+  prefix most acceptance tests use. They matched only `tf-acc-`, so most
+  test litter was skipped. The keychain sweeper now runs after the
+  replication sweeper and deletes `SSH_CREDENTIALS` before key pairs, since
+  TrueNAS refuses to delete a credential that is still in use.
+
 ### Security
 
 - Release archives and the checksums file now carry build provenance

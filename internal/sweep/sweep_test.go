@@ -32,6 +32,14 @@ func TestHasAcctestPrefix(t *testing.T) {
 		"":              false,
 		"prod-dataset":  false,
 		"acc-tf-prefix": false, // wrong order
+		// The prefix most acceptance tests actually use.
+		"acctest-kp-1":        true,
+		"acctestrepssh221634": true,
+		"acctest initial":     true,
+		"acctest":             true,
+		"Acctest-x":           false, // case-sensitive
+		"my-acctest":          false, // prefix only, not substring
+		"acctes":              false,
 	}
 	for in, want := range cases {
 		if got := sweep.HasAcctestPrefix(in); got != want {
@@ -43,11 +51,14 @@ func TestHasAcctestPrefix(t *testing.T) {
 func TestDatasetIsAcctest(t *testing.T) {
 	t.Parallel()
 	cases := map[string]bool{
-		"pool/tf-acc-foo":   true,
-		"tank/sub/tf-acc-x": true,
-		"pool/prod":         false,
-		"tf-acc-bare":       true, // no slash at all is the leaf
-		"":                  false,
+		"pool/tf-acc-foo":        true,
+		"tank/sub/tf-acc-x":      true,
+		"pool/prod":              false,
+		"tf-acc-bare":            true, // no slash at all is the leaf
+		"":                       false,
+		"pool/acctestrepsrc-1":   true,
+		"backup/acctestrepsrc-1": true,
+		"acctest/prod":           false, // only the leaf counts
 	}
 	for in, want := range cases {
 		if got := sweep.DatasetIsAcctest(in); got != want {
