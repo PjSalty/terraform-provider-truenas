@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-11-08
+
 ### Fixed
 
 - `truenas_replication`: an `ssh_credentials` that is unknown at plan time,
@@ -2689,7 +2691,8 @@ fix. No code change; no wire-path behavior change.
   `iscsi_target`, `cronjob`, `alert_service`.
 - Initial data sources: `dataset`, `pool`, `system_info`.
 
-[Unreleased]: https://github.com/PjSalty/terraform-provider-truenas/compare/v3.2.0...main
+[Unreleased]: https://github.com/PjSalty/terraform-provider-truenas/compare/v3.3.0...main
+[3.3.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v3.3.0
 [3.2.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v3.2.0
 [3.1.1]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v3.1.1
 [3.1.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v3.1.0
