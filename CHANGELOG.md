@@ -28,6 +28,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   computed `cpu_model` or `cpuset`. A value that is known and empty is still
   rejected.
 
+- `truenas_keychain_credential`: an `SSH_CREDENTIALS` credential can now be
+  created. TrueNAS validates `port`, `private_key` and `connect_timeout` as
+  integers and rejected the strings the provider sent ("Input should be a
+  valid integer"); they are now sent as numbers. A value that is not a whole
+  number fails at plan time, naming the attribute. The documentation lists
+  all six `SSH_CREDENTIALS` attributes and replaces an example that used an
+  unsupported credential type.
+
+- `truenas_replication`: an SSH or SSH+NETCAT replication can now be created
+  and read. TrueNAS returns `ssh_credentials` as the whole keychain
+  credential rather than its ID, which the provider failed to parse
+  ("cannot unmarshal object ... of type int") after the task had already
+  been created, leaving it outside Terraform state. The ID is now read from
+  either shape.
+
 ### Security
 
 - Release archives and the checksums file now carry build provenance
