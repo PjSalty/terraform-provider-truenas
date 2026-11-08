@@ -332,21 +332,30 @@ func (r *ContainerDeviceResource) validateUSB(o types.Object, resp *resource.Val
 		return
 	}
 	attrs := o.Attributes()
-	get := func(k string) string {
+	// get returns the known value ("" when null or unknown) and whether the
+	// field is set at all. A value wired from another resource is unknown
+	// here: set, with its value pending, so it neither completes nor breaks
+	// a rule until Terraform plans again with it at apply.
+	get := func(k string) (string, bool) {
 		v, ok := attrs[k].(types.String)
-		if !ok || v.IsNull() || v.IsUnknown() {
-			return ""
+		if !ok || v.IsNull() {
+			return "", false
 		}
-		return v.ValueString()
+		if v.IsUnknown() {
+			return "", true
+		}
+		return v.ValueString(), v.ValueString() != ""
 	}
-	vendor, product, device := get("vendor_id"), get("product_id"), get("device")
+	vendor, vendorSet := get("vendor_id")
+	product, productSet := get("product_id")
+	_, deviceSet := get("device")
 
-	if (vendor == "") != (product == "") {
+	if (vendor != "" && !productSet) || (product != "" && !vendorSet) {
 		resp.Diagnostics.AddAttributeError(path.Root("usb"), "Invalid Device",
 			"vendor_id and product_id identify one device together; set both or neither.")
 		return
 	}
-	if vendor == "" && device == "" {
+	if !vendorSet && !productSet && !deviceSet {
 		resp.Diagnostics.AddAttributeError(path.Root("usb"), "Invalid Device",
 			"a usb device needs either the vendor_id and product_id pair or a device path; this sets neither, "+
 				"which attaches a USB controller with nothing behind it.")

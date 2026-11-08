@@ -96,3 +96,55 @@ func TestReplication_ModifyPlan_Delete(t *testing.T) {
 		t.Fatalf("unexpected: %v", resp.Diagnostics)
 	}
 }
+
+// lifetime_value and lifetime_unit wired from another resource are unknown at
+// plan time. They are set, with the value pending, so CUSTOM retention must
+// not reject them as missing.
+func TestReplication_ModifyPlan_CustomRetentionUnknownLifetime(t *testing.T) {
+	cases := map[string]map[string]tftypes.Value{
+		"both unknown": {
+			"lifetime_value": unknownOf(tftypes.Number),
+			"lifetime_unit":  unknownOf(tftypes.String),
+		},
+		"value unknown": {
+			"lifetime_value": unknownOf(tftypes.Number),
+			"lifetime_unit":  str("DAY"),
+		},
+		"unit unknown": {
+			"lifetime_value": num(30),
+			"lifetime_unit":  unknownOf(tftypes.String),
+		},
+	}
+	for name, lifetime := range cases {
+		t.Run(name, func(t *testing.T) {
+			vals := map[string]tftypes.Value{
+				"name":             str("rep1"),
+				"transport":        str("LOCAL"),
+				"retention_policy": str("CUSTOM"),
+			}
+			for k, v := range lifetime {
+				vals[k] = v
+			}
+			r := NewReplicationResource().(*ReplicationResource)
+			resp := callModifyPlan(t, r, vals)
+			if resp.Diagnostics.HasError() {
+				t.Fatalf("unexpected: %v", resp.Diagnostics)
+			}
+		})
+	}
+}
+
+// A known empty lifetime_unit is still missing.
+func TestReplication_ModifyPlan_CustomRetentionEmptyUnit(t *testing.T) {
+	r := NewReplicationResource().(*ReplicationResource)
+	resp := callModifyPlan(t, r, map[string]tftypes.Value{
+		"name":             str("rep1"),
+		"transport":        str("LOCAL"),
+		"retention_policy": str("CUSTOM"),
+		"lifetime_value":   num(30),
+		"lifetime_unit":    str(""),
+	})
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected error for CUSTOM retention with an empty lifetime_unit")
+	}
+}

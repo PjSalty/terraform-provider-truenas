@@ -424,7 +424,9 @@ func (r *ISCSITargetResource) ModifyPlan(ctx context.Context, req resource.Modif
 		if method != "CHAP" && method != "CHAP_MUTUAL" {
 			continue
 		}
-		if g.Auth.IsNull() || g.Auth.IsUnknown() || g.Auth.ValueInt64() <= 0 {
+		// An auth wired from another resource (truenas_iscsi_auth.x.tag) is
+		// unknown at plan time: set, with its value pending until apply.
+		if !g.Auth.IsUnknown() && (g.Auth.IsNull() || g.Auth.ValueInt64() <= 0) {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("groups").AtListIndex(i).AtName("auth"),
 				"Missing auth group",

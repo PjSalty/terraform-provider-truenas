@@ -658,3 +658,44 @@ func TestUserResource_createAndUpdateAPIErrorsSurface(t *testing.T) {
 		t.Error("a failed user.update was reported as success")
 	}
 }
+
+// password = random_password.x.result is unknown on the first apply. It is
+// set, with the value pending, on create and when re-enabling password login.
+func TestUserResource_ModifyPlan_unknownPasswordIsSet(t *testing.T) {
+	unknownPassword := tftypes.NewValue(tftypes.String, tftypes.UnknownValue)
+	t.Run("create", func(t *testing.T) {
+		resp := callUserModifyPlan(t, &UserResource{}, map[string]tftypes.Value{
+			"username": tftypes.NewValue(tftypes.String, "svc"),
+			"password": unknownPassword,
+		}, nil)
+		if resp.Diagnostics.HasError() {
+			t.Errorf("an unknown password was treated as missing: %v", resp.Diagnostics)
+		}
+	})
+	t.Run("re-enable", func(t *testing.T) {
+		resp := callUserModifyPlan(t, &UserResource{},
+			map[string]tftypes.Value{
+				"username":          tftypes.NewValue(tftypes.String, "svc"),
+				"password":          unknownPassword,
+				"password_disabled": tftypes.NewValue(tftypes.Bool, false),
+			},
+			map[string]tftypes.Value{
+				"username":          tftypes.NewValue(tftypes.String, "svc"),
+				"password_disabled": tftypes.NewValue(tftypes.Bool, true),
+			})
+		if resp.Diagnostics.HasError() {
+			t.Errorf("an unknown password was treated as missing: %v", resp.Diagnostics)
+		}
+	})
+}
+
+// An unknown password_disabled may turn out true, so the rule does not fire.
+func TestUserResource_ModifyPlan_unknownDisabledDoesNotFire(t *testing.T) {
+	resp := callUserModifyPlan(t, &UserResource{}, map[string]tftypes.Value{
+		"username":          tftypes.NewValue(tftypes.String, "svc"),
+		"password_disabled": tftypes.NewValue(tftypes.Bool, tftypes.UnknownValue),
+	}, nil)
+	if resp.Diagnostics.HasError() {
+		t.Errorf("an unknown password_disabled was treated as false: %v", resp.Diagnostics)
+	}
+}

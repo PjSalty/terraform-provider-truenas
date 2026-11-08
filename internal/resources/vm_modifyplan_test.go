@@ -89,3 +89,60 @@ func TestVM_ModifyPlan_Delete(t *testing.T) {
 		t.Fatalf("unexpected error: %v", resp.Diagnostics)
 	}
 }
+
+// cpu_model and cpuset wired from another resource are unknown at plan time
+// and count as set.
+func TestVM_ModifyPlan_UnknownRequirements(t *testing.T) {
+	cases := map[string]map[string]tftypes.Value{
+		"custom cpu with unknown model": {
+			"cpu_mode":  str("CUSTOM"),
+			"cpu_model": unknownOf(tftypes.String),
+		},
+		"pinned vcpus with unknown cpuset": {
+			"cpu_mode":  str("HOST-MODEL"),
+			"pin_vcpus": flag(true),
+			"cpuset":    unknownOf(tftypes.String),
+		},
+	}
+	for name, cpu := range cases {
+		t.Run(name, func(t *testing.T) {
+			vals := map[string]tftypes.Value{"name": str("testvm"), "memory": num(1024)}
+			for k, v := range cpu {
+				vals[k] = v
+			}
+			r := NewVMResource().(*VMResource)
+			resp := callModifyPlan(t, r, vals)
+			if resp.Diagnostics.HasError() {
+				t.Fatalf("unexpected: %v", resp.Diagnostics)
+			}
+		})
+	}
+}
+
+// Known empty values are still missing.
+func TestVM_ModifyPlan_EmptyRequirements(t *testing.T) {
+	cases := map[string]map[string]tftypes.Value{
+		"custom cpu with empty model": {
+			"cpu_mode":  str("CUSTOM"),
+			"cpu_model": str(""),
+		},
+		"pinned vcpus with empty cpuset": {
+			"cpu_mode":  str("HOST-MODEL"),
+			"pin_vcpus": flag(true),
+			"cpuset":    str(""),
+		},
+	}
+	for name, cpu := range cases {
+		t.Run(name, func(t *testing.T) {
+			vals := map[string]tftypes.Value{"name": str("testvm"), "memory": num(1024)}
+			for k, v := range cpu {
+				vals[k] = v
+			}
+			r := NewVMResource().(*VMResource)
+			resp := callModifyPlan(t, r, vals)
+			if !resp.Diagnostics.HasError() {
+				t.Fatal("expected error for an empty requirement")
+			}
+		})
+	}
+}

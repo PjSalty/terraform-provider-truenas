@@ -15,6 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Contributed by @thomaslarsen as GitHub #43.
 
+- `truenas_replication`, `truenas_nvmet_host`, `truenas_share_nfs`,
+  `truenas_vm`, `truenas_iscsi_target`, `truenas_container_device` and
+  `truenas_user`: a value that is unknown at plan time, because it comes
+  from a resource created in the same apply, now counts as set when another
+  attribute requires it. One apply can now write
+  `maproot_user = truenas_user.x.username`,
+  `password = random_password.x.result`, a CHAP group whose `auth` is
+  `truenas_iscsi_auth.x.tag`, a CUSTOM retention whose `lifetime_value` or
+  `lifetime_unit` is computed, a `dhchap_hash` or `dhchap_key` from another
+  resource, a computed USB `vendor_id`, `product_id` or `device`, or a
+  computed `cpu_model` or `cpuset`. A value that is known and empty is still
+  rejected.
+
 ### Security
 
 - Release archives and the checksums file now carry build provenance

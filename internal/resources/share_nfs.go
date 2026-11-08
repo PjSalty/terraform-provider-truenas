@@ -436,14 +436,22 @@ func (r *NFSShareResource) ModifyPlan(ctx context.Context, req resource.ModifyPl
 	var config NFSShareResourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 
-	mapallUserSet := !config.MapallUser.IsNull() && !config.MapallUser.IsUnknown() && config.MapallUser.ValueString() != ""
-	mapallGroupSet := !config.MapallGroup.IsNull() && !config.MapallGroup.IsUnknown() && config.MapallGroup.ValueString() != ""
-	maprootUserSet := !config.MaprootUser.IsNull() && !config.MaprootUser.IsUnknown() && config.MaprootUser.ValueString() != ""
-	maprootGroupSet := !config.MaprootGroup.IsNull() && !config.MaprootGroup.IsUnknown() && config.MaprootGroup.ValueString() != ""
+	// *Known: set to a known non-empty value. *Missing: known to be unset.
+	// An unknown value (for example maproot_user = truenas_user.x.username)
+	// is neither, so a pair errors only when one side is known-set and the
+	// other known-unset; Terraform plans again with the real value at apply.
+	mapallUserKnown := !config.MapallUser.IsNull() && !config.MapallUser.IsUnknown() && config.MapallUser.ValueString() != ""
+	mapallGroupKnown := !config.MapallGroup.IsNull() && !config.MapallGroup.IsUnknown() && config.MapallGroup.ValueString() != ""
+	maprootUserKnown := !config.MaprootUser.IsNull() && !config.MaprootUser.IsUnknown() && config.MaprootUser.ValueString() != ""
+	maprootGroupKnown := !config.MaprootGroup.IsNull() && !config.MaprootGroup.IsUnknown() && config.MaprootGroup.ValueString() != ""
+	mapallUserMissing := config.MapallUser.IsNull() || (!config.MapallUser.IsUnknown() && config.MapallUser.ValueString() == "")
+	mapallGroupMissing := config.MapallGroup.IsNull() || (!config.MapallGroup.IsUnknown() && config.MapallGroup.ValueString() == "")
+	maprootUserMissing := config.MaprootUser.IsNull() || (!config.MaprootUser.IsUnknown() && config.MaprootUser.ValueString() == "")
+	maprootGroupMissing := config.MaprootGroup.IsNull() || (!config.MaprootGroup.IsUnknown() && config.MaprootGroup.ValueString() == "")
 
-	if mapallUserSet != mapallGroupSet {
+	if (mapallUserKnown && mapallGroupMissing) || (mapallGroupKnown && mapallUserMissing) {
 		target := path.Root("mapall_group")
-		if mapallGroupSet {
+		if mapallUserMissing {
 			target = path.Root("mapall_user")
 		}
 		resp.Diagnostics.AddAttributeError(
@@ -454,9 +462,9 @@ func (r *NFSShareResource) ModifyPlan(ctx context.Context, req resource.ModifyPl
 		)
 	}
 
-	if maprootUserSet != maprootGroupSet {
+	if (maprootUserKnown && maprootGroupMissing) || (maprootGroupKnown && maprootUserMissing) {
 		target := path.Root("maproot_group")
-		if maprootGroupSet {
+		if maprootUserMissing {
 			target = path.Root("maproot_user")
 		}
 		resp.Diagnostics.AddAttributeError(
@@ -467,7 +475,7 @@ func (r *NFSShareResource) ModifyPlan(ctx context.Context, req resource.ModifyPl
 		)
 	}
 
-	if (mapallUserSet || mapallGroupSet) && (maprootUserSet || maprootGroupSet) {
+	if (mapallUserKnown || mapallGroupKnown) && (maprootUserKnown || maprootGroupKnown) {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("maproot_user"),
 			"Conflicting mapall and maproot",

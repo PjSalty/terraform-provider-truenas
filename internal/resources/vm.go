@@ -633,7 +633,10 @@ func (r *VMResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequ
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 
 	cpuModeCustom := !config.CPUMode.IsNull() && !config.CPUMode.IsUnknown() && config.CPUMode.ValueString() == "CUSTOM"
-	cpuModelSet := !config.CPUModel.IsNull() && !config.CPUModel.IsUnknown() && config.CPUModel.ValueString() != ""
+	// An unknown requirement (wired from another resource) is set with its
+	// value pending; Terraform plans again with the real value at apply.
+	cpuModelSet := !config.CPUModel.IsNull() &&
+		(config.CPUModel.IsUnknown() || config.CPUModel.ValueString() != "")
 	if cpuModeCustom && !cpuModelSet {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("cpu_model"),
@@ -655,7 +658,8 @@ func (r *VMResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequ
 	}
 
 	pinSet := !config.PinVcpus.IsNull() && !config.PinVcpus.IsUnknown() && config.PinVcpus.ValueBool()
-	cpusetSet := !config.Cpuset.IsNull() && !config.Cpuset.IsUnknown() && config.Cpuset.ValueString() != ""
+	cpusetSet := !config.Cpuset.IsNull() &&
+		(config.Cpuset.IsUnknown() || config.Cpuset.ValueString() != "")
 	if pinSet && !cpusetSet {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("cpuset"),

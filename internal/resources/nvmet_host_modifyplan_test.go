@@ -71,3 +71,51 @@ func TestNVMetHost_ModifyPlan_Delete(t *testing.T) {
 		t.Fatalf("unexpected error on delete: %v", resp.Diagnostics)
 	}
 }
+
+// A requirement wired from another resource is unknown at plan time and
+// counts as set; a trigger that is unknown does not fire.
+func TestNVMetHost_ModifyPlan_UnknownValues(t *testing.T) {
+	cases := map[string]map[string]tftypes.Value{
+		"key with unknown hash": {
+			"dhchap_key":  str("secret-key"),
+			"dhchap_hash": unknownOf(tftypes.String),
+		},
+		"ctrl key with unknown key": {
+			"dhchap_ctrl_key": str("ctrl-secret"),
+			"dhchap_key":      unknownOf(tftypes.String),
+			"dhchap_hash":     str("SHA-256"),
+		},
+		"unknown key without hash": {
+			"dhchap_key": unknownOf(tftypes.String),
+		},
+		"unknown ctrl key without key": {
+			"dhchap_ctrl_key": unknownOf(tftypes.String),
+		},
+	}
+	for name, auth := range cases {
+		t.Run(name, func(t *testing.T) {
+			vals := map[string]tftypes.Value{"hostnqn": str("nqn.2024-01.com.example:host")}
+			for k, v := range auth {
+				vals[k] = v
+			}
+			r := NewNVMetHostResource().(*NVMetHostResource)
+			resp := callModifyPlan(t, r, vals)
+			if resp.Diagnostics.HasError() {
+				t.Fatalf("unexpected: %v", resp.Diagnostics)
+			}
+		})
+	}
+}
+
+// A known empty dhchap_hash is still missing.
+func TestNVMetHost_ModifyPlan_KeyWithEmptyHash(t *testing.T) {
+	r := NewNVMetHostResource().(*NVMetHostResource)
+	resp := callModifyPlan(t, r, map[string]tftypes.Value{
+		"hostnqn":     str("nqn.2024-01.com.example:host"),
+		"dhchap_key":  str("secret-key"),
+		"dhchap_hash": str(""),
+	})
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected error when dhchap_key is set with an empty dhchap_hash")
+	}
+}

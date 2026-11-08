@@ -455,8 +455,12 @@ func (r *ReplicationResource) ModifyPlan(ctx context.Context, req resource.Modif
 	if !config.RetentionPolicy.IsNull() && !config.RetentionPolicy.IsUnknown() {
 		retention = config.RetentionPolicy.ValueString()
 	}
-	lifetimeSet := !config.LifetimeValue.IsNull() && !config.LifetimeValue.IsUnknown() && config.LifetimeValue.ValueInt64() > 0
-	lifetimeUnitSet := !config.LifetimeUnit.IsNull() && !config.LifetimeUnit.IsUnknown() && config.LifetimeUnit.ValueString() != ""
+	// An unknown lifetime (wired from another resource) is set with its value
+	// pending: Terraform plans again with the real value at apply.
+	lifetimeSet := !config.LifetimeValue.IsNull() &&
+		(config.LifetimeValue.IsUnknown() || config.LifetimeValue.ValueInt64() > 0)
+	lifetimeUnitSet := !config.LifetimeUnit.IsNull() &&
+		(config.LifetimeUnit.IsUnknown() || config.LifetimeUnit.ValueString() != "")
 	if retention == "CUSTOM" && (!lifetimeSet || !lifetimeUnitSet) {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("lifetime_value"),
