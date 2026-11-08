@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   such as `truenas_keychain_credential.x.id` for a credential created in the
   same apply, is no longer rejected as "Missing ssh_credentials".
 
+  Contributed by @thomaslarsen as GitHub #43.
+
 ### Security
 
 - Release archives and the checksums file now carry build provenance
