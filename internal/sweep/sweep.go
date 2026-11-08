@@ -28,11 +28,19 @@ import (
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
 )
 
-// AcctestPrefix is the canonical name prefix every acceptance test
-// resource carries. Sweepers compare fixture names against this
-// prefix before destroying, anything not starting with it is left
-// alone, protecting any non-test resources on the target TrueNAS.
-const AcctestPrefix = "tf-acc-"
+// AcctestPrefix and AcctestNamePrefix are the name prefixes acceptance
+// test fixtures carry. Sweepers compare fixture names against them
+// before destroying, and anything starting with neither is left alone,
+// protecting any non-test resources on the target TrueNAS.
+//
+// Most tests name fixtures "acctest..." ("acctest-kp-<n>",
+// "acctestrepssh<n>", "acctest initial"), and only a few use "tf-acc-".
+// Matching "tf-acc-" alone left most acceptance-test litter on the test
+// boxes for every sweep run to skip.
+const (
+	AcctestPrefix     = "tf-acc-"
+	AcctestNamePrefix = "acctest"
+)
 
 // Ctx returns a fresh context + cancel function with a generous but
 // bounded deadline. Sweepers run unattended at the end of an acc
@@ -42,10 +50,11 @@ func Ctx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 5*time.Minute)
 }
 
-// HasAcctestPrefix reports whether name begins with AcctestPrefix.
-// Used by every sweeper to gate destruction.
+// HasAcctestPrefix reports whether name begins with AcctestPrefix or
+// AcctestNamePrefix. The match is case-sensitive. Used by every sweeper
+// to gate destruction.
 func HasAcctestPrefix(name string) bool {
-	return strings.HasPrefix(name, AcctestPrefix)
+	return strings.HasPrefix(name, AcctestPrefix) || strings.HasPrefix(name, AcctestNamePrefix)
 }
 
 // DatasetIsAcctest reports whether a dataset id (path-shaped like

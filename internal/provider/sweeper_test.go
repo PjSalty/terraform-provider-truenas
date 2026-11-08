@@ -1,8 +1,10 @@
 package provider
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -247,9 +249,13 @@ func init() {
 		Name: "truenas_api_key",
 		F:    sweepAPIKeys,
 	})
+	// A replication task holds its SSH credential: middleware refuses to
+	// delete a credential in use unless cascade is set, so the tasks go
+	// first.
 	resource.AddTestSweepers("truenas_keychain_credential", &resource.Sweeper{
-		Name: "truenas_keychain_credential",
-		F:    sweepKeychainCredentials,
+		Name:         "truenas_keychain_credential",
+		F:            sweepKeychainCredentials,
+		Dependencies: []string{"truenas_replication"},
 	})
 	resource.AddTestSweepers("truenas_certificate", &resource.Sweeper{
 		Name: "truenas_certificate",
@@ -965,7 +971,7 @@ func sweepKeychainCredentials(_ string) error {
 	if err := sweeperQueryList(ctx, c, "keychaincredential.query", &creds); err != nil {
 		return fmt.Errorf("sweeping truenas_keychain_credential: listing: %w", err)
 	}
-	for _, cr := range creds {
+	for _, cr := range keychainSweepOrder(creds) {
 		if !sweeperHasAcctestPrefix(cr.Name) {
 			continue
 		}
@@ -973,6 +979,25 @@ func sweepKeychainCredentials(_ string) error {
 		sweepLog("truenas_keychain_credential", "delete", cr.Name, err)
 	}
 	return nil
+}
+
+// keychainSweepOrder returns creds with every SSH_CREDENTIALS entry ahead
+// of the rest. An SSH_CREDENTIALS credential points at an SSH_KEY_PAIR
+// through its private_key id, and middleware refuses to delete a key pair
+// that is still in use, so the key pairs have to go last.
+func keychainSweepOrder(creds []truenas.KeychainCredential) []truenas.KeychainCredential {
+	out := slices.Clone(creds)
+	slices.SortStableFunc(out, func(a, b truenas.KeychainCredential) int {
+		return cmp.Compare(keychainSweepRank(a), keychainSweepRank(b))
+	})
+	return out
+}
+
+func keychainSweepRank(cr truenas.KeychainCredential) int {
+	if cr.Type == "SSH_CREDENTIALS" {
+		return 0
+	}
+	return 1
 }
 
 func sweepCertificates(_ string) error {
