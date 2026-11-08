@@ -442,7 +442,7 @@ func (r *ReplicationResource) ModifyPlan(ctx context.Context, req resource.Modif
 	}
 	sshSet := !config.SSHCredentials.IsNull() && !config.SSHCredentials.IsUnknown() && config.SSHCredentials.ValueInt64() > 0
 
-	if transport != "LOCAL" && transport != "" && !sshSet {
+	if transport != "LOCAL" && transport != "" && !sshSet && !config.SSHCredentials.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("ssh_credentials"),
 			"Missing ssh_credentials",
