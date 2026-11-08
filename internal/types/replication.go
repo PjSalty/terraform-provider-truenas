@@ -1,5 +1,10 @@
 package types
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 // Replication represents a ZFS replication task.
 type Replication struct {
 	ID                      int       `json:"id"`
@@ -18,6 +23,41 @@ type Replication struct {
 	SSHCredentials          int       `json:"ssh_credentials,omitempty"`
 	NamingSchema            []string  `json:"naming_schema,omitempty"`
 	AlsoIncludeNamingSchema []string  `json:"also_include_naming_schema,omitempty"`
+}
+
+// UnmarshalJSON accepts ssh_credentials as either the integer ID or the
+// expanded credential object. Create and update take the ID, but
+// ReplicationEntry, which every response carries, returns the whole
+// KeychainCredentialEntry, so decoding it as an int failed on every SSH
+// replication. The field always holds the ID; null (LOCAL) leaves it 0.
+// Same API shape, and same handling, as CloudSync.credentials.
+func (r *Replication) UnmarshalJSON(data []byte) error {
+	type Alias Replication
+	aux := &struct {
+		SSHCredentials json.RawMessage `json:"ssh_credentials"`
+		*Alias
+	}{
+		Alias: (*Alias)(r),
+	}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	if len(aux.SSHCredentials) == 0 {
+		return nil
+	}
+	var id int
+	if err := json.Unmarshal(aux.SSHCredentials, &id); err == nil {
+		r.SSHCredentials = id
+		return nil
+	}
+	var obj struct {
+		ID int `json:"id"`
+	}
+	if err := json.Unmarshal(aux.SSHCredentials, &obj); err != nil {
+		return fmt.Errorf("ssh_credentials field: %w", err)
+	}
+	r.SSHCredentials = obj.ID
+	return nil
 }
 
 // ReplicationCreateRequest represents the request to create a replication task.

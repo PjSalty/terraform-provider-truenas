@@ -23,9 +23,10 @@ import (
 )
 
 var (
-	_ resource.Resource                = &KeychainCredentialResource{}
-	_ resource.ResourceWithImportState = &KeychainCredentialResource{}
-	_ resource.ResourceWithModifyPlan  = &KeychainCredentialResource{}
+	_ resource.Resource                   = &KeychainCredentialResource{}
+	_ resource.ResourceWithImportState    = &KeychainCredentialResource{}
+	_ resource.ResourceWithModifyPlan     = &KeychainCredentialResource{}
+	_ resource.ResourceWithValidateConfig = &KeychainCredentialResource{}
 )
 
 // KeychainCredentialResource manages a TrueNAS keychain credential (SSH keypairs, etc).
@@ -79,7 +80,9 @@ func (r *KeychainCredentialResource) Schema(ctx context.Context, _ resource.Sche
 			},
 			"attributes": schema.MapAttribute{
 				Description: "The credential attributes. For SSH_KEY_PAIR: private_key, public_key. " +
-					"For SSH_CREDENTIALS: host, username, private_key, connect_timeout.",
+					"For SSH_CREDENTIALS: host, port, username, private_key (the ID of an SSH_KEY_PAIR credential), " +
+					"remote_host_key, connect_timeout. Values are strings; port, private_key and " +
+					"connect_timeout must be whole numbers.",
 				Required:    true,
 				Sensitive:   true,
 				ElementType: types.StringType,
@@ -116,14 +119,15 @@ func (r *KeychainCredentialResource) Create(ctx context.Context, req resource.Cr
 	ctx, cancel := planhelpers.WithCreateTimeout(ctx, plan.Timeouts, &resp.Diagnostics)
 	defer cancel()
 
-	// Convert attributes from TF map to Go map
-	attrs := make(map[string]interface{})
+	// Convert attributes from the TF string map to the wire types.
+	var tfAttrs map[string]string
 	if !plan.Attributes.IsNull() {
-		var tfAttrs map[string]string
 		resp.Diagnostics.Append(plan.Attributes.ElementsAs(ctx, &tfAttrs, false)...)
-		for k, v := range tfAttrs {
-			attrs[k] = v
-		}
+	}
+	attrs, err := keychainWireAttributes(plan.Type.ValueString(), tfAttrs)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(path.Root("attributes"), "Invalid Attributes", err.Error())
+		return
 	}
 
 	createReq := &truenas.KeychainCredentialCreateRequest{
@@ -218,14 +222,15 @@ func (r *KeychainCredentialResource) Update(ctx context.Context, req resource.Up
 		return
 	}
 
-	// Convert attributes from TF map to Go map
-	attrs := make(map[string]interface{})
+	// Convert attributes from the TF string map to the wire types.
+	var tfAttrs map[string]string
 	if !plan.Attributes.IsNull() {
-		var tfAttrs map[string]string
 		resp.Diagnostics.Append(plan.Attributes.ElementsAs(ctx, &tfAttrs, false)...)
-		for k, v := range tfAttrs {
-			attrs[k] = v
-		}
+	}
+	attrs, err := keychainWireAttributes(plan.Type.ValueString(), tfAttrs)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(path.Root("attributes"), "Invalid Attributes", err.Error())
+		return
 	}
 
 	updateReq := &truenas.KeychainCredentialUpdateRequest{
@@ -314,4 +319,58 @@ func (r *KeychainCredentialResource) mapResponseToModel(ctx context.Context, cre
 	}
 	mapVal, _ := types.MapValueFrom(ctx, types.StringType, attrMap)
 	model.Attributes = mapVal
+}
+
+// keychainSSHCredentialsIntAttrs are the SSH_CREDENTIALS attributes the API
+// types as integers. Middleware validates strictly, so the string "22" is
+// rejected for port; the map schema keeps every value a string, and these are
+// converted on the way out.
+var keychainSSHCredentialsIntAttrs = map[string]bool{
+	"port":            true,
+	"private_key":     true,
+	"connect_timeout": true,
+}
+
+// keychainWireAttributes converts the configured string attributes to the
+// types the API expects for credType. The error names the key only: the
+// attributes are sensitive, so a value is never echoed.
+func keychainWireAttributes(credType string, tfAttrs map[string]string) (map[string]interface{}, error) {
+	attrs := make(map[string]interface{}, len(tfAttrs))
+	for k, v := range tfAttrs {
+		if credType == "SSH_CREDENTIALS" && keychainSSHCredentialsIntAttrs[k] {
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				return nil, fmt.Errorf("attributes.%s must be a whole number for SSH_CREDENTIALS", k)
+			}
+			attrs[k] = n
+			continue
+		}
+		attrs[k] = v
+	}
+	return attrs, nil
+}
+
+// ValidateConfig rejects, at plan time, a known SSH_CREDENTIALS integer
+// attribute that is not a whole number. An unknown value (private_key wired
+// from another credential's id) is left for apply.
+func (r *KeychainCredentialResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var cfg KeychainCredentialResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if cfg.Type.IsUnknown() || cfg.Type.ValueString() != "SSH_CREDENTIALS" ||
+		cfg.Attributes.IsNull() || cfg.Attributes.IsUnknown() {
+		return
+	}
+	for k, v := range cfg.Attributes.Elements() {
+		sv, ok := v.(types.String)
+		if !ok || !keychainSSHCredentialsIntAttrs[k] || sv.IsNull() || sv.IsUnknown() {
+			continue
+		}
+		if _, err := strconv.Atoi(sv.ValueString()); err != nil {
+			resp.Diagnostics.AddAttributeError(path.Root("attributes").AtMapKey(k), "Invalid Attributes",
+				fmt.Sprintf("attributes.%s must be a whole number for SSH_CREDENTIALS", k))
+		}
+	}
 }
