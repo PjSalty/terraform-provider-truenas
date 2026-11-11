@@ -188,6 +188,12 @@ resource "truenas_replication" "local_backup" {
   recursive        = true
   auto             = true
   retention_policy = "SOURCE"
+
+  # An automatic task needs a schedule or a bound periodic snapshot task. A
+  # push task that is not bound to one also needs a naming schema, to know
+  # which snapshots to send.
+  schedule                   = [{ hour = "4" }]
+  also_include_naming_schema = ["auto-%Y-%m-%d_%H-%M"]
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

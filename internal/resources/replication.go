@@ -3,16 +3,24 @@ package resources
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"slices"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -23,6 +31,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
+	"github.com/PjSalty/terraform-provider-truenas/internal/flex"
 	"github.com/PjSalty/terraform-provider-truenas/internal/planhelpers"
 	truenas "github.com/PjSalty/terraform-provider-truenas/internal/types"
 	"github.com/PjSalty/terraform-provider-truenas/internal/wsclient"
@@ -56,7 +65,85 @@ type ReplicationResourceModel struct {
 	SSHCredentials          types.Int64    `tfsdk:"ssh_credentials"`
 	NamingSchema            types.List     `tfsdk:"naming_schema"`
 	AlsoIncludeNamingSchema types.List     `tfsdk:"also_include_naming_schema"`
+	PeriodicSnapshotTasks   types.Set      `tfsdk:"periodic_snapshot_tasks"`
+	HoldPendingSnapshots    types.Bool     `tfsdk:"hold_pending_snapshots"`
+	Schedule                types.List     `tfsdk:"schedule"`
+	RestrictSchedule        types.List     `tfsdk:"restrict_schedule"`
+	OnlyMatchingSchedule    types.Bool     `tfsdk:"only_matching_schedule"`
 	Timeouts                timeouts.Value `tfsdk:"timeouts"`
+}
+
+// replicationScheduleModel is the one entry of schedule or restrict_schedule.
+type replicationScheduleModel struct {
+	Minute types.String `tfsdk:"minute"`
+	Hour   types.String `tfsdk:"hour"`
+	Dom    types.String `tfsdk:"dom"`
+	Month  types.String `tfsdk:"month"`
+	Dow    types.String `tfsdk:"dow"`
+	Begin  types.String `tfsdk:"begin"`
+	End    types.String `tfsdk:"end"`
+}
+
+// timeOfDay is the HH:MM form TrueNAS returns for begin and end. Only that
+// form is accepted, so the planned value and the value read back agree.
+var timeOfDay = regexp.MustCompile(`^([01]\d|2[0-3]):[0-5]\d$`)
+
+func replicationScheduleObjectType() types.ObjectType {
+	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"minute": types.StringType,
+		"hour":   types.StringType,
+		"dom":    types.StringType,
+		"month":  types.StringType,
+		"dow":    types.StringType,
+		"begin":  types.StringType,
+		"end":    types.StringType,
+	}}
+}
+
+// replicationScheduleAttribute is the schema of schedule and
+// restrict_schedule. TrueNAS holds either a schedule or null, and a nested
+// object that is read back when unset has no way to say null, so the
+// attribute is a list of at most one entry: left out it keeps what TrueNAS
+// has, `[]` removes the schedule, and one entry sets it.
+//
+// A field left out of the entry is read back too. It stays unknown on a new
+// entry, where there is no prior value and TrueNAS fills its default, so the
+// plain UseStateForUnknown, which would plan null there, is not used.
+func replicationScheduleAttribute(description string) schema.ListNestedAttribute {
+	field := func(description string, validators ...validator.String) schema.StringAttribute {
+		return schema.StringAttribute{
+			Description: description,
+			Optional:    true,
+			Computed:    true,
+			Validators:  validators,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseNonNullStateForUnknown(),
+			},
+		}
+	}
+	isTime := stringvalidator.RegexMatches(timeOfDay, "must be a 24-hour time written as HH:MM, such as 09:30")
+	return schema.ListNestedAttribute{
+		Description: description,
+		Optional:    true,
+		Computed:    true,
+		Validators: []validator.List{
+			listvalidator.SizeAtMost(1),
+		},
+		PlanModifiers: []planmodifier.List{
+			listplanmodifier.UseNonNullStateForUnknown(),
+		},
+		NestedObject: schema.NestedAttributeObject{
+			Attributes: map[string]schema.Attribute{
+				"minute": field("Cron minute field. TrueNAS defaults to `00`."),
+				"hour":   field("Cron hour field. TrueNAS defaults to `*`."),
+				"dom":    field("Cron day-of-month field. TrueNAS defaults to `*`."),
+				"month":  field("Cron month field. TrueNAS defaults to `*`."),
+				"dow":    field("Cron day-of-week field, `1` (Monday) to `7`. TrueNAS defaults to `*`."),
+				"begin":  field("Start of the daily window in which the schedule applies, as HH:MM. TrueNAS defaults to `00:00`.", isTime),
+				"end":    field("End of the daily window, as HH:MM. TrueNAS defaults to `23:59`.", isTime),
+			},
+		},
+	}
 }
 
 func NewReplicationResource() resource.Resource {
@@ -127,10 +214,11 @@ func (r *ReplicationResource) Schema(ctx context.Context, _ resource.SchemaReque
 				Default:     booldefault.StaticBool(false),
 			},
 			"auto": schema.BoolAttribute{
-				Description: "Whether to run the replication automatically on schedule.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(true),
+				Description: "Whether the task runs on its own. TrueNAS accepts `auto = true` only with a `schedule`, " +
+					"or, for a push task, with `periodic_snapshot_tasks`. Set `auto = false` for a task that is started by hand.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(true),
 			},
 			"enabled": schema.BoolAttribute{
 				Description: "Whether the replication task is enabled.",
@@ -189,6 +277,46 @@ func (r *ReplicationResource) Schema(ctx context.Context, _ resource.SchemaReque
 				Description: "Naming schema for snapshots to include (for push replication without periodic snapshot tasks).",
 				Optional:    true,
 				ElementType: types.StringType,
+			},
+			"periodic_snapshot_tasks": schema.SetAttribute{
+				Description: "IDs of the periodic snapshot tasks a push replication is bound to. The task replicates their " +
+					"snapshots and, with `auto = true`, runs after each of them. Left out, the current binding is kept. " +
+					"Set to `[]` to unbind every task.",
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.Int64Type,
+				Validators: []validator.Set{
+					setvalidator.ValueInt64sAre(int64validator.AtLeast(1)),
+				},
+				PlanModifiers: []planmodifier.Set{
+					setplanmodifier.UseNonNullStateForUnknown(),
+				},
+			},
+			"hold_pending_snapshots": schema.BoolAttribute{
+				Description: "Keep source snapshots that have not been replicated yet, so that retention cannot delete them " +
+					"after a failed run. Push replication only. Left out, the current value is kept; TrueNAS defaults to false.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseNonNullStateForUnknown(),
+				},
+			},
+			"schedule": replicationScheduleAttribute("When the task runs on its own: a list with one entry. " +
+				"Left out, the current schedule is kept. Set to `[]` for no schedule, which TrueNAS requires when " +
+				"`auto = false`. In the entry, a field that is left out keeps its current value, or takes the TrueNAS " +
+				"default on a new schedule."),
+			"restrict_schedule": replicationScheduleAttribute("Limits when a task bound to `periodic_snapshot_tasks` runs: " +
+				"a list with one entry. For example, snapshot tasks can run every 15 minutes while the replication runs " +
+				"once an hour. Left out, the current value is kept. Set to `[]` for no restriction. In the entry, a field " +
+				"that is left out keeps its current value, or takes the TrueNAS default on a new entry."),
+			"only_matching_schedule": schema.BoolAttribute{
+				Description: "Replicate only the snapshots that match `schedule` or `restrict_schedule`. TrueNAS accepts " +
+					"true only when `schedule` is set. Left out, the current value is kept; TrueNAS defaults to false.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseNonNullStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -254,6 +382,16 @@ func (r *ReplicationResource) Create(ctx context.Context, req resource.CreateReq
 		var ains []string
 		resp.Diagnostics.Append(plan.AlsoIncludeNamingSchema.ElementsAs(ctx, &ains, false)...)
 		createReq.AlsoIncludeNamingSchema = ains
+	}
+	// Each of these is left out while its planned value is unknown, and
+	// TrueNAS then applies its own default.
+	createReq.Schedule = replicationScheduleRequest(ctx, plan.Schedule, &resp.Diagnostics)
+	createReq.RestrictSchedule = replicationScheduleRequest(ctx, plan.RestrictSchedule, &resp.Diagnostics)
+	createReq.OnlyMatchingSchedule = flex.BoolFromPointer(plan.OnlyMatchingSchedule)
+	createReq.HoldPendingSnapshots = flex.BoolFromPointer(plan.HoldPendingSnapshots)
+	createReq.PeriodicSnapshotTasks = snapshotTaskIDs(ctx, plan.PeriodicSnapshotTasks, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	tflog.Debug(ctx, "Creating replication task", map[string]interface{}{
@@ -367,6 +505,16 @@ func (r *ReplicationResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 	if !plan.SSHCredentials.IsNull() {
 		updateReq.SSHCredentials = int(plan.SSHCredentials.ValueInt64())
+	}
+	updateReq.NamingSchema = namingSchemaRequest(ctx, plan.NamingSchema, &resp.Diagnostics)
+	updateReq.AlsoIncludeNamingSchema = namingSchemaRequest(ctx, plan.AlsoIncludeNamingSchema, &resp.Diagnostics)
+	updateReq.Schedule = replicationScheduleRequest(ctx, plan.Schedule, &resp.Diagnostics)
+	updateReq.RestrictSchedule = replicationScheduleRequest(ctx, plan.RestrictSchedule, &resp.Diagnostics)
+	updateReq.OnlyMatchingSchedule = flex.BoolFromPointer(plan.OnlyMatchingSchedule)
+	updateReq.HoldPendingSnapshots = flex.BoolFromPointer(plan.HoldPendingSnapshots)
+	updateReq.PeriodicSnapshotTasks = snapshotTaskIDs(ctx, plan.PeriodicSnapshotTasks, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	repl, err := r.client.UpdateReplication(ctx, id, updateReq)
@@ -527,4 +675,90 @@ func (r *ReplicationResource) mapResponseToModel(ctx context.Context, repl *true
 	} else {
 		model.AlsoIncludeNamingSchema = types.ListNull(types.StringType)
 	}
+
+	model.HoldPendingSnapshots = types.BoolValue(repl.HoldPendingSnapshots)
+	model.OnlyMatchingSchedule = types.BoolValue(repl.OnlyMatchingSchedule)
+	model.Schedule = replicationScheduleList(repl.Schedule)
+	model.RestrictSchedule = replicationScheduleList(repl.RestrictSchedule)
+	taskIDs := make([]attr.Value, 0, len(repl.PeriodicSnapshotTasks))
+	for _, id := range repl.PeriodicSnapshotTasks {
+		taskIDs = append(taskIDs, types.Int64Value(int64(id)))
+	}
+	model.PeriodicSnapshotTasks = types.SetValueMust(types.Int64Type, taskIDs)
+}
+
+// replicationScheduleList is the state form of a schedule. A task without
+// one gives an empty list, never null, so `[]` in a configuration plans clean.
+func replicationScheduleList(s *truenas.TimeSchedule) types.List {
+	objType := replicationScheduleObjectType()
+	if s == nil {
+		return types.ListValueMust(objType, []attr.Value{})
+	}
+	entry := types.ObjectValueMust(objType.AttrTypes, map[string]attr.Value{
+		"minute": types.StringValue(s.Minute),
+		"hour":   types.StringValue(s.Hour),
+		"dom":    types.StringValue(s.Dom),
+		"month":  types.StringValue(s.Month),
+		"dow":    types.StringValue(s.Dow),
+		"begin":  types.StringValue(s.Begin),
+		"end":    types.StringValue(s.End),
+	})
+	return types.ListValueMust(objType, []attr.Value{entry})
+}
+
+// replicationScheduleRequest is the request form of a planned schedule list.
+// A null or unknown list leaves the field out, an empty list removes the
+// schedule, and one entry sets it. A field of the entry that is still
+// unknown is left out, and TrueNAS fills its default.
+func replicationScheduleRequest(ctx context.Context, l types.List, diags *diag.Diagnostics) truenas.ScheduleRequest {
+	if l.IsNull() || l.IsUnknown() {
+		return truenas.ScheduleRequest{}
+	}
+	var entries []replicationScheduleModel
+	diags.Append(l.ElementsAs(ctx, &entries, false)...)
+	if len(entries) == 0 {
+		return truenas.ScheduleRequest{Clear: true}
+	}
+	e := entries[0]
+	return truenas.ScheduleRequest{Value: &truenas.TimeSchedule{
+		Minute: e.Minute.ValueString(),
+		Hour:   e.Hour.ValueString(),
+		Dom:    e.Dom.ValueString(),
+		Month:  e.Month.ValueString(),
+		Dow:    e.Dow.ValueString(),
+		Begin:  e.Begin.ValueString(),
+		End:    e.End.ValueString(),
+	}}
+}
+
+// snapshotTaskIDs is the request form of the planned periodic_snapshot_tasks.
+// A null or unknown set gives nil, which leaves the field out. An empty set
+// gives an empty list, which unbinds every task. The IDs are sorted, so the
+// same set always sends the same request.
+func snapshotTaskIDs(ctx context.Context, s types.Set, diags *diag.Diagnostics) *[]int {
+	if s.IsNull() || s.IsUnknown() {
+		return nil
+	}
+	var planned []int64
+	diags.Append(s.ElementsAs(ctx, &planned, false)...)
+	ids := make([]int, 0, len(planned))
+	for _, id := range planned {
+		ids = append(ids, int(id))
+	}
+	slices.Sort(ids)
+	return &ids
+}
+
+// namingSchemaRequest is the list an update sends for naming_schema or
+// also_include_naming_schema. These two are not read back when unset, so a
+// null list means none and is sent as an empty list, which clears the field.
+// An update used to leave both out, so a changed or removed schema stayed on
+// the task.
+func namingSchemaRequest(ctx context.Context, l types.List, diags *diag.Diagnostics) *[]string {
+	names, d := flex.StringsFromListValue(ctx, l)
+	diags.Append(d...)
+	if names == nil {
+		names = []string{}
+	}
+	return &names
 }

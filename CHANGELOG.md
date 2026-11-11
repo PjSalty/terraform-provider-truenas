@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `truenas_replication`: `periodic_snapshot_tasks`, `hold_pending_snapshots`,
+  `schedule`, `restrict_schedule` and `only_matching_schedule`. A task can
+  now be bound to periodic snapshot tasks or given its own schedule, so an
+  automatic task can be created, imported and checked for drift.
+
+  Each of the five is read back from TrueNAS when a configuration leaves it
+  out, so an existing or imported task plans no change after the upgrade.
+  An explicit empty value clears: `periodic_snapshot_tasks = []` unbinds
+  every task, and `schedule = []` or `restrict_schedule = []` removes the
+  schedule. `schedule` and `restrict_schedule` are lists with one entry,
+  `[{ hour = "*/6" }]`, because that is the form that can express "none".
+
+  Requested by @kromsam as GitHub #44. The other fields from that request
+  follow.
+
+### Fixed
+
+- `truenas_replication`: `auto = true`, the default, could not be created.
+  TrueNAS accepts an automatic task only with a schedule or, for a push
+  task, a bound periodic snapshot task, and the resource could set neither.
+  Set `schedule` or `periodic_snapshot_tasks`, or `auto = false` for a task
+  that is started by hand. The examples now show a task that applies.
+
+- `truenas_replication`: a change to `naming_schema` or
+  `also_include_naming_schema` was never sent on an update, so the old
+  value stayed on the task. Both are now sent, and removing one from a
+  configuration clears it.
+
 ## [3.3.0] - 2026-11-08
 
 ### Fixed
