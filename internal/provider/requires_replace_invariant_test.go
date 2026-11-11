@@ -127,6 +127,16 @@ func hasField(body, name string) bool {
 // The exclusion map holds genuinely-uncommon cases where the server
 // regenerates the value on every read (e.g. a timestamp, a counter, a
 // computed-at-apply secret). Each entry MUST have a "why" line.
+//
+// UseNonNullStateForUnknown() counts as (a). It keeps the prior value the
+// same way, and differs only while the prior value is null: it then leaves
+// the attribute unknown, where UseStateForUnknown() plans null. That is the
+// right modifier for an attribute added to an existing resource, because
+// state written by an older provider version holds null for it until the
+// next refresh, and a planned null is then reported as an inconsistent
+// result when the apply reads the real value back. It only belongs on an
+// attribute whose value is never null after a read: on one that can be null
+// it would show (known after apply) on every changing plan.
 func TestOptionalComputedHasUseStateForUnknown(t *testing.T) {
 	// file:attribute -> rationale for skipping UseStateForUnknown.
 	// Populate this ONLY when the server legitimately changes the value
@@ -163,7 +173,7 @@ func TestOptionalComputedHasUseStateForUnknown(t *testing.T) {
 			if !hasField(body, "Optional") || !hasField(body, "Computed") {
 				continue
 			}
-			if strings.Contains(body, "UseStateForUnknown()") {
+			if strings.Contains(body, "UseStateForUnknown()") || strings.Contains(body, "UseNonNullStateForUnknown()") {
 				continue
 			}
 			if strings.Contains(body, "Default:") {

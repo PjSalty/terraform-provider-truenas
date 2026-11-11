@@ -5,36 +5,78 @@ import (
 	"fmt"
 )
 
-// Replication represents a ZFS replication task.
-type Replication struct {
-	ID                      int       `json:"id"`
-	Name                    string    `json:"name"`
-	Direction               string    `json:"direction"`
-	Transport               string    `json:"transport"`
-	SourceDatasets          []string  `json:"source_datasets"`
-	TargetDataset           string    `json:"target_dataset"`
-	Recursive               bool      `json:"recursive"`
-	AutoBool                bool      `json:"auto"`
-	Enabled                 bool      `json:"enabled"`
-	RetentionPolicy         string    `json:"retention_policy"`
-	LifetimeValue           int       `json:"lifetime_value,omitempty"`
-	LifetimeUnit            string    `json:"lifetime_unit,omitempty"`
-	Schedule                *Schedule `json:"schedule,omitempty"`
-	SSHCredentials          int       `json:"ssh_credentials,omitempty"`
-	NamingSchema            []string  `json:"naming_schema,omitempty"`
-	AlsoIncludeNamingSchema []string  `json:"also_include_naming_schema,omitempty"`
+// TimeSchedule is a cron schedule with a daily time window: the shape of
+// replication.schedule and replication.restrict_schedule. TrueNAS has a
+// default for every field, so an empty one is left out of a request.
+type TimeSchedule struct {
+	Minute string `json:"minute,omitempty"`
+	Hour   string `json:"hour,omitempty"`
+	Dom    string `json:"dom,omitempty"`
+	Month  string `json:"month,omitempty"`
+	Dow    string `json:"dow,omitempty"`
+	Begin  string `json:"begin,omitempty"`
+	End    string `json:"end,omitempty"`
 }
 
-// UnmarshalJSON accepts ssh_credentials as either the integer ID or the
-// expanded credential object. Create and update take the ID, but
+// ScheduleRequest is a schedule field in a create or update request. It has
+// three states, because TrueNAS reads a missing key and a null differently:
+// the zero value leaves the key out and TrueNAS keeps what it has, Clear
+// sends null and removes the schedule, and Value sets it.
+type ScheduleRequest struct {
+	Value *TimeSchedule
+	Clear bool
+}
+
+// IsZero reports whether the field is left out of the request (omitzero).
+func (s ScheduleRequest) IsZero() bool {
+	return s.Value == nil && !s.Clear
+}
+
+// MarshalJSON writes the schedule, or null when it is being cleared.
+func (s ScheduleRequest) MarshalJSON() ([]byte, error) {
+	if s.Value == nil {
+		return []byte("null"), nil
+	}
+	return json.Marshal(s.Value)
+}
+
+// Replication represents a ZFS replication task.
+type Replication struct {
+	ID                      int           `json:"id"`
+	Name                    string        `json:"name"`
+	Direction               string        `json:"direction"`
+	Transport               string        `json:"transport"`
+	SourceDatasets          []string      `json:"source_datasets"`
+	TargetDataset           string        `json:"target_dataset"`
+	Recursive               bool          `json:"recursive"`
+	AutoBool                bool          `json:"auto"`
+	Enabled                 bool          `json:"enabled"`
+	RetentionPolicy         string        `json:"retention_policy"`
+	LifetimeValue           int           `json:"lifetime_value,omitempty"`
+	LifetimeUnit            string        `json:"lifetime_unit,omitempty"`
+	Schedule                *TimeSchedule `json:"schedule,omitempty"`
+	RestrictSchedule        *TimeSchedule `json:"restrict_schedule,omitempty"`
+	OnlyMatchingSchedule    bool          `json:"only_matching_schedule"`
+	HoldPendingSnapshots    bool          `json:"hold_pending_snapshots"`
+	SSHCredentials          int           `json:"ssh_credentials,omitempty"`
+	PeriodicSnapshotTasks   []int         `json:"periodic_snapshot_tasks"`
+	NamingSchema            []string      `json:"naming_schema,omitempty"`
+	AlsoIncludeNamingSchema []string      `json:"also_include_naming_schema,omitempty"`
+}
+
+// UnmarshalJSON accepts ssh_credentials and periodic_snapshot_tasks as
+// either IDs or expanded objects. Create and update take the IDs, but
 // ReplicationEntry, which every response carries, returns the whole
-// KeychainCredentialEntry, so decoding it as an int failed on every SSH
-// replication. The field always holds the ID; null (LOCAL) leaves it 0.
-// Same API shape, and same handling, as CloudSync.credentials.
+// KeychainCredentialEntry and the whole snapshot task entries, so decoding
+// them as integers failed on every SSH replication and would fail on every
+// bound snapshot task. The fields always hold IDs; null ssh_credentials
+// (LOCAL) leaves it 0. Same API shape, and same handling, as
+// CloudSync.credentials.
 func (r *Replication) UnmarshalJSON(data []byte) error {
 	type Alias Replication
 	aux := &struct {
-		SSHCredentials json.RawMessage `json:"ssh_credentials"`
+		SSHCredentials        json.RawMessage   `json:"ssh_credentials"`
+		PeriodicSnapshotTasks []json.RawMessage `json:"periodic_snapshot_tasks"`
 		*Alias
 	}{
 		Alias: (*Alias)(r),
@@ -42,56 +84,85 @@ func (r *Replication) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, aux); err != nil {
 		return err
 	}
+	r.PeriodicSnapshotTasks = make([]int, 0, len(aux.PeriodicSnapshotTasks))
+	for _, raw := range aux.PeriodicSnapshotTasks {
+		id, err := idOrEntryID(raw)
+		if err != nil {
+			return fmt.Errorf("periodic_snapshot_tasks field: %w", err)
+		}
+		r.PeriodicSnapshotTasks = append(r.PeriodicSnapshotTasks, id)
+	}
 	if len(aux.SSHCredentials) == 0 {
 		return nil
 	}
-	var id int
-	if err := json.Unmarshal(aux.SSHCredentials, &id); err == nil {
-		r.SSHCredentials = id
-		return nil
-	}
-	var obj struct {
-		ID int `json:"id"`
-	}
-	if err := json.Unmarshal(aux.SSHCredentials, &obj); err != nil {
+	id, err := idOrEntryID(aux.SSHCredentials)
+	if err != nil {
 		return fmt.Errorf("ssh_credentials field: %w", err)
 	}
-	r.SSHCredentials = obj.ID
+	r.SSHCredentials = id
 	return nil
+}
+
+// idOrEntryID reads a reference that TrueNAS returns either as a bare ID or
+// as the expanded entry with an id key. A null gives 0.
+func idOrEntryID(raw json.RawMessage) (int, error) {
+	var id int
+	if err := json.Unmarshal(raw, &id); err == nil {
+		return id, nil
+	}
+	var entry struct {
+		ID int `json:"id"`
+	}
+	if err := json.Unmarshal(raw, &entry); err != nil {
+		return 0, err
+	}
+	return entry.ID, nil
 }
 
 // ReplicationCreateRequest represents the request to create a replication task.
 type ReplicationCreateRequest struct {
-	Name                    string    `json:"name"`
-	Direction               string    `json:"direction"`
-	Transport               string    `json:"transport"`
-	SourceDatasets          []string  `json:"source_datasets"`
-	TargetDataset           string    `json:"target_dataset"`
-	Recursive               bool      `json:"recursive"`
-	AutoBool                bool      `json:"auto"`
-	Enabled                 bool      `json:"enabled"`
-	RetentionPolicy         string    `json:"retention_policy"`
-	LifetimeValue           int       `json:"lifetime_value,omitempty"`
-	LifetimeUnit            string    `json:"lifetime_unit,omitempty"`
-	Schedule                *Schedule `json:"schedule,omitempty"`
-	SSHCredentials          int       `json:"ssh_credentials,omitempty"`
-	NamingSchema            []string  `json:"naming_schema,omitempty"`
-	AlsoIncludeNamingSchema []string  `json:"also_include_naming_schema,omitempty"`
+	Name                    string          `json:"name"`
+	Direction               string          `json:"direction"`
+	Transport               string          `json:"transport"`
+	SourceDatasets          []string        `json:"source_datasets"`
+	TargetDataset           string          `json:"target_dataset"`
+	Recursive               bool            `json:"recursive"`
+	AutoBool                bool            `json:"auto"`
+	Enabled                 bool            `json:"enabled"`
+	RetentionPolicy         string          `json:"retention_policy"`
+	LifetimeValue           int             `json:"lifetime_value,omitempty"`
+	LifetimeUnit            string          `json:"lifetime_unit,omitempty"`
+	Schedule                ScheduleRequest `json:"schedule,omitzero"`
+	RestrictSchedule        ScheduleRequest `json:"restrict_schedule,omitzero"`
+	OnlyMatchingSchedule    *bool           `json:"only_matching_schedule,omitempty"`
+	HoldPendingSnapshots    *bool           `json:"hold_pending_snapshots,omitempty"`
+	SSHCredentials          int             `json:"ssh_credentials,omitempty"`
+	PeriodicSnapshotTasks   *[]int          `json:"periodic_snapshot_tasks,omitempty"`
+	NamingSchema            []string        `json:"naming_schema,omitempty"`
+	AlsoIncludeNamingSchema []string        `json:"also_include_naming_schema,omitempty"`
 }
 
-// ReplicationUpdateRequest represents the request to update a replication task.
+// ReplicationUpdateRequest represents the request to update a replication
+// task. A nil pointer leaves the field out, and TrueNAS keeps its value. The
+// list pointers exist so an empty list can be sent: it clears the field.
 type ReplicationUpdateRequest struct {
-	Name            string    `json:"name,omitempty"`
-	Direction       string    `json:"direction,omitempty"`
-	Transport       string    `json:"transport,omitempty"`
-	SourceDatasets  []string  `json:"source_datasets,omitempty"`
-	TargetDataset   string    `json:"target_dataset,omitempty"`
-	Recursive       *bool     `json:"recursive,omitempty"`
-	AutoBool        *bool     `json:"auto,omitempty"`
-	Enabled         *bool     `json:"enabled,omitempty"`
-	RetentionPolicy string    `json:"retention_policy,omitempty"`
-	LifetimeValue   int       `json:"lifetime_value,omitempty"`
-	LifetimeUnit    string    `json:"lifetime_unit,omitempty"`
-	Schedule        *Schedule `json:"schedule,omitempty"`
-	SSHCredentials  int       `json:"ssh_credentials,omitempty"`
+	Name                    string          `json:"name,omitempty"`
+	Direction               string          `json:"direction,omitempty"`
+	Transport               string          `json:"transport,omitempty"`
+	SourceDatasets          []string        `json:"source_datasets,omitempty"`
+	TargetDataset           string          `json:"target_dataset,omitempty"`
+	Recursive               *bool           `json:"recursive,omitempty"`
+	AutoBool                *bool           `json:"auto,omitempty"`
+	Enabled                 *bool           `json:"enabled,omitempty"`
+	RetentionPolicy         string          `json:"retention_policy,omitempty"`
+	LifetimeValue           int             `json:"lifetime_value,omitempty"`
+	LifetimeUnit            string          `json:"lifetime_unit,omitempty"`
+	Schedule                ScheduleRequest `json:"schedule,omitzero"`
+	RestrictSchedule        ScheduleRequest `json:"restrict_schedule,omitzero"`
+	OnlyMatchingSchedule    *bool           `json:"only_matching_schedule,omitempty"`
+	HoldPendingSnapshots    *bool           `json:"hold_pending_snapshots,omitempty"`
+	SSHCredentials          int             `json:"ssh_credentials,omitempty"`
+	PeriodicSnapshotTasks   *[]int          `json:"periodic_snapshot_tasks,omitempty"`
+	NamingSchema            *[]string       `json:"naming_schema,omitempty"`
+	AlsoIncludeNamingSchema *[]string       `json:"also_include_naming_schema,omitempty"`
 }
