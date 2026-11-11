@@ -51,44 +51,54 @@ type ReplicationResource struct {
 
 // ReplicationResourceModel describes the resource data model.
 type ReplicationResourceModel struct {
-	ID                      types.String   `tfsdk:"id"`
-	Name                    types.String   `tfsdk:"name"`
-	Direction               types.String   `tfsdk:"direction"`
-	Transport               types.String   `tfsdk:"transport"`
-	SourceDatasets          types.List     `tfsdk:"source_datasets"`
-	TargetDataset           types.String   `tfsdk:"target_dataset"`
-	Recursive               types.Bool     `tfsdk:"recursive"`
-	Auto                    types.Bool     `tfsdk:"auto"`
-	Enabled                 types.Bool     `tfsdk:"enabled"`
-	RetentionPolicy         types.String   `tfsdk:"retention_policy"`
-	LifetimeValue           types.Int64    `tfsdk:"lifetime_value"`
-	LifetimeUnit            types.String   `tfsdk:"lifetime_unit"`
-	SSHCredentials          types.Int64    `tfsdk:"ssh_credentials"`
-	NamingSchema            types.List     `tfsdk:"naming_schema"`
-	AlsoIncludeNamingSchema types.List     `tfsdk:"also_include_naming_schema"`
-	PeriodicSnapshotTasks   types.Set      `tfsdk:"periodic_snapshot_tasks"`
-	HoldPendingSnapshots    types.Bool     `tfsdk:"hold_pending_snapshots"`
-	Schedule                types.List     `tfsdk:"schedule"`
-	RestrictSchedule        types.List     `tfsdk:"restrict_schedule"`
-	OnlyMatchingSchedule    types.Bool     `tfsdk:"only_matching_schedule"`
-	Readonly                types.String   `tfsdk:"readonly"`
-	AllowFromScratch        types.Bool     `tfsdk:"allow_from_scratch"`
-	Retries                 types.Int64    `tfsdk:"retries"`
-	Exclude                 types.Set      `tfsdk:"exclude"`
-	Properties              types.Bool     `tfsdk:"properties"`
-	PropertiesExclude       types.Set      `tfsdk:"properties_exclude"`
-	PropertiesOverride      types.Map      `tfsdk:"properties_override"`
-	Replicate               types.Bool     `tfsdk:"replicate"`
-	Compression             types.String   `tfsdk:"compression"`
-	SpeedLimit              types.Int64    `tfsdk:"speed_limit"`
-	LargeBlock              types.Bool     `tfsdk:"large_block"`
-	Embed                   types.Bool     `tfsdk:"embed"`
-	Compressed              types.Bool     `tfsdk:"compressed"`
-	Sudo                    types.Bool     `tfsdk:"sudo"`
-	LoggingLevel            types.String   `tfsdk:"logging_level"`
-	NameRegex               types.String   `tfsdk:"name_regex"`
-	Lifetimes               types.List     `tfsdk:"lifetimes"`
-	Timeouts                timeouts.Value `tfsdk:"timeouts"`
+	ID                              types.String   `tfsdk:"id"`
+	Name                            types.String   `tfsdk:"name"`
+	Direction                       types.String   `tfsdk:"direction"`
+	Transport                       types.String   `tfsdk:"transport"`
+	SourceDatasets                  types.List     `tfsdk:"source_datasets"`
+	TargetDataset                   types.String   `tfsdk:"target_dataset"`
+	Recursive                       types.Bool     `tfsdk:"recursive"`
+	Auto                            types.Bool     `tfsdk:"auto"`
+	Enabled                         types.Bool     `tfsdk:"enabled"`
+	RetentionPolicy                 types.String   `tfsdk:"retention_policy"`
+	LifetimeValue                   types.Int64    `tfsdk:"lifetime_value"`
+	LifetimeUnit                    types.String   `tfsdk:"lifetime_unit"`
+	SSHCredentials                  types.Int64    `tfsdk:"ssh_credentials"`
+	NamingSchema                    types.List     `tfsdk:"naming_schema"`
+	AlsoIncludeNamingSchema         types.List     `tfsdk:"also_include_naming_schema"`
+	PeriodicSnapshotTasks           types.Set      `tfsdk:"periodic_snapshot_tasks"`
+	HoldPendingSnapshots            types.Bool     `tfsdk:"hold_pending_snapshots"`
+	Schedule                        types.List     `tfsdk:"schedule"`
+	RestrictSchedule                types.List     `tfsdk:"restrict_schedule"`
+	OnlyMatchingSchedule            types.Bool     `tfsdk:"only_matching_schedule"`
+	Readonly                        types.String   `tfsdk:"readonly"`
+	AllowFromScratch                types.Bool     `tfsdk:"allow_from_scratch"`
+	Retries                         types.Int64    `tfsdk:"retries"`
+	Exclude                         types.Set      `tfsdk:"exclude"`
+	Properties                      types.Bool     `tfsdk:"properties"`
+	PropertiesExclude               types.Set      `tfsdk:"properties_exclude"`
+	PropertiesOverride              types.Map      `tfsdk:"properties_override"`
+	Replicate                       types.Bool     `tfsdk:"replicate"`
+	Compression                     types.String   `tfsdk:"compression"`
+	SpeedLimit                      types.Int64    `tfsdk:"speed_limit"`
+	LargeBlock                      types.Bool     `tfsdk:"large_block"`
+	Embed                           types.Bool     `tfsdk:"embed"`
+	Compressed                      types.Bool     `tfsdk:"compressed"`
+	Sudo                            types.Bool     `tfsdk:"sudo"`
+	LoggingLevel                    types.String   `tfsdk:"logging_level"`
+	NameRegex                       types.String   `tfsdk:"name_regex"`
+	Lifetimes                       types.List     `tfsdk:"lifetimes"`
+	Encryption                      types.Bool     `tfsdk:"encryption"`
+	EncryptionInherit               types.Bool     `tfsdk:"encryption_inherit"`
+	EncryptionKey                   types.String   `tfsdk:"encryption_key"`
+	EncryptionKeyFormat             types.String   `tfsdk:"encryption_key_format"`
+	EncryptionKeyLocation           types.String   `tfsdk:"encryption_key_location"`
+	NetcatActiveSide                types.String   `tfsdk:"netcat_active_side"`
+	NetcatActiveSideListenAddress   types.String   `tfsdk:"netcat_active_side_listen_address"`
+	NetcatActiveSidePortMin         types.Int64    `tfsdk:"netcat_active_side_port_min"`
+	NetcatActiveSidePortMax         types.Int64    `tfsdk:"netcat_active_side_port_max"`
+	NetcatPassiveSideConnectAddress types.String   `tfsdk:"netcat_passive_side_connect_address"`
+	Timeouts                        timeouts.Value `tfsdk:"timeouts"`
 }
 
 // replicationScheduleModel is the one entry of schedule or restrict_schedule.
@@ -432,6 +442,37 @@ func (r *ReplicationResource) Schema(ctx context.Context, _ resource.SchemaReque
 					},
 				},
 			},
+			"encryption": keptBool("Encrypt the replicated datasets on the destination. TrueNAS then requires either " +
+				"`encryption_inherit = true` or `encryption_key`, `encryption_key_format` and `encryption_key_location`. " +
+				"Left out, the current value is kept; TrueNAS defaults to false."),
+			"encryption_inherit": keptBool("Take the encryption settings from the destination's parent dataset. " +
+				"Left out, the current value is kept; it is false where TrueNAS has none."),
+			"encryption_key": schema.StringAttribute{
+				Description: "Key or passphrase for the replicated datasets, or `\"\"` for none. Left out, the current value is kept.",
+				Optional:    true,
+				Computed:    true,
+				Sensitive:   true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseNonNullStateForUnknown(),
+				},
+			},
+			"encryption_key_format": keptString("Form of `encryption_key`: `HEX` or `PASSPHRASE`, or `\"\"` for none. "+
+				"Left out, the current value is kept.",
+				stringvalidator.OneOf("", "HEX", "PASSPHRASE")),
+			"encryption_key_location": keptString("Path where the encryption key is stored, or `\"\"` for none. " +
+				"Left out, the current value is kept."),
+			"netcat_active_side": keptString("Which side opens the netcat connection of an `SSH+NETCAT` transport: `LOCAL` or "+
+				"`REMOTE`, or `\"\"` for none. TrueNAS requires it for `SSH+NETCAT` and accepts the netcat attributes for "+
+				"no other transport. Left out, the current value is kept.",
+				stringvalidator.OneOf("", "LOCAL", "REMOTE")),
+			"netcat_active_side_listen_address": keptString("Address the active side listens on, or `\"\"` for none. " +
+				"`SSH+NETCAT` only. Left out, the current value is kept."),
+			"netcat_active_side_port_min": keptInt64("Lowest port the active side may use, or `0` for none. `SSH+NETCAT` only. "+
+				"Left out, the current value is kept.", int64validator.Between(0, 65535)),
+			"netcat_active_side_port_max": keptInt64("Highest port the active side may use, or `0` for none. `SSH+NETCAT` only. "+
+				"Left out, the current value is kept.", int64validator.Between(0, 65535)),
+			"netcat_passive_side_connect_address": keptString("Address the passive side connects to, or `\"\"` for none. " +
+				"`SSH+NETCAT` only. Left out, the current value is kept."),
 		},
 	}
 }
@@ -965,6 +1006,17 @@ func mapReplicationOptions(repl *truenas.Replication, model *ReplicationResource
 	model.LoggingLevel = types.StringValue(valueOrZero(repl.LoggingLevel))
 	model.NameRegex = types.StringValue(valueOrZero(repl.NameRegex))
 
+	model.Encryption = types.BoolValue(repl.Encryption)
+	model.EncryptionInherit = types.BoolValue(valueOrZero(repl.EncryptionInherit))
+	model.EncryptionKey = types.StringValue(valueOrZero(repl.EncryptionKey))
+	model.EncryptionKeyFormat = types.StringValue(valueOrZero(repl.EncryptionKeyFormat))
+	model.EncryptionKeyLocation = types.StringValue(valueOrZero(repl.EncryptionKeyLocation))
+	model.NetcatActiveSide = types.StringValue(valueOrZero(repl.NetcatActiveSide))
+	model.NetcatActiveSideListenAddress = types.StringValue(valueOrZero(repl.NetcatActiveSideListenAddress))
+	model.NetcatActiveSidePortMin = types.Int64Value(int64(valueOrZero(repl.NetcatActiveSidePortMin)))
+	model.NetcatActiveSidePortMax = types.Int64Value(int64(valueOrZero(repl.NetcatActiveSidePortMax)))
+	model.NetcatPassiveSideConnectAddress = types.StringValue(valueOrZero(repl.NetcatPassiveSideConnectAddress))
+
 	lifetimeType := replicationLifetimeObjectType()
 	cronType, _ := lifetimeType.AttrTypes["schedule"].(types.ObjectType)
 	lifetimes := make([]attr.Value, 0, len(repl.Lifetimes))
@@ -1022,6 +1074,17 @@ func replicationOptions(ctx context.Context, m *ReplicationResourceModel, diags 
 		LoggingLevel:       nullIfEmpty(m.LoggingLevel),
 		NameRegex:          nullIfEmpty(m.NameRegex),
 		Lifetimes:          replicationLifetimes(ctx, m.Lifetimes, diags),
+
+		Encryption:                      flex.BoolFromPointer(m.Encryption),
+		EncryptionInherit:               flex.BoolFromPointer(m.EncryptionInherit),
+		EncryptionKey:                   nullIfEmpty(m.EncryptionKey),
+		EncryptionKeyFormat:             nullIfEmpty(m.EncryptionKeyFormat),
+		EncryptionKeyLocation:           nullIfEmpty(m.EncryptionKeyLocation),
+		NetcatActiveSide:                nullIfEmpty(m.NetcatActiveSide),
+		NetcatActiveSideListenAddress:   nullIfEmpty(m.NetcatActiveSideListenAddress),
+		NetcatActiveSidePortMin:         nullIfZero(m.NetcatActiveSidePortMin),
+		NetcatActiveSidePortMax:         nullIfZero(m.NetcatActiveSidePortMax),
+		NetcatPassiveSideConnectAddress: nullIfEmpty(m.NetcatPassiveSideConnectAddress),
 	}
 }
 

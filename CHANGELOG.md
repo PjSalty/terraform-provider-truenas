@@ -33,8 +33,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clears the field. `exclude = []`, `properties_exclude = []`,
   `properties_override = {}` and `lifetimes = []` clear the collections.
 
-  Requested by @kromsam as GitHub #44. The encryption and netcat fields from
-  that request follow.
+- `truenas_replication`: `encryption`, `encryption_inherit`,
+  `encryption_key`, `encryption_key_format`, `encryption_key_location`, and
+  the `SSH+NETCAT` settings `netcat_active_side`,
+  `netcat_active_side_listen_address`, `netcat_active_side_port_min`,
+  `netcat_active_side_port_max` and `netcat_passive_side_connect_address`.
+  Same rule again: left out, they are kept and read back, as `""` or `0`
+  where TrueNAS has none. `encryption_key` is sensitive, and is redacted
+  from error messages.
+
+  With these the resource models every field `replication.create` accepts.
+  Requested by @kromsam as GitHub #44.
 
 ### Fixed
 
