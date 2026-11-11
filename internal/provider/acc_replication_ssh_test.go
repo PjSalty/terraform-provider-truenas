@@ -69,6 +69,9 @@ resource "truenas_replication" "test" {
   enabled                    = false
   retention_policy           = "NONE"
   also_include_naming_schema = ["auto-%%Y-%%m-%%d_%%H-%%M"]
+  compression                = "LZ4"
+  speed_limit                = 1048576
+  sudo                       = true
 }
 `, kpName, priv, pub, credName, hostKey, repName, src)
 
@@ -86,6 +89,10 @@ resource "truenas_replication" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("truenas_keychain_credential.creds", "type", "SSH_CREDENTIALS"),
 					resource.TestCheckResourceAttr("truenas_replication.test", "transport", "SSH"),
+					// The options TrueNAS accepts for an SSH transport only.
+					resource.TestCheckResourceAttr("truenas_replication.test", "compression", "LZ4"),
+					resource.TestCheckResourceAttr("truenas_replication.test", "speed_limit", "1048576"),
+					resource.TestCheckResourceAttr("truenas_replication.test", "sudo", "true"),
 					resource.TestCheckResourceAttrPair(
 						"truenas_replication.test", "ssh_credentials",
 						"truenas_keychain_credential.creds", "id",

@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -70,6 +71,23 @@ type ReplicationResourceModel struct {
 	Schedule                types.List     `tfsdk:"schedule"`
 	RestrictSchedule        types.List     `tfsdk:"restrict_schedule"`
 	OnlyMatchingSchedule    types.Bool     `tfsdk:"only_matching_schedule"`
+	Readonly                types.String   `tfsdk:"readonly"`
+	AllowFromScratch        types.Bool     `tfsdk:"allow_from_scratch"`
+	Retries                 types.Int64    `tfsdk:"retries"`
+	Exclude                 types.Set      `tfsdk:"exclude"`
+	Properties              types.Bool     `tfsdk:"properties"`
+	PropertiesExclude       types.Set      `tfsdk:"properties_exclude"`
+	PropertiesOverride      types.Map      `tfsdk:"properties_override"`
+	Replicate               types.Bool     `tfsdk:"replicate"`
+	Compression             types.String   `tfsdk:"compression"`
+	SpeedLimit              types.Int64    `tfsdk:"speed_limit"`
+	LargeBlock              types.Bool     `tfsdk:"large_block"`
+	Embed                   types.Bool     `tfsdk:"embed"`
+	Compressed              types.Bool     `tfsdk:"compressed"`
+	Sudo                    types.Bool     `tfsdk:"sudo"`
+	LoggingLevel            types.String   `tfsdk:"logging_level"`
+	NameRegex               types.String   `tfsdk:"name_regex"`
+	Lifetimes               types.List     `tfsdk:"lifetimes"`
 	Timeouts                timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -82,6 +100,21 @@ type replicationScheduleModel struct {
 	Dow    types.String `tfsdk:"dow"`
 	Begin  types.String `tfsdk:"begin"`
 	End    types.String `tfsdk:"end"`
+}
+
+// replicationLifetimeModel is one entry of lifetimes.
+type replicationLifetimeModel struct {
+	Schedule      replicationCronModel `tfsdk:"schedule"`
+	LifetimeValue types.Int64          `tfsdk:"lifetime_value"`
+	LifetimeUnit  types.String         `tfsdk:"lifetime_unit"`
+}
+
+type replicationCronModel struct {
+	Minute types.String `tfsdk:"minute"`
+	Hour   types.String `tfsdk:"hour"`
+	Dom    types.String `tfsdk:"dom"`
+	Month  types.String `tfsdk:"month"`
+	Dow    types.String `tfsdk:"dow"`
 }
 
 // timeOfDay is the HH:MM form TrueNAS returns for begin and end. Only that
@@ -155,6 +188,8 @@ func (r *ReplicationResource) Metadata(_ context.Context, req resource.MetadataR
 }
 
 func (r *ReplicationResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	// A required cron field must at least say something; TrueNAS parses the rest.
+	notEmpty := []validator.String{stringvalidator.LengthAtLeast(1)}
 	resp.Schema = schema.Schema{Blocks: map[string]schema.Block{"timeouts": timeouts.Block(ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true})}, Description: "Manages a ZFS replication task on TrueNAS SCALE. " +
 		"The initial snapshot sync can be slow; raise `create` and `update` in the `timeouts` block if they time out.",
 		Attributes: map[string]schema.Attribute{
@@ -318,6 +353,85 @@ func (r *ReplicationResource) Schema(ctx context.Context, _ resource.SchemaReque
 					boolplanmodifier.UseNonNullStateForUnknown(),
 				},
 			},
+			"readonly": keptString("What the task does with the `readonly` property of the destination datasets: `SET` turns it on "+
+				"after each run, `REQUIRE` refuses to replicate into a dataset that has it off, and `IGNORE` leaves it alone. "+
+				"Left out, the current value is kept; TrueNAS defaults to `SET`.",
+				stringvalidator.OneOf("SET", "REQUIRE", "IGNORE")),
+			"allow_from_scratch": keptBool("When no snapshot on the destination matches the source, destroy the destination's " +
+				"snapshots and replicate everything again. Left out, the current value is kept; TrueNAS defaults to false."),
+			"retries": keptInt64("Number of attempts before a run counts as failed. Left out, the current value is kept; "+
+				"TrueNAS defaults to 5.", int64validator.AtLeast(1)),
+			"exclude": keptStringSet("Child datasets to leave out of a recursive replication. Left out, the current list is kept. " +
+				"Set to `[]` to exclude nothing."),
+			"properties": keptBool("Send dataset properties along with the snapshots. Left out, the current value is kept; " +
+				"TrueNAS defaults to true."),
+			"properties_exclude": keptStringSet("Dataset properties that are not sent. Left out, the current list is kept. " +
+				"Set to `[]` to send them all."),
+			"properties_override": schema.MapAttribute{
+				Description: "Dataset properties to set on the destination in place of the source's values. Left out, the " +
+					"current map is kept. Set to `{}` to override nothing.",
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				PlanModifiers: []planmodifier.Map{
+					mapplanmodifier.UseNonNullStateForUnknown(),
+				},
+			},
+			"replicate": keptBool("Full filesystem replication: every child dataset, snapshot and property. TrueNAS then requires " +
+				"`recursive` and `properties` to be true and `exclude` to be empty. Left out, the current value is kept; " +
+				"TrueNAS defaults to false."),
+			"compression": keptString("Compression of the SSH stream: `LZ4`, `PIGZ` or `PLZIP`, or `\"\"` for none. SSH transport only. "+
+				"Left out, the current value is kept.",
+				stringvalidator.OneOf("", "LZ4", "PIGZ", "PLZIP")),
+			"speed_limit": keptInt64("Limit of the SSH stream in bytes per second, or `0` for no limit. SSH transport only. "+
+				"Left out, the current value is kept.", int64validator.AtLeast(0)),
+			"large_block": keptBool("Allow blocks larger than 128 KiB in the send stream. Left out, the current value is kept; " +
+				"TrueNAS defaults to true."),
+			"embed": keptBool("Allow embedded blocks in the send stream. Left out, the current value is kept; TrueNAS defaults to false."),
+			"compressed": keptBool("Send blocks as they are compressed on disk. Left out, the current value is kept; " +
+				"TrueNAS defaults to true."),
+			"sudo": keptBool("Run `zfs` on the remote system through passwordless `sudo`. SSH and SSH+NETCAT transports only. " +
+				"Left out, the current value is kept; TrueNAS defaults to false."),
+			"logging_level": keptString("Log level of the task's runs: `DEBUG`, `INFO`, `WARNING` or `ERROR`, or `\"\"` for the "+
+				"TrueNAS default. Left out, the current value is kept.",
+				stringvalidator.OneOf("", "DEBUG", "INFO", "WARNING", "ERROR")),
+			"name_regex": keptString("Replicate every snapshot whose name matches this regular expression, or `\"\"` for none. " +
+				"TrueNAS does not accept it together with a naming schema or with `periodic_snapshot_tasks`. " +
+				"Left out, the current value is kept."),
+			"lifetimes": schema.ListNestedAttribute{
+				Description: "Retention periods for `retention_policy = \"CUSTOM\"`, each for the snapshots that match its " +
+					"schedule. Left out, the current list is kept. Set to `[]` for none.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseNonNullStateForUnknown(),
+				},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"schedule": schema.SingleNestedAttribute{
+							Description: "Cron schedule of the snapshots this period applies to. Every field is required.",
+							Required:    true,
+							Attributes: map[string]schema.Attribute{
+								"minute": schema.StringAttribute{Description: "Cron minute field.", Required: true, Validators: notEmpty},
+								"hour":   schema.StringAttribute{Description: "Cron hour field.", Required: true, Validators: notEmpty},
+								"dom":    schema.StringAttribute{Description: "Cron day-of-month field.", Required: true, Validators: notEmpty},
+								"month":  schema.StringAttribute{Description: "Cron month field.", Required: true, Validators: notEmpty},
+								"dow":    schema.StringAttribute{Description: "Cron day-of-week field.", Required: true, Validators: notEmpty},
+							},
+						},
+						"lifetime_value": schema.Int64Attribute{
+							Description: "How many units the matching snapshots are kept.",
+							Required:    true,
+							Validators:  []validator.Int64{int64validator.AtLeast(1)},
+						},
+						"lifetime_unit": schema.StringAttribute{
+							Description: "Unit of `lifetime_value` (HOUR, DAY, WEEK, MONTH, YEAR).",
+							Required:    true,
+							Validators:  []validator.String{stringvalidator.OneOf("HOUR", "DAY", "WEEK", "MONTH", "YEAR")},
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -390,6 +504,7 @@ func (r *ReplicationResource) Create(ctx context.Context, req resource.CreateReq
 	createReq.OnlyMatchingSchedule = flex.BoolFromPointer(plan.OnlyMatchingSchedule)
 	createReq.HoldPendingSnapshots = flex.BoolFromPointer(plan.HoldPendingSnapshots)
 	createReq.PeriodicSnapshotTasks = snapshotTaskIDs(ctx, plan.PeriodicSnapshotTasks, &resp.Diagnostics)
+	createReq.ReplicationOptions = replicationOptions(ctx, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -513,6 +628,7 @@ func (r *ReplicationResource) Update(ctx context.Context, req resource.UpdateReq
 	updateReq.OnlyMatchingSchedule = flex.BoolFromPointer(plan.OnlyMatchingSchedule)
 	updateReq.HoldPendingSnapshots = flex.BoolFromPointer(plan.HoldPendingSnapshots)
 	updateReq.PeriodicSnapshotTasks = snapshotTaskIDs(ctx, plan.PeriodicSnapshotTasks, &resp.Diagnostics)
+	updateReq.ReplicationOptions = replicationOptions(ctx, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -685,6 +801,7 @@ func (r *ReplicationResource) mapResponseToModel(ctx context.Context, repl *true
 		taskIDs = append(taskIDs, types.Int64Value(int64(id)))
 	}
 	model.PeriodicSnapshotTasks = types.SetValueMust(types.Int64Type, taskIDs)
+	mapReplicationOptions(repl, model)
 }
 
 // replicationScheduleList is the state form of a schedule. A task without
@@ -710,17 +827,17 @@ func replicationScheduleList(s *truenas.TimeSchedule) types.List {
 // A null or unknown list leaves the field out, an empty list removes the
 // schedule, and one entry sets it. A field of the entry that is still
 // unknown is left out, and TrueNAS fills its default.
-func replicationScheduleRequest(ctx context.Context, l types.List, diags *diag.Diagnostics) truenas.ScheduleRequest {
+func replicationScheduleRequest(ctx context.Context, l types.List, diags *diag.Diagnostics) truenas.Nullable[truenas.TimeSchedule] {
 	if l.IsNull() || l.IsUnknown() {
-		return truenas.ScheduleRequest{}
+		return truenas.Nullable[truenas.TimeSchedule]{}
 	}
 	var entries []replicationScheduleModel
 	diags.Append(l.ElementsAs(ctx, &entries, false)...)
 	if len(entries) == 0 {
-		return truenas.ScheduleRequest{Clear: true}
+		return truenas.Null[truenas.TimeSchedule]()
 	}
 	e := entries[0]
-	return truenas.ScheduleRequest{Value: &truenas.TimeSchedule{
+	return truenas.Value(truenas.TimeSchedule{
 		Minute: e.Minute.ValueString(),
 		Hour:   e.Hour.ValueString(),
 		Dom:    e.Dom.ValueString(),
@@ -728,7 +845,7 @@ func replicationScheduleRequest(ctx context.Context, l types.List, diags *diag.D
 		Dow:    e.Dow.ValueString(),
 		Begin:  e.Begin.ValueString(),
 		End:    e.End.ValueString(),
-	}}
+	})
 }
 
 // snapshotTaskIDs is the request form of the planned periodic_snapshot_tasks.
@@ -761,4 +878,218 @@ func namingSchemaRequest(ctx context.Context, l types.List, diags *diag.Diagnost
 		names = []string{}
 	}
 	return &names
+}
+
+// The kept helpers build an attribute that is read back when a configuration
+// leaves it out: Optional and Computed, with the modifier that keeps the
+// prior value. They fit only a value that is never null after a read, which
+// is why a field TrueNAS can hold as null is read back as its empty value,
+// `""` or `0`, and that empty value is sent back as null.
+
+func keptBool(description string) schema.BoolAttribute {
+	return schema.BoolAttribute{
+		Description:   description,
+		Optional:      true,
+		Computed:      true,
+		PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
+	}
+}
+
+func keptString(description string, validators ...validator.String) schema.StringAttribute {
+	return schema.StringAttribute{
+		Description:   description,
+		Optional:      true,
+		Computed:      true,
+		Validators:    validators,
+		PlanModifiers: []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+	}
+}
+
+func keptInt64(description string, validators ...validator.Int64) schema.Int64Attribute {
+	return schema.Int64Attribute{
+		Description:   description,
+		Optional:      true,
+		Computed:      true,
+		Validators:    validators,
+		PlanModifiers: []planmodifier.Int64{int64planmodifier.UseNonNullStateForUnknown()},
+	}
+}
+
+func keptStringSet(description string) schema.SetAttribute {
+	return schema.SetAttribute{
+		Description:   description,
+		Optional:      true,
+		Computed:      true,
+		ElementType:   types.StringType,
+		PlanModifiers: []planmodifier.Set{setplanmodifier.UseNonNullStateForUnknown()},
+	}
+}
+
+func replicationLifetimeObjectType() types.ObjectType {
+	cron := types.ObjectType{AttrTypes: map[string]attr.Type{
+		"minute": types.StringType,
+		"hour":   types.StringType,
+		"dom":    types.StringType,
+		"month":  types.StringType,
+		"dow":    types.StringType,
+	}}
+	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"schedule":       cron,
+		"lifetime_value": types.Int64Type,
+		"lifetime_unit":  types.StringType,
+	}}
+}
+
+// mapReplicationOptions sets the options from a response. A null becomes the
+// attribute's empty value, and a missing list or map an empty one, so none
+// of them is ever null in state.
+func mapReplicationOptions(repl *truenas.Replication, model *ReplicationResourceModel) {
+	model.Readonly = types.StringValue(repl.Readonly)
+	model.AllowFromScratch = types.BoolValue(repl.AllowFromScratch)
+	model.Retries = types.Int64Value(int64(repl.Retries))
+	model.Exclude = stringSetValue(repl.Exclude)
+	model.Properties = types.BoolValue(repl.Properties)
+	model.PropertiesExclude = stringSetValue(repl.PropertiesExclude)
+	overrides := make(map[string]attr.Value, len(repl.PropertiesOverride))
+	for name, value := range repl.PropertiesOverride {
+		overrides[name] = types.StringValue(value)
+	}
+	model.PropertiesOverride = types.MapValueMust(types.StringType, overrides)
+	model.Replicate = types.BoolValue(repl.Replicate)
+	model.Compression = types.StringValue(valueOrZero(repl.Compression))
+	model.SpeedLimit = types.Int64Value(int64(valueOrZero(repl.SpeedLimit)))
+	model.LargeBlock = types.BoolValue(repl.LargeBlock)
+	model.Embed = types.BoolValue(repl.Embed)
+	model.Compressed = types.BoolValue(repl.Compressed)
+	model.Sudo = types.BoolValue(repl.Sudo)
+	model.LoggingLevel = types.StringValue(valueOrZero(repl.LoggingLevel))
+	model.NameRegex = types.StringValue(valueOrZero(repl.NameRegex))
+
+	lifetimeType := replicationLifetimeObjectType()
+	cronType, _ := lifetimeType.AttrTypes["schedule"].(types.ObjectType)
+	lifetimes := make([]attr.Value, 0, len(repl.Lifetimes))
+	for _, l := range repl.Lifetimes {
+		lifetimes = append(lifetimes, types.ObjectValueMust(lifetimeType.AttrTypes, map[string]attr.Value{
+			"schedule": types.ObjectValueMust(cronType.AttrTypes, map[string]attr.Value{
+				"minute": types.StringValue(l.Schedule.Minute),
+				"hour":   types.StringValue(l.Schedule.Hour),
+				"dom":    types.StringValue(l.Schedule.Dom),
+				"month":  types.StringValue(l.Schedule.Month),
+				"dow":    types.StringValue(l.Schedule.Dow),
+			}),
+			"lifetime_value": types.Int64Value(int64(l.LifetimeValue)),
+			"lifetime_unit":  types.StringValue(l.LifetimeUnit),
+		}))
+	}
+	model.Lifetimes = types.ListValueMust(lifetimeType, lifetimes)
+}
+
+func valueOrZero[T any](p *T) T {
+	var zero T
+	if p == nil {
+		return zero
+	}
+	return *p
+}
+
+func stringSetValue(items []string) types.Set {
+	vals := make([]attr.Value, 0, len(items))
+	for _, item := range items {
+		vals = append(vals, types.StringValue(item))
+	}
+	return types.SetValueMust(types.StringType, vals)
+}
+
+// replicationOptions is the request form of the planned options, shared by
+// create and update. An unknown or null value leaves its key out. A known
+// one is sent, the empty value of a nullable field as null.
+func replicationOptions(ctx context.Context, m *ReplicationResourceModel, diags *diag.Diagnostics) truenas.ReplicationOptions {
+	return truenas.ReplicationOptions{
+		Readonly:           m.Readonly.ValueString(),
+		AllowFromScratch:   flex.BoolFromPointer(m.AllowFromScratch),
+		Retries:            flex.Int64FromPointer(m.Retries),
+		Exclude:            stringSetRequest(ctx, m.Exclude, diags),
+		Properties:         flex.BoolFromPointer(m.Properties),
+		PropertiesExclude:  stringSetRequest(ctx, m.PropertiesExclude, diags),
+		PropertiesOverride: stringMapRequest(ctx, m.PropertiesOverride, diags),
+		Replicate:          flex.BoolFromPointer(m.Replicate),
+		Compression:        nullIfEmpty(m.Compression),
+		SpeedLimit:         nullIfZero(m.SpeedLimit),
+		LargeBlock:         flex.BoolFromPointer(m.LargeBlock),
+		Embed:              flex.BoolFromPointer(m.Embed),
+		Compressed:         flex.BoolFromPointer(m.Compressed),
+		Sudo:               flex.BoolFromPointer(m.Sudo),
+		LoggingLevel:       nullIfEmpty(m.LoggingLevel),
+		NameRegex:          nullIfEmpty(m.NameRegex),
+		Lifetimes:          replicationLifetimes(ctx, m.Lifetimes, diags),
+	}
+}
+
+// nullIfEmpty sends "" as null: the empty string is how this resource
+// writes "none" for a field TrueNAS holds as a value or null.
+func nullIfEmpty(v types.String) truenas.Nullable[string] {
+	switch {
+	case v.IsNull() || v.IsUnknown():
+		return truenas.Nullable[string]{}
+	case v.ValueString() == "":
+		return truenas.Null[string]()
+	default:
+		return truenas.Value(v.ValueString())
+	}
+}
+
+// nullIfZero sends 0 as null, for the same reason.
+func nullIfZero(v types.Int64) truenas.Nullable[int] {
+	switch {
+	case v.IsNull() || v.IsUnknown():
+		return truenas.Nullable[int]{}
+	case v.ValueInt64() == 0:
+		return truenas.Null[int]()
+	default:
+		return truenas.Value(int(v.ValueInt64()))
+	}
+}
+
+func stringSetRequest(ctx context.Context, s types.Set, diags *diag.Diagnostics) *[]string {
+	if s.IsNull() || s.IsUnknown() {
+		return nil
+	}
+	items := []string{}
+	diags.Append(s.ElementsAs(ctx, &items, false)...)
+	slices.Sort(items)
+	return &items
+}
+
+// stringMapRequest gives nil for a null or unknown map, which leaves the key
+// out, and a map that is not nil otherwise: empty, it clears the field.
+func stringMapRequest(ctx context.Context, m types.Map, diags *diag.Diagnostics) map[string]string {
+	if m.IsNull() || m.IsUnknown() {
+		return nil
+	}
+	items := map[string]string{}
+	diags.Append(m.ElementsAs(ctx, &items, false)...)
+	return items
+}
+
+func replicationLifetimes(ctx context.Context, l types.List, diags *diag.Diagnostics) *[]truenas.ReplicationLifetime {
+	if l.IsNull() || l.IsUnknown() {
+		return nil
+	}
+	var planned []replicationLifetimeModel
+	diags.Append(l.ElementsAs(ctx, &planned, false)...)
+	lifetimes := make([]truenas.ReplicationLifetime, 0, len(planned))
+	for _, e := range planned {
+		lifetimes = append(lifetimes, truenas.ReplicationLifetime{
+			Schedule: truenas.Schedule{
+				Minute: e.Schedule.Minute.ValueString(),
+				Hour:   e.Schedule.Hour.ValueString(),
+				Dom:    e.Schedule.Dom.ValueString(),
+				Month:  e.Schedule.Month.ValueString(),
+				Dow:    e.Schedule.Dow.ValueString(),
+			},
+			LifetimeValue: int(e.LifetimeValue.ValueInt64()),
+			LifetimeUnit:  e.LifetimeUnit.ValueString(),
+		})
+	}
+	return &lifetimes
 }

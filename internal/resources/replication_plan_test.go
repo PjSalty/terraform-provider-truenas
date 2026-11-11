@@ -182,7 +182,38 @@ func stringOf(t *testing.T, v tftypes.Value) string {
 // The five attributes this resource reads back when a configuration leaves
 // them out.
 func readBackAttributes() []string {
-	return []string{"schedule", "restrict_schedule", "only_matching_schedule", "hold_pending_snapshots", "periodic_snapshot_tasks"}
+	return []string{
+		"schedule", "restrict_schedule", "only_matching_schedule", "hold_pending_snapshots", "periodic_snapshot_tasks",
+		"readonly", "allow_from_scratch", "retries", "exclude", "properties", "properties_exclude", "properties_override",
+		"replicate", "compression", "speed_limit", "large_block", "embed", "compressed", "sudo", "logging_level",
+		"name_regex", "lifetimes",
+	}
+}
+
+// options gives every option attribute a value that differs from the TrueNAS
+// default, as a task set up outside Terraform would have.
+func (p replicationPlanner) options() map[string]tftypes.Value {
+	num := func(n int64) tftypes.Value { return tftypes.NewValue(tftypes.Number, n) }
+	lifetimes, _ := p.typ.AttributeTypes["lifetimes"].(tftypes.List)
+	lifetime, _ := lifetimes.ElementType.(tftypes.Object)
+	cron, _ := lifetime.AttributeTypes["schedule"].(tftypes.Object)
+	return map[string]tftypes.Value{
+		"readonly": tfString("REQUIRE"), "allow_from_scratch": tfBool(true), "retries": num(9),
+		"exclude":            tftypes.NewValue(p.typ.AttributeTypes["exclude"], []tftypes.Value{tfString("tank/src/tmp")}),
+		"properties":         tfBool(false),
+		"properties_exclude": tftypes.NewValue(p.typ.AttributeTypes["properties_exclude"], []tftypes.Value{tfString("mountpoint")}),
+		"properties_override": tftypes.NewValue(p.typ.AttributeTypes["properties_override"],
+			map[string]tftypes.Value{"atime": tfString("off")}),
+		"replicate": tfBool(true), "compression": tfString("LZ4"), "speed_limit": num(4096),
+		"large_block": tfBool(false), "embed": tfBool(true), "compressed": tfBool(false), "sudo": tfBool(true),
+		"logging_level": tfString("DEBUG"), "name_regex": tfString("auto-.*"),
+		"lifetimes": tftypes.NewValue(lifetimes, []tftypes.Value{tftypes.NewValue(lifetime, map[string]tftypes.Value{
+			"schedule": tftypes.NewValue(cron, map[string]tftypes.Value{
+				"minute": tfString("0"), "hour": tfString("0"), "dom": tfString("*"), "month": tfString("*"), "dow": tfString("7"),
+			}),
+			"lifetime_value": num(4), "lifetime_unit": tfString("WEEK"),
+		})}),
+	}
 }
 
 // A task that has these values in TrueNAS, and a configuration written before
@@ -198,6 +229,7 @@ func TestReplicationPlan_UnsetAttributesKeepWhatTrueNASHas(t *testing.T) {
 	prior["only_matching_schedule"] = tfBool(true)
 	prior["hold_pending_snapshots"] = tfBool(true)
 	prior["periodic_snapshot_tasks"] = p.tasks(4, 9)
+	maps.Copy(prior, p.options())
 
 	// The rename makes the plan differ from the state. The framework then
 	// marks every computed attribute the configuration leaves out as
@@ -386,4 +418,74 @@ func TestReplicationConfig_ScheduleIsValidated(t *testing.T) {
 			t.Errorf("unexpected diagnostic: [%s] %s: %s", d.Severity, d.Summary, d.Detail)
 		}
 	})
+}
+
+// The empty value of a nullable option is a decision too: it plans the
+// change from what TrueNAS holds, and is not taken for "left out".
+func TestReplicationPlan_EmptyOptionValuesClear(t *testing.T) {
+	ctx := context.Background()
+	p := newReplicationPlanner(ctx, t)
+	prior := replicationConfig("rep")
+	prior["id"] = tfString("7")
+	prior["schedule"] = p.schedule()
+	prior["restrict_schedule"] = p.schedule()
+	prior["only_matching_schedule"] = tfBool(false)
+	prior["hold_pending_snapshots"] = tfBool(false)
+	prior["periodic_snapshot_tasks"] = p.tasks()
+	maps.Copy(prior, p.options())
+
+	config := replicationConfig("rep")
+	empty := map[string]tftypes.Value{
+		"compression": tfString(""), "logging_level": tfString(""), "name_regex": tfString(""),
+		"speed_limit":         tftypes.NewValue(tftypes.Number, int64(0)),
+		"exclude":             tftypes.NewValue(p.typ.AttributeTypes["exclude"], []tftypes.Value{}),
+		"properties_override": tftypes.NewValue(p.typ.AttributeTypes["properties_override"], map[string]tftypes.Value{}),
+		"lifetimes":           tftypes.NewValue(p.typ.AttributeTypes["lifetimes"], []tftypes.Value{}),
+	}
+	maps.Copy(config, empty)
+
+	planned := p.plan(ctx, t, prior, config, nil)
+
+	for name, want := range empty {
+		if !planned[name].Equal(want) {
+			t.Errorf("%s is planned as %s, want %s", name, planned[name], want)
+		}
+	}
+	// What the configuration does not mention stays as it is.
+	for _, name := range []string{"readonly", "retries", "properties_exclude", "sudo"} {
+		if !planned[name].Equal(prior[name]) {
+			t.Errorf("%s is planned as %s, want the prior value %s", name, planned[name], prior[name])
+		}
+	}
+}
+
+func TestReplicationConfig_OptionsAreValidated(t *testing.T) {
+	ctx := context.Background()
+	p := newReplicationPlanner(ctx, t)
+	cases := map[string]map[string]tftypes.Value{
+		"readonly outside its set":      {"readonly": tfString("OFF")},
+		"compression outside its set":   {"compression": tfString("ZSTD")},
+		"logging_level outside its set": {"logging_level": tfString("TRACE")},
+		"retries below one":             {"retries": tftypes.NewValue(tftypes.Number, int64(0))},
+		"negative speed_limit":          {"speed_limit": tftypes.NewValue(tftypes.Number, int64(-1))},
+	}
+	for name, over := range cases {
+		t.Run(name, func(t *testing.T) {
+			config := replicationConfig("rep")
+			maps.Copy(config, over)
+			dv, err := tfprotov6.NewDynamicValue(p.typ, p.object(config))
+			if err != nil {
+				t.Fatalf("NewDynamicValue: %v", err)
+			}
+			resp, err := p.srv.ValidateResourceConfig(ctx, &tfprotov6.ValidateResourceConfigRequest{
+				TypeName: replicationType, Config: &dv,
+			})
+			if err != nil {
+				t.Fatalf("ValidateResourceConfig: %v", err)
+			}
+			if len(resp.Diagnostics) == 0 {
+				t.Error("the configuration was accepted")
+			}
+		})
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"maps"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -25,6 +26,10 @@ func replBody(over map[string]interface{}) map[string]interface{} {
 		"naming_schema": []interface{}{}, "also_include_naming_schema": []interface{}{},
 		"schedule": nil, "restrict_schedule": nil,
 		"only_matching_schedule": false, "hold_pending_snapshots": false,
+		"readonly": "SET", "allow_from_scratch": false, "retries": 5, "exclude": []interface{}{},
+		"properties": true, "properties_exclude": []interface{}{}, "properties_override": map[string]interface{}{},
+		"replicate": false, "compression": nil, "speed_limit": nil, "large_block": true, "embed": false,
+		"compressed": true, "sudo": false, "logging_level": nil, "name_regex": nil, "lifetimes": []interface{}{},
 	}
 	maps.Copy(b, over)
 	return b
@@ -102,6 +107,9 @@ func replTaskSet(ids ...int64) tftypes.Value {
 // value is known.
 var replNewFields = []string{
 	"schedule", "restrict_schedule", "only_matching_schedule", "hold_pending_snapshots", "periodic_snapshot_tasks",
+	"readonly", "allow_from_scratch", "retries", "exclude", "properties", "properties_exclude", "properties_override",
+	"replicate", "compression", "speed_limit", "large_block", "embed", "compressed", "sudo", "logging_level",
+	"name_regex", "lifetimes",
 }
 
 func TestReplicationResource_Create_UnknownFieldsAreLeftOut(t *testing.T) {
@@ -409,4 +417,213 @@ func TestReplicationSchedule_TimeOfDay(t *testing.T) {
 			t.Errorf("%q was accepted", bad)
 		}
 	}
+}
+
+func replStringSet(items ...string) tftypes.Value {
+	vals := make([]tftypes.Value, 0, len(items))
+	for _, s := range items {
+		vals = append(vals, str(s))
+	}
+	return tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, vals)
+}
+
+func replStringMap(items map[string]string) tftypes.Value {
+	vals := make(map[string]tftypes.Value, len(items))
+	for k, v := range items {
+		vals[k] = str(v)
+	}
+	return tftypes.NewValue(tftypes.Map{ElementType: tftypes.String}, vals)
+}
+
+// replLifetimes is a planned lifetimes list of (cron hour, value, unit).
+func replLifetimes(entries ...[3]string) tftypes.Value {
+	cron := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"minute": tftypes.String, "hour": tftypes.String, "dom": tftypes.String, "month": tftypes.String, "dow": tftypes.String,
+	}}
+	typ := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"schedule": cron, "lifetime_value": tftypes.Number, "lifetime_unit": tftypes.String,
+	}}
+	vals := make([]tftypes.Value, 0, len(entries))
+	for _, e := range entries {
+		value, _ := strconv.ParseInt(e[1], 10, 64)
+		vals = append(vals, tftypes.NewValue(typ, map[string]tftypes.Value{
+			"schedule": tftypes.NewValue(cron, map[string]tftypes.Value{
+				"minute": str("0"), "hour": str(e[0]), "dom": str("*"), "month": str("*"), "dow": str("*"),
+			}),
+			"lifetime_value": num(value), "lifetime_unit": str(e[2]),
+		}))
+	}
+	return tftypes.NewValue(tftypes.List{ElementType: typ}, vals)
+}
+
+// Create and update build their options the same way, so each case runs
+// through both and compares the request keys.
+func TestReplicationResource_Options_AreSent(t *testing.T) {
+	ctx := context.Background()
+	cases := []struct {
+		name    string
+		planned map[string]tftypes.Value
+		want    map[string]interface{}
+	}{
+		{
+			name: "configured values",
+			planned: map[string]tftypes.Value{
+				"readonly": str("IGNORE"), "allow_from_scratch": flag(true), "retries": num(3),
+				"exclude": replStringSet("tank/src/tmp", "tank/src/cache"), "properties": flag(false),
+				"properties_exclude":  replStringSet("mountpoint"),
+				"properties_override": replStringMap(map[string]string{"atime": "off"}),
+				"replicate":           flag(false), "compression": str("LZ4"), "speed_limit": num(1048576),
+				"large_block": flag(false), "embed": flag(true), "compressed": flag(false), "sudo": flag(true),
+				"logging_level": str("DEBUG"), "name_regex": str("auto-.*"),
+				"lifetimes": replLifetimes([3]string{"0", "2", "WEEK"}),
+			},
+			want: map[string]interface{}{
+				"readonly": "IGNORE", "allow_from_scratch": true, "retries": float64(3),
+				"exclude":    []interface{}{"tank/src/cache", "tank/src/tmp"},
+				"properties": false, "properties_exclude": []interface{}{"mountpoint"},
+				"properties_override": map[string]interface{}{"atime": "off"},
+				"replicate":           false, "compression": "LZ4", "speed_limit": float64(1048576),
+				"large_block": false, "embed": true, "compressed": false, "sudo": true,
+				"logging_level": "DEBUG", "name_regex": "auto-.*",
+				"lifetimes": []interface{}{map[string]interface{}{
+					"schedule":       map[string]interface{}{"minute": "0", "hour": "0", "dom": "*", "month": "*", "dow": "*"},
+					"lifetime_value": float64(2), "lifetime_unit": "WEEK",
+				}},
+			},
+		},
+		{
+			// The empty value of a nullable field is sent as null, and an
+			// empty collection as itself: both clear what TrueNAS holds.
+			name: "empty values clear",
+			planned: map[string]tftypes.Value{
+				"compression": str(""), "speed_limit": num(0), "logging_level": str(""), "name_regex": str(""),
+				"exclude": replStringSet(), "properties_exclude": replStringSet(),
+				"properties_override": replStringMap(nil), "lifetimes": replLifetimes(),
+			},
+			want: map[string]interface{}{
+				"compression": nil, "speed_limit": nil, "logging_level": nil, "name_regex": nil,
+				"exclude": []interface{}{}, "properties_exclude": []interface{}{},
+				"properties_override": map[string]interface{}{}, "lifetimes": []interface{}{},
+			},
+		},
+	}
+	check := func(t *testing.T, sent, want map[string]interface{}) {
+		t.Helper()
+		if sent == nil {
+			t.Fatal("the request was not sent")
+		}
+		for key, w := range want {
+			got, ok := sent[key]
+			if !ok {
+				t.Errorf("%s was left out of the request, want %#v", key, w)
+				continue
+			}
+			if !reflect.DeepEqual(got, w) {
+				t.Errorf("%s = %#v, want %#v", key, got, w)
+			}
+		}
+	}
+	for _, tc := range cases {
+		t.Run(tc.name+", create", func(t *testing.T) {
+			var sent map[string]interface{}
+			r := &ReplicationResource{client: replCaptureClient(ctx, t, replBody(nil), &sent)}
+			sch := schemaOf(t, ctx, r)
+			resp := &resource.CreateResponse{State: primedStateV2(t, ctx, sch)}
+			r.Create(ctx, resource.CreateRequest{Plan: planFromValues(t, ctx, sch, replVals(tc.planned))}, resp)
+			if resp.Diagnostics.HasError() {
+				t.Fatalf("Create: %v", resp.Diagnostics)
+			}
+			check(t, sent, tc.want)
+		})
+		t.Run(tc.name+", update", func(t *testing.T) {
+			var sent map[string]interface{}
+			r := &ReplicationResource{client: replCaptureClient(ctx, t, replBody(nil), &sent)}
+			sch := schemaOf(t, ctx, r)
+			state := stateFromValues(t, ctx, sch, replVals(nil))
+			resp := &resource.UpdateResponse{State: state}
+			r.Update(ctx, resource.UpdateRequest{State: state, Plan: planFromValues(t, ctx, sch, replVals(tc.planned))}, resp)
+			if resp.Diagnostics.HasError() {
+				t.Fatalf("Update: %v", resp.Diagnostics)
+			}
+			check(t, sent, tc.want)
+		})
+	}
+}
+
+// What TrueNAS holds as null is read back as the attribute's empty value, so
+// that no option is ever null in state.
+func TestReplicationResource_Read_MapsOptions(t *testing.T) {
+	ctx := context.Background()
+	read := func(t *testing.T, body map[string]interface{}) ReplicationResourceModel {
+		t.Helper()
+		var sent map[string]interface{}
+		r := &ReplicationResource{client: replCaptureClient(ctx, t, body, &sent)}
+		sch := schemaOf(t, ctx, r)
+		state := stateFromValues(t, ctx, sch, replVals(nil))
+		resp := &resource.ReadResponse{State: state}
+		r.Read(ctx, resource.ReadRequest{State: state}, resp)
+		var got ReplicationResourceModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &got)...)
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("Read: %v", resp.Diagnostics)
+		}
+		return got
+	}
+
+	t.Run("defaults and nulls", func(t *testing.T) {
+		got := read(t, replBody(nil))
+		if got.Readonly.ValueString() != "SET" || got.Retries.ValueInt64() != 5 || !got.Properties.ValueBool() ||
+			!got.LargeBlock.ValueBool() || !got.Compressed.ValueBool() {
+			t.Errorf("defaults lost: readonly %v retries %v properties %v large_block %v compressed %v",
+				got.Readonly, got.Retries, got.Properties, got.LargeBlock, got.Compressed)
+		}
+		for name, v := range map[string]interface{ IsNull() bool }{
+			"compression": got.Compression, "speed_limit": got.SpeedLimit, "logging_level": got.LoggingLevel,
+			"name_regex": got.NameRegex, "exclude": got.Exclude, "properties_exclude": got.PropertiesExclude,
+			"properties_override": got.PropertiesOverride, "lifetimes": got.Lifetimes,
+		} {
+			if v.IsNull() {
+				t.Errorf("%s is null in state, want its empty value", name)
+			}
+		}
+		if got.Compression.ValueString() != "" || got.SpeedLimit.ValueInt64() != 0 {
+			t.Errorf("compression = %v, speed_limit = %v, want the empty values", got.Compression, got.SpeedLimit)
+		}
+	})
+
+	t.Run("values", func(t *testing.T) {
+		got := read(t, replBody(map[string]interface{}{
+			"readonly": "REQUIRE", "allow_from_scratch": true, "replicate": true, "embed": true, "sudo": true,
+			"compression": "PLZIP", "speed_limit": 4096, "logging_level": "WARNING", "name_regex": "snap-.*",
+			"exclude": []interface{}{"tank/src/tmp"}, "properties_exclude": []interface{}{"mountpoint"},
+			"properties_override": map[string]interface{}{"atime": "off"},
+			"lifetimes": []interface{}{map[string]interface{}{
+				"schedule":       map[string]interface{}{"minute": "0", "hour": "3", "dom": "*", "month": "*", "dow": "1"},
+				"lifetime_value": 6, "lifetime_unit": "MONTH",
+			}},
+		}))
+		if got.Readonly.ValueString() != "REQUIRE" || !got.AllowFromScratch.ValueBool() || !got.Replicate.ValueBool() ||
+			!got.Embed.ValueBool() || !got.Sudo.ValueBool() {
+			t.Errorf("scalars lost: %v %v %v %v %v", got.Readonly, got.AllowFromScratch, got.Replicate, got.Embed, got.Sudo)
+		}
+		if got.Compression.ValueString() != "PLZIP" || got.SpeedLimit.ValueInt64() != 4096 ||
+			got.LoggingLevel.ValueString() != "WARNING" || got.NameRegex.ValueString() != "snap-.*" {
+			t.Errorf("nullable values lost: %v %v %v %v", got.Compression, got.SpeedLimit, got.LoggingLevel, got.NameRegex)
+		}
+		var lifetimes []replicationLifetimeModel
+		if d := got.Lifetimes.ElementsAs(ctx, &lifetimes, false); d.HasError() {
+			t.Fatalf("lifetimes: %v", d)
+		}
+		if len(lifetimes) != 1 || lifetimes[0].Schedule.Hour.ValueString() != "3" || lifetimes[0].Schedule.Dow.ValueString() != "1" ||
+			lifetimes[0].LifetimeValue.ValueInt64() != 6 || lifetimes[0].LifetimeUnit.ValueString() != "MONTH" {
+			t.Errorf("lifetimes = %+v", lifetimes)
+		}
+		var overrides map[string]string
+		if d := got.PropertiesOverride.ElementsAs(ctx, &overrides, false); d.HasError() || overrides["atime"] != "off" {
+			t.Errorf("properties_override = %v (%v)", overrides, d)
+		}
+		if len(got.Exclude.Elements()) != 1 || len(got.PropertiesExclude.Elements()) != 1 {
+			t.Errorf("sets lost: %v %v", got.Exclude, got.PropertiesExclude)
+		}
+	})
 }
