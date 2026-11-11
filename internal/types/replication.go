@@ -81,6 +81,17 @@ type ReplicationOptions struct {
 	LoggingLevel       Nullable[string]       `json:"logging_level,omitzero"`
 	NameRegex          Nullable[string]       `json:"name_regex,omitzero"`
 	Lifetimes          *[]ReplicationLifetime `json:"lifetimes,omitempty"`
+
+	Encryption                      *bool            `json:"encryption,omitempty"`
+	EncryptionInherit               *bool            `json:"encryption_inherit,omitempty"`
+	EncryptionKey                   Nullable[string] `json:"encryption_key,omitzero"`
+	EncryptionKeyFormat             Nullable[string] `json:"encryption_key_format,omitzero"`
+	EncryptionKeyLocation           Nullable[string] `json:"encryption_key_location,omitzero"`
+	NetcatActiveSide                Nullable[string] `json:"netcat_active_side,omitzero"`
+	NetcatActiveSideListenAddress   Nullable[string] `json:"netcat_active_side_listen_address,omitzero"`
+	NetcatActiveSidePortMin         Nullable[int]    `json:"netcat_active_side_port_min,omitzero"`
+	NetcatActiveSidePortMax         Nullable[int]    `json:"netcat_active_side_port_max,omitzero"`
+	NetcatPassiveSideConnectAddress Nullable[string] `json:"netcat_passive_side_connect_address,omitzero"`
 }
 
 // Replication represents a ZFS replication task.
@@ -123,6 +134,17 @@ type Replication struct {
 	LoggingLevel       *string               `json:"logging_level"`
 	NameRegex          *string               `json:"name_regex"`
 	Lifetimes          []ReplicationLifetime `json:"lifetimes"`
+
+	Encryption                      bool    `json:"encryption"`
+	EncryptionInherit               *bool   `json:"encryption_inherit"`
+	EncryptionKey                   *string `json:"encryption_key"`
+	EncryptionKeyFormat             *string `json:"encryption_key_format"`
+	EncryptionKeyLocation           *string `json:"encryption_key_location"`
+	NetcatActiveSide                *string `json:"netcat_active_side"`
+	NetcatActiveSideListenAddress   *string `json:"netcat_active_side_listen_address"`
+	NetcatActiveSidePortMin         *int    `json:"netcat_active_side_port_min"`
+	NetcatActiveSidePortMax         *int    `json:"netcat_active_side_port_max"`
+	NetcatPassiveSideConnectAddress *string `json:"netcat_passive_side_connect_address"`
 }
 
 // UnmarshalJSON accepts ssh_credentials and periodic_snapshot_tasks as

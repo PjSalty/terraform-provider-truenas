@@ -30,6 +30,9 @@ func replBody(over map[string]interface{}) map[string]interface{} {
 		"properties": true, "properties_exclude": []interface{}{}, "properties_override": map[string]interface{}{},
 		"replicate": false, "compression": nil, "speed_limit": nil, "large_block": true, "embed": false,
 		"compressed": true, "sudo": false, "logging_level": nil, "name_regex": nil, "lifetimes": []interface{}{},
+		"encryption": false, "encryption_inherit": nil, "encryption_key": nil, "encryption_key_format": nil,
+		"encryption_key_location": nil, "netcat_active_side": nil, "netcat_active_side_listen_address": nil,
+		"netcat_active_side_port_min": nil, "netcat_active_side_port_max": nil, "netcat_passive_side_connect_address": nil,
 	}
 	maps.Copy(b, over)
 	return b
@@ -110,6 +113,9 @@ var replNewFields = []string{
 	"readonly", "allow_from_scratch", "retries", "exclude", "properties", "properties_exclude", "properties_override",
 	"replicate", "compression", "speed_limit", "large_block", "embed", "compressed", "sudo", "logging_level",
 	"name_regex", "lifetimes",
+	"encryption", "encryption_inherit", "encryption_key", "encryption_key_format", "encryption_key_location",
+	"netcat_active_side", "netcat_active_side_listen_address", "netcat_active_side_port_min",
+	"netcat_active_side_port_max", "netcat_passive_side_connect_address",
 }
 
 func TestReplicationResource_Create_UnknownFieldsAreLeftOut(t *testing.T) {
@@ -506,6 +512,38 @@ func TestReplicationResource_Options_AreSent(t *testing.T) {
 				"properties_override": map[string]interface{}{}, "lifetimes": []interface{}{},
 			},
 		},
+		{
+			name: "encryption and netcat",
+			planned: map[string]tftypes.Value{
+				"encryption": flag(true), "encryption_inherit": flag(false),
+				"encryption_key": str("correct horse battery staple"), "encryption_key_format": str("PASSPHRASE"),
+				"encryption_key_location": str("/mnt/keys/rep"), "netcat_active_side": str("LOCAL"),
+				"netcat_active_side_listen_address": str("192.0.2.5"), "netcat_active_side_port_min": num(2000),
+				"netcat_active_side_port_max": num(2100), "netcat_passive_side_connect_address": str("192.0.2.9"),
+			},
+			want: map[string]interface{}{
+				"encryption": true, "encryption_inherit": false,
+				"encryption_key": "correct horse battery staple", "encryption_key_format": "PASSPHRASE",
+				"encryption_key_location": "/mnt/keys/rep", "netcat_active_side": "LOCAL",
+				"netcat_active_side_listen_address": "192.0.2.5", "netcat_active_side_port_min": float64(2000),
+				"netcat_active_side_port_max": float64(2100), "netcat_passive_side_connect_address": "192.0.2.9",
+			},
+		},
+		{
+			name: "empty encryption and netcat values clear",
+			planned: map[string]tftypes.Value{
+				"encryption": flag(false), "encryption_key": str(""), "encryption_key_format": str(""),
+				"encryption_key_location": str(""), "netcat_active_side": str(""),
+				"netcat_active_side_listen_address": str(""), "netcat_active_side_port_min": num(0),
+				"netcat_active_side_port_max": num(0), "netcat_passive_side_connect_address": str(""),
+			},
+			want: map[string]interface{}{
+				"encryption": false, "encryption_key": nil, "encryption_key_format": nil,
+				"encryption_key_location": nil, "netcat_active_side": nil,
+				"netcat_active_side_listen_address": nil, "netcat_active_side_port_min": nil,
+				"netcat_active_side_port_max": nil, "netcat_passive_side_connect_address": nil,
+			},
+		},
 	}
 	check := func(t *testing.T, sent, want map[string]interface{}) {
 		t.Helper()
@@ -626,4 +664,71 @@ func TestReplicationResource_Read_MapsOptions(t *testing.T) {
 			t.Errorf("sets lost: %v %v", got.Exclude, got.PropertiesExclude)
 		}
 	})
+}
+
+func TestReplicationResource_Read_MapsEncryptionAndNetcat(t *testing.T) {
+	ctx := context.Background()
+	read := func(t *testing.T, body map[string]interface{}) ReplicationResourceModel {
+		t.Helper()
+		var sent map[string]interface{}
+		r := &ReplicationResource{client: replCaptureClient(ctx, t, body, &sent)}
+		sch := schemaOf(t, ctx, r)
+		state := stateFromValues(t, ctx, sch, replVals(nil))
+		resp := &resource.ReadResponse{State: state}
+		r.Read(ctx, resource.ReadRequest{State: state}, resp)
+		var got ReplicationResourceModel
+		resp.Diagnostics.Append(resp.State.Get(ctx, &got)...)
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("Read: %v", resp.Diagnostics)
+		}
+		return got
+	}
+
+	// A task without encryption or netcat holds nulls. They are read back
+	// as the empty values, never as null.
+	none := read(t, replBody(nil))
+	if none.Encryption.ValueBool() || none.EncryptionInherit.IsNull() || none.EncryptionInherit.ValueBool() {
+		t.Errorf("encryption = %v, encryption_inherit = %v, want false and false", none.Encryption, none.EncryptionInherit)
+	}
+	for name, v := range map[string]types.String{
+		"encryption_key": none.EncryptionKey, "encryption_key_format": none.EncryptionKeyFormat,
+		"encryption_key_location": none.EncryptionKeyLocation, "netcat_active_side": none.NetcatActiveSide,
+		"netcat_active_side_listen_address":   none.NetcatActiveSideListenAddress,
+		"netcat_passive_side_connect_address": none.NetcatPassiveSideConnectAddress,
+	} {
+		if v.IsNull() || v.ValueString() != "" {
+			t.Errorf("%s = %v, want the empty string", name, v)
+		}
+	}
+	if none.NetcatActiveSidePortMin.IsNull() || none.NetcatActiveSidePortMin.ValueInt64() != 0 ||
+		none.NetcatActiveSidePortMax.IsNull() || none.NetcatActiveSidePortMax.ValueInt64() != 0 {
+		t.Errorf("ports = %v %v, want 0 and 0", none.NetcatActiveSidePortMin, none.NetcatActiveSidePortMax)
+	}
+
+	set := read(t, replBody(map[string]interface{}{
+		"transport": "SSH+NETCAT", "encryption": true, "encryption_inherit": true,
+		"encryption_key": "00ff", "encryption_key_format": "HEX", "encryption_key_location": "/mnt/keys/rep",
+		"netcat_active_side": "REMOTE", "netcat_active_side_listen_address": "192.0.2.5",
+		"netcat_active_side_port_min": 2000, "netcat_active_side_port_max": 2100,
+		"netcat_passive_side_connect_address": "192.0.2.9",
+	}))
+	if !set.Encryption.ValueBool() || !set.EncryptionInherit.ValueBool() || set.EncryptionKey.ValueString() != "00ff" ||
+		set.EncryptionKeyFormat.ValueString() != "HEX" || set.EncryptionKeyLocation.ValueString() != "/mnt/keys/rep" {
+		t.Errorf("encryption values lost: %v %v %v %v", set.Encryption, set.EncryptionInherit, set.EncryptionKeyFormat, set.EncryptionKeyLocation)
+	}
+	if set.NetcatActiveSide.ValueString() != "REMOTE" || set.NetcatActiveSideListenAddress.ValueString() != "192.0.2.5" ||
+		set.NetcatActiveSidePortMin.ValueInt64() != 2000 || set.NetcatActiveSidePortMax.ValueInt64() != 2100 ||
+		set.NetcatPassiveSideConnectAddress.ValueString() != "192.0.2.9" {
+		t.Errorf("netcat values lost: %v %v %v %v %v", set.NetcatActiveSide, set.NetcatActiveSideListenAddress,
+			set.NetcatActiveSidePortMin, set.NetcatActiveSidePortMax, set.NetcatPassiveSideConnectAddress)
+	}
+}
+
+// The key is marked sensitive, so Terraform masks it in plans and output.
+func TestReplicationResource_EncryptionKeyIsSensitive(t *testing.T) {
+	ctx := context.Background()
+	sch := schemaOf(t, ctx, &ReplicationResource{})
+	if !sch.Schema.Attributes["encryption_key"].IsSensitive() {
+		t.Error("encryption_key is not marked sensitive")
+	}
 }

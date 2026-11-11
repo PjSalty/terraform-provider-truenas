@@ -187,6 +187,9 @@ func readBackAttributes() []string {
 		"readonly", "allow_from_scratch", "retries", "exclude", "properties", "properties_exclude", "properties_override",
 		"replicate", "compression", "speed_limit", "large_block", "embed", "compressed", "sudo", "logging_level",
 		"name_regex", "lifetimes",
+		"encryption", "encryption_inherit", "encryption_key", "encryption_key_format", "encryption_key_location",
+		"netcat_active_side", "netcat_active_side_listen_address", "netcat_active_side_port_min",
+		"netcat_active_side_port_max", "netcat_passive_side_connect_address",
 	}
 }
 
@@ -207,6 +210,11 @@ func (p replicationPlanner) options() map[string]tftypes.Value {
 		"replicate": tfBool(true), "compression": tfString("LZ4"), "speed_limit": num(4096),
 		"large_block": tfBool(false), "embed": tfBool(true), "compressed": tfBool(false), "sudo": tfBool(true),
 		"logging_level": tfString("DEBUG"), "name_regex": tfString("auto-.*"),
+		"encryption": tfBool(true), "encryption_inherit": tfBool(true), "encryption_key": tfString("00ff"),
+		"encryption_key_format": tfString("HEX"), "encryption_key_location": tfString("/mnt/keys/rep"),
+		"netcat_active_side": tfString("LOCAL"), "netcat_active_side_listen_address": tfString("192.0.2.5"),
+		"netcat_active_side_port_min": num(2000), "netcat_active_side_port_max": num(2100),
+		"netcat_passive_side_connect_address": tfString("192.0.2.9"),
 		"lifetimes": tftypes.NewValue(lifetimes, []tftypes.Value{tftypes.NewValue(lifetime, map[string]tftypes.Value{
 			"schedule": tftypes.NewValue(cron, map[string]tftypes.Value{
 				"minute": tfString("0"), "hour": tfString("0"), "dom": tfString("*"), "month": tfString("*"), "dow": tfString("7"),
@@ -468,6 +476,10 @@ func TestReplicationConfig_OptionsAreValidated(t *testing.T) {
 		"logging_level outside its set": {"logging_level": tfString("TRACE")},
 		"retries below one":             {"retries": tftypes.NewValue(tftypes.Number, int64(0))},
 		"negative speed_limit":          {"speed_limit": tftypes.NewValue(tftypes.Number, int64(-1))},
+		"key format outside its set":    {"encryption_key_format": tfString("BASE64")},
+		"netcat side outside its set":   {"netcat_active_side": tfString("BOTH")},
+		"port above 65535":              {"netcat_active_side_port_max": tftypes.NewValue(tftypes.Number, int64(70000))},
+		"minimum port above 65535":      {"netcat_active_side_port_min": tftypes.NewValue(tftypes.Number, int64(70000))},
 	}
 	for name, over := range cases {
 		t.Run(name, func(t *testing.T) {

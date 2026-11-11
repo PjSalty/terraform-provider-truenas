@@ -94,6 +94,16 @@ The following arguments are supported:
 * `logging_level` - (Optional) Log level of the task's runs: `DEBUG`, `INFO`, `WARNING` or `ERROR`, or `""` for the TrueNAS default. Valid values: ``, `DEBUG`, `INFO`, `WARNING`, `ERROR`. Left out, the current value is kept.
 * `name_regex` - (Optional) Replicate every snapshot whose name matches this regular expression, or `""` for none. TrueNAS does not accept it together with a naming schema or with `periodic_snapshot_tasks`. Left out, the current value is kept.
 * `lifetimes` - (Optional) Retention periods for `retention_policy = "CUSTOM"`, each for the snapshots that match its schedule, see [below](#lifetimes). Left out, the current list is kept. Set to `[]` for none.
+* `encryption` - (Optional) Encrypt the replicated datasets on the destination. TrueNAS then requires either `encryption_inherit = true` or `encryption_key`, `encryption_key_format` and `encryption_key_location`. Left out, the current value is kept; TrueNAS defaults to false.
+* `encryption_inherit` - (Optional) Take the encryption settings from the destination's parent dataset. Left out, the current value is kept; it is false where TrueNAS has none.
+* `encryption_key` - (Optional, Sensitive) Key or passphrase for the replicated datasets, or `""` for none. Left out, the current value is kept.
+* `encryption_key_format` - (Optional) Form of `encryption_key`: `HEX` or `PASSPHRASE`, or `""` for none. Valid values: ``, `HEX`, `PASSPHRASE`. Left out, the current value is kept.
+* `encryption_key_location` - (Optional) Path where the encryption key is stored, or `""` for none. Left out, the current value is kept.
+* `netcat_active_side` - (Optional) Which side opens the netcat connection of an `SSH+NETCAT` transport: `LOCAL` or `REMOTE`, or `""` for none. TrueNAS requires it for `SSH+NETCAT` and accepts the netcat attributes for no other transport. Valid values: ``, `LOCAL`, `REMOTE`. Left out, the current value is kept.
+* `netcat_active_side_listen_address` - (Optional) Address the active side listens on, or `""` for none. `SSH+NETCAT` only. Left out, the current value is kept.
+* `netcat_active_side_port_min` - (Optional) Lowest port the active side may use, or `0` for none. `SSH+NETCAT` only. Left out, the current value is kept.
+* `netcat_active_side_port_max` - (Optional) Highest port the active side may use, or `0` for none. `SSH+NETCAT` only. Left out, the current value is kept.
+* `netcat_passive_side_connect_address` - (Optional) Address the passive side connects to, or `""` for none. `SSH+NETCAT` only. Left out, the current value is kept.
 * `timeouts` - (Optional) Configuration block for operation timeouts. See [below](#timeouts).
 
 ### Schedule

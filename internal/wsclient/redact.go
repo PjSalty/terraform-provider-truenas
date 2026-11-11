@@ -43,6 +43,7 @@ var sensitiveKeyFragments = []string{
 	"auth",
 	"credential",
 	"passphrase",
+	"encryption_key",
 	"key_material",
 	"shared_key",
 	"preshared",

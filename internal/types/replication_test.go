@@ -279,3 +279,34 @@ func TestReplication_UnmarshalJSON_Options(t *testing.T) {
 		t.Errorf("lifetimes = %+v", r.Lifetimes)
 	}
 }
+
+func TestReplicationOptions_EncryptionAndNetcatJSON(t *testing.T) {
+	on := true
+	got, err := json.Marshal(ReplicationOptions{
+		Encryption: &on, EncryptionKey: Value("00ff"), EncryptionKeyFormat: Value("HEX"),
+		NetcatActiveSide: Value("LOCAL"), NetcatActiveSidePortMin: Value(2000), NetcatActiveSidePortMax: Null[int](),
+		EncryptionKeyLocation: Null[string](),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := `{"encryption":true,"encryption_key":"00ff","encryption_key_format":"HEX","encryption_key_location":null,` +
+		`"netcat_active_side":"LOCAL","netcat_active_side_port_min":2000,"netcat_active_side_port_max":null}`
+	if string(got) != want {
+		t.Errorf("options = %s, want %s", got, want)
+	}
+
+	var r Replication
+	body := `{"id": 1, "encryption": true, "encryption_inherit": null, "encryption_key": "00ff",
+		"encryption_key_format": "HEX", "encryption_key_location": null, "netcat_active_side": "REMOTE",
+		"netcat_active_side_listen_address": "192.0.2.5", "netcat_active_side_port_min": 2000,
+		"netcat_active_side_port_max": 2100, "netcat_passive_side_connect_address": null}`
+	if err := json.Unmarshal([]byte(body), &r); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !r.Encryption || r.EncryptionInherit != nil || r.EncryptionKey == nil || *r.EncryptionKey != "00ff" ||
+		r.EncryptionKeyLocation != nil || r.NetcatActiveSide == nil || *r.NetcatActiveSide != "REMOTE" ||
+		r.NetcatActiveSidePortMin == nil || *r.NetcatActiveSidePortMin != 2000 || r.NetcatPassiveSideConnectAddress != nil {
+		t.Errorf("decoded entry lost values: %+v", r)
+	}
+}
