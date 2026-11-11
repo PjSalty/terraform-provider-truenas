@@ -21,8 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   schedule. `schedule` and `restrict_schedule` are lists with one entry,
   `[{ hour = "*/6" }]`, because that is the form that can express "none".
 
-  Requested by @kromsam as GitHub #44. The other fields from that request
-  follow.
+- `truenas_replication`: the transfer and retention options `readonly`,
+  `allow_from_scratch`, `retries`, `exclude`, `properties`,
+  `properties_exclude`, `properties_override`, `replicate`, `compression`,
+  `speed_limit`, `large_block`, `embed`, `compressed`, `sudo`,
+  `logging_level`, `name_regex` and `lifetimes`.
+
+  They follow the same rule: left out, the value TrueNAS has is kept and
+  read back. `compression`, `logging_level` and `name_regex` are `""`, and
+  `speed_limit` is `0`, where TrueNAS has none, and setting that empty value
+  clears the field. `exclude = []`, `properties_exclude = []`,
+  `properties_override = {}` and `lifetimes = []` clear the collections.
+
+  Requested by @kromsam as GitHub #44. The encryption and netcat fields from
+  that request follow.
 
 ### Fixed
 

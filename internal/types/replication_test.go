@@ -128,18 +128,18 @@ func TestReplication_UnmarshalJSON_Schedules(t *testing.T) {
 
 // A schedule field has three request forms, and TrueNAS reads each one
 // differently: a missing key keeps the stored schedule, null removes it.
-func TestScheduleRequest_JSON(t *testing.T) {
+func TestNullable_JSON(t *testing.T) {
 	cases := map[string]struct {
-		field ScheduleRequest
+		field Nullable[TimeSchedule]
 		want  string
 	}{
-		"zero value leaves the key out": {ScheduleRequest{}, `{"name":"r"}`},
-		"clear sends null":              {ScheduleRequest{Clear: true}, `{"name":"r","schedule":null}`},
+		"zero value leaves the key out": {Nullable[TimeSchedule]{}, `{"name":"r"}`},
+		"clear sends null":              {Null[TimeSchedule](), `{"name":"r","schedule":null}`},
 		"value sends only the set fields": {
-			ScheduleRequest{Value: &TimeSchedule{Hour: "*/6", End: "18:00"}},
+			Value(TimeSchedule{Hour: "*/6", End: "18:00"}),
 			`{"name":"r","schedule":{"hour":"*/6","end":"18:00"}}`,
 		},
-		"an entry with no fields is an all-default schedule": {ScheduleRequest{Value: &TimeSchedule{}}, `{"name":"r","schedule":{}}`},
+		"an entry with no fields is an all-default schedule": {Value(TimeSchedule{}), `{"name":"r","schedule":{}}`},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -187,7 +187,7 @@ func TestReplicationCreateRequest_OptionalFieldsLeftOut(t *testing.T) {
 	held := true
 	got, err = json.Marshal(ReplicationCreateRequest{
 		Name: "r", HoldPendingSnapshots: &held, PeriodicSnapshotTasks: &[]int{4},
-		RestrictSchedule: ScheduleRequest{Value: &TimeSchedule{Hour: "*/2"}},
+		RestrictSchedule: Value(TimeSchedule{Hour: "*/2"}),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -196,5 +196,86 @@ func TestReplicationCreateRequest_OptionalFieldsLeftOut(t *testing.T) {
 		if !strings.Contains(string(got), part) {
 			t.Errorf("request lacks %s: %s", part, got)
 		}
+	}
+}
+
+// The options a create and an update share: nothing is sent until it is set,
+// and the empty forms that clear a field are sent as written.
+func TestReplicationOptions_JSON(t *testing.T) {
+	got, err := json.Marshal(ReplicationUpdateRequest{})
+	if err != nil || string(got) != `{}` {
+		t.Fatalf("empty options = %s (%v), want {}", got, err)
+	}
+
+	yes, retries := true, 3
+	set := ReplicationOptions{
+		Readonly: "IGNORE", AllowFromScratch: &yes, Retries: &retries,
+		Exclude: &[]string{"tank/a/tmp"}, PropertiesOverride: map[string]string{"atime": "off"},
+		Compression: Value("LZ4"), SpeedLimit: Value(1048576), NameRegex: Value("auto-.*"),
+		Lifetimes: &[]ReplicationLifetime{{
+			Schedule:      Schedule{Minute: "0", Hour: "0", Dom: "*", Month: "*", Dow: "7"},
+			LifetimeValue: 4, LifetimeUnit: "WEEK",
+		}},
+	}
+	got, err = json.Marshal(ReplicationCreateRequest{Name: "r", ReplicationOptions: set})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, part := range []string{
+		`"readonly":"IGNORE"`, `"allow_from_scratch":true`, `"retries":3`, `"exclude":["tank/a/tmp"]`,
+		`"properties_override":{"atime":"off"}`, `"compression":"LZ4"`, `"speed_limit":1048576`, `"name_regex":"auto-.*"`,
+		`"lifetimes":[{"schedule":{"minute":"0","hour":"0","dom":"*","month":"*","dow":"7"},"lifetime_value":4,"lifetime_unit":"WEEK"}]`,
+	} {
+		if !strings.Contains(string(got), part) {
+			t.Errorf("request lacks %s: %s", part, got)
+		}
+	}
+
+	cleared := ReplicationOptions{
+		Exclude: &[]string{}, PropertiesExclude: &[]string{}, PropertiesOverride: map[string]string{},
+		Compression: Null[string](), SpeedLimit: Null[int](), LoggingLevel: Null[string](), NameRegex: Null[string](),
+		Lifetimes: &[]ReplicationLifetime{},
+	}
+	got, err = json.Marshal(cleared)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := `{"exclude":[],"properties_exclude":[],"properties_override":{},"compression":null,"speed_limit":null,` +
+		`"logging_level":null,"name_regex":null,"lifetimes":[]}`
+	if string(got) != want {
+		t.Errorf("cleared options = %s, want %s", got, want)
+	}
+}
+
+func TestReplication_UnmarshalJSON_Options(t *testing.T) {
+	body := `{
+		"id": 3, "readonly": "REQUIRE", "allow_from_scratch": true, "retries": 7,
+		"exclude": ["tank/a/tmp"], "properties": false, "properties_exclude": ["mountpoint"],
+		"properties_override": {"atime": "off"}, "replicate": true,
+		"compression": "PIGZ", "speed_limit": 2048, "large_block": false, "embed": true, "compressed": false,
+		"sudo": true, "logging_level": null, "name_regex": null,
+		"lifetimes": [{"schedule": {"minute": "0", "hour": "0", "dom": "1", "month": "*", "dow": "*"},
+			"lifetime_value": 12, "lifetime_unit": "MONTH"}]
+	}`
+	var r Replication
+	if err := json.Unmarshal([]byte(body), &r); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if r.Readonly != "REQUIRE" || !r.AllowFromScratch || r.Retries != 7 || r.Properties || !r.Replicate ||
+		r.LargeBlock || !r.Embed || r.Compressed || !r.Sudo {
+		t.Errorf("scalar options lost: %+v", r)
+	}
+	if r.Compression == nil || *r.Compression != "PIGZ" || r.SpeedLimit == nil || *r.SpeedLimit != 2048 {
+		t.Errorf("compression = %v, speed_limit = %v, want PIGZ and 2048", r.Compression, r.SpeedLimit)
+	}
+	if r.LoggingLevel != nil || r.NameRegex != nil {
+		t.Errorf("logging_level = %v, name_regex = %v, want nil for null", r.LoggingLevel, r.NameRegex)
+	}
+	if len(r.Exclude) != 1 || len(r.PropertiesExclude) != 1 || r.PropertiesOverride["atime"] != "off" {
+		t.Errorf("collections lost: %v %v %v", r.Exclude, r.PropertiesExclude, r.PropertiesOverride)
+	}
+	if len(r.Lifetimes) != 1 || r.Lifetimes[0].Schedule.Dom != "1" || r.Lifetimes[0].LifetimeValue != 12 ||
+		r.Lifetimes[0].LifetimeUnit != "MONTH" {
+		t.Errorf("lifetimes = %+v", r.Lifetimes)
 	}
 }
