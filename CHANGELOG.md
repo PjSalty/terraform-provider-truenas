@@ -37,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   value stayed on the task. Both are now sent, and removing one from a
   configuration clears it.
 
+### Security
+
+- Built with Go 1.27.4, which fixes vulnerabilities in `net/http`, the
+  compiler, the linker, cgo and the `go` command.
+
 ## [3.3.0] - 2026-11-08
 
 ### Fixed
