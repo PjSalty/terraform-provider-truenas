@@ -65,7 +65,7 @@ jobs:
       - name: release config is valid
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
-          version: ~> v2
+          version: v2.20.3
           args: check
 
       # `check` validates the schema and stops there: it does not expand a
@@ -88,7 +88,7 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
-          version: ~> v2
+          version: v2.20.3
           args: release --snapshot --clean --skip=publish,sign
 
   security:
