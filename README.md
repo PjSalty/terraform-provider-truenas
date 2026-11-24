@@ -203,6 +203,7 @@ generated docs under `docs/resources/`, and a runnable example under
 | `truenas_zvol`                    | ZFS volume (block device).                 |
 | `truenas_snapshot_task`           | Periodic ZFS snapshot schedule.            |
 | `truenas_scrub_task`              | Scheduled pool scrub.                      |
+| `truenas_resilver_config`         | Resilver priority window (singleton).      |
 | `truenas_replication`             | ZFS send/recv replication task.            |
 | `truenas_systemdataset`           | System dataset pool assignment.            |
 | `truenas_filesystem_acl`          | POSIX/NFSv4 ACL on a filesystem path.      |

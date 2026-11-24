@@ -105,6 +105,7 @@ func TestResourceRegistrationMatchesFilesystem(t *testing.T) {
 		// WebShare, the share protocol TrueNAS added in 26.0.
 		"Webshare":              "share_webshare",
 		"LXCConfig":             "lxc_config",
+		"ResilverConfig":        "resilver_config",
 		"SMBShare":              "share_smb",
 		"TLSConfig":             "tls_config",
 		"SystemDataset":         "systemdataset",

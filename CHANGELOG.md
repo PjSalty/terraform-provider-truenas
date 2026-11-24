@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New `truenas_resilver_config` resource for the pool resilver priority
+  window (**Storage > Resilver Priority** in the TrueNAS UI). Manages
+  `enabled`, `begin`, `end` and `weekday` on the `pool.resilver` singleton.
+  Inside the window TrueNAS raises four ZFS resilver and scrub parameters so
+  that a replaced disk is back in the pool sooner.
+
+  Every argument is optional, and one the configuration leaves out keeps the
+  value TrueNAS has and is read back, so importing the resource and setting
+  only `enabled = true` plans a single change.
+
+  `begin` and `end` must be zero-padded `HH:MM`. TrueNAS accepts `9:00` but
+  reads it back as `09:00`, which would show a change on every plan, so the
+  short form is rejected at plan time. `weekday` is a set of `1` (Monday) to
+  `7` (Sunday) with at least one day, which is what TrueNAS itself requires.
+
+  Removing the resource does not switch the window off: a destroy that slowed
+  down a running resilver would be a surprise on a degraded pool.
+
 ## [3.4.0] - 2026-11-12
 
 ### Added
