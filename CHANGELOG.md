@@ -60,9 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Removing the resource changes nothing on TrueNAS: a reset would rename every
   target IQN.
 
-  check now honors a value allowlist in `scripts/api-drift-allow.txt`
-  constructor (honors `TRUENAS_PROD_DENY` env override, empty
-
 - New `truenas_system_advanced` resource for the **System > Advanced**
   settings, mainly remote syslog. Manages `syslogservers` (at most two, each
   with `host`, `transport` and `tls_certificate`), `sysloglevel`,
