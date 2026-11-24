@@ -93,6 +93,7 @@ func TestResourceRegistrationMatchesFilesystem(t *testing.T) {
 		"ISCSIExtent":          "iscsi_extent",
 		"ISCSIInitiator":       "iscsi_initiator",
 		"ISCSIAuth":            "iscsi_auth",
+		"ISCSIGlobal":          "iscsi_global",
 		"ISCSITargetExtent":    "iscsi_targetextent",
 		"NVMetHost":            "nvmet_host",
 		"NVMetSubsys":          "nvmet_subsys",

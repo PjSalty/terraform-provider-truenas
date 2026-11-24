@@ -41,6 +41,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Removing the resource changes nothing on TrueNAS.
 
+- New `truenas_iscsi_global` resource for the iSCSI global configuration
+  (`basename`, `isns_servers`, `listen_port` and `pool_avail_threshold` on the
+  `iscsi.global` singleton). Every argument is optional and one the
+  configuration leaves out keeps the value TrueNAS has.
+
+  `alua` and `iser` are read-only attributes: TrueNAS honors ALUA only on
+  Enterprise high availability systems and rejects iSER without a license and
+  an RDMA card, so setting them from Terraform could only do nothing or fail.
+
+  `iscsi.global.update` replaces the stored iSNS servers with the ones in the
+  request, so a request without them empties the list. The provider therefore
+  sends `isns_servers` on every update, and TrueNAS connects to each server
+  on every update. `isns_servers` is a set, sent sorted. `pool_avail_threshold`
+  is 1 to 99, and `0` stands for the null TrueNAS stores when it is off, so a
+  threshold can be removed again and the plan still settles.
+
+  Removing the resource changes nothing on TrueNAS: a reset would rename every
+  target IQN.
+
+  check now honors a value allowlist in `scripts/api-drift-allow.txt`
+  constructor (honors `TRUENAS_PROD_DENY` env override, empty
+
 ## [3.4.0] - 2026-11-12
 
 ### Added

@@ -229,6 +229,7 @@ func TestCRUDDiscipline_DeleteHandlesNotFound(t *testing.T) {
 		"catalog.go":                "singleton config resource, Delete resets preferred_trains via catalog.update; no 404 path",
 		"lxc_config.go":             "singleton config resource, Delete is a no-op",
 		"resilver_config.go":        "singleton config resource, Delete is a no-op",
+		"iscsi_global.go":           "singleton config resource, Delete is a no-op",
 		"replication_config.go":     "singleton config resource, Delete is a no-op",
 		"reporting_exporter.go":     "Delete is reporting_exporter.delete which doesn't 404 (always succeeds)",
 		"acme_dns_authenticator.go": "Delete error handling deferred to client; covered by 404 client tests",
