@@ -72,6 +72,7 @@ var lifecycleResourceExclusions = map[string]map[string]string{
 	"MailConfig":        {"disappears": "singleton: Delete is a no-op reset"},
 	"NetworkConfig":     {"disappears": "singleton: Delete is a no-op reset"},
 	"NFSConfig":         {"disappears": "singleton: Delete is a no-op reset"},
+	"ISCSIGlobal":       {"disappears": "singleton: the iSCSI global configuration always exists, Delete is a no-op"},
 	"ReplicationConfig": {"disappears": "singleton: the replication configuration always exists, Delete is a no-op"},
 	"ResilverConfig":    {"disappears": "singleton: the resilver priority window always exists, Delete is a no-op"},
 	"NVMetGlobal":       {"disappears": "singleton: Delete is a no-op reset"},

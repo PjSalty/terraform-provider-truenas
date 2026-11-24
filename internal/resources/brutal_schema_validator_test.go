@@ -145,6 +145,7 @@ func resourceConstructors() []func() resource.Resource {
 		NewPrivilegeResource,
 		NewReplicationResource,
 		NewResilverConfigResource,
+		NewISCSIGlobalResource,
 		NewReplicationConfigResource,
 		NewReportingExporterResource,
 		NewRsyncTaskResource,

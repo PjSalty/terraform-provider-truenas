@@ -216,6 +216,7 @@ generated docs under `docs/resources/`, and a runnable example under
 | --------------------------- | ---------------------------------------- |
 | `truenas_share_nfs`         | NFSv3/v4 share.                          |
 | `truenas_share_smb`         | SMB/CIFS share.                          |
+| `truenas_iscsi_global`      | iSCSI global configuration (singleton).  |
 | `truenas_iscsi_portal`      | iSCSI portal (listen address/port).      |
 | `truenas_iscsi_initiator`   | iSCSI authorized initiator group.        |
 | `truenas_iscsi_extent`      | iSCSI extent (LUN backing).              |
