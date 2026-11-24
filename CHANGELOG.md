@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-11-23
+
 ### Added
 
 - New `truenas_resilver_config` resource for the pool resilver priority
@@ -2846,7 +2848,8 @@ fix. No code change; no wire-path behavior change.
   `iscsi_target`, `cronjob`, `alert_service`.
 - Initial data sources: `dataset`, `pool`, `system_info`.
 
-[Unreleased]: https://github.com/PjSalty/terraform-provider-truenas/compare/v3.4.0...main
+[Unreleased]: https://github.com/PjSalty/terraform-provider-truenas/compare/v3.5.0...main
+[3.5.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v3.5.0
 [3.4.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v3.4.0
 [3.3.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v3.3.0
 [3.2.0]: https://github.com/PjSalty/terraform-provider-truenas/releases/tag/v3.2.0
