@@ -63,8 +63,10 @@ var singletonsByDesign = map[string]bool{
 	"lxc_config.go": true,
 	// Singleton: the resilver priority window always exists.
 	"resilver_config.go": true,
-	"systemdataset.go":   true,
-	"ups_config.go":      true,
+	// Singleton: the replication configuration always exists.
+	"replication_config.go": true,
+	"systemdataset.go":      true,
+	"ups_config.go":         true,
 }
 
 // TestResourcesRemoveFromStateOnNotFound verifies that every resource
