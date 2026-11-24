@@ -89,6 +89,7 @@ func TestResourcesConsumeTimeoutsBlock(t *testing.T) {
 
 	// method key is "<file>::<Method>". A no-op has no call to bound.
 	exempt := map[string]string{
+		"disk.go::Delete":               "state-only removal, makes no API call",
 		"lxc_config.go::Delete":         "no-op, singleton config is not removable",
 		"iscsi_global.go::Delete":       "no-op, singleton config is not removable",
 		"replication_config.go::Delete": "no-op, singleton config is not removable",

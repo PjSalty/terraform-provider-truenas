@@ -85,6 +85,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the read-only token are not managed. Removing the resource changes
   nothing on the server.
 
+- New `truenas_disk` resource for the stored settings of a disk TrueNAS
+  already knows about: `hddstandby`, `advpowermgmt` and `description`
+  (**Storage > Disks > Edit** in the TrueNAS UI). The disk is named by its
+  `identifier`, which is also the import ID and is what the `truenas_disk`
+  data source returns for a device name. The device name can change when the
+  system restarts, so it is a computed `name` and never a key. `serial`,
+  `model`, `size`, `type` and `pool` are read-only.
+
+  A disk is hardware, so creating the resource adopts an existing disk and
+  fails with a clear message when there is none. Only the settings the
+  configuration sets are sent, and one it leaves out keeps the value TrueNAS
+  has. The standby and power-level enumerations are validated at plan time
+  and are case-sensitive, because TrueNAS reads them back upper-cased.
+
+  Removing the resource sends nothing: it never changes a drive's settings or
+  wipes it. The SED password, bus, number and enclosure are not managed.
+
+  `GetDisk` now asks TrueNAS for the pool join, which `disk.query` leaves out
+  by default.
+
 ## [3.4.0] - 2026-11-12
 
 ### Added

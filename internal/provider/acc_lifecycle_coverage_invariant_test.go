@@ -64,6 +64,7 @@ var lifecycleResourceExclusions = map[string]map[string]string{
 	// ImportState TestStep is fine for most of them; we list
 	// only the ones that genuinely lack it.
 	"AlertClasses":      {"disappears": "singleton: Delete is a no-op reset"},
+	"Disk":              {"disappears": "hardware: the disk cannot be removed from the test box, and Delete is state-only"},
 	"DNSNameserver":     {"disappears": "singleton: part of network_config"},
 	"FTPConfig":         {"disappears": "singleton: Delete is a no-op reset"},
 	"FilesystemACL":     {"disappears": "path-based singleton, see filesystem_acl_template for template flow"},

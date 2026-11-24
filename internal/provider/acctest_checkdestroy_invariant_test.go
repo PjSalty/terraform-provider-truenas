@@ -36,6 +36,7 @@ var singletonResourceTestFiles = map[string]string{
 	"mail_config_test.go":        "singleton, destroy resets the singleton",
 	"network_config_test.go":     "singleton, destroy resets the singleton",
 	"nfs_config_test.go":         "singleton, destroy resets the singleton",
+	"disk_test.go":               "adopts existing hardware, destroy is state-only and nothing is removed on the server",
 	"replication_config_test.go": "singleton, destroy is a no-op: the replication configuration always exists",
 	"resilver_config_test.go":    "singleton, destroy is a no-op: the resilver priority window always exists",
 	"system_advanced_test.go":    "singleton, destroy is a no-op: the System > Advanced row always exists",
