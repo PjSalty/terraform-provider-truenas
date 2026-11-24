@@ -36,6 +36,7 @@ var deleteNotFoundExclusions = map[string]string{
 	"ssh_config":         "singleton: Delete resets SSH config via Update",
 	"system_update":      "singleton: Delete is a no-op by design (prevents surprise-reboot footgun from accidental destroy)",
 	"lxc_config":         "singleton: Delete is a no-op, the LXC config always exists and removing the resource must not reset container networking",
+	"disk":               "hardware: Delete is state-only and sends nothing, so a destroy never changes a drive or wipes it",
 	"iscsi_global":       "singleton: Delete is a no-op, the configuration always exists and resetting it would rename every target IQN",
 	"replication_config": "singleton: Delete is a no-op, the configuration always exists and changing the limit on destroy would release held replication tasks",
 	"resilver_config":    "singleton: Delete is a no-op, the window always exists and removing the resource must not slow a running resilver",

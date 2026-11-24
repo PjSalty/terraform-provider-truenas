@@ -204,6 +204,7 @@ generated docs under `docs/resources/`, and a runnable example under
 | `truenas_snapshot_task`           | Periodic ZFS snapshot schedule.            |
 | `truenas_scrub_task`              | Scheduled pool scrub.                      |
 | `truenas_resilver_config`         | Resilver priority window (singleton).      |
+| `truenas_disk`                    | Standby, power level and description of a disk. |
 | `truenas_system_advanced`         | System > Advanced settings (singleton).    |
 | `truenas_replication_config`      | Replication global settings (singleton).   |
 | `truenas_replication`             | ZFS send/recv replication task.            |

@@ -45,6 +45,7 @@ var resourceSweeperExclusions = map[string]string{
 	"ssh_config":         "singleton: Delete resets SSH config to defaults",
 	"system_update":      "singleton: Delete is a no-op by design (prevents surprise-reboot footgun); no list endpoint, no fixtures to sweep",
 	"lxc_config":         "singleton: one system-wide LXC config, no list endpoint and nothing to sweep",
+	"disk":               "hardware: listing returns the box's real disks, there are no fixtures to sweep and nothing to delete",
 	"iscsi_global":       "singleton: one system-wide iSCSI configuration, no list endpoint and nothing to sweep",
 	"replication_config": "singleton: one system-wide replication configuration, no list endpoint and nothing to sweep",
 	"resilver_config":    "singleton: one system-wide resilver priority window, no list endpoint and nothing to sweep",

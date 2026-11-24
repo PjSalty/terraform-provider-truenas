@@ -228,6 +228,7 @@ func TestCRUDDiscipline_DeleteHandlesNotFound(t *testing.T) {
 		"dns_nameserver.go":         "singleton config resource, Delete clears nameservers via network_config update; no 404 path",
 		"catalog.go":                "singleton config resource, Delete resets preferred_trains via catalog.update; no 404 path",
 		"lxc_config.go":             "singleton config resource, Delete is a no-op",
+		"disk.go":                   "adopts a disk that cannot be removed, Delete is state-only and makes no API call",
 		"resilver_config.go":        "singleton config resource, Delete is a no-op",
 		"system_advanced.go":        "singleton config resource, Delete is a no-op",
 		"iscsi_global.go":           "singleton config resource, Delete is a no-op",
