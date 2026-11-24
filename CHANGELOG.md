@@ -27,6 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Removing the resource does not switch the window off: a destroy that slowed
   down a running resilver would be a surprise on a degraded pool.
 
+- New `truenas_replication_config` resource for the replication global
+  configuration (**Data Protection > Replication Tasks > Settings** in the
+  TrueNAS UI). Manages `max_parallel_replication_tasks` on the
+  `replication.config` singleton, the number of replication tasks that may run
+  at once. A change reaches the running replication engine at once.
+
+  TrueNAS stores "no limit" as null. A Terraform number cannot be both set
+  and null, so `0` stands for it: `0` is sent as null and a null is read back
+  as `0`, which lets a limit be set and removed again and keeps the plan
+  settled, as `truenas_replication` does for its own nullable numbers. Left
+  out, the current value is kept. TrueNAS defaults to `5`.
+
+  Removing the resource changes nothing on TrueNAS.
+
 ## [3.4.0] - 2026-11-12
 
 ### Added
