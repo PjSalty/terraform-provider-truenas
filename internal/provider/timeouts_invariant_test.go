@@ -93,6 +93,7 @@ func TestResourcesConsumeTimeoutsBlock(t *testing.T) {
 		"iscsi_global.go::Delete":       "no-op, singleton config is not removable",
 		"replication_config.go::Delete": "no-op, singleton config is not removable",
 		"resilver_config.go::Delete":    "no-op, singleton config is not removable",
+		"system_advanced.go::Delete":    "no-op, singleton config is not removable",
 		"nvmet_global.go::Delete":       "state-only removal, makes no API call",
 		"system_update.go::Delete":      "no-op, singleton config is not removable",
 		"service.go::Delete":            "state-only removal, makes no API call",

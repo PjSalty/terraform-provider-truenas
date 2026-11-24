@@ -62,6 +62,7 @@ var singletonsByDesign = map[string]bool{
 	// state for Read to remove.
 	"lxc_config.go": true,
 	// Singleton: the resilver priority window always exists.
+	"system_advanced.go": true,
 	"resilver_config.go": true,
 	// Singleton: the iSCSI global configuration always exists.
 	"iscsi_global.go": true,

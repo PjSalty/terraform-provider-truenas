@@ -75,6 +75,7 @@ var lifecycleResourceExclusions = map[string]map[string]string{
 	"ISCSIGlobal":       {"disappears": "singleton: the iSCSI global configuration always exists, Delete is a no-op"},
 	"ReplicationConfig": {"disappears": "singleton: the replication configuration always exists, Delete is a no-op"},
 	"ResilverConfig":    {"disappears": "singleton: the resilver priority window always exists, Delete is a no-op"},
+	"SystemAdvanced":    {"disappears": "singleton: the System > Advanced row always exists, Delete is a no-op"},
 	"NVMetGlobal":       {"disappears": "singleton: Delete is a no-op reset"},
 	"Service":           {"disappears": "singleton: services cannot be deleted, only disabled"},
 	"SMBConfig":         {"disappears": "singleton: Delete is a no-op reset"},
