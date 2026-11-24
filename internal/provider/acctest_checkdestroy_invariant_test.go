@@ -35,6 +35,7 @@ var singletonResourceTestFiles = map[string]string{
 	"mail_config_test.go":       "singleton, destroy resets the singleton",
 	"network_config_test.go":    "singleton, destroy resets the singleton",
 	"nfs_config_test.go":        "singleton, destroy resets the singleton",
+	"resilver_config_test.go":   "singleton, destroy is a no-op: the resilver priority window always exists",
 	"smb_config_test.go":        "singleton, destroy resets the singleton",
 	"snmp_config_test.go":       "singleton, destroy resets the singleton",
 	"ssh_config_test.go":        "singleton, destroy resets the singleton",

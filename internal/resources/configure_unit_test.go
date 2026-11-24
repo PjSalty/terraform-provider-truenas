@@ -66,6 +66,7 @@ func TestResourceConfigure_Batch(t *testing.T) {
 		NewPoolResource,
 		NewPrivilegeResource,
 		NewReplicationResource,
+		NewResilverConfigResource,
 		NewReportingExporterResource,
 		NewRsyncTaskResource,
 		NewScrubTaskResource,

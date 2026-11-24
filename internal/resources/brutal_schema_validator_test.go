@@ -144,6 +144,7 @@ func resourceConstructors() []func() resource.Resource {
 		NewPoolResource,
 		NewPrivilegeResource,
 		NewReplicationResource,
+		NewResilverConfigResource,
 		NewReportingExporterResource,
 		NewRsyncTaskResource,
 		NewScrubTaskResource,

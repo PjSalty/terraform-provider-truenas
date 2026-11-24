@@ -60,9 +60,11 @@ var singletonsByDesign = map[string]bool{
 	"system_update.go":     true,
 	// Singleton: the LXC config always exists, so there is no not-found
 	// state for Read to remove.
-	"lxc_config.go":    true,
-	"systemdataset.go": true,
-	"ups_config.go":    true,
+	"lxc_config.go": true,
+	// Singleton: the resilver priority window always exists.
+	"resilver_config.go": true,
+	"systemdataset.go":   true,
+	"ups_config.go":      true,
 }
 
 // TestResourcesRemoveFromStateOnNotFound verifies that every resource
