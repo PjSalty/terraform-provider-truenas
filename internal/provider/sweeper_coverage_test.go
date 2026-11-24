@@ -48,6 +48,7 @@ var resourceSweeperExclusions = map[string]string{
 	"iscsi_global":       "singleton: one system-wide iSCSI configuration, no list endpoint and nothing to sweep",
 	"replication_config": "singleton: one system-wide replication configuration, no list endpoint and nothing to sweep",
 	"resilver_config":    "singleton: one system-wide resilver priority window, no list endpoint and nothing to sweep",
+	"system_advanced":    "singleton: one System > Advanced row, no list endpoint and nothing to sweep",
 	"systemdataset":      "singleton: Delete resets system dataset pool to boot-pool",
 	"ups_config":         "singleton: Delete resets UPS config to defaults",
 	"network_interface":  "dangerous: listing returns real NICs that cannot be distinguished from fixtures, sweeping risks host disconnect",

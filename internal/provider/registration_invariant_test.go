@@ -107,6 +107,7 @@ func TestResourceRegistrationMatchesFilesystem(t *testing.T) {
 		"Webshare":              "share_webshare",
 		"LXCConfig":             "lxc_config",
 		"ResilverConfig":        "resilver_config",
+		"SystemAdvanced":        "system_advanced",
 		"ReplicationConfig":     "replication_config",
 		"SMBShare":              "share_smb",
 		"TLSConfig":             "tls_config",

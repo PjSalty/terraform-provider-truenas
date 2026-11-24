@@ -63,6 +63,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   check now honors a value allowlist in `scripts/api-drift-allow.txt`
   constructor (honors `TRUENAS_PROD_DENY` env override, empty
 
+- New `truenas_system_advanced` resource for the **System > Advanced**
+  settings, mainly remote syslog. Manages `syslogservers` (at most two, each
+  with `host`, `transport` and `tls_certificate`), `sysloglevel`,
+  `fqdn_syslog`, `syslog_audit`, `motd`, `login_banner`, `boot_scrub`, the
+  console and boot settings (`consolemenu`, `serialconsole`, `serialport`,
+  `serialspeed`, `kernel_extra_options`, `kdump_enabled`, `debugkernel`),
+  `powerdaemon`, `overprovision`, and the stored `traceback`, `uploadcrash`
+  and `anonstats` flags.
+
+  Every argument is optional, and one left out keeps its current value.
+  `syslogservers` is an ordered list because TrueNAS stores and returns it in
+  the order written, and `[]` removes every server. A host is checked at plan
+  time the way TrueNAS checks it, and an unbracketed IPv6 address, a
+  non-numeric port and a `tls_certificate` on a UDP or TCP server are rejected
+  rather than misread. The documentation lists what applying each setting does
+  (restarting syslog, cron or SSH, regenerating the boot menu), and which of
+  them wait for the next restart of the machine.
+
+  The disk encryption password (`sed_user`, `sed_passwd`), `isolated_gpu_pci_ids`
+  and the read-only token are not managed. Removing the resource changes
+  nothing on the server.
+
 ## [3.4.0] - 2026-11-12
 
 ### Added

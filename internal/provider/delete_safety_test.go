@@ -39,6 +39,7 @@ var deleteNotFoundExclusions = map[string]string{
 	"iscsi_global":       "singleton: Delete is a no-op, the configuration always exists and resetting it would rename every target IQN",
 	"replication_config": "singleton: Delete is a no-op, the configuration always exists and changing the limit on destroy would release held replication tasks",
 	"resilver_config":    "singleton: Delete is a no-op, the window always exists and removing the resource must not slow a running resilver",
+	"system_advanced":    "singleton: Delete is a no-op, removing the resource must not drop remote syslog or change boot settings",
 	"systemdataset":      "singleton: Delete resets system dataset pool via Update",
 	"ups_config":         "singleton: Delete resets UPS config via Update",
 }
